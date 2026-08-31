@@ -20,9 +20,13 @@ import {
   useRouter,
 } from 'expo-router';
 
-import { useAuth } from '@/hooks/use-auth';
+import {
+  useAuth,
+} from '@/hooks/use-auth';
 
-import { styles } from './student-profile.styles';
+import {
+  styles,
+} from './student-profile.styles';
 
 const API_BASE =
   'http://192.168.1.45:3000';
@@ -34,19 +38,39 @@ const API_BASE =
 type Student = {
   id: number;
 
+  // Permanent Student ID
+  // Example: 2026-0005
   student_id: string;
 
+  // Editable login username
+  // Example: wbitoy
+  username: string;
+
   first_name: string;
-  middle_name: string | null;
+
+  middle_name:
+    | string
+    | null;
+
   last_name: string;
 
   full_name: string;
 
-  email: string | null;
-  contact_number: string | null;
+  email:
+    | string
+    | null;
 
-  grade_level: string | null;
-  section: string | null;
+  contact_number:
+    | string
+    | null;
+
+  grade_level:
+    | string
+    | null;
+
+  section:
+    | string
+    | null;
 
   account_status: string;
 };
@@ -60,7 +84,9 @@ type Fine = {
 
   issued_at: string;
 
-  status: 'PAID' | 'UNPAID';
+  status:
+    | 'PAID'
+    | 'UNPAID';
 
   officer_name: string;
 };
@@ -73,7 +99,8 @@ type StudentProfileResponse = {
   totals: {
     totalFines: number;
 
-    outstandingBalance: number;
+    outstandingBalance:
+      number;
 
     totalPaid: number;
   };
@@ -81,22 +108,19 @@ type StudentProfileResponse = {
   fines: Fine[];
 };
 
-type NavItem = {
-  label: string;
-  route: string;
-};
-
 // ==========================================
 // STUDENT PROFILE
 // ==========================================
 
 export default function StudentProfile() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const params =
     useLocalSearchParams();
 
-  const { logout } = useAuth();
+  const { logout } =
+    useAuth();
 
   const { width } =
     useWindowDimensions();
@@ -105,7 +129,13 @@ export default function StudentProfile() {
     width >= 768;
 
   // ==========================================
-  // GET STUDENT ID FROM ROUTE
+  // DATABASE STUDENT ID
+  //
+  // This is users.id,
+  // NOT student_number.
+  //
+  // Example route:
+  // /admin/students/5
   // ==========================================
 
   const rawId =
@@ -117,63 +147,93 @@ export default function StudentProfile() {
       : rawId;
 
   // ==========================================
-  // STATE
+  // PROFILE DATA
   // ==========================================
 
-  const [data, setData] =
+  const [
+    data,
+    setData,
+  ] =
     useState<StudentProfileResponse | null>(
       null
     );
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(true);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState('');
 
   // ==========================================
   // NAVIGATION
   // ==========================================
 
-  const navItems: NavItem[] = [
+  const navItems = [
     {
-      label: 'Dashboard',
-      route: '/admin/dashboard',
+      label:
+        'Dashboard',
+
+      route:
+        '/admin/dashboard',
     },
 
     {
-      label: 'Students',
-      route: '/admin/students',
+      label:
+        'Students',
+
+      route:
+        '/admin/students',
     },
 
     {
-      label: 'Fines',
-      route: '/admin/fines',
+      label:
+        'Fines',
+
+      route:
+        '/admin/fines',
     },
 
     {
-      label: 'QR Scanner',
-      route: '/admin/qr-scanner',
+      label:
+        'QR Scanner',
+
+      route:
+        '/admin/qr-scanner',
     },
 
     {
-      label: 'Reports',
-      route: '/admin/reports',
+      label:
+        'Reports',
+
+      route:
+        '/admin/reports',
     },
 
     {
-      label: 'Settings',
-      route: '/admin/settings',
+      label:
+        'Settings',
+
+      route:
+        '/admin/settings',
     },
 
     {
-      label: 'Officers',
-      route: '/admin/officers',
+      label:
+        'Officers',
+
+      route:
+        '/admin/officers',
     },
   ];
 
   // ==========================================
-  // LOAD STUDENT PROFILE
+  // LOAD STUDENT
   // ==========================================
 
   useEffect(() => {
@@ -184,62 +244,52 @@ export default function StudentProfile() {
     loadStudent();
   }, [studentId]);
 
-  const loadStudent = async () => {
-    try {
-      setLoading(true);
+  const loadStudent =
+    async () => {
+      try {
+        setLoading(true);
 
-      setError('');
+        setError('');
 
-      const response = await fetch(
-        `${API_BASE}/api/students/${studentId}`
-      );
+        const response =
+          await fetch(
+            `${API_BASE}/api/students/${studentId}`
+          );
 
-      const result =
-        await response.json();
+        const result =
+          await response.json();
 
-      console.log(
-        'Student profile response:',
-        result
-      );
-
-      if (
-        !response.ok ||
-        !result.success
-      ) {
-        setError(
-          result.message ||
-            'Failed to load student.'
+        console.log(
+          'Student profile response:',
+          result
         );
 
-        return;
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          setError(
+            result.message ||
+              'Failed to load student.'
+          );
+
+          return;
+        }
+
+        setData(result);
+      } catch (error) {
+        console.error(
+          'Student profile connection error:',
+          error
+        );
+
+        setError(
+          'Could not connect to the SmartFine server.'
+        );
+      } finally {
+        setLoading(false);
       }
-
-      setData(result);
-    } catch (error) {
-      console.error(
-        'Student profile connection error:',
-        error
-      );
-
-      setError(
-        'Could not connect to the SmartFine server.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ==========================================
-  // NAVIGATION HANDLER
-  // ==========================================
-
-  const handleNavigation = (
-    item: NavItem
-  ) => {
-    router.push(
-      item.route as any
-    );
-  };
+    };
 
   // ==========================================
   // LOGOUT
@@ -250,7 +300,9 @@ export default function StudentProfile() {
       try {
         await logout();
 
-        router.replace('/login');
+        router.replace(
+          '/login'
+        );
       } catch (error) {
         console.error(
           'Logout error:',
@@ -258,7 +310,8 @@ export default function StudentProfile() {
         );
 
         if (
-          Platform.OS === 'web'
+          Platform.OS ===
+          'web'
         ) {
           window.alert(
             'Could not log out. Please try again.'
@@ -276,34 +329,43 @@ export default function StudentProfile() {
     // WEB
 
     if (
-      Platform.OS === 'web'
+      Platform.OS ===
+      'web'
     ) {
-      const confirmed =
+      if (
         window.confirm(
           'Are you sure you want to log out?'
-        );
-
-      if (confirmed) {
+        )
+      ) {
         performLogout();
       }
 
       return;
     }
 
-    // ANDROID / IOS
+    // MOBILE
 
     Alert.alert(
       'Log Out',
+
       'Are you sure you want to log out?',
+
       [
         {
-          text: 'Cancel',
-          style: 'cancel',
+          text:
+            'Cancel',
+
+          style:
+            'cancel',
         },
 
         {
-          text: 'Log Out',
-          style: 'destructive',
+          text:
+            'Log Out',
+
+          style:
+            'destructive',
+
           onPress:
             performLogout,
         },
@@ -313,6 +375,8 @@ export default function StudentProfile() {
 
   // ==========================================
   // QR CODE
+  //
+  // TEMPORARY UNTIL QR MODULE
   // ==========================================
 
   const handleQRCode = () => {
@@ -320,9 +384,12 @@ export default function StudentProfile() {
       'Student QR Code will be added in the QR module.';
 
     if (
-      Platform.OS === 'web'
+      Platform.OS ===
+      'web'
     ) {
-      window.alert(message);
+      window.alert(
+        message
+      );
     } else {
       Alert.alert(
         'QR Code',
@@ -333,56 +400,24 @@ export default function StudentProfile() {
 
   // ==========================================
   // EDIT STUDENT
+  //
+  // NOW CONNECTED TO:
+  //
+  // /admin/students/[id]/edit
   // ==========================================
 
   const handleEdit = () => {
-    const message =
-      'Edit Student will be the next Students module screen.';
-
-    if (
-      Platform.OS === 'web'
-    ) {
-      window.alert(message);
-    } else {
-      Alert.alert(
-        'Edit Student',
-        message
-      );
+    if (!studentId) {
+      return;
     }
+
+    router.push(
+      `/admin/students/${studentId}/edit` as any
+    );
   };
 
   // ==========================================
-  // FORMAT GRADE / SECTION
-  // ==========================================
-
-  const formatGradeSection = (
-    gradeLevel:
-      | string
-      | null,
-    section:
-      | string
-      | null
-  ) => {
-    if (
-      gradeLevel &&
-      section
-    ) {
-      return `${gradeLevel} - ${section}`;
-    }
-
-    if (gradeLevel) {
-      return gradeLevel;
-    }
-
-    if (section) {
-      return section;
-    }
-
-    return 'Not Assigned';
-  };
-
-  // ==========================================
-  // PAGE CONTENT
+  // CONTENT
   // ==========================================
 
   const renderContent = () => {
@@ -439,31 +474,46 @@ export default function StudentProfile() {
       );
     }
 
-    // ======================================
-    // STUDENT DATA
-    // ======================================
-
     const {
       student,
       totals,
       fines,
     } = data;
 
+    // ======================================
+    // INITIALS
+    //
+    // Will Bitoy
+    // -> WB
+    // ======================================
+
     const initials =
-      `${student.first_name?.[0] || ''}${
-        student.last_name?.[0] || ''
+      `${
+        student
+          .first_name?.[0] ||
+        ''
+      }${
+        student
+          .last_name?.[0] ||
+        ''
       }`.toUpperCase();
 
+    // ======================================
+    // GRADE + SECTION
+    // ======================================
+
     const gradeSection =
-      formatGradeSection(
+      [
         student.grade_level,
-        student.section
-      );
+        student.section,
+      ]
+        .filter(Boolean)
+        .join(' - ') ||
+      'Not assigned';
 
     const isActive =
       String(
-        student.account_status ||
-          ''
+        student.account_status
       ).toUpperCase() ===
       'ACTIVE';
 
@@ -490,8 +540,7 @@ export default function StudentProfile() {
                 styles.avatarText
               }
             >
-              {initials ||
-                'ST'}
+              {initials}
             </Text>
           </View>
 
@@ -507,7 +556,9 @@ export default function StudentProfile() {
                 styles.studentName
               }
             >
-              {student.full_name}
+              {
+                student.full_name
+              }
             </Text>
 
             {/* GRADE / SECTION */}
@@ -517,7 +568,6 @@ export default function StudentProfile() {
                 styles.studentMeta
               }
             >
-              Grade / Section:{' '}
               {gradeSection}
             </Text>
 
@@ -529,7 +579,23 @@ export default function StudentProfile() {
               }
             >
               Student ID:{' '}
-              {student.student_id}
+              {
+                student.student_id
+              }
+            </Text>
+
+            {/* USERNAME */}
+
+            <Text
+              style={
+                styles.studentMeta
+              }
+            >
+              Username:{' '}
+              {
+                student.username ||
+                'Not provided'
+              }
             </Text>
 
             {/* EMAIL */}
@@ -544,40 +610,41 @@ export default function StudentProfile() {
                 'Not provided'}
             </Text>
 
-            {/* CONTACT NUMBER */}
+            {/* CONTACT */}
 
             <Text
               style={
                 styles.studentMeta
               }
             >
-              Contact Number:{' '}
+              Contact:{' '}
               {student.contact_number ||
                 'Not provided'}
             </Text>
 
-            {/* ACCOUNT STATUS */}
+            {/* STATUS */}
 
             <Text
               style={
                 styles.studentMeta
               }
             >
-              Account Status:{' '}
+              Status:{' '}
               {isActive
                 ? 'Active'
-                : student.account_status ||
-                  'Unknown'}
+                : 'Inactive'}
             </Text>
           </View>
 
-          {/* PROFILE ACTIONS */}
+          {/* ACTIONS */}
 
           <View
             style={
               styles.profileActions
             }
           >
+            {/* VIEW QR */}
+
             <TouchableOpacity
               style={
                 styles.outlineButton
@@ -594,6 +661,8 @@ export default function StudentProfile() {
                 ▦ View QR Code
               </Text>
             </TouchableOpacity>
+
+            {/* EDIT */}
 
             <TouchableOpacity
               style={
@@ -623,7 +692,7 @@ export default function StudentProfile() {
             styles.summaryRow
           }
         >
-          {/* OUTSTANDING BALANCE */}
+          {/* OUTSTANDING */}
 
           <View
             style={
@@ -645,8 +714,7 @@ export default function StudentProfile() {
             >
               ₱
               {Number(
-                totals.outstandingBalance ||
-                  0
+                totals.outstandingBalance
               ).toFixed(2)}
             </Text>
           </View>
@@ -673,8 +741,7 @@ export default function StudentProfile() {
             >
               ₱
               {Number(
-                totals.totalPaid ||
-                  0
+                totals.totalPaid
               ).toFixed(2)}
             </Text>
           </View>
@@ -771,7 +838,7 @@ export default function StudentProfile() {
                 </Text>
               </View>
 
-              {/* EMPTY FINES */}
+              {/* NO FINES */}
 
               {fines.length ===
               0 ? (
@@ -790,7 +857,7 @@ export default function StudentProfile() {
                 </View>
               ) : (
                 // ==================================
-                // FINES LIST
+                // FINES
                 // ==================================
 
                 fines.map(
@@ -846,8 +913,7 @@ export default function StudentProfile() {
                         >
                           ₱
                           {Number(
-                            fine.amount ||
-                              0
+                            fine.amount
                           ).toFixed(
                             2
                           )}
@@ -910,7 +976,7 @@ export default function StudentProfile() {
   };
 
   // ==========================================
-  // MAIN UI
+  // UI
   // ==========================================
 
   return (
@@ -970,8 +1036,8 @@ export default function StudentProfile() {
                         styles.navItemActive,
                     ]}
                     onPress={() =>
-                      handleNavigation(
-                        item
+                      router.push(
+                        item.route as any
                       )
                     }
                   >
@@ -990,7 +1056,9 @@ export default function StudentProfile() {
                         styles.navText
                       }
                     >
-                      {item.label}
+                      {
+                        item.label
+                      }
                     </Text>
                   </TouchableOpacity>
                 );
@@ -1020,7 +1088,7 @@ export default function StudentProfile() {
       )}
 
       {/* ======================================
-          MAIN CONTENT
+          MAIN
       ====================================== */}
 
       <View
@@ -1043,7 +1111,9 @@ export default function StudentProfile() {
               styles.backButton
             }
             onPress={() =>
-              router.back()
+              router.push(
+                '/admin/students'
+              )
             }
           >
             <Text
@@ -1051,12 +1121,12 @@ export default function StudentProfile() {
                 styles.backText
               }
             >
-              ‹ Student Profile
+              ‹ Students Directory
             </Text>
           </TouchableOpacity>
 
           {/* ==================================
-              MOBILE NAVIGATION
+              MOBILE NAV
           ================================== */}
 
           {!isTablet && (
@@ -1070,46 +1140,44 @@ export default function StudentProfile() {
               }
             >
               {navItems.map(
-                (item) => {
-                  const active =
-                    item.label ===
-                    'Students';
+                (item) => (
+                  <TouchableOpacity
+                    key={
+                      item.label
+                    }
+                    style={[
+                      styles.mobileNavItem,
 
-                  return (
-                    <TouchableOpacity
-                      key={
+                      item.label ===
+                        'Students' &&
+                        styles.mobileNavItemActive,
+                    ]}
+                    onPress={() =>
+                      router.push(
+                        item.route as any
+                      )
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.mobileNavText,
+
+                        item.label ===
+                          'Students' &&
+                          styles.mobileNavTextActive,
+                      ]}
+                    >
+                      {
                         item.label
                       }
-                      style={[
-                        styles.mobileNavItem,
-
-                        active &&
-                          styles.mobileNavItemActive,
-                      ]}
-                      onPress={() =>
-                        handleNavigation(
-                          item
-                        )
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.mobileNavText,
-
-                          active &&
-                            styles.mobileNavTextActive,
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
+                    </Text>
+                  </TouchableOpacity>
+                )
               )}
             </ScrollView>
           )}
 
-          {/* PAGE CONTENT */}
+          {/* PROFILE CONTENT */}
 
           {renderContent()}
         </ScrollView>
@@ -1139,23 +1207,29 @@ function formatDate(
   return date.toLocaleString(
     'en-US',
     {
-      month: 'short',
+      month:
+        'short',
 
-      day: 'numeric',
+      day:
+        'numeric',
 
-      year: 'numeric',
+      year:
+        'numeric',
 
-      hour: 'numeric',
+      hour:
+        'numeric',
 
-      minute: '2-digit',
+      minute:
+        '2-digit',
 
-      hour12: true,
+      hour12:
+        true,
     }
   );
 }
 
 // ==========================================
-// TEMPORARY MENU SYMBOLS
+// TEMPORARY SIDEBAR SYMBOLS
 // ==========================================
 
 function getMenuSymbol(
