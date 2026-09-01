@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 
 import { styles } from './dashboard.styles';
+import { API_BASE } from '@/constants/api';
 
 type DashboardStats = {
   totalStudents: number;
@@ -117,7 +118,7 @@ export default function AdminDashboard() {
       setStatsLoading(true);
 
       const response = await fetch(
-        'http://192.168.1.45:3000/api/dashboard/stats'
+        `${API_BASE}/api/dashboard/stats`
       );
 
       const data = await response.json();
@@ -157,7 +158,7 @@ export default function AdminDashboard() {
       setActivitiesLoading(true);
 
       const response = await fetch(
-        'http://192.168.1.45:3000/api/dashboard/recent-activities'
+        `${API_BASE}/api/dashboard/recent-activities`
       );
 
       const data = await response.json();

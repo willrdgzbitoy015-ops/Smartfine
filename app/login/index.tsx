@@ -15,6 +15,7 @@ import {
 
 import { useRouter } from 'expo-router';
 import { styles } from './login.styles';
+import { API_BASE } from '@/constants/api';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -127,7 +128,7 @@ export default function LoginScreen() {
       // ==========================================
 
       const response = await fetch(
-        'http://192.168.1.45:3000/api/auth/login',
+        `${API_BASE}/api/auth/login`,
         {
           method: 'POST',
 

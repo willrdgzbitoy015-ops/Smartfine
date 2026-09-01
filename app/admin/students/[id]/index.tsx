@@ -27,9 +27,7 @@ import {
 import {
   styles,
 } from './student-profile.styles';
-
-const API_BASE =
-  'http://192.168.1.45:3000';
+import { API_BASE } from '@/constants/api';
 
 // ==========================================
 // TYPES
