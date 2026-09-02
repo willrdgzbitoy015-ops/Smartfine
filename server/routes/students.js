@@ -9,11 +9,6 @@ console.log('students.js loaded');
 
 // ==========================================
 // GENERATE NEXT STUDENT ID
-//
-// Example:
-// 2026-0001
-// 2026-0002
-// 2026-0003
 // ==========================================
 
 function generateNextStudentId() {
@@ -39,10 +34,6 @@ function generateNextStudentId() {
       `${currentYear}-%`
     );
 
-  // ======================================
-  // FIRST STUDENT FOR CURRENT YEAR
-  // ======================================
-
   if (
     !latestStudent ||
     !latestStudent.student_number
@@ -63,16 +54,16 @@ function generateNextStudentId() {
 
   const formattedNumber =
     String(nextNumber)
-      .padStart(4, '0');
+      .padStart(
+        4,
+        '0'
+      );
 
   return `${currentYear}-${formattedNumber}`;
 }
 
 // ==========================================
 // GENERATE SUGGESTED USERNAME
-//
-// Will Bitoy
-// -> wbitoy
 // ==========================================
 
 function generateSuggestedUsername(
@@ -152,15 +143,17 @@ router.get(
         error
       );
 
-      return res.status(500).json({
-        success: false,
+      return res
+        .status(500)
+        .json({
+          success: false,
 
-        message:
-          'Failed to generate Student ID.',
+          message:
+            'Failed to generate Student ID.',
 
-        error:
-          error.message,
-      });
+          error:
+            error.message,
+        });
     }
   }
 );
@@ -171,127 +164,171 @@ router.get(
 // GET /api/students
 // ==========================================
 
-router.get('/', (req, res) => {
-  try {
-    const students =
-      db.prepare(`
-        SELECT
-          u.id,
+router.get(
+  '/',
+  (req, res) => {
+    try {
+      const students =
+        db.prepare(`
+          SELECT
+            u.id,
 
-          COALESCE(
-            u.student_number,
-            u.username
-          ) AS student_id,
-
-          u.username,
-
-          TRIM(
-            u.first_name || ' ' ||
             COALESCE(
-              u.middle_name || ' ',
-              ''
-            ) ||
-            u.last_name
-          ) AS full_name,
+              u.student_number,
+              u.username
+            ) AS student_id,
 
-          u.email,
+            u.username,
 
-          u.grade_level,
-          u.section,
+            TRIM(
+              u.first_name || ' ' ||
+              COALESCE(
+                u.middle_name || ' ',
+                ''
+              ) ||
+              u.last_name
+            ) AS full_name,
 
-          u.account_status,
+            u.email,
 
-          COALESCE(
-            SUM(
-              CASE
-                WHEN
-                  f.cancelled_at IS NULL
-                THEN
-                  f.amount_centavos
-                ELSE
-                  0
-              END
-            ),
-            0
-          ) / 100.0
-            AS total_fines,
+            u.grade_level,
+            u.section,
 
-          COALESCE(
-            SUM(
-              CASE
-                WHEN
-                  f.cancelled_at IS NULL
-                  AND f.paid_at IS NULL
-                THEN
-                  f.amount_centavos
-                ELSE
-                  0
-              END
-            ),
-            0
-          ) / 100.0
-            AS outstanding_balance
+            u.account_status,
 
-        FROM users u
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    f.id IS NOT NULL
 
-        LEFT JOIN fines f
-          ON f.student_id = u.id
+                    AND
+                    f.cancelled_at
+                      IS NULL
 
-        WHERE
-          u.role = 'STUDENT'
+                    AND
+                    UPPER(
+                      COALESCE(
+                        f.fine_status,
+                        'UNPAID'
+                      )
+                    ) !=
+                      'CANCELLED'
 
-        GROUP BY
-          u.id,
-          u.student_number,
-          u.username,
-          u.first_name,
-          u.middle_name,
-          u.last_name,
-          u.email,
-          u.grade_level,
-          u.section,
-          u.account_status
+                  THEN
+                    f.amount_centavos
 
-        ORDER BY
-          u.last_name ASC,
-          u.first_name ASC
-      `).all();
+                  ELSE
+                    0
+                END
+              ),
+              0
+            ) / 100.0
+              AS total_fines,
 
-    return res.json({
-      success: true,
-      students,
-    });
-  } catch (error) {
-    console.error(
-      'Load students error:',
-      error
-    );
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    f.id IS NOT NULL
 
-    return res.status(500).json({
-      success: false,
+                    AND
+                    f.cancelled_at
+                      IS NULL
 
-      message:
-        'Failed to load students.',
+                    AND
+                    f.paid_at
+                      IS NULL
 
-      error:
-        error.message,
-    });
+                    AND
+                    UPPER(
+                      COALESCE(
+                        f.fine_status,
+                        'UNPAID'
+                      )
+                    )
+                      NOT IN (
+                        'PAID',
+                        'CANCELLED',
+                        'WAIVED'
+                      )
+
+                  THEN
+                    f.amount_centavos
+
+                  ELSE
+                    0
+                END
+              ),
+              0
+            ) / 100.0
+              AS outstanding_balance
+
+          FROM users u
+
+          LEFT JOIN fines f
+            ON
+              f.student_id =
+              u.id
+
+          WHERE
+            u.role =
+              'STUDENT'
+
+          GROUP BY
+            u.id,
+            u.student_number,
+            u.username,
+            u.first_name,
+            u.middle_name,
+            u.last_name,
+            u.email,
+            u.grade_level,
+            u.section,
+            u.account_status
+
+          ORDER BY
+            u.last_name ASC,
+            u.first_name ASC
+        `).all();
+
+      return res.json({
+        success: true,
+        students,
+      });
+    } catch (error) {
+      console.error(
+        'Load students error:',
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          message:
+            'Failed to load students.',
+
+          error:
+            error.message,
+        });
+    }
   }
-});
+);
 
 // ==========================================
-// CREATE NEW STUDENT
+// CREATE STUDENT
 //
 // POST /api/students
-//
-// ACCOUNT STATUS:
-// ACTIVE
-// INACTIVE
 // ==========================================
 
 router.post(
   '/',
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const {
         username,
@@ -342,7 +379,9 @@ router.post(
       // ======================================
 
       const normalizedFirstName =
-        String(firstName).trim();
+        String(
+          firstName
+        ).trim();
 
       const normalizedMiddleName =
         middleName
@@ -352,10 +391,14 @@ router.post(
           : null;
 
       const normalizedLastName =
-        String(lastName).trim();
+        String(
+          lastName
+        ).trim();
 
       const normalizedEmail =
-        String(email)
+        String(
+          email
+        )
           .trim()
           .toLowerCase();
 
@@ -370,7 +413,9 @@ router.post(
         ).trim();
 
       const normalizedSection =
-        String(section).trim();
+        String(
+          section
+        ).trim();
 
       const normalizedStatus =
         String(
@@ -379,14 +424,12 @@ router.post(
         ).toUpperCase();
 
       const passwordValue =
-        String(password);
+        String(
+          password
+        );
 
       // ======================================
       // USERNAME
-      //
-      // Will Bitoy -> wbitoy
-      //
-      // Frontend may still edit username.
       // ======================================
 
       const suggestedUsername =
@@ -403,11 +446,9 @@ router.post(
           .trim()
           .toLowerCase();
 
-      // ======================================
-      // USERNAME REQUIRED
-      // ======================================
-
-      if (!normalizedUsername) {
+      if (
+        !normalizedUsername
+      ) {
         return res
           .status(400)
           .json({
@@ -420,12 +461,6 @@ router.post(
               'Username is required.',
           });
       }
-
-      // ======================================
-      // USERNAME VALIDATION
-      //
-      // ALPHANUMERIC ONLY
-      // ======================================
 
       const usernamePattern =
         /^[a-z0-9]+$/;
@@ -454,8 +489,7 @@ router.post(
 
       const existingUsername =
         db.prepare(`
-          SELECT
-            id
+          SELECT id
 
           FROM users
 
@@ -467,7 +501,9 @@ router.post(
           normalizedUsername
         );
 
-      if (existingUsername) {
+      if (
+        existingUsername
+      ) {
         return res
           .status(409)
           .json({
@@ -482,7 +518,7 @@ router.post(
       }
 
       // ======================================
-      // EMAIL VALIDATION
+      // EMAIL
       // ======================================
 
       const emailPattern =
@@ -506,14 +542,9 @@ router.post(
           });
       }
 
-      // ======================================
-      // DUPLICATE EMAIL
-      // ======================================
-
       const existingEmail =
         db.prepare(`
-          SELECT
-            id
+          SELECT id
 
           FROM users
 
@@ -525,7 +556,9 @@ router.post(
           normalizedEmail
         );
 
-      if (existingEmail) {
+      if (
+        existingEmail
+      ) {
         return res
           .status(409)
           .json({
@@ -540,17 +573,12 @@ router.post(
       }
 
       // ======================================
-      // PASSWORD VALIDATION
-      //
-      // REQUIRED:
-      // - 8+ characters
-      // - at least 1 letter
-      // - at least 1 number
-      // - at least 1 special character
+      // PASSWORD
       // ======================================
 
       if (
-        passwordValue.length < 8
+        passwordValue.length <
+        8
       ) {
         return res
           .status(400)
@@ -626,9 +654,6 @@ router.post(
 
       // ======================================
       // ACCOUNT STATUS
-      //
-      // IMPORTANT:
-      // ACTIVE or INACTIVE only
       // ======================================
 
       if (
@@ -657,14 +682,9 @@ router.post(
       const generatedStudentId =
         generateNextStudentId();
 
-      // ======================================
-      // CHECK STUDENT ID
-      // ======================================
-
       const existingStudentNumber =
         db.prepare(`
-          SELECT
-            id
+          SELECT id
 
           FROM users
 
@@ -701,7 +721,7 @@ router.post(
         );
 
       // ======================================
-      // INSERT STUDENT
+      // INSERT
       // ======================================
 
       const result =
@@ -765,10 +785,6 @@ router.post(
           normalizedGradeLevel,
           normalizedSection
         );
-
-      // ======================================
-      // SUCCESS
-      // ======================================
 
       return res
         .status(201)
@@ -846,9 +862,6 @@ router.post(
 // GET SINGLE STUDENT PROFILE
 //
 // GET /api/students/:id
-//
-// IMPORTANT:
-// MUST STAY BELOW /next-id
 // ==========================================
 
 router.get(
@@ -861,7 +874,7 @@ router.get(
         );
 
       // ======================================
-      // VALIDATE DATABASE ID
+      // VALIDATE
       // ======================================
 
       if (
@@ -881,7 +894,7 @@ router.get(
       }
 
       // ======================================
-      // STUDENT INFORMATION
+      // STUDENT
       // ======================================
 
       const student =
@@ -921,14 +934,11 @@ router.get(
 
           WHERE
             id = ?
-            AND role = 'STUDENT'
+            AND role =
+              'STUDENT'
         `).get(
           studentId
         );
-
-      // ======================================
-      // STUDENT NOT FOUND
-      // ======================================
 
       if (!student) {
         return res
@@ -942,7 +952,18 @@ router.get(
       }
 
       // ======================================
-      // STUDENT FINANCIAL TOTALS
+      // FINANCIAL TOTALS
+      //
+      // CANCELLED:
+      // excluded from totals
+      //
+      // PAID:
+      // included in total fines
+      // included in total paid
+      //
+      // UNPAID:
+      // included in total fines
+      // included in outstanding
       // ======================================
 
       const totals =
@@ -950,77 +971,114 @@ router.get(
           SELECT
 
             COALESCE(
-              (
-                SELECT
-                  SUM(
-                    f.amount_centavos
-                  )
+              SUM(
+                CASE
+                  WHEN
+                    cancelled_at
+                      IS NULL
 
-                FROM fines f
+                    AND
+                    UPPER(
+                      COALESCE(
+                        fine_status,
+                        'UNPAID'
+                      )
+                    ) !=
+                      'CANCELLED'
 
-                WHERE
-                  f.student_id = ?
+                  THEN
+                    amount_centavos
 
-                  AND
-                  f.cancelled_at
-                    IS NULL
+                  ELSE
+                    0
+                END
               ),
               0
             ) / 100.0
               AS total_fines,
 
             COALESCE(
-              (
-                SELECT
-                  SUM(
-                    f.amount_centavos
-                  )
+              SUM(
+                CASE
+                  WHEN
+                    cancelled_at
+                      IS NULL
 
-                FROM fines f
+                    AND
+                    paid_at
+                      IS NULL
 
-                WHERE
-                  f.student_id = ?
+                    AND
+                    UPPER(
+                      COALESCE(
+                        fine_status,
+                        'UNPAID'
+                      )
+                    )
+                      NOT IN (
+                        'PAID',
+                        'CANCELLED',
+                        'WAIVED'
+                      )
 
-                  AND
-                  f.cancelled_at
-                    IS NULL
+                  THEN
+                    amount_centavos
 
-                  AND
-                  f.paid_at
-                    IS NULL
+                  ELSE
+                    0
+                END
               ),
               0
             ) / 100.0
               AS outstanding_balance,
 
             COALESCE(
-              (
-                SELECT
-                  SUM(
-                    p.amount_centavos
-                  )
+              SUM(
+                CASE
+                  WHEN
+                    cancelled_at
+                      IS NULL
 
-                FROM payments p
+                    AND
+                    (
+                      paid_at
+                        IS NOT NULL
 
-                WHERE
-                  p.student_id = ?
+                      OR
 
-                  AND
-                  UPPER(
-                    p.payment_status
-                  ) = 'PAID'
+                      UPPER(
+                        COALESCE(
+                          fine_status,
+                          ''
+                        )
+                      ) =
+                        'PAID'
+                    )
+
+                  THEN
+                    amount_centavos
+
+                  ELSE
+                    0
+                END
               ),
               0
             ) / 100.0
               AS total_paid
+
+          FROM fines
+
+          WHERE
+            student_id = ?
         `).get(
-          studentId,
-          studentId,
           studentId
         );
 
       // ======================================
-      // RECENT FINES
+      // FINES HISTORY
+      //
+      // IMPORTANT:
+      // Cancelled fines are included.
       // ======================================
 
       const fines =
@@ -1028,29 +1086,94 @@ router.get(
           SELECT
             f.id,
 
+            f.fine_reference,
+
             vt.violation_name,
 
             f.amount_centavos
               / 100.0
               AS amount,
 
+            f.remarks,
+
             f.issued_at,
 
+            f.paid_at,
+
+            f.cancelled_at,
+
+            f.cancellation_reason,
+
             CASE
+
+              WHEN
+                f.cancelled_at
+                  IS NOT NULL
+
+                OR
+
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
+                  )
+                ) =
+                  'CANCELLED'
+
+              THEN
+                'CANCELLED'
+
               WHEN
                 f.paid_at
                   IS NOT NULL
+
+                OR
+
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
+                  )
+                ) =
+                  'PAID'
+
               THEN
                 'PAID'
 
+              WHEN
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
+                  )
+                ) =
+                  'WAIVED'
+
+              THEN
+                'WAIVED'
+
+              WHEN
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
+                  )
+                ) =
+                  'PENDING'
+
+              THEN
+                'PENDING'
+
               ELSE
                 'UNPAID'
+
             END AS status,
 
             CASE
               WHEN
                 officer.id
                   IS NOT NULL
+
               THEN
                 TRIM(
                   officer.first_name
@@ -1060,6 +1183,7 @@ router.get(
 
               ELSE
                 'Unknown'
+
             END AS officer_name
 
           FROM fines f
@@ -1077,14 +1201,11 @@ router.get(
           WHERE
             f.student_id = ?
 
-            AND
-            f.cancelled_at
-              IS NULL
-
           ORDER BY
-            f.issued_at DESC
+            f.issued_at DESC,
+            f.id DESC
 
-          LIMIT 10
+          LIMIT 50
         `).all(
           studentId
         );
@@ -1100,13 +1221,22 @@ router.get(
 
         totals: {
           totalFines:
-            totals.total_fines,
+            Number(
+              totals.total_fines ||
+                0
+            ),
 
           outstandingBalance:
-            totals.outstanding_balance,
+            Number(
+              totals.outstanding_balance ||
+                0
+            ),
 
           totalPaid:
-            totals.total_paid,
+            Number(
+              totals.total_paid ||
+                0
+            ),
         },
 
         fines,
@@ -1133,23 +1263,9 @@ router.get(
 );
 
 // ==========================================
-// UPDATE STUDENT INFORMATION
+// UPDATE STUDENT
 //
 // PUT /api/students/:id
-//
-// EDITABLE:
-// username
-// first name
-// middle name
-// last name
-// email
-// contact number
-// grade
-// section
-// account status
-//
-// NOT EDITABLE:
-// student_number / Student ID
 // ==========================================
 
 router.put(
@@ -1160,10 +1276,6 @@ router.put(
         Number(
           req.params.id
         );
-
-      // ======================================
-      // VALIDATE DATABASE ID
-      // ======================================
 
       if (
         !Number.isInteger(
@@ -1185,7 +1297,7 @@ router.put(
       }
 
       // ======================================
-      // FIND EXISTING STUDENT
+      // EXISTING STUDENT
       // ======================================
 
       const existingStudent =
@@ -1200,12 +1312,15 @@ router.put(
 
           WHERE
             id = ?
-            AND role = 'STUDENT'
+            AND role =
+              'STUDENT'
         `).get(
           studentId
         );
 
-      if (!existingStudent) {
+      if (
+        !existingStudent
+      ) {
         return res
           .status(404)
           .json({
@@ -1220,7 +1335,7 @@ router.put(
       }
 
       // ======================================
-      // REQUEST DATA
+      // REQUEST
       // ======================================
 
       const {
@@ -1238,10 +1353,6 @@ router.put(
 
         accountStatus,
       } = req.body;
-
-      // ======================================
-      // REQUIRED FIELDS
-      // ======================================
 
       if (
         !username ||
@@ -1266,17 +1377,20 @@ router.put(
       }
 
       // ======================================
-      // NORMALIZE VALUES
+      // NORMALIZE
       // ======================================
 
       const normalizedUsername =
-        String(username)
+        String(
+          username
+        )
           .trim()
           .toLowerCase();
 
       const normalizedFirstName =
-        String(firstName)
-          .trim();
+        String(
+          firstName
+        ).trim();
 
       const normalizedMiddleName =
         middleName
@@ -1286,11 +1400,14 @@ router.put(
           : null;
 
       const normalizedLastName =
-        String(lastName)
-          .trim();
+        String(
+          lastName
+        ).trim();
 
       const normalizedEmail =
-        String(email)
+        String(
+          email
+        )
           .trim()
           .toLowerCase();
 
@@ -1305,8 +1422,9 @@ router.put(
         ).trim();
 
       const normalizedSection =
-        String(section)
-          .trim();
+        String(
+          section
+        ).trim();
 
       const normalizedStatus =
         String(
@@ -1315,7 +1433,7 @@ router.put(
         ).toUpperCase();
 
       // ======================================
-      // USERNAME VALIDATION
+      // USERNAME
       // ======================================
 
       const usernamePattern =
@@ -1339,16 +1457,9 @@ router.put(
           });
       }
 
-      // ======================================
-      // DUPLICATE USERNAME
-      //
-      // IGNORE CURRENT STUDENT
-      // ======================================
-
       const duplicateUsername =
         db.prepare(`
-          SELECT
-            id
+          SELECT id
 
           FROM users
 
@@ -1363,7 +1474,9 @@ router.put(
           studentId
         );
 
-      if (duplicateUsername) {
+      if (
+        duplicateUsername
+      ) {
         return res
           .status(409)
           .json({
@@ -1378,7 +1491,7 @@ router.put(
       }
 
       // ======================================
-      // EMAIL VALIDATION
+      // EMAIL
       // ======================================
 
       const emailPattern =
@@ -1402,16 +1515,9 @@ router.put(
           });
       }
 
-      // ======================================
-      // DUPLICATE EMAIL
-      //
-      // IGNORE CURRENT STUDENT
-      // ======================================
-
       const duplicateEmail =
         db.prepare(`
-          SELECT
-            id
+          SELECT id
 
           FROM users
 
@@ -1426,7 +1532,9 @@ router.put(
           studentId
         );
 
-      if (duplicateEmail) {
+      if (
+        duplicateEmail
+      ) {
         return res
           .status(409)
           .json({
@@ -1441,11 +1549,7 @@ router.put(
       }
 
       // ======================================
-      // ACCOUNT STATUS
-      //
-      // FIX:
-      // ACTIVE
-      // INACTIVE
+      // STATUS
       // ======================================
 
       if (
@@ -1468,9 +1572,7 @@ router.put(
       }
 
       // ======================================
-      // UPDATE STUDENT
-      //
-      // student_number IS NOT UPDATED.
+      // UPDATE
       // ======================================
 
       const result =
@@ -1497,7 +1599,8 @@ router.put(
 
           WHERE
             id = ?
-            AND role = 'STUDENT'
+            AND role =
+              'STUDENT'
         `).run(
           normalizedUsername,
 
@@ -1516,10 +1619,6 @@ router.put(
           studentId
         );
 
-      // ======================================
-      // VERIFY UPDATE
-      // ======================================
-
       if (
         Number(
           result.changes
@@ -1537,10 +1636,6 @@ router.put(
               'Student information could not be updated.',
           });
       }
-
-      // ======================================
-      // SUCCESS
-      // ======================================
 
       return res.json({
         success: true,
@@ -1622,10 +1717,6 @@ router.delete(
           req.params.id
         );
 
-      // ======================================
-      // VALIDATE ID
-      // ======================================
-
       if (
         !Number.isInteger(
           studentId
@@ -1646,7 +1737,7 @@ router.delete(
       }
 
       // ======================================
-      // FIND STUDENT
+      // STUDENT
       // ======================================
 
       const student =
@@ -1667,14 +1758,11 @@ router.delete(
 
           WHERE
             id = ?
-            AND role = 'STUDENT'
+            AND role =
+              'STUDENT'
         `).get(
           studentId
         );
-
-      // ======================================
-      // STUDENT NOT FOUND
-      // ======================================
 
       if (!student) {
         return res
@@ -1691,7 +1779,7 @@ router.delete(
       }
 
       // ======================================
-      // CHECK STATUS
+      // STATUS
       // ======================================
 
       const accountStatus =
@@ -1700,19 +1788,11 @@ router.delete(
             ''
         ).toUpperCase();
 
-      // ======================================
-      // ALLOW OLD DEACTIVATED RECORDS TOO
-      // ======================================
-
       const canDelete =
         accountStatus ===
           'INACTIVE' ||
         accountStatus ===
           'DEACTIVATED';
-
-      // ======================================
-      // ACTIVE CANNOT BE DELETED
-      // ======================================
 
       if (!canDelete) {
         return res
@@ -1729,7 +1809,7 @@ router.delete(
       }
 
       // ======================================
-      // CHECK FINES
+      // FINES
       // ======================================
 
       const fineResult =
@@ -1751,7 +1831,7 @@ router.delete(
         ) || 0;
 
       // ======================================
-      // CHECK PAYMENTS
+      // PAYMENTS
       // ======================================
 
       const paymentResult =
@@ -1773,7 +1853,7 @@ router.delete(
         ) || 0;
 
       // ======================================
-      // PRESERVE SCHOOL RECORD HISTORY
+      // PRESERVE HISTORY
       // ======================================
 
       if (
@@ -1802,7 +1882,7 @@ router.delete(
       }
 
       // ======================================
-      // DELETE STUDENT
+      // DELETE
       // ======================================
 
       const result =
@@ -1811,14 +1891,11 @@ router.delete(
 
           WHERE
             id = ?
-            AND role = 'STUDENT'
+            AND role =
+              'STUDENT'
         `).run(
           studentId
         );
-
-      // ======================================
-      // VERIFY DELETE
-      // ======================================
 
       if (
         Number(
@@ -1837,10 +1914,6 @@ router.delete(
               'Student could not be found or deleted.',
           });
       }
-
-      // ======================================
-      // SUCCESS
-      // ======================================
 
       return res.json({
         success: true,

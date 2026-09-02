@@ -10,6 +10,9 @@ const dashboardRoutes =
 const studentsRoutes =
   require('./routes/students');
 
+  const finesRoutes =
+  require('./routes/fines');
+
 const app = express();
 
 const PORT = 3000;
@@ -39,6 +42,11 @@ app.use(
 app.use(
   '/api/auth',
   authRoutes
+);
+
+app.use(
+  '/api/fines',
+  finesRoutes
 );
 
 // ==========================================
