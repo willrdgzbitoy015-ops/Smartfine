@@ -13,12 +13,16 @@ import {
   Image,
   Alert,
   Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
 
 import {
   useLocalSearchParams,
   useRouter,
 } from 'expo-router';
+
+import QRCode from 'react-native-qrcode-svg';
 
 import {
   useAuth,
@@ -130,7 +134,7 @@ export default function StudentProfile() {
     width >= 768;
 
   // ==========================================
-  // STUDENT ID
+  // STUDENT DATABASE ID
   // ==========================================
 
   const rawId =
@@ -168,6 +172,12 @@ export default function StudentProfile() {
   const [
     profileImageFailed,
     setProfileImageFailed,
+  ] =
+    useState(false);
+
+  const [
+    qrVisible,
+    setQrVisible,
   ] =
     useState(false);
 
@@ -356,29 +366,25 @@ export default function StudentProfile() {
 
   // ==========================================
   // QR CODE
-  //
-  // REAL QR CODE WILL BE NEXT
   // ==========================================
 
   const handleQRCode =
     () => {
-      const message =
-        'Student QR Code will be added next.';
-
       if (
-        Platform.OS ===
-        'web'
+        !data?.student
       ) {
-        window.alert(
-          message
-        );
-
         return;
       }
 
-      Alert.alert(
-        'QR Code',
-        message
+      setQrVisible(
+        true
+      );
+    };
+
+  const handleCloseQRCode =
+    () => {
+      setQrVisible(
+        false
       );
     };
 
@@ -464,7 +470,7 @@ export default function StudentProfile() {
     };
 
   // ==========================================
-  // MAIN CONTENT
+  // CONTENT
   // ==========================================
 
   const renderContent =
@@ -595,10 +601,17 @@ export default function StudentProfile() {
           ) ||
         'Not assigned';
 
+      // ======================================
+      // QR VALUE
+      // ======================================
+
+      const qrValue =
+        `SMARTFINE_STUDENT:${student.student_id}`;
+
       return (
         <>
           {/* ==================================
-              COMPACT PROFILE CARD
+              PROFILE CARD
           ================================== */}
 
           <View
@@ -606,16 +619,14 @@ export default function StudentProfile() {
               styles.profileCard
             }
           >
-            {/* ==================================
-                LEFT SIDE
-            ================================== */}
+            {/* LEFT */}
 
             <View
               style={
                 styles.profileLeft
               }
             >
-              {/* PROFILE PHOTO */}
+              {/* PHOTO */}
 
               {showPicture ? (
                 <Image
@@ -650,7 +661,7 @@ export default function StudentProfile() {
                 </View>
               )}
 
-              {/* STUDENT DETAILS */}
+              {/* DETAILS */}
 
               <View
                 style={
@@ -700,9 +711,7 @@ export default function StudentProfile() {
               </View>
             </View>
 
-            {/* ==================================
-                RIGHT SIDE ACTIONS
-            ================================== */}
+            {/* ACTIONS */}
 
             <View
               style={
@@ -774,8 +783,6 @@ export default function StudentProfile() {
               styles.summaryRow
             }
           >
-            {/* OUTSTANDING */}
-
             <View
               style={
                 styles.summaryCard
@@ -803,8 +810,6 @@ export default function StudentProfile() {
                 )}
               </Text>
             </View>
-
-            {/* PAID */}
 
             <View
               style={
@@ -869,7 +874,7 @@ export default function StudentProfile() {
                   styles.historyTable
                 }
               >
-                {/* TABLE HEADER */}
+                {/* HEADER */}
 
                 <View
                   style={
@@ -922,7 +927,7 @@ export default function StudentProfile() {
                   </Text>
                 </View>
 
-                {/* EMPTY */}
+                {/* NO FINES */}
 
                 {fines.length ===
                 0 ? (
@@ -940,6 +945,8 @@ export default function StudentProfile() {
                     </Text>
                   </View>
                 ) : (
+                  // ROWS
+
                   fines.map(
                     (
                       fine
@@ -975,8 +982,6 @@ export default function StudentProfile() {
                             )
                           }
                         >
-                          {/* VIOLATION */}
-
                           <Text
                             style={[
                               styles.historyCell,
@@ -989,8 +994,6 @@ export default function StudentProfile() {
                             }
                           </Text>
 
-                          {/* DATE */}
-
                           <Text
                             style={[
                               styles.historyCell,
@@ -1001,8 +1004,6 @@ export default function StudentProfile() {
                               fine.issued_at
                             )}
                           </Text>
-
-                          {/* AMOUNT */}
 
                           <Text
                             style={[
@@ -1019,8 +1020,6 @@ export default function StudentProfile() {
                               2
                             )}
                           </Text>
-
-                          {/* STATUS */}
 
                           <View
                             style={
@@ -1058,8 +1057,6 @@ export default function StudentProfile() {
                             </View>
                           </View>
 
-                          {/* OFFICER */}
-
                           <Text
                             style={[
                               styles.historyCell,
@@ -1077,6 +1074,189 @@ export default function StudentProfile() {
               </View>
             </ScrollView>
           </View>
+
+          {/* ==================================
+              QR MODAL
+          ================================== */}
+
+          <Modal
+            visible={
+              qrVisible
+            }
+            transparent
+            animationType="fade"
+            onRequestClose={
+              handleCloseQRCode
+            }
+          >
+            <View
+              style={
+                styles.modalOverlay
+              }
+            >
+              <Pressable
+                style={
+                  styles.modalBackdrop
+                }
+                onPress={
+                  handleCloseQRCode
+                }
+              />
+
+              <View
+                style={
+                  styles.qrModal
+                }
+              >
+                {/* MODAL HEADER */}
+
+                <View
+                  style={
+                    styles.qrModalHeader
+                  }
+                >
+                  <View>
+                    <Text
+                      style={
+                        styles.qrModalTitle
+                      }
+                    >
+                      Student QR Code
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.qrModalSubtitle
+                      }
+                    >
+                      Scan this code to identify the student in SmartFine
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={
+                      styles.closeIconButton
+                    }
+                    onPress={
+                      handleCloseQRCode
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.closeIconText
+                      }
+                    >
+                      ×
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* QR */}
+
+                <View
+                  style={
+                    styles.qrContainer
+                  }
+                >
+                  <View
+                    style={
+                      styles.qrWhiteBox
+                    }
+                  >
+                    <QRCode
+                      value={
+                        qrValue
+                      }
+                      size={
+                        220
+                      }
+                      backgroundColor="#FFFFFF"
+                      color="#000000"
+                      quietZone={
+                        8
+                      }
+                    />
+                  </View>
+                </View>
+
+                {/* STUDENT */}
+
+                <Text
+                  style={
+                    styles.qrStudentName
+                  }
+                >
+                  {
+                    student.full_name
+                  }
+                </Text>
+
+                <Text
+                  style={
+                    styles.qrStudentId
+                  }
+                >
+                  Student ID:{' '}
+                  {
+                    student.student_id
+                  }
+                </Text>
+
+                <Text
+                  style={
+                    styles.qrGradeSection
+                  }
+                >
+                  {
+                    gradeSection
+                  }
+                </Text>
+
+                {/* SECURITY NOTE */}
+
+                <View
+                  style={
+                    styles.qrNoteBox
+                  }
+                >
+                  <Text
+                    style={
+                      styles.qrNoteTitle
+                    }
+                  >
+                    SmartFine Student QR
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.qrNoteText
+                    }
+                  >
+                   
+                  </Text>
+                </View>
+
+                {/* CLOSE */}
+
+                <TouchableOpacity
+                  style={
+                    styles.qrCloseButton
+                  }
+                  onPress={
+                    handleCloseQRCode
+                  }
+                >
+                  <Text
+                    style={
+                      styles.qrCloseButtonText
+                    }
+                  >
+                    Close
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </>
       );
     };
@@ -1091,9 +1271,7 @@ export default function StudentProfile() {
         styles.screen
       }
     >
-      {/* ======================================
-          SIDEBAR
-      ====================================== */}
+      {/* SIDEBAR */}
 
       {isTablet && (
         <View
@@ -1189,9 +1367,7 @@ export default function StudentProfile() {
         </View>
       )}
 
-      {/* ======================================
-          MAIN
-      ====================================== */}
+      {/* MAIN */}
 
       <View
         style={

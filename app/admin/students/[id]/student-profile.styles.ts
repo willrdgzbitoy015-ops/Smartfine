@@ -258,7 +258,6 @@ export const styles =
 
     // ==========================================
     // PROFILE CARD
-    // COMPACT LIKE PROTOTYPE
     // ==========================================
 
     profileCard: {
@@ -295,29 +294,13 @@ export const styles =
       justifyContent:
         'space-between',
 
+      flexWrap:
+        'wrap',
+
       gap: 25,
-
-      shadowColor:
-        '#000000',
-
-      shadowOpacity:
-        0.02,
-
-      shadowRadius:
-        3,
-
-      shadowOffset: {
-        width: 0,
-
-        height: 1,
-      },
 
       elevation: 1,
     },
-
-    // ==========================================
-    // PROFILE LEFT
-    // ==========================================
 
     profileLeft: {
       flex: 1,
@@ -385,7 +368,7 @@ export const styles =
     },
 
     // ==========================================
-    // STUDENT INFORMATION
+    // STUDENT INFO
     // ==========================================
 
     studentInfo: {
@@ -418,7 +401,7 @@ export const styles =
     },
 
     // ==========================================
-    // ACTION BUTTONS
+    // PROFILE ACTIONS
     // ==========================================
 
     profileActions: {
@@ -591,7 +574,7 @@ export const styles =
     },
 
     // ==========================================
-    // HISTORY CARD
+    // HISTORY
     // ==========================================
 
     historyCard: {
@@ -640,10 +623,6 @@ export const styles =
       fontWeight:
         '800',
     },
-
-    // ==========================================
-    // HISTORY TABLE
-    // ==========================================
 
     historyTable: {
       minWidth:
@@ -811,7 +790,7 @@ export const styles =
     },
 
     // ==========================================
-    // EMPTY HISTORY
+    // EMPTY
     // ==========================================
 
     emptyHistory: {
@@ -833,7 +812,7 @@ export const styles =
     },
 
     // ==========================================
-    // STATES
+    // LOADING / ERROR
     // ==========================================
 
     centerState: {
@@ -905,6 +884,278 @@ export const styles =
         COLORS.white,
 
       fontSize: 12,
+
+      fontWeight:
+        '800',
+    },
+
+    // ==========================================
+    // QR MODAL
+    // ==========================================
+
+    modalOverlay: {
+      flex: 1,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      padding:
+        20,
+
+      backgroundColor:
+        'rgba(0,0,0,0.55)',
+    },
+
+    modalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+    },
+
+    qrModal: {
+      width:
+        '100%',
+
+      maxWidth:
+        460,
+
+      backgroundColor:
+        COLORS.white,
+
+      borderRadius:
+        18,
+
+      paddingHorizontal:
+        28,
+
+      paddingVertical:
+        26,
+
+      elevation:
+        10,
+    },
+
+    qrModalHeader: {
+      flexDirection:
+        'row',
+
+      alignItems:
+        'flex-start',
+
+      justifyContent:
+        'space-between',
+
+      gap:
+        15,
+
+      marginBottom:
+        24,
+    },
+
+    qrModalTitle: {
+      color:
+        COLORS.text,
+
+      fontSize:
+        21,
+
+      fontWeight:
+        '800',
+    },
+
+    qrModalSubtitle: {
+      color:
+        '#7A8290',
+
+      fontSize:
+        11,
+
+      lineHeight:
+        17,
+
+      marginTop:
+        4,
+
+      maxWidth:
+        320,
+    },
+
+    closeIconButton: {
+      width:
+        34,
+
+      height:
+        34,
+
+      borderRadius:
+        17,
+
+      backgroundColor:
+        '#EFF1F4',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+    },
+
+    closeIconText: {
+      color:
+        '#444444',
+
+      fontSize:
+        22,
+
+      fontWeight:
+        '700',
+
+      lineHeight:
+        24,
+    },
+
+    qrContainer: {
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      marginBottom:
+        20,
+    },
+
+    qrWhiteBox: {
+      backgroundColor:
+        '#FFFFFF',
+
+      borderWidth:
+        1,
+
+      borderColor:
+        '#E0E2E5',
+
+      borderRadius:
+        14,
+
+      padding:
+        15,
+    },
+
+    qrStudentName: {
+      color:
+        '#111111',
+
+      fontSize:
+        20,
+
+      fontWeight:
+        '800',
+
+      textAlign:
+        'center',
+    },
+
+    qrStudentId: {
+      color:
+        COLORS.navy,
+
+      fontSize:
+        13,
+
+      fontWeight:
+        '800',
+
+      textAlign:
+        'center',
+
+      marginTop:
+        6,
+    },
+
+    qrGradeSection: {
+      color:
+        '#777777',
+
+      fontSize:
+        12,
+
+      textAlign:
+        'center',
+
+      marginTop:
+        4,
+    },
+
+    qrNoteBox: {
+      backgroundColor:
+        '#F3F6FA',
+
+      borderRadius:
+        10,
+
+      paddingHorizontal:
+        15,
+
+      paddingVertical:
+        13,
+
+      marginTop:
+        20,
+    },
+
+    qrNoteTitle: {
+      color:
+        COLORS.navy,
+
+      fontSize:
+        11,
+
+      fontWeight:
+        '800',
+
+      marginBottom:
+        4,
+    },
+
+    qrNoteText: {
+      color:
+        '#707784',
+
+      fontSize:
+        10,
+
+      lineHeight:
+        15,
+    },
+
+    qrCloseButton: {
+      height:
+        45,
+
+      backgroundColor:
+        COLORS.navy,
+
+      borderRadius:
+        8,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      marginTop:
+        20,
+    },
+
+    qrCloseButtonText: {
+      color:
+        COLORS.white,
+
+      fontSize:
+        12,
 
       fontWeight:
         '800',

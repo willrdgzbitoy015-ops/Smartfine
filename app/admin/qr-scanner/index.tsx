@@ -1,0 +1,1820 @@
+import {
+  useEffect,
+  useState,
+} from 'react';
+
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  useWindowDimensions,
+  Image,
+  Alert,
+  Platform,
+} from 'react-native';
+
+import {
+  CameraView,
+  useCameraPermissions,
+} from 'expo-camera';
+
+import {
+  useRouter,
+} from 'expo-router';
+
+import {
+  useAuth,
+} from '@/hooks/use-auth';
+
+import {
+  API_BASE,
+} from '@/constants/api';
+
+import {
+  styles,
+} from './qr-scanner.styles';
+
+// ==========================================
+// TYPES
+// ==========================================
+
+type Student = {
+  id: number;
+
+  student_id: string;
+
+  username: string;
+
+  first_name: string;
+
+  middle_name:
+    | string
+    | null;
+
+  last_name: string;
+
+  full_name: string;
+
+  email:
+    | string
+    | null;
+
+  contact_number:
+    | string
+    | null;
+
+  grade_level:
+    | string
+    | null;
+
+  section:
+    | string
+    | null;
+
+  account_status: string;
+
+  profile_picture_uri:
+    | string
+    | null;
+
+  total_fines?: number;
+
+  outstanding_balance?: number;
+};
+
+type NavItem = {
+  label: string;
+  route: string;
+};
+
+// ==========================================
+// SMARTFINE QR PREFIX
+// ==========================================
+
+const QR_PREFIX =
+  'SMARTFINE_STUDENT:';
+
+// ==========================================
+// QR SCANNER
+// ==========================================
+
+export default function QRScanner() {
+  const router =
+    useRouter();
+
+  const { logout } =
+    useAuth();
+
+  const { width } =
+    useWindowDimensions();
+
+  const isTablet =
+    width >= 768;
+
+  // ==========================================
+  // CAMERA PERMISSION
+  // ==========================================
+
+  const [
+    permission,
+    requestPermission,
+  ] =
+    useCameraPermissions();
+
+  // ==========================================
+  // STATE
+  // ==========================================
+
+  const [
+    students,
+    setStudents,
+  ] =
+    useState<Student[]>(
+      []
+    );
+
+  const [
+    loadingStudents,
+    setLoadingStudents,
+  ] =
+    useState(true);
+
+  const [
+    processingScan,
+    setProcessingScan,
+  ] =
+    useState(false);
+
+  const [
+    scanLocked,
+    setScanLocked,
+  ] =
+    useState(false);
+
+  const [
+    manualStudentId,
+    setManualStudentId,
+  ] =
+    useState('');
+
+  const [
+    foundStudent,
+    setFoundStudent,
+  ] =
+    useState<Student | null>(
+      null
+    );
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState('');
+
+  const [
+    profileImageFailed,
+    setProfileImageFailed,
+  ] =
+    useState(false);
+
+  // ==========================================
+  // NAVIGATION ITEMS
+  // ==========================================
+
+  const navItems: NavItem[] = [
+    {
+      label:
+        'Dashboard',
+
+      route:
+        '/admin/dashboard',
+    },
+
+    {
+      label:
+        'Students',
+
+      route:
+        '/admin/students',
+    },
+
+    {
+      label:
+        'Fines',
+
+      route:
+        '/admin/fines',
+    },
+
+    {
+      label:
+        'QR Scanner',
+
+      route:
+        '/admin/qr-scanner',
+    },
+
+    {
+      label:
+        'Reports',
+
+      route:
+        '/admin/reports',
+    },
+
+    {
+      label:
+        'Settings',
+
+      route:
+        '/admin/settings',
+    },
+
+    {
+      label:
+        'Officers',
+
+      route:
+        '/admin/officers',
+    },
+  ];
+
+  // ==========================================
+  // LOAD STUDENTS
+  // ==========================================
+
+  useEffect(() => {
+    loadStudents();
+  }, []);
+
+  const loadStudents =
+    async () => {
+      try {
+        setLoadingStudents(
+          true
+        );
+
+        setErrorMessage(
+          ''
+        );
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/students`
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'QR scanner students:',
+          data
+        );
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          setErrorMessage(
+            data.message ||
+              'Failed to load student records.'
+          );
+
+          return;
+        }
+
+        setStudents(
+          Array.isArray(
+            data.students
+          )
+            ? data.students
+            : []
+        );
+      } catch (error) {
+        console.error(
+          'QR scanner load students error:',
+          error
+        );
+
+        setErrorMessage(
+          'Could not connect to the SmartFine server.'
+        );
+      } finally {
+        setLoadingStudents(
+          false
+        );
+      }
+    };
+
+  // ==========================================
+  // PROFILE PICTURE URL
+  // ==========================================
+
+  const getProfilePictureUrl =
+    (
+      uri:
+        | string
+        | null
+        | undefined
+    ) => {
+      if (
+        !uri
+      ) {
+        return null;
+      }
+
+      if (
+        uri.startsWith(
+          'http://'
+        ) ||
+        uri.startsWith(
+          'https://'
+        )
+      ) {
+        return uri;
+      }
+
+      return `${API_BASE}${uri}`;
+    };
+
+  // ==========================================
+  // PROCESS STUDENT ID
+  // ==========================================
+
+  const processStudentId =
+    async (
+      permanentStudentId:
+        string
+    ) => {
+      try {
+        setProcessingScan(
+          true
+        );
+
+        setErrorMessage(
+          ''
+        );
+
+        setProfileImageFailed(
+          false
+        );
+
+        const normalizedId =
+          permanentStudentId.trim();
+
+        if (
+          !normalizedId
+        ) {
+          setFoundStudent(
+            null
+          );
+
+          setErrorMessage(
+            'Student ID is missing.'
+          );
+
+          return;
+        }
+
+        // ======================================
+        // RELOAD STUDENTS IF EMPTY
+        // ======================================
+
+        let currentStudents =
+          students;
+
+        if (
+          currentStudents.length ===
+          0
+        ) {
+          const response =
+            await fetch(
+              `${API_BASE}/api/students`
+            );
+
+          const data =
+            await response.json();
+
+          if (
+            !response.ok ||
+            !data.success
+          ) {
+            setErrorMessage(
+              data.message ||
+                'Could not load student records.'
+            );
+
+            return;
+          }
+
+          currentStudents =
+            Array.isArray(
+              data.students
+            )
+              ? data.students
+              : [];
+
+          setStudents(
+            currentStudents
+          );
+        }
+
+        const normalizedSearch =
+          normalizedId
+            .trim()
+            .toLowerCase();
+
+        const student =
+          currentStudents.find(
+            (
+              item
+            ) =>
+              String(
+                item.student_id ||
+                  ''
+              )
+                .trim()
+                .toLowerCase() ===
+              normalizedSearch
+          ) ||
+          null;
+
+        if (
+          !student
+        ) {
+          setFoundStudent(
+            null
+          );
+
+          setErrorMessage(
+            `No student was found with Student ID ${normalizedId}.`
+          );
+
+          return;
+        }
+
+        setFoundStudent(
+          student
+        );
+
+        setManualStudentId(
+          student.student_id
+        );
+
+        setScanLocked(
+          true
+        );
+      } catch (error) {
+        console.error(
+          'Process student QR error:',
+          error
+        );
+
+        setErrorMessage(
+          'Could not process the student QR code.'
+        );
+      } finally {
+        setProcessingScan(
+          false
+        );
+      }
+    };
+
+  // ==========================================
+  // HANDLE QR SCAN
+  // ==========================================
+
+  const handleBarcodeScanned =
+    ({
+      data,
+    }: {
+      data: string;
+    }) => {
+      if (
+        scanLocked ||
+        processingScan
+      ) {
+        return;
+      }
+
+      setScanLocked(
+        true
+      );
+
+      setErrorMessage(
+        ''
+      );
+
+      const scannedValue =
+        String(
+          data ||
+            ''
+        ).trim();
+
+      console.log(
+        'QR scanned:',
+        scannedValue
+      );
+
+      // ======================================
+      // CHECK SMARTFINE QR FORMAT
+      // ======================================
+
+      if (
+        !scannedValue.startsWith(
+          QR_PREFIX
+        )
+      ) {
+        setFoundStudent(
+          null
+        );
+
+        setErrorMessage(
+          'Invalid QR Code. This is not a SmartFine Student QR Code.'
+        );
+
+        return;
+      }
+
+      const permanentStudentId =
+        scannedValue
+          .slice(
+            QR_PREFIX.length
+          )
+          .trim();
+
+      if (
+        !permanentStudentId
+      ) {
+        setFoundStudent(
+          null
+        );
+
+        setErrorMessage(
+          'Invalid SmartFine QR Code. Student ID is missing.'
+        );
+
+        return;
+      }
+
+      processStudentId(
+        permanentStudentId
+      );
+    };
+
+  // ==========================================
+  // MANUAL STUDENT SEARCH
+  // ==========================================
+
+  const handleManualSearch =
+    async () => {
+      const normalizedId =
+        manualStudentId.trim();
+
+      if (
+        !normalizedId
+      ) {
+        setErrorMessage(
+          'Enter a Student ID first.'
+        );
+
+        return;
+      }
+
+      setScanLocked(
+        true
+      );
+
+      await processStudentId(
+        normalizedId
+      );
+    };
+
+  // ==========================================
+  // SCAN ANOTHER STUDENT
+  // ==========================================
+
+  const handleScanAgain =
+    () => {
+      setFoundStudent(
+        null
+      );
+
+      setErrorMessage(
+        ''
+      );
+
+      setManualStudentId(
+        ''
+      );
+
+      setProfileImageFailed(
+        false
+      );
+
+      setProcessingScan(
+        false
+      );
+
+      setScanLocked(
+        false
+      );
+    };
+
+  // ==========================================
+  // VIEW STUDENT PROFILE
+  // ==========================================
+
+  const handleViewProfile =
+    () => {
+      if (
+        !foundStudent
+      ) {
+        return;
+      }
+
+      router.push(
+        `/admin/students/${foundStudent.id}` as any
+      );
+    };
+
+  // ==========================================
+  // RECORD FINE
+  // ==========================================
+
+  const handleRecordFine =
+    () => {
+      if (
+        !foundStudent
+      ) {
+        return;
+      }
+
+      router.push(
+        `/admin/fines/add?studentId=${foundStudent.id}` as any
+      );
+    };
+
+  // ==========================================
+  // NAVIGATION
+  // ==========================================
+
+  const handleNavigation =
+    (
+      item: NavItem
+    ) => {
+      router.push(
+        item.route as any
+      );
+    };
+
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
+  const performLogout =
+    async () => {
+      try {
+        await logout();
+
+        router.replace(
+          '/login' as any
+        );
+      } catch (error) {
+        console.error(
+          'Logout error:',
+          error
+        );
+      }
+    };
+
+  const handleLogout =
+    () => {
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        const confirmed =
+          window.confirm(
+            'Are you sure you want to log out?'
+          );
+
+        if (
+          confirmed
+        ) {
+          performLogout();
+        }
+
+        return;
+      }
+
+      Alert.alert(
+        'Log Out',
+
+        'Are you sure you want to log out?',
+
+        [
+          {
+            text:
+              'Cancel',
+
+            style:
+              'cancel',
+          },
+
+          {
+            text:
+              'Log Out',
+
+            style:
+              'destructive',
+
+            onPress:
+              performLogout,
+          },
+        ]
+      );
+    };
+
+  // ==========================================
+  // STUDENT RESULT
+  // ==========================================
+
+  const renderStudentResult =
+    () => {
+      if (
+        !foundStudent
+      ) {
+        return null;
+      }
+
+      const student =
+        foundStudent;
+
+      const profilePictureUrl =
+        getProfilePictureUrl(
+          student.profile_picture_uri
+        );
+
+      const showPicture =
+        Boolean(
+          profilePictureUrl
+        ) &&
+        !profileImageFailed;
+
+      const initials =
+        `${
+          student
+            .first_name?.[0] ||
+          ''
+        }${
+          student
+            .last_name?.[0] ||
+          ''
+        }`.toUpperCase();
+
+      const gradeSection =
+        [
+          student.grade_level,
+          student.section,
+        ]
+          .filter(
+            Boolean
+          )
+          .join(
+            ' - '
+          ) ||
+        'Not assigned';
+
+      const isActive =
+        String(
+          student.account_status ||
+            ''
+        ).toUpperCase() ===
+        'ACTIVE';
+
+      return (
+        <View
+          style={
+            styles.resultCard
+          }
+        >
+          {/* ==================================
+              RESULT HEADER
+          ================================== */}
+
+          <View
+            style={
+              styles.resultHeader
+            }
+          >
+            <View>
+              <Text
+                style={
+                  styles.resultTitle
+                }
+              >
+                Student Found
+              </Text>
+
+              <Text
+                style={
+                  styles.resultSubtitle
+                }
+              >
+                SmartFine QR verified successfully
+              </Text>
+            </View>
+
+            <View
+              style={
+                styles.verifiedBadge
+              }
+            >
+              <Text
+                style={
+                  styles.verifiedBadgeText
+                }
+              >
+                Verified
+              </Text>
+            </View>
+          </View>
+
+          {/* ==================================
+              STUDENT INFORMATION
+          ================================== */}
+
+          <View
+            style={
+              styles.studentResult
+            }
+          >
+            {/* PROFILE PHOTO */}
+
+            {showPicture ? (
+              <Image
+                source={{
+                  uri:
+                    profilePictureUrl!,
+                }}
+                style={
+                  styles.studentAvatarImage
+                }
+                resizeMode="cover"
+                onError={() => {
+                  setProfileImageFailed(
+                    true
+                  );
+                }}
+              />
+            ) : (
+              <View
+                style={
+                  styles.studentAvatar
+                }
+              >
+                <Text
+                  style={
+                    styles.studentAvatarText
+                  }
+                >
+                  {initials ||
+                    'ST'}
+                </Text>
+              </View>
+            )}
+
+            {/* DETAILS */}
+
+            <View
+              style={
+                styles.studentDetails
+              }
+            >
+              <Text
+                style={
+                  styles.studentName
+                }
+              >
+                {
+                  student.full_name
+                }
+              </Text>
+
+              <Text
+                style={
+                  styles.studentMeta
+                }
+              >
+                Student ID:{' '}
+                {
+                  student.student_id
+                }
+              </Text>
+
+              <Text
+                style={
+                  styles.studentMeta
+                }
+              >
+                {
+                  gradeSection
+                }
+              </Text>
+
+              <Text
+                style={
+                  styles.studentMeta
+                }
+              >
+                Email:{' '}
+                {student.email ||
+                  'Not provided'}
+              </Text>
+
+              <View
+                style={[
+                  styles.accountStatusBadge,
+
+                  isActive
+                    ? styles.activeBadge
+                    : styles.inactiveBadge,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.accountStatusText,
+
+                    isActive
+                      ? styles.activeText
+                      : styles.inactiveText,
+                  ]}
+                >
+                  {isActive
+                    ? 'Active'
+                    : 'Inactive'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ==================================
+              FINANCIAL SUMMARY
+          ================================== */}
+
+          <View
+            style={
+              styles.resultStatsRow
+            }
+          >
+            <View
+              style={
+                styles.resultStat
+              }
+            >
+              <Text
+                style={
+                  styles.resultStatLabel
+                }
+              >
+                Total Fines
+              </Text>
+
+              <Text
+                style={
+                  styles.resultStatValue
+                }
+              >
+                ₱
+                {Number(
+                  student.total_fines ||
+                    0
+                ).toFixed(
+                  2
+                )}
+              </Text>
+            </View>
+
+            <View
+              style={
+                styles.resultStat
+              }
+            >
+              <Text
+                style={
+                  styles.resultStatLabel
+                }
+              >
+                Outstanding
+              </Text>
+
+              <Text
+                style={
+                  styles.resultOutstanding
+                }
+              >
+                ₱
+                {Number(
+                  student.outstanding_balance ||
+                    0
+                ).toFixed(
+                  2
+                )}
+              </Text>
+            </View>
+          </View>
+
+          {/* ==================================
+              ACTIONS
+          ================================== */}
+
+          <View
+            style={
+              styles.resultActions
+            }
+          >
+            <TouchableOpacity
+              style={
+                styles.secondaryButton
+              }
+              onPress={
+                handleScanAgain
+              }
+            >
+              <Text
+                style={
+                  styles.secondaryButtonText
+                }
+              >
+                Scan Another
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={
+                styles.profileButton
+              }
+              onPress={
+                handleViewProfile
+              }
+            >
+              <Text
+                style={
+                  styles.profileButtonText
+                }
+              >
+                View Student Profile
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.recordFineButton,
+
+                !isActive &&
+                  styles.buttonDisabled,
+              ]}
+              onPress={
+                handleRecordFine
+              }
+              disabled={
+                !isActive
+              }
+            >
+              <Text
+                style={
+                  styles.recordFineButtonText
+                }
+              >
+                Record Fine
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {!isActive && (
+            <Text
+              style={
+                styles.inactiveNotice
+              }
+            >
+              This student is inactive. Fine recording is disabled.
+            </Text>
+          )}
+        </View>
+      );
+    };
+
+  // ==========================================
+  // CAMERA CONTENT
+  // ==========================================
+
+  const renderCamera =
+    () => {
+      // ======================================
+      // WEB
+      // ======================================
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        return (
+          <View
+            style={
+              styles.webCameraPlaceholder
+            }
+          >
+            {/* ==================================
+                YOUR CUSTOM QR ICON
+            ================================== */}
+
+            <Image
+              source={require('../../../assets/icons/qr-code.png')}
+              style={
+                styles.cameraPlaceholderImage
+              }
+              resizeMode="contain"
+            />
+
+            <Text
+              style={
+                styles.cameraPlaceholderTitle
+              }
+            >
+              Camera Scanner
+            </Text>
+
+            <Text
+              style={
+                styles.cameraPlaceholderText
+              }
+            >
+              For the best QR scanning experience, open SmartFine on your Android phone. You can use Student ID search below while using the web version.
+            </Text>
+          </View>
+        );
+      }
+
+      // ======================================
+      // CAMERA PERMISSION LOADING
+      // ======================================
+
+      if (
+        !permission
+      ) {
+        return (
+          <View
+            style={
+              styles.cameraState
+            }
+          >
+            <ActivityIndicator
+              size="large"
+              color="#173A73"
+            />
+          </View>
+        );
+      }
+
+      // ======================================
+      // CAMERA PERMISSION NOT GRANTED
+      // ======================================
+
+      if (
+        !permission.granted
+      ) {
+        return (
+          <View
+            style={
+              styles.cameraState
+            }
+          >
+            {/* ==================================
+                YOUR CUSTOM QR ICON
+            ================================== */}
+
+            <Image
+              source={require('../../../assets/icons/qr-code.png')}
+              style={
+                styles.cameraPlaceholderImage
+              }
+              resizeMode="contain"
+            />
+
+            <Text
+              style={
+                styles.cameraPlaceholderTitle
+              }
+            >
+              Camera Permission Required
+            </Text>
+
+            <Text
+              style={
+                styles.cameraPlaceholderText
+              }
+            >
+              SmartFine needs permission to use your camera to scan Student QR Codes.
+            </Text>
+
+            <TouchableOpacity
+              style={
+                styles.permissionButton
+              }
+              onPress={
+                requestPermission
+              }
+            >
+              <Text
+                style={
+                  styles.permissionButtonText
+                }
+              >
+                Allow Camera
+              </Text>
+            </TouchableOpacity>
+          </View>
+        );
+      }
+
+      // ======================================
+      // CAMERA
+      // ======================================
+
+      return (
+        <View
+          style={
+            styles.cameraWrapper
+          }
+        >
+          <CameraView
+            style={
+              styles.camera
+            }
+            facing="back"
+            barcodeScannerSettings={{
+              barcodeTypes: [
+                'qr',
+              ],
+            }}
+            onBarcodeScanned={
+              scanLocked
+                ? undefined
+                : handleBarcodeScanned
+            }
+          />
+
+          {/* ==================================
+              CAMERA OVERLAY
+          ================================== */}
+
+          <View
+            pointerEvents="none"
+            style={
+              styles.cameraOverlay
+            }
+          >
+            <View
+              style={
+                styles.scanFrame
+              }
+            />
+
+            <Text
+              style={
+                styles.scanInstruction
+              }
+            >
+              Position the SmartFine Student QR Code inside the frame
+            </Text>
+          </View>
+
+          {/* ==================================
+              PROCESSING
+          ================================== */}
+
+          {scanLocked &&
+            !foundStudent && (
+              <View
+                style={
+                  styles.processingOverlay
+                }
+              >
+                {processingScan ? (
+                  <>
+                    <ActivityIndicator
+                      size="large"
+                      color="#FFFFFF"
+                    />
+
+                    <Text
+                      style={
+                        styles.processingText
+                      }
+                    >
+                      Verifying student...
+                    </Text>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={
+                      styles.scanAgainOverlayButton
+                    }
+                    onPress={
+                      handleScanAgain
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.scanAgainOverlayText
+                      }
+                    >
+                      Scan Again
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+        </View>
+      );
+    };
+
+  // ==========================================
+  // UI
+  // ==========================================
+
+  return (
+    <View
+      style={
+        styles.screen
+      }
+    >
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
+
+      {isTablet && (
+        <View
+          style={
+            styles.sidebar
+          }
+        >
+          <View
+            style={
+              styles.logoArea
+            }
+          >
+            <Image
+              source={require('../../../assets/branding/smartfineNoBG.png')}
+              style={
+                styles.smartFineLogo
+              }
+              resizeMode="contain"
+            />
+          </View>
+
+          <View
+            style={
+              styles.navigation
+            }
+          >
+            {navItems.map(
+              (
+                item
+              ) => {
+                const active =
+                  item.label ===
+                  'QR Scanner';
+
+                return (
+                  <TouchableOpacity
+                    key={
+                      item.label
+                    }
+                    style={[
+                      styles.navItem,
+
+                      active &&
+                        styles.navItemActive,
+                    ]}
+                    onPress={() =>
+                      handleNavigation(
+                        item
+                      )
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.navIcon
+                      }
+                    >
+                      {getMenuSymbol(
+                        item.label
+                      )}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.navText
+                      }
+                    >
+                      {
+                        item.label
+                      }
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={
+              styles.logoutButton
+            }
+            onPress={
+              handleLogout
+            }
+          >
+            <Text
+              style={
+                styles.logoutText
+              }
+            >
+              Log Out
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ======================================
+          MAIN
+      ====================================== */}
+
+      <View
+        style={
+          styles.main
+        }
+      >
+        <ScrollView
+          contentContainerStyle={
+            styles.scrollContent
+          }
+          showsVerticalScrollIndicator={
+            false
+          }
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
+
+          {!isTablet && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={
+                false
+              }
+              contentContainerStyle={
+                styles.mobileNav
+              }
+            >
+              {navItems.map(
+                (
+                  item
+                ) => {
+                  const active =
+                    item.label ===
+                    'QR Scanner';
+
+                  return (
+                    <TouchableOpacity
+                      key={
+                        item.label
+                      }
+                      style={[
+                        styles.mobileNavItem,
+
+                        active &&
+                          styles.mobileNavItemActive,
+                      ]}
+                      onPress={() =>
+                        handleNavigation(
+                          item
+                        )
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.mobileNavText,
+
+                          active &&
+                            styles.mobileNavTextActive,
+                        ]}
+                      >
+                        {
+                          item.label
+                        }
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }
+              )}
+            </ScrollView>
+          )}
+
+          {/* ==================================
+              HEADER
+          ================================== */}
+
+          <View
+            style={
+              styles.header
+            }
+          >
+            <Text
+              style={
+                styles.pageTitle
+              }
+            >
+              QR Scanner
+            </Text>
+
+            <Text
+              style={
+                styles.subtitle
+              }
+            >
+              Scan a SmartFine Student QR Code to identify a student quickly
+            </Text>
+          </View>
+
+          {/* ==================================
+              LOADING
+          ================================== */}
+
+          {loadingStudents ? (
+            <View
+              style={
+                styles.loadingCard
+              }
+            >
+              <ActivityIndicator
+                size="large"
+                color="#173A73"
+              />
+
+              <Text
+                style={
+                  styles.loadingText
+                }
+              >
+                Loading SmartFine student records...
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* ==================================
+                  SCANNER
+              ================================== */}
+
+              {!foundStudent && (
+                <View
+                  style={
+                    styles.scannerCard
+                  }
+                >
+                  <View
+                    style={
+                      styles.scannerCardHeader
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.scannerTitle
+                      }
+                    >
+                      Scan Student QR Code
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.scannerSubtitle
+                      }
+                    >
+                      Only SmartFine Student QR Codes are accepted.
+                    </Text>
+                  </View>
+
+                  {
+                    renderCamera()
+                  }
+                </View>
+              )}
+
+              {/* ==================================
+                  ERROR
+              ================================== */}
+
+              {errorMessage !==
+                '' && (
+                <View
+                  style={
+                    styles.errorBox
+                  }
+                >
+                  <View
+                    style={
+                      styles.errorContent
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.errorTitle
+                      }
+                    >
+                      QR Scan Error
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.errorText
+                      }
+                    >
+                      {
+                        errorMessage
+                      }
+                    </Text>
+                  </View>
+
+                  {scanLocked && (
+                    <TouchableOpacity
+                      style={
+                        styles.errorResetButton
+                      }
+                      onPress={
+                        handleScanAgain
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.errorResetText
+                        }
+                      >
+                        Try Again
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* ==================================
+                  STUDENT RESULT
+              ================================== */}
+
+              {
+                renderStudentResult()
+              }
+
+              {/* ==================================
+                  MANUAL SEARCH
+              ================================== */}
+
+              {!foundStudent && (
+                <View
+                  style={
+                    styles.manualCard
+                  }
+                >
+                  <Text
+                    style={
+                      styles.manualTitle
+                    }
+                  >
+                    Search by Student ID
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.manualSubtitle
+                    }
+                  >
+                    Use this option if the QR code cannot be scanned.
+                  </Text>
+
+                  <View
+                    style={
+                      styles.manualSearchRow
+                    }
+                  >
+                    <TextInput
+                      style={
+                        styles.manualInput
+                      }
+                      value={
+                        manualStudentId
+                      }
+                      onChangeText={(
+                        text
+                      ) => {
+                        setManualStudentId(
+                          text
+                        );
+
+                        setErrorMessage(
+                          ''
+                        );
+                      }}
+                      placeholder="Example: 2026-0004"
+                      placeholderTextColor="#8C939F"
+                      autoCapitalize="characters"
+                      autoCorrect={
+                        false
+                      }
+                      editable={
+                        !processingScan
+                      }
+                      onSubmitEditing={
+                        handleManualSearch
+                      }
+                    />
+
+                    <TouchableOpacity
+                      style={[
+                        styles.searchButton,
+
+                        processingScan &&
+                          styles.buttonDisabled,
+                      ]}
+                      onPress={
+                        handleManualSearch
+                      }
+                      disabled={
+                        processingScan
+                      }
+                    >
+                      {processingScan ? (
+                        <ActivityIndicator
+                          size="small"
+                          color="#FFFFFF"
+                        />
+                      ) : (
+                        <Text
+                          style={
+                            styles.searchButtonText
+                          }
+                        >
+                          Search Student
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
+
+// ==========================================
+// SIDEBAR SYMBOLS
+// ==========================================
+
+function getMenuSymbol(
+  label: string
+) {
+  switch (
+    label
+  ) {
+    case 'Dashboard':
+      return '⌂';
+
+    case 'Students':
+      return '◎';
+
+    case 'Fines':
+      return '▤';
+
+    case 'QR Scanner':
+      return '▦';
+
+    case 'Reports':
+      return '▧';
+
+    case 'Settings':
+      return '⚙';
+
+    case 'Officers':
+      return '●';
+
+    default:
+      return '•';
+  }
+}

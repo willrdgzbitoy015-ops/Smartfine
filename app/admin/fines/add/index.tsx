@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 
 import {
+  useLocalSearchParams,
   useRouter,
 } from 'expo-router';
 
@@ -39,17 +40,28 @@ import {
 
 type StudentOption = {
   id: number;
+
   student_id: string;
+
   username: string;
 
   first_name: string;
-  middle_name: string | null;
+
+  middle_name:
+    | string
+    | null;
+
   last_name: string;
 
   full_name: string;
 
-  grade_level: string | null;
-  section: string | null;
+  grade_level:
+    | string
+    | null;
+
+  section:
+    | string
+    | null;
 };
 
 type ViolationOption = {
@@ -76,7 +88,11 @@ type OfficerOption = {
   username: string;
 
   first_name: string;
-  middle_name: string | null;
+
+  middle_name:
+    | string
+    | null;
+
   last_name: string;
 
   full_name: string;
@@ -97,6 +113,9 @@ export default function AddFine() {
   const router =
     useRouter();
 
+  const params =
+    useLocalSearchParams();
+
   const { logout } =
     useAuth();
 
@@ -107,27 +126,76 @@ export default function AddFine() {
     width >= 768;
 
   // ==========================================
+  // STUDENT PASSED FROM QR SCANNER
+  //
+  // Example:
+  // /admin/fines/add?studentId=6
+  // ==========================================
+
+  const rawScannedStudentId =
+    params.studentId;
+
+  const scannedStudentDatabaseId =
+    useMemo(() => {
+      const value =
+        Array.isArray(
+          rawScannedStudentId
+        )
+          ? rawScannedStudentId[0]
+          : rawScannedStudentId;
+
+      if (
+        !value
+      ) {
+        return null;
+      }
+
+      const numericValue =
+        Number(
+          value
+        );
+
+      if (
+        !Number.isInteger(
+          numericValue
+        ) ||
+        numericValue <= 0
+      ) {
+        return null;
+      }
+
+      return numericValue;
+    }, [
+      rawScannedStudentId,
+    ]);
+
+  // ==========================================
   // OPTIONS
   // ==========================================
 
   const [
     students,
     setStudents,
-  ] = useState<StudentOption[]>([]);
+  ] =
+    useState<StudentOption[]>(
+      []
+    );
 
   const [
     violations,
     setViolations,
-  ] = useState<
-    ViolationOption[]
-  >([]);
+  ] =
+    useState<
+      ViolationOption[]
+    >([]);
 
   const [
     officers,
     setOfficers,
-  ] = useState<
-    OfficerOption[]
-  >([]);
+  ] =
+    useState<
+      OfficerOption[]
+    >([]);
 
   // ==========================================
   // STUDENT SEARCH
@@ -136,19 +204,22 @@ export default function AddFine() {
   const [
     studentSearch,
     setStudentSearch,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     studentSuggestionsOpen,
     setStudentSuggestionsOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     selectedStudentId,
     setSelectedStudentId,
-  ] = useState<
-    number | null
-  >(null);
+  ] =
+    useState<
+      number | null
+    >(null);
 
   // ==========================================
   // VIOLATION
@@ -157,14 +228,16 @@ export default function AddFine() {
   const [
     selectedViolationId,
     setSelectedViolationId,
-  ] = useState<
-    number | null
-  >(null);
+  ] =
+    useState<
+      number | null
+    >(null);
 
   const [
     violationMenuOpen,
     setViolationMenuOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   // ==========================================
   // OFFICER
@@ -173,14 +246,16 @@ export default function AddFine() {
   const [
     selectedOfficerId,
     setSelectedOfficerId,
-  ] = useState<
-    number | null
-  >(null);
+  ] =
+    useState<
+      number | null
+    >(null);
 
   const [
     officerMenuOpen,
     setOfficerMenuOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   // ==========================================
   // OTHER FORM VALUES
@@ -189,14 +264,16 @@ export default function AddFine() {
   const [
     issuedAt,
     setIssuedAt,
-  ] = useState(
-    getTodayDate()
-  );
+  ] =
+    useState(
+      getTodayDate()
+    );
 
   const [
     remarks,
     setRemarks,
-  ] = useState('');
+  ] =
+    useState('');
 
   // ==========================================
   // SCREEN STATE
@@ -205,17 +282,20 @@ export default function AddFine() {
   const [
     loading,
     setLoading,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const [
     saving,
     setSaving,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] = useState('');
+  ] =
+    useState('');
 
   // ==========================================
   // NAVIGATION
@@ -223,43 +303,57 @@ export default function AddFine() {
 
   const navItems: NavItem[] = [
     {
-      label: 'Dashboard',
+      label:
+        'Dashboard',
+
       route:
         '/admin/dashboard',
     },
 
     {
-      label: 'Students',
+      label:
+        'Students',
+
       route:
         '/admin/students',
     },
 
     {
-      label: 'Fines',
+      label:
+        'Fines',
+
       route:
         '/admin/fines',
     },
 
     {
-      label: 'QR Scanner',
+      label:
+        'QR Scanner',
+
       route:
         '/admin/qr-scanner',
     },
 
     {
-      label: 'Reports',
+      label:
+        'Reports',
+
       route:
         '/admin/reports',
     },
 
     {
-      label: 'Settings',
+      label:
+        'Settings',
+
       route:
         '/admin/settings',
     },
 
     {
-      label: 'Officers',
+      label:
+        'Officers',
+
       route:
         '/admin/officers',
     },
@@ -271,14 +365,20 @@ export default function AddFine() {
 
   useEffect(() => {
     loadOptions();
-  }, []);
+  }, [
+    scannedStudentDatabaseId,
+  ]);
 
   const loadOptions =
     async () => {
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
-        setErrorMessage('');
+        setErrorMessage(
+          ''
+        );
 
         const [
           studentsResponse,
@@ -308,6 +408,10 @@ export default function AddFine() {
         const officersData =
           await officersResponse.json();
 
+        // ======================================
+        // STUDENTS ERROR
+        // ======================================
+
         if (
           !studentsResponse.ok ||
           !studentsData.success
@@ -317,6 +421,10 @@ export default function AddFine() {
               'Failed to load students.'
           );
         }
+
+        // ======================================
+        // VIOLATIONS ERROR
+        // ======================================
 
         if (
           !violationsResponse.ok ||
@@ -328,6 +436,10 @@ export default function AddFine() {
           );
         }
 
+        // ======================================
+        // OFFICERS ERROR
+        // ======================================
+
         if (
           !officersResponse.ok ||
           !officersData.success
@@ -338,15 +450,22 @@ export default function AddFine() {
           );
         }
 
-        const loadedStudents =
+        // ======================================
+        // NORMALIZE OPTIONS
+        // ======================================
+
+        const loadedStudents:
+          StudentOption[] =
           studentsData.students ||
           [];
 
-        const loadedViolations =
+        const loadedViolations:
+          ViolationOption[] =
           violationsData.violations ||
           [];
 
-        const loadedOfficers =
+        const loadedOfficers:
+          OfficerOption[] =
           officersData.officers ||
           [];
 
@@ -363,10 +482,63 @@ export default function AddFine() {
         );
 
         // ======================================
-        // OPTIONAL DEFAULT OFFICER
+        // QR SCANNER STUDENT AUTO-SELECTION
+        // ======================================
+
+        if (
+          scannedStudentDatabaseId !==
+          null
+        ) {
+          const scannedStudent =
+            loadedStudents.find(
+              (
+                student
+              ) =>
+                Number(
+                  student.id
+                ) ===
+                scannedStudentDatabaseId
+            );
+
+          if (
+            scannedStudent
+          ) {
+            setSelectedStudentId(
+              scannedStudent.id
+            );
+
+            setStudentSearch(
+              scannedStudent.full_name
+            );
+
+            setStudentSuggestionsOpen(
+              false
+            );
+
+            console.log(
+              'Student preselected from QR Scanner:',
+              scannedStudent
+            );
+          } else {
+            setSelectedStudentId(
+              null
+            );
+
+            setStudentSearch(
+              ''
+            );
+
+            setErrorMessage(
+              'The student selected from the QR Scanner could not be found. Please search for the student manually.'
+            );
+          }
+        }
+
+        // ======================================
+        // DEFAULT OFFICER
         //
-        // If there is only one available
-        // officer/admin, automatically select it.
+        // If only one officer/admin is available,
+        // automatically select that account.
         // ======================================
 
         if (
@@ -387,7 +559,9 @@ export default function AddFine() {
           'Could not load the Add Fine form. Please check the SmartFine server.'
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     };
 
@@ -399,10 +573,13 @@ export default function AddFine() {
     useMemo(() => {
       return (
         students.find(
-          (student) =>
+          (
+            student
+          ) =>
             student.id ===
             selectedStudentId
-        ) || null
+        ) ||
+        null
       );
     }, [
       students,
@@ -420,13 +597,17 @@ export default function AddFine() {
           .trim()
           .toLowerCase();
 
-      if (!search) {
+      if (
+        !search
+      ) {
         return [];
       }
 
       return students
         .filter(
-          (student) => {
+          (
+            student
+          ) => {
             const searchable =
               [
                 student.full_name,
@@ -439,8 +620,12 @@ export default function AddFine() {
 
                 student.section,
               ]
-                .filter(Boolean)
-                .join(' ')
+                .filter(
+                  Boolean
+                )
+                .join(
+                  ' '
+                )
                 .toLowerCase();
 
             return searchable.includes(
@@ -465,10 +650,13 @@ export default function AddFine() {
     useMemo(() => {
       return (
         violations.find(
-          (violation) =>
+          (
+            violation
+          ) =>
             violation.id ===
             selectedViolationId
-        ) || null
+        ) ||
+        null
       );
     }, [
       violations,
@@ -483,10 +671,13 @@ export default function AddFine() {
     useMemo(() => {
       return (
         officers.find(
-          (officer) =>
+          (
+            officer
+          ) =>
             officer.id ===
             selectedOfficerId
-        ) || null
+        ) ||
+        null
       );
     }, [
       officers,
@@ -499,8 +690,12 @@ export default function AddFine() {
 
   const clearError =
     () => {
-      if (errorMessage) {
-        setErrorMessage('');
+      if (
+        errorMessage
+      ) {
+        setErrorMessage(
+          ''
+        );
       }
     };
 
@@ -508,56 +703,64 @@ export default function AddFine() {
   // STUDENT SEARCH CHANGE
   // ==========================================
 
-  const handleStudentSearchChange = (
-    text: string
-  ) => {
-    setStudentSearch(
-      text
-    );
+  const handleStudentSearchChange =
+    (
+      text: string
+    ) => {
+      setStudentSearch(
+        text
+      );
 
-    setSelectedStudentId(
-      null
-    );
+      // If the administrator edits the
+      // preselected student's name/search box,
+      // clear the current student selection.
 
-    setStudentSuggestionsOpen(
-      text.trim().length > 0
-    );
+      setSelectedStudentId(
+        null
+      );
 
-    setViolationMenuOpen(
-      false
-    );
+      setStudentSuggestionsOpen(
+        text.trim().length >
+          0
+      );
 
-    setOfficerMenuOpen(
-      false
-    );
+      setViolationMenuOpen(
+        false
+      );
 
-    clearError();
-  };
+      setOfficerMenuOpen(
+        false
+      );
+
+      clearError();
+    };
 
   // ==========================================
   // SELECT STUDENT
   // ==========================================
 
-  const selectStudent = (
-    student: StudentOption
-  ) => {
-    setSelectedStudentId(
-      student.id
-    );
+  const selectStudent =
+    (
+      student:
+        StudentOption
+    ) => {
+      setSelectedStudentId(
+        student.id
+      );
 
-    setStudentSearch(
-      student.full_name
-    );
+      setStudentSearch(
+        student.full_name
+      );
 
-    setStudentSuggestionsOpen(
-      false
-    );
+      setStudentSuggestionsOpen(
+        false
+      );
 
-    clearError();
-  };
+      clearError();
+    };
 
   // ==========================================
-  // VIOLATION DROPDOWN
+  // VIOLATION MENU
   // ==========================================
 
   const toggleViolationMenu =
@@ -576,7 +779,7 @@ export default function AddFine() {
     };
 
   // ==========================================
-  // OFFICER DROPDOWN
+  // OFFICER MENU
   // ==========================================
 
   const toggleOfficerMenu =
@@ -600,7 +803,13 @@ export default function AddFine() {
 
   const handleSave =
     async () => {
-      setErrorMessage('');
+      setErrorMessage(
+        ''
+      );
+
+      // ======================================
+      // STUDENT
+      // ======================================
 
       if (
         selectedStudentId ===
@@ -613,6 +822,10 @@ export default function AddFine() {
         return;
       }
 
+      // ======================================
+      // VIOLATION
+      // ======================================
+
       if (
         selectedViolationId ===
         null
@@ -624,6 +837,10 @@ export default function AddFine() {
         return;
       }
 
+      // ======================================
+      // OFFICER
+      // ======================================
+
       if (
         selectedOfficerId ===
         null
@@ -634,6 +851,10 @@ export default function AddFine() {
 
         return;
       }
+
+      // ======================================
+      // DATE
+      // ======================================
 
       if (
         !isValidDate(
@@ -647,8 +868,14 @@ export default function AddFine() {
         return;
       }
 
+      // ======================================
+      // SAVE
+      // ======================================
+
       try {
-        setSaving(true);
+        setSaving(
+          true
+        );
 
         const response =
           await fetch(
@@ -716,7 +943,9 @@ export default function AddFine() {
           'Could not connect to the SmartFine server.'
         );
       } finally {
-        setSaving(false);
+        setSaving(
+          false
+        );
       }
     };
 
@@ -724,46 +953,50 @@ export default function AddFine() {
   // SUCCESS
   // ==========================================
 
-  const showSuccess = (
-    fineReference:
-      | string
-      | undefined
-  ) => {
-    const message =
-      fineReference
-        ? `Fine ${fineReference} recorded successfully.`
-        : 'Fine recorded successfully.';
+  const showSuccess =
+    (
+      fineReference:
+        | string
+        | undefined
+    ) => {
+      const message =
+        fineReference
+          ? `Fine ${fineReference} recorded successfully.`
+          : 'Fine recorded successfully.';
 
-    if (
-      Platform.OS ===
-      'web'
-    ) {
-      window.alert(
-        message
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        window.alert(
+          message
+        );
+
+        router.replace(
+          '/admin/fines' as any
+        );
+
+        return;
+      }
+
+      Alert.alert(
+        'Fine Recorded',
+
+        message,
+
+        [
+          {
+            text:
+              'OK',
+
+            onPress: () =>
+              router.replace(
+                '/admin/fines' as any
+              ),
+          },
+        ]
       );
-
-      router.replace(
-        '/admin/fines' as any
-      );
-
-      return;
-    }
-
-    Alert.alert(
-      'Fine Recorded',
-      message,
-      [
-        {
-          text: 'OK',
-
-          onPress: () =>
-            router.replace(
-              '/admin/fines' as any
-            ),
-        },
-      ]
-    );
-  };
+    };
 
   // ==========================================
   // CANCEL
@@ -785,7 +1018,7 @@ export default function AddFine() {
       await logout();
 
       router.replace(
-        '/login'
+        '/login' as any
       );
     };
 
@@ -800,7 +1033,9 @@ export default function AddFine() {
             'Are you sure you want to log out?'
           );
 
-        if (confirmed) {
+        if (
+          confirmed
+        ) {
           performLogout();
         }
 
@@ -809,16 +1044,25 @@ export default function AddFine() {
 
       Alert.alert(
         'Log Out',
+
         'Are you sure you want to log out?',
+
         [
           {
-            text: 'Cancel',
-            style: 'cancel',
+            text:
+              'Cancel',
+
+            style:
+              'cancel',
           },
 
           {
-            text: 'Log Out',
-            style: 'destructive',
+            text:
+              'Log Out',
+
+            style:
+              'destructive',
+
             onPress:
               performLogout,
           },
@@ -830,7 +1074,9 @@ export default function AddFine() {
   // LOADING
   // ==========================================
 
-  if (loading) {
+  if (
+    loading
+  ) {
     return (
       <View
         style={
@@ -893,7 +1139,9 @@ export default function AddFine() {
             }
           >
             {navItems.map(
-              (item) => {
+              (
+                item
+              ) => {
                 const active =
                   item.label ===
                   'Fines';
@@ -992,7 +1240,9 @@ export default function AddFine() {
               }
             >
               {navItems.map(
-                (item) => {
+                (
+                  item
+                ) => {
                   const active =
                     item.label ===
                     'Fines';
@@ -1067,6 +1317,71 @@ export default function AddFine() {
             >
               Record New Fine
             </Text>
+
+            {/* ==================================
+                QR PRESELECTED STUDENT NOTICE
+            ================================== */}
+
+            {scannedStudentDatabaseId !==
+              null &&
+              selectedStudent && (
+                <View
+                  style={{
+                    backgroundColor:
+                      '#EAF7EC',
+
+                    borderWidth:
+                      1,
+
+                    borderColor:
+                      '#A5DDAE',
+
+                    borderRadius:
+                      9,
+
+                    paddingHorizontal:
+                      15,
+
+                    paddingVertical:
+                      12,
+
+                    marginBottom:
+                      18,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color:
+                        '#2E7D32',
+
+                      fontSize:
+                        12,
+
+                      fontWeight:
+                        '800',
+
+                      marginBottom:
+                        3,
+                    }}
+                  >
+                    Student Selected from QR Scanner
+                  </Text>
+
+                  <Text
+                    style={{
+                      color:
+                        '#4C6850',
+
+                      fontSize:
+                        11,
+                    }}
+                  >
+                    {selectedStudent.full_name}
+                    {' • '}
+                    {selectedStudent.student_id}
+                  </Text>
+                </View>
+              )}
 
             {/* ==================================
                 ROW 1
@@ -1683,7 +1998,8 @@ function getTodayDate() {
 
   const month =
     String(
-      now.getMonth() + 1
+      now.getMonth() +
+        1
     ).padStart(
       2,
       '0'
@@ -1726,7 +2042,9 @@ function isValidDate(
     value
       .trim()
       .split('-')
-      .map(Number);
+      .map(
+        Number
+      );
 
   const date =
     new Date(
@@ -1753,7 +2071,8 @@ function formatMoney(
   amount: number
 ) {
   return `₱${Number(
-    amount || 0
+    amount ||
+      0
   ).toLocaleString(
     'en-PH',
     {
@@ -1775,7 +2094,8 @@ function formatRole(
 ) {
   switch (
     String(
-      role || ''
+      role ||
+        ''
     ).toUpperCase()
   ) {
     case 'FINES_OFFICER':
@@ -1796,7 +2116,9 @@ function formatRole(
 function getMenuSymbol(
   label: string
 ) {
-  switch (label) {
+  switch (
+    label
+  ) {
     case 'Dashboard':
       return '⌂';
 
