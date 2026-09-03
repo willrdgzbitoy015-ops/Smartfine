@@ -11,11 +11,17 @@ const dashboardRoutes =
 const studentsRoutes =
   require('./routes/students');
 
-  const finesRoutes =
+const finesRoutes =
   require('./routes/fines');
 
-  const officersRoutes =
+const officersRoutes =
   require('./routes/officers');
+
+const reportsRoutes =
+  require('./routes/reports');
+
+const settingsRoutes =
+  require('./routes/settings');
 
 const app = express();
 
@@ -52,10 +58,25 @@ app.use(
   '/api/fines',
   finesRoutes
 );
+
 app.use(
   '/api/officers',
   officersRoutes
 );
+
+app.use(
+  '/api/reports',
+  reportsRoutes
+);
+
+app.use(
+  '/api/settings',
+  settingsRoutes
+);
+
+// ==========================================
+// STATIC UPLOADS
+// ==========================================
 
 app.use(
   '/uploads',
@@ -66,17 +87,25 @@ app.use(
     )
   )
 );
+
 // ==========================================
 // API TEST
 // ==========================================
 
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message:
-      'SmartFine API is running.',
-  });
-});
+app.get(
+  '/',
+  (
+    req,
+    res
+  ) => {
+    res.json({
+      success: true,
+
+      message:
+        'SmartFine API is running.',
+    });
+  }
+);
 
 // ==========================================
 // START SERVER

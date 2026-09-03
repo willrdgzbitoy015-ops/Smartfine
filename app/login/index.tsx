@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
 
 import {
   View,
@@ -13,396 +16,596 @@ import {
   Platform,
 } from 'react-native';
 
-import { useRouter } from 'expo-router';
-import { styles } from './login.styles';
-import { API_BASE } from '@/constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import {
+  useRouter,
+} from 'expo-router';
+
+import {
+  styles,
+} from './login.styles';
+
+import {
+  API_BASE,
+} from '@/constants/api';
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const { width } = useWindowDimensions();
+  const router =
+    useRouter();
 
-  const isTablet = width >= 768;
+  const { width } =
+    useWindowDimensions();
+
+  const isTablet =
+    width >= 768;
 
   // ==========================================
   // LOGIN FORM STATE
   // ==========================================
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [
+    username,
+    setUsername,
+  ] =
+    useState('');
 
-  const [showPassword, setShowPassword] =
+  const [
+    password,
+    setPassword,
+  ] =
+    useState('');
+
+  const [
+    showPassword,
+    setShowPassword,
+  ] =
     useState(false);
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(false);
 
-  const [rememberMe, setRememberMe] =
+  const [
+    rememberMe,
+    setRememberMe,
+  ] =
     useState(false);
 
   // ==========================================
   // LOGIN ERROR STATE
   // ==========================================
 
-  const [errorTitle, setErrorTitle] =
+  const [
+    errorTitle,
+    setErrorTitle,
+  ] =
     useState('');
 
-  const [errorMessage, setErrorMessage] =
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
     useState('');
 
   // ==========================================
-  // SHOW ERROR INSIDE LOGIN UI
+  // SHOW ERROR
   // ==========================================
 
-  const showError = (
-    title: string,
-    message: string
-  ) => {
-    setErrorTitle(title);
-    setErrorMessage(message);
-  };
+  const showError =
+    (
+      title: string,
+      message: string
+    ) => {
+      setErrorTitle(
+        title
+      );
+
+      setErrorMessage(
+        message
+      );
+    };
 
   // ==========================================
   // CLEAR ERROR
   // ==========================================
 
-  const clearError = () => {
-    setErrorTitle('');
-    setErrorMessage('');
-  };
+  const clearError =
+    () => {
+      setErrorTitle(
+        ''
+      );
+
+      setErrorMessage(
+        ''
+      );
+    };
 
   // ==========================================
-  // AUTO-HIDE ERROR AFTER 3 SECONDS
+  // AUTO-HIDE ERROR
   // ==========================================
 
   useEffect(() => {
-    if (!errorMessage) {
+    if (
+      !errorMessage
+    ) {
       return;
     }
 
-    const timer = setTimeout(() => {
-      setErrorTitle('');
-      setErrorMessage('');
-    }, 3000);
+    const timer =
+      setTimeout(
+        () => {
+          setErrorTitle(
+            ''
+          );
+
+          setErrorMessage(
+            ''
+          );
+        },
+        3000
+      );
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(
+        timer
+      );
     };
-  }, [errorMessage]);
+  }, [
+    errorMessage,
+  ]);
+
+  // ==========================================
+  // SAVE LOGIN SESSION
+  // ==========================================
+
+  const saveLoginSession =
+    async (
+      data: any
+    ) => {
+      if (
+        !data.token
+      ) {
+        throw new Error(
+          'LOGIN_TOKEN_MISSING'
+        );
+      }
+
+      if (
+        !data.user
+      ) {
+        throw new Error(
+          'LOGIN_USER_MISSING'
+        );
+      }
+
+      const userEmail =
+        String(
+          data.user.email ||
+            data.user.username ||
+            ''
+        );
+
+      const userId =
+        String(
+          data.user.id
+        );
+
+      const userRole =
+        String(
+          data.user.role
+        );
+
+      // ======================================
+      // STORE AUTH DATA
+      // ======================================
+
+      await AsyncStorage.multiSet([
+        [
+          'token',
+          String(
+            data.token
+          ),
+        ],
+
+        [
+          'userEmail',
+          userEmail,
+        ],
+
+        [
+          'userId',
+          userId,
+        ],
+
+        [
+          'userRole',
+          userRole,
+        ],
+      ]);
+
+      console.log(
+        'Login session saved.'
+      );
+
+      console.log(
+        'Saved user ID:',
+        userId
+      );
+
+      console.log(
+        'Saved role:',
+        userRole
+      );
+    };
 
   // ==========================================
   // LOGIN
   // ==========================================
 
-  const handleLogin = async () => {
-    // Remove previous error first
-    clearError();
+  const handleLogin =
+    async () => {
+      clearError();
 
-    // ==========================================
-    // EMPTY FIELD VALIDATION
-    // ==========================================
+      // ======================================
+      // EMPTY FIELD VALIDATION
+      // ======================================
 
-    if (
-      !username.trim() ||
-      !password.trim()
-    ) {
-      showError(
-        'Missing Information',
-        'Please enter your ID/Username and password.'
-      );
+      if (
+        !username.trim() ||
+        !password.trim()
+      ) {
+        showError(
+          'Missing Information',
+          'Please enter your ID/Username and password.'
+        );
 
-      return;
-    }
+        return;
+      }
 
-    try {
-      setLoading(true);
+      try {
+        setLoading(
+          true
+        );
 
-      console.log('Trying to login...');
+        console.log(
+          'Trying to login...'
+        );
 
-      console.log(
-        'Username:',
-        username.trim()
-      );
+        console.log(
+          'Username:',
+          username.trim()
+        );
 
-      // ==========================================
-      // SEND LOGIN REQUEST TO BACKEND
-      // ==========================================
+        // ====================================
+        // LOGIN REQUEST
+        // ====================================
 
-      const response = await fetch(
-        `${API_BASE}/api/auth/login`,
-        {
-          method: 'POST',
+        const response =
+          await fetch(
+            `${API_BASE}/api/auth/login`,
+            {
+              method:
+                'POST',
 
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
 
-          body: JSON.stringify({
-            username:
-              username.trim(),
+              body:
+                JSON.stringify({
+                  username:
+                    username.trim(),
 
-            password,
-          }),
-        }
-      );
+                  password,
+                }),
+            }
+          );
 
-      console.log(
-        'Response status:',
-        response.status
-      );
+        console.log(
+          'Response status:',
+          response.status
+        );
 
-      const data =
-        await response.json();
+        const data =
+          await response.json();
 
-      console.log(
-        'Login response:',
-        data
-      );
+        console.log(
+          'Login response:',
+          data
+        );
 
-      // ==========================================
-      // LOGIN FAILED
-      // ==========================================
-
-      if (!response.ok) {
-        // ======================================
-        // INVALID USERNAME OR PASSWORD
-        // ======================================
+        // ====================================
+        // LOGIN FAILED
+        // ====================================
 
         if (
-          data.code ===
-          'INVALID_CREDENTIALS'
+          !response.ok
         ) {
-          let message =
-            data.message ||
-            'Invalid username or password.';
+          // ==================================
+          // INVALID CREDENTIALS
+          // ==================================
 
-          // Existing account with remaining
-          // login attempts
           if (
-            typeof data.attemptsRemaining ===
-            'number'
+            data.code ===
+            'INVALID_CREDENTIALS'
           ) {
-            const attemptWord =
-              data.attemptsRemaining === 1
-                ? 'attempt'
-                : 'attempts';
+            let message =
+              data.message ||
+              'Invalid username or password.';
 
-            message +=
-              `\n${data.attemptsRemaining} ${attemptWord} remaining before temporary lockout.`;
+            if (
+              typeof data.attemptsRemaining ===
+              'number'
+            ) {
+              const attemptWord =
+                data.attemptsRemaining ===
+                1
+                  ? 'attempt'
+                  : 'attempts';
+
+              message +=
+                `\n${data.attemptsRemaining} ${attemptWord} remaining before temporary lockout.`;
+            }
+
+            showError(
+              'Login Failed',
+              message
+            );
+
+            setPassword(
+              ''
+            );
+
+            return;
           }
+
+          // ==================================
+          // ACCOUNT LOCKED
+          // ==================================
+
+          if (
+            data.code ===
+            'ACCOUNT_LOCKED'
+          ) {
+            let message =
+              data.message ||
+              'This account is temporarily locked.';
+
+            if (
+              !data.message &&
+              typeof data.retryAfterMinutes ===
+                'number'
+            ) {
+              message =
+                `This account is temporarily locked. ` +
+                `Please try again in approximately ${data.retryAfterMinutes} minute(s).`;
+            }
+
+            showError(
+              'Account Temporarily Locked',
+              message
+            );
+
+            setPassword(
+              ''
+            );
+
+            return;
+          }
+
+          // ==================================
+          // DEACTIVATED
+          // ==================================
+
+          if (
+            data.code ===
+            'ACCOUNT_DEACTIVATED'
+          ) {
+            showError(
+              'Account Deactivated',
+              data.message ||
+                'This account has been deactivated. Please contact the SmartFine administrator.'
+            );
+
+            setPassword(
+              ''
+            );
+
+            return;
+          }
+
+          // ==================================
+          // ACCOUNT UNAVAILABLE
+          // ==================================
+
+          if (
+            data.code ===
+            'ACCOUNT_UNAVAILABLE'
+          ) {
+            showError(
+              'Account Unavailable',
+              data.message ||
+                'This account is currently unavailable. Please contact the SmartFine administrator.'
+            );
+
+            setPassword(
+              ''
+            );
+
+            return;
+          }
+
+          // ==================================
+          // MISSING CREDENTIALS
+          // ==================================
+
+          if (
+            data.code ===
+            'MISSING_CREDENTIALS'
+          ) {
+            showError(
+              'Missing Information',
+              data.message ||
+                'Username and password are required.'
+            );
+
+            return;
+          }
+
+          // ==================================
+          // SERVER ERROR
+          // ==================================
+
+          if (
+            data.code ===
+            'SERVER_ERROR'
+          ) {
+            showError(
+              'Server Error',
+              data.message ||
+                'An error occurred while logging in.'
+            );
+
+            return;
+          }
+
+          // ==================================
+          // OTHER ERROR
+          // ==================================
 
           showError(
             'Login Failed',
-            message
+            data.message ||
+              'Unable to log in. Please try again.'
           );
-
-          // Clear only password
-          setPassword('');
 
           return;
         }
 
-        // ======================================
-        // ACCOUNT TEMPORARILY LOCKED
-        // ======================================
+        // ====================================
+        // VALIDATE RESPONSE
+        // ====================================
 
         if (
-          data.code ===
-          'ACCOUNT_LOCKED'
+          !data.user ||
+          !data.user.role
         ) {
-          let message =
-            data.message ||
-            'This account is temporarily locked.';
-
-          // Fallback message if backend sends
-          // remaining minutes separately
-          if (
-            !data.message &&
-            typeof data.retryAfterMinutes ===
-              'number'
-          ) {
-            message =
-              `This account is temporarily locked. ` +
-              `Please try again in approximately ${data.retryAfterMinutes} minute(s).`;
-          }
-
           showError(
-            'Account Temporarily Locked',
-            message
+            'Login Error',
+            'The server did not return a valid user role.'
           );
-
-          setPassword('');
 
           return;
         }
-
-        // ======================================
-        // ACCOUNT DEACTIVATED
-        // ======================================
 
         if (
-          data.code ===
-          'ACCOUNT_DEACTIVATED'
+          !data.token
         ) {
           showError(
-            'Account Deactivated',
-            data.message ||
-              'This account has been deactivated. Please contact the SmartFine administrator.'
+            'Login Error',
+            'The server did not return a valid login token.'
           );
-
-          setPassword('');
 
           return;
         }
 
-        // ======================================
-        // ACCOUNT UNAVAILABLE
-        // ======================================
+        // ====================================
+        // LOGIN SUCCESS
+        // ====================================
+
+        clearError();
+
+        // ====================================
+        // SAVE TOKEN + CURRENT USER
+        // ====================================
+
+        await saveLoginSession(
+          data
+        );
+
+        const role =
+          String(
+            data.user.role
+          ).toUpperCase();
+
+        console.log(
+          'Logged-in role:',
+          role
+        );
+
+        // ====================================
+        // ROLE REDIRECTION
+        // ====================================
 
         if (
-          data.code ===
-          'ACCOUNT_UNAVAILABLE'
+          role ===
+          'ADMIN'
         ) {
-          showError(
-            'Account Unavailable',
-            data.message ||
-              'This account is currently unavailable. Please contact the SmartFine administrator.'
+          console.log(
+            'Redirecting to Admin Dashboard...'
           );
 
-          setPassword('');
-
-          return;
-        }
-
-        // ======================================
-        // MISSING CREDENTIALS
-        // ======================================
-
-        if (
-          data.code ===
-          'MISSING_CREDENTIALS'
+          router.replace(
+            '/admin/dashboard'
+          );
+        } else if (
+          role ===
+          'FINES_OFFICER'
         ) {
-          showError(
-            'Missing Information',
-            data.message ||
-              'Username and password are required.'
+          console.log(
+            'Redirecting to Officer Dashboard...'
           );
 
-          return;
-        }
-
-        // ======================================
-        // SERVER ERROR
-        // ======================================
-
-        if (
-          data.code ===
-          'SERVER_ERROR'
+          router.replace(
+            '/officer/dashboard'
+          );
+        } else if (
+          role ===
+          'STUDENT'
         ) {
-          showError(
-            'Server Error',
-            data.message ||
-              'An error occurred while logging in.'
+          console.log(
+            'Redirecting to Student Dashboard...'
           );
 
-          return;
-        }
+          router.replace(
+            '/student/dashboard'
+          );
+        } else {
+          // Remove invalid session if role
+          // returned by server is unsupported.
 
-        // ======================================
-        // OTHER LOGIN ERROR
-        // ======================================
+          await AsyncStorage.multiRemove([
+            'token',
+            'userEmail',
+            'userId',
+            'userRole',
+          ]);
+
+          showError(
+            'Login Error',
+            `Unknown user role: ${role}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Login error:',
+          error
+        );
 
         showError(
-          'Login Failed',
-          data.message ||
-            'Unable to log in. Please try again.'
+          'Connection Error',
+          'Could not connect to the SmartFine server. Please check your connection and try again.'
         );
-
-        return;
-      }
-
-      // ==========================================
-      // VALIDATE RETURNED USER
-      // ==========================================
-
-      if (
-        !data.user ||
-        !data.user.role
-      ) {
-        showError(
-          'Login Error',
-          'The server did not return a valid user role.'
-        );
-
-        return;
-      }
-
-      // ==========================================
-      // LOGIN SUCCESS
-      // ==========================================
-
-      clearError();
-
-      const role =
-        data.user.role;
-
-      console.log(
-        'Logged-in role:',
-        role
-      );
-
-      // ==========================================
-      // ROLE REDIRECTION
-      // ==========================================
-
-      if (role === 'ADMIN') {
-        console.log(
-          'Redirecting to Admin Dashboard...'
-        );
-
-        router.replace(
-          '/admin/dashboard'
-        );
-      } else if (
-        role === 'FINES_OFFICER'
-      ) {
-        console.log(
-          'Redirecting to Officer Dashboard...'
-        );
-
-        router.replace(
-          '/officer/dashboard'
-        );
-      } else if (
-        role === 'STUDENT'
-      ) {
-        console.log(
-          'Redirecting to Student Dashboard...'
-        );
-
-        router.replace(
-          '/student/dashboard'
-        );
-      } else {
-        showError(
-          'Login Error',
-          `Unknown user role: ${role}`
+      } finally {
+        setLoading(
+          false
         );
       }
-    } catch (error) {
-      console.error(
-        'Login error:',
-        error
-      );
-
-      showError(
-        'Connection Error',
-        'Could not connect to the SmartFine server. Please check your connection and try again.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   // ==========================================
   // UI
@@ -410,9 +613,12 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.screen}
+      style={
+        styles.screen
+      }
       behavior={
-        Platform.OS === 'ios'
+        Platform.OS ===
+        'ios'
           ? 'padding'
           : undefined
       }
@@ -431,7 +637,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* ======================================
-            LEFT / TOP BRAND AREA
+            BRAND AREA
         ====================================== */}
 
         <View
@@ -470,7 +676,7 @@ export default function LoginScreen() {
         </View>
 
         {/* ======================================
-            LOGIN CARD AREA
+            LOGIN AREA
         ====================================== */}
 
         <View
@@ -534,20 +740,30 @@ export default function LoginScreen() {
             ================================== */}
 
             <TextInput
-              style={styles.input}
+              style={
+                styles.input
+              }
               placeholder="Enter your ID or Username"
               placeholderTextColor="#777777"
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text);
+              value={
+                username
+              }
+              onChangeText={(
+                text
+              ) => {
+                setUsername(
+                  text
+                );
 
-                // Remove old error when
-                // user starts typing again
                 clearError();
               }}
               autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
+              autoCorrect={
+                false
+              }
+              editable={
+                !loading
+              }
             />
 
             {/* ==================================
@@ -565,20 +781,28 @@ export default function LoginScreen() {
                 }
                 placeholder="Password"
                 placeholderTextColor="#777777"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
+                value={
+                  password
+                }
+                onChangeText={(
+                  text
+                ) => {
+                  setPassword(
+                    text
+                  );
 
-                  // Remove old error when
-                  // user starts typing again
                   clearError();
                 }}
                 secureTextEntry={
                   !showPassword
                 }
                 autoCapitalize="none"
-                autoCorrect={false}
-                editable={!loading}
+                autoCorrect={
+                  false
+                }
+                editable={
+                  !loading
+                }
                 onSubmitEditing={
                   handleLogin
                 }
@@ -593,7 +817,9 @@ export default function LoginScreen() {
                 style={
                   styles.showButton
                 }
-                disabled={loading}
+                disabled={
+                  loading
+                }
               >
                 <Text
                   style={
@@ -608,10 +834,11 @@ export default function LoginScreen() {
             </View>
 
             {/* ==================================
-                LOGIN VALIDATION MESSAGE
+                ERROR
             ================================== */}
 
-            {errorMessage !== '' && (
+            {errorMessage !==
+              '' && (
               <View
                 style={
                   styles.errorBox
@@ -622,7 +849,9 @@ export default function LoginScreen() {
                     styles.errorTitle
                   }
                 >
-                  {errorTitle}
+                  {
+                    errorTitle
+                  }
                 </Text>
 
                 <Text
@@ -630,13 +859,15 @@ export default function LoginScreen() {
                     styles.errorMessage
                   }
                 >
-                  {errorMessage}
+                  {
+                    errorMessage
+                  }
                 </Text>
               </View>
             )}
 
             {/* ==================================
-                REMEMBER / FORGOT PASSWORD
+                OPTIONS
             ================================== */}
 
             <View
@@ -653,7 +884,9 @@ export default function LoginScreen() {
                     !rememberMe
                   )
                 }
-                disabled={loading}
+                disabled={
+                  loading
+                }
               >
                 <View
                   style={[
@@ -684,7 +917,9 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                disabled={loading}
+                disabled={
+                  loading
+                }
               >
                 <Text
                   style={
@@ -710,7 +945,9 @@ export default function LoginScreen() {
               onPress={
                 handleLogin
               }
-              disabled={loading}
+              disabled={
+                loading
+              }
             >
               {loading ? (
                 <ActivityIndicator

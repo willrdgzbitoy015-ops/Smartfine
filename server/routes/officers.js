@@ -1,11 +1,40 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 
 const db = require('../database/database');
 
 console.log('officers.js loaded');
+
+// ==========================================
+// OFFICER PROFILE PICTURE DIRECTORY
+// ==========================================
+
+const officerProfileUploadDirectory =
+  path.join(
+    __dirname,
+    '..',
+    'uploads',
+    'officer-profiles'
+  );
+
+// Create folder automatically if missing.
+if (
+  !fs.existsSync(
+    officerProfileUploadDirectory
+  )
+) {
+  fs.mkdirSync(
+    officerProfileUploadDirectory,
+    {
+      recursive: true,
+    }
+  );
+}
 
 // ==========================================
 // FORMAT FULL NAME
@@ -65,6 +94,367 @@ function generateSuggestedUsername(
   return (
     cleanFirstName.charAt(0) +
     cleanLastName
+  );
+}
+
+// ==========================================
+// VALIDATE OFFICER ID
+// ==========================================
+
+function getValidOfficerId(
+  value
+) {
+  const officerId =
+    Number(value);
+
+  if (
+    !Number.isInteger(
+      officerId
+    ) ||
+    officerId <= 0
+  ) {
+    return null;
+  }
+
+  return officerId;
+}
+
+// ==========================================
+// FIND OFFICER USER
+// ==========================================
+
+function findOfficerById(
+  officerId
+) {
+  return db.prepare(`
+    SELECT
+      u.id,
+      u.username,
+
+      u.first_name,
+      u.middle_name,
+      u.last_name,
+
+      u.email,
+      u.contact_number,
+
+      u.account_status,
+      u.profile_picture_uri,
+
+      fo.id
+        AS officer_profile_id,
+
+      fo.employee_number,
+      fo.assigned_area
+
+    FROM users u
+
+    INNER JOIN fines_officers fo
+      ON
+        fo.user_id =
+        u.id
+
+    WHERE
+      u.id = ?
+
+      AND
+      u.role =
+        'FINES_OFFICER'
+  `).get(
+    officerId
+  );
+}
+
+// ==========================================
+// DELETE OFFICER PROFILE PICTURE FILE
+// ==========================================
+
+function deleteOfficerProfileFile(
+  profilePictureUri
+) {
+  try {
+    if (
+      !profilePictureUri
+    ) {
+      return;
+    }
+
+    const normalizedUri =
+      String(
+        profilePictureUri
+      ).trim();
+
+    // Only delete files that belong
+    // to officer profile uploads.
+    const expectedPrefix =
+      '/uploads/officer-profiles/';
+
+    if (
+      !normalizedUri.startsWith(
+        expectedPrefix
+      )
+    ) {
+      return;
+    }
+
+    const fileName =
+      path.basename(
+        normalizedUri
+      );
+
+    const fullPath =
+      path.join(
+        officerProfileUploadDirectory,
+        fileName
+      );
+
+    if (
+      fs.existsSync(
+        fullPath
+      )
+    ) {
+      fs.unlinkSync(
+        fullPath
+      );
+    }
+  } catch (error) {
+    console.error(
+      'Delete officer profile picture file error:',
+      error
+    );
+  }
+}
+
+// ==========================================
+// DELETE TEMPORARY UPLOADED FILE
+// ==========================================
+
+function deleteUploadedFile(
+  file
+) {
+  try {
+    if (
+      file?.path &&
+      fs.existsSync(
+        file.path
+      )
+    ) {
+      fs.unlinkSync(
+        file.path
+      );
+    }
+  } catch (error) {
+    console.error(
+      'Delete temporary officer upload error:',
+      error
+    );
+  }
+}
+
+// ==========================================
+// PROFILE PICTURE STORAGE
+// ==========================================
+
+const officerProfileStorage =
+  multer.diskStorage({
+    destination: (
+      req,
+      file,
+      callback
+    ) => {
+      callback(
+        null,
+        officerProfileUploadDirectory
+      );
+    },
+
+    filename: (
+      req,
+      file,
+      callback
+    ) => {
+      const officerId =
+        getValidOfficerId(
+          req.params.id
+        ) || 'unknown';
+
+      let extension =
+        path.extname(
+          file.originalname || ''
+        )
+          .toLowerCase();
+
+      if (
+        !extension
+      ) {
+        switch (
+          file.mimetype
+        ) {
+          case 'image/png':
+            extension =
+              '.png';
+            break;
+
+          case 'image/webp':
+            extension =
+              '.webp';
+            break;
+
+          default:
+            extension =
+              '.jpg';
+        }
+      }
+
+      const fileName =
+        `officer-${officerId}-${Date.now()}${extension}`;
+
+      callback(
+        null,
+        fileName
+      );
+    },
+  });
+
+// ==========================================
+// PROFILE PICTURE FILE FILTER
+// ==========================================
+
+function officerProfileFileFilter(
+  req,
+  file,
+  callback
+) {
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+  ];
+
+  if (
+    !allowedMimeTypes.includes(
+      file.mimetype
+    )
+  ) {
+    const error =
+      new Error(
+        'Only JPG, JPEG, PNG, and WEBP images are allowed.'
+      );
+
+    error.code =
+      'INVALID_IMAGE_TYPE';
+
+    return callback(
+      error,
+      false
+    );
+  }
+
+  callback(
+    null,
+    true
+  );
+}
+
+// ==========================================
+// MULTER
+//
+// Maximum:
+// 5 MB
+// ==========================================
+
+const uploadOfficerProfile =
+  multer({
+    storage:
+      officerProfileStorage,
+
+    fileFilter:
+      officerProfileFileFilter,
+
+    limits: {
+      fileSize:
+        5 * 1024 * 1024,
+    },
+  });
+
+// ==========================================
+// PROFILE PICTURE UPLOAD MIDDLEWARE
+//
+// Converts Multer errors into JSON.
+// ==========================================
+
+function handleOfficerProfileUpload(
+  req,
+  res,
+  next
+) {
+  uploadOfficerProfile.single(
+    'profilePicture'
+  )(
+    req,
+    res,
+    (error) => {
+      if (
+        !error
+      ) {
+        return next();
+      }
+
+      console.error(
+        'Officer profile upload middleware error:',
+        error
+      );
+
+      if (
+        error instanceof
+        multer.MulterError
+      ) {
+        if (
+          error.code ===
+          'LIMIT_FILE_SIZE'
+        ) {
+          return res
+            .status(400)
+            .json({
+              success: false,
+
+              code:
+                'PROFILE_PICTURE_TOO_LARGE',
+
+              message:
+                'Profile picture must be 5 MB or smaller.',
+            });
+        }
+
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'PROFILE_PICTURE_UPLOAD_ERROR',
+
+            message:
+              error.message ||
+              'Unable to upload profile picture.',
+          });
+      }
+
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          code:
+            error.code ||
+            'INVALID_PROFILE_PICTURE',
+
+          message:
+            error.message ||
+            'Invalid profile picture.',
+        });
+    }
   );
 }
 
@@ -203,6 +593,8 @@ router.get(
             u.email,
             u.contact_number,
 
+            u.profile_picture_uri,
+
             fo.assigned_area,
 
             u.account_status,
@@ -240,6 +632,7 @@ router.get(
             u.last_name,
             u.email,
             u.contact_number,
+            u.profile_picture_uri,
             fo.assigned_area,
             u.account_status,
             fo.created_at,
@@ -388,10 +781,6 @@ router.post(
 
       // ======================================
       // USERNAME
-      //
-      // If frontend somehow does not send one,
-      // generate the same first-initial +
-      // last-name suggestion.
       // ======================================
 
       const suggestedUsername =
@@ -773,9 +1162,6 @@ router.post(
 
       // ======================================
       // GENERATE EMPLOYEE NUMBER
-      //
-      // Employee Number is independent
-      // from Username.
       // ======================================
 
       const employeeNumber =
@@ -829,9 +1215,6 @@ router.post(
 
       // ======================================
       // TRANSACTION
-      //
-      // 1. Create users record
-      // 2. Create fines_officers record
       // ======================================
 
       try {
@@ -859,7 +1242,9 @@ router.post(
 
               role,
 
-              account_status
+              account_status,
+
+              profile_picture_uri
             )
 
             VALUES (
@@ -876,7 +1261,9 @@ router.post(
 
               'FINES_OFFICER',
 
-              ?
+              ?,
+
+              NULL
             )
           `).run(
             normalizedUsername,
@@ -960,19 +1347,38 @@ router.post(
 
             employeeNumber,
 
+            employee_number:
+              employeeNumber,
+
             username:
               normalizedUsername,
 
             firstName:
               normalizedFirstName,
 
+            first_name:
+              normalizedFirstName,
+
             middleName:
+              normalizedMiddleName,
+
+            middle_name:
               normalizedMiddleName,
 
             lastName:
               normalizedLastName,
 
+            last_name:
+              normalizedLastName,
+
             fullName:
+              formatName(
+                normalizedFirstName,
+                normalizedMiddleName,
+                normalizedLastName
+              ),
+
+            full_name:
               formatName(
                 normalizedFirstName,
                 normalizedMiddleName,
@@ -985,11 +1391,23 @@ router.post(
             contactNumber:
               normalizedContactNumber,
 
+            contact_number:
+              normalizedContactNumber,
+
             assignedArea:
+              normalizedAssignedArea,
+
+            assigned_area:
               normalizedAssignedArea,
 
             accountStatus:
               normalizedStatus,
+
+            account_status:
+              normalizedStatus,
+
+            profile_picture_uri:
+              null,
 
             role:
               'FINES_OFFICER',
@@ -1011,6 +1429,338 @@ router.post(
 
           message:
             'Failed to create officer account.',
+
+          error:
+            error.message,
+        });
+    }
+  }
+);
+
+// ==========================================
+// UPLOAD / CHANGE OFFICER PROFILE PICTURE
+//
+// POST /api/officers/:id/profile-picture
+//
+// FormData field:
+// profilePicture
+// ==========================================
+
+router.post(
+  '/:id/profile-picture',
+  handleOfficerProfileUpload,
+  (req, res) => {
+    const officerId =
+      getValidOfficerId(
+        req.params.id
+      );
+
+    // ======================================
+    // INVALID ID
+    // ======================================
+
+    if (
+      officerId ===
+      null
+    ) {
+      deleteUploadedFile(
+        req.file
+      );
+
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          code:
+            'INVALID_OFFICER_ID',
+
+          message:
+            'Invalid officer ID.',
+        });
+    }
+
+    // ======================================
+    // FILE REQUIRED
+    // ======================================
+
+    if (
+      !req.file
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          code:
+            'PROFILE_PICTURE_REQUIRED',
+
+          message:
+            'Please select a profile picture.',
+        });
+    }
+
+    try {
+      // ======================================
+      // FIND OFFICER
+      // ======================================
+
+      const officer =
+        findOfficerById(
+          officerId
+        );
+
+      if (
+        !officer
+      ) {
+        deleteUploadedFile(
+          req.file
+        );
+
+        return res
+          .status(404)
+          .json({
+            success: false,
+
+            code:
+              'OFFICER_NOT_FOUND',
+
+            message:
+              'Officer not found.',
+          });
+      }
+
+      const oldProfilePictureUri =
+        officer.profile_picture_uri;
+
+      const newProfilePictureUri =
+        `/uploads/officer-profiles/${req.file.filename}`;
+
+      // ======================================
+      // UPDATE DATABASE
+      // ======================================
+
+      db.prepare(`
+        UPDATE users
+
+        SET
+          profile_picture_uri = ?,
+
+          updated_at =
+            CURRENT_TIMESTAMP
+
+        WHERE
+          id = ?
+
+          AND
+          role =
+            'FINES_OFFICER'
+      `).run(
+        newProfilePictureUri,
+        officerId
+      );
+
+      // ======================================
+      // DELETE OLD PICTURE
+      // ======================================
+
+      if (
+        oldProfilePictureUri &&
+        oldProfilePictureUri !==
+          newProfilePictureUri
+      ) {
+        deleteOfficerProfileFile(
+          oldProfilePictureUri
+        );
+      }
+
+      // ======================================
+      // SUCCESS
+      // ======================================
+
+      return res.json({
+        success: true,
+
+        message:
+          'Officer profile picture updated successfully.',
+
+        profile_picture_uri:
+          newProfilePictureUri,
+
+        officer: {
+          id:
+            officerId,
+
+          profile_picture_uri:
+            newProfilePictureUri,
+        },
+      });
+    } catch (error) {
+      // If database update fails,
+      // remove newly uploaded file.
+      deleteUploadedFile(
+        req.file
+      );
+
+      console.error(
+        'Upload officer profile picture error:',
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          code:
+            'OFFICER_PROFILE_UPLOAD_ERROR',
+
+          message:
+            'Failed to update officer profile picture.',
+
+          error:
+            error.message,
+        });
+    }
+  }
+);
+
+// ==========================================
+// REMOVE OFFICER PROFILE PICTURE
+//
+// DELETE /api/officers/:id/profile-picture
+// ==========================================
+
+router.delete(
+  '/:id/profile-picture',
+  (req, res) => {
+    try {
+      const officerId =
+        getValidOfficerId(
+          req.params.id
+        );
+
+      // ======================================
+      // INVALID ID
+      // ======================================
+
+      if (
+        officerId ===
+        null
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_OFFICER_ID',
+
+            message:
+              'Invalid officer ID.',
+          });
+      }
+
+      // ======================================
+      // FIND OFFICER
+      // ======================================
+
+      const officer =
+        findOfficerById(
+          officerId
+        );
+
+      if (
+        !officer
+      ) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+
+            code:
+              'OFFICER_NOT_FOUND',
+
+            message:
+              'Officer not found.',
+          });
+      }
+
+      const oldProfilePictureUri =
+        officer.profile_picture_uri;
+
+      // ======================================
+      // CLEAR DATABASE VALUE
+      // ======================================
+
+      db.prepare(`
+        UPDATE users
+
+        SET
+          profile_picture_uri =
+            NULL,
+
+          updated_at =
+            CURRENT_TIMESTAMP
+
+        WHERE
+          id = ?
+
+          AND
+          role =
+            'FINES_OFFICER'
+      `).run(
+        officerId
+      );
+
+      // ======================================
+      // DELETE PHYSICAL FILE
+      // ======================================
+
+      if (
+        oldProfilePictureUri
+      ) {
+        deleteOfficerProfileFile(
+          oldProfilePictureUri
+        );
+      }
+
+      // ======================================
+      // SUCCESS
+      // ======================================
+
+      return res.json({
+        success: true,
+
+        message:
+          oldProfilePictureUri
+            ? 'Officer profile picture removed successfully.'
+            : 'Officer does not have a profile picture.',
+
+        officer: {
+          id:
+            officerId,
+
+          profile_picture_uri:
+            null,
+        },
+      });
+    } catch (error) {
+      console.error(
+        'Remove officer profile picture error:',
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          code:
+            'REMOVE_OFFICER_PROFILE_ERROR',
+
+          message:
+            'Failed to remove officer profile picture.',
 
           error:
             error.message,
@@ -1090,6 +1840,8 @@ router.get(
 
             u.email,
             u.contact_number,
+
+            u.profile_picture_uri,
 
             fo.assigned_area,
 
@@ -1287,6 +2039,9 @@ router.get(
 // - contact number
 // - assigned area
 // - account status
+//
+// PROFILE PICTURE:
+// Preserved by this route.
 // ==========================================
 
 router.put(
@@ -1331,6 +2086,8 @@ router.put(
             u.id,
 
             u.username,
+
+            u.profile_picture_uri,
 
             fo.employee_number
 
@@ -1703,6 +2460,9 @@ router.put(
 
         // ====================================
         // UPDATE USER
+        //
+        // profile_picture_uri is intentionally
+        // NOT changed here.
         // ====================================
 
         db.prepare(`
@@ -1803,19 +2563,38 @@ router.put(
           employeeNumber:
             existingOfficer.employee_number,
 
+          employee_number:
+            existingOfficer.employee_number,
+
           username:
             normalizedUsername,
 
           firstName:
             normalizedFirstName,
 
+          first_name:
+            normalizedFirstName,
+
           middleName:
+            normalizedMiddleName,
+
+          middle_name:
             normalizedMiddleName,
 
           lastName:
             normalizedLastName,
 
+          last_name:
+            normalizedLastName,
+
           fullName:
+            formatName(
+              normalizedFirstName,
+              normalizedMiddleName,
+              normalizedLastName
+            ),
+
+          full_name:
             formatName(
               normalizedFirstName,
               normalizedMiddleName,
@@ -1828,11 +2607,23 @@ router.put(
           contactNumber:
             normalizedContactNumber,
 
+          contact_number:
+            normalizedContactNumber,
+
           assignedArea:
+            normalizedAssignedArea,
+
+          assigned_area:
             normalizedAssignedArea,
 
           accountStatus:
             normalizedStatus,
+
+          account_status:
+            normalizedStatus,
+
+          profile_picture_uri:
+            existingOfficer.profile_picture_uri,
         },
       });
     } catch (error) {
@@ -1922,6 +2713,8 @@ router.delete(
             u.last_name,
 
             u.account_status,
+
+            u.profile_picture_uri,
 
             fo.employee_number
 
@@ -2069,6 +2862,20 @@ router.delete(
             message:
               'Officer could not be deleted.',
           });
+      }
+
+      // ======================================
+      // DELETE OFFICER PROFILE IMAGE
+      //
+      // Only after database deletion succeeds.
+      // ======================================
+
+      if (
+        officer.profile_picture_uri
+      ) {
+        deleteOfficerProfileFile(
+          officer.profile_picture_uri
+        );
       }
 
       // ======================================

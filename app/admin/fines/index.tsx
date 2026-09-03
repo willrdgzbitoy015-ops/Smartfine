@@ -110,6 +110,7 @@ type ViolationType = {
 type NavItem = {
   label: string;
   route: string;
+  icon?: any;
 };
 
 // ==========================================
@@ -203,6 +204,9 @@ export default function FinesDirectory() {
 
       route:
         '/admin/dashboard',
+
+      icon:
+        require('../../../assets/icons/dashboard.png'),
     },
 
     {
@@ -211,6 +215,9 @@ export default function FinesDirectory() {
 
       route:
         '/admin/students',
+
+      icon:
+        require('../../../assets/icons/students.png'),
     },
 
     {
@@ -219,6 +226,9 @@ export default function FinesDirectory() {
 
       route:
         '/admin/fines',
+
+      icon:
+        require('../../../assets/icons/fines.png'),
     },
 
     {
@@ -227,6 +237,9 @@ export default function FinesDirectory() {
 
       route:
         '/admin/qr-scanner',
+
+      icon:
+        require('../../../assets/icons/qr-codeWhite.png'),
     },
 
     {
@@ -235,6 +248,9 @@ export default function FinesDirectory() {
 
       route:
         '/admin/reports',
+
+      icon:
+        require('../../../assets/icons/reports.png'),
     },
 
     {
@@ -243,6 +259,9 @@ export default function FinesDirectory() {
 
       route:
         '/admin/settings',
+
+      icon:
+        require('../../../assets/icons/settings.png'),
     },
 
     {
@@ -251,6 +270,9 @@ export default function FinesDirectory() {
 
       route:
         '/admin/officers',
+
+      icon:
+        require('../../../assets/icons/officers.png'),
     },
   ];
 
@@ -680,15 +702,21 @@ export default function FinesDirectory() {
                       )
                     }
                   >
-                    <Text
+                    <View
                       style={
-                        styles.navIcon
+                        styles.navIconContainer
                       }
                     >
-                      {getMenuSymbol(
-                        item.label
-                      )}
-                    </Text>
+                      <Image
+                        source={
+                          item.icon
+                        }
+                        style={
+                          styles.navImageIcon
+                        }
+                        resizeMode="contain"
+                      />
+                    </View>
 
                     <Text
                       style={
@@ -1525,39 +1553,5 @@ function getStatusTextStyle(
 
     default:
       return styles.statusTextUnpaid;
-  }
-}
-
-// ==========================================
-// TEMPORARY SIDEBAR SYMBOLS
-// ==========================================
-
-function getMenuSymbol(
-  label: string
-) {
-  switch (label) {
-    case 'Dashboard':
-      return '⌂';
-
-    case 'Students':
-      return '◎';
-
-    case 'Fines':
-      return '▤';
-
-    case 'QR Scanner':
-      return '▦';
-
-    case 'Reports':
-      return '▧';
-
-    case 'Settings':
-      return '⚙';
-
-    case 'Officers':
-      return '●';
-
-    default:
-      return '•';
   }
 }

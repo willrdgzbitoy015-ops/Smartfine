@@ -126,6 +126,19 @@ export const styles =
       marginRight: 10,
     },
 
+    navIconContainer: {
+      width: 28,
+      height: 28,
+      marginRight: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    navImageIcon: {
+      width: 20,
+      height: 20,
+    },
+
     navText: {
       color:
         COLORS.white,

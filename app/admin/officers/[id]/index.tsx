@@ -69,6 +69,10 @@ type Officer = {
 
   account_status: string;
 
+  profile_picture_uri:
+    | string
+    | null;
+
   created_at:
     | string
     | null;
@@ -179,6 +183,12 @@ export default function OfficerProfile() {
   ] =
     useState('');
 
+  const [
+    profileImageFailed,
+    setProfileImageFailed,
+  ] =
+    useState(false);
+
   // ==========================================
   // NAVIGATION
   // ==========================================
@@ -242,6 +252,42 @@ export default function OfficerProfile() {
   ];
 
   // ==========================================
+  // PROFILE PICTURE URL
+  // ==========================================
+
+  const getProfilePictureUrl =
+    (
+      uri:
+        | string
+        | null
+        | undefined
+    ) => {
+      if (
+        !uri
+      ) {
+        return null;
+      }
+
+      const normalizedUri =
+        String(
+          uri
+        ).trim();
+
+      if (
+        normalizedUri.startsWith(
+          'http://'
+        ) ||
+        normalizedUri.startsWith(
+          'https://'
+        )
+      ) {
+        return normalizedUri;
+      }
+
+      return `${API_BASE}${normalizedUri}`;
+    };
+
+  // ==========================================
   // LOAD OFFICER PROFILE
   // ==========================================
 
@@ -266,7 +312,13 @@ export default function OfficerProfile() {
           true
         );
 
-        setError('');
+        setError(
+          ''
+        );
+
+        setProfileImageFailed(
+          false
+        );
 
         const response =
           await fetch(
@@ -318,7 +370,9 @@ export default function OfficerProfile() {
 
   useEffect(() => {
     loadOfficer();
-  }, [officerId]);
+  }, [
+    officerId,
+  ]);
 
   // ==========================================
   // BACK
@@ -408,7 +462,6 @@ export default function OfficerProfile() {
 
           Alert.alert(
             'Unable to Delete Officer',
-
             message
           );
 
@@ -477,7 +530,6 @@ export default function OfficerProfile() {
 
         Alert.alert(
           'Unable to Delete Officer',
-
           message
         );
       } finally {
@@ -532,7 +584,6 @@ export default function OfficerProfile() {
 
         Alert.alert(
           'Officer is Active',
-
           message
         );
 
@@ -565,7 +616,6 @@ export default function OfficerProfile() {
 
         Alert.alert(
           'Officer Has Fine Records',
-
           message
         );
 
@@ -579,10 +629,6 @@ export default function OfficerProfile() {
       const message =
         `Permanently delete ${officer.full_name} (${officer.employee_number})?\n\n` +
         'This action cannot be undone.';
-
-      // ======================================
-      // WEB
-      // ======================================
 
       if (
         Platform.OS ===
@@ -601,10 +647,6 @@ export default function OfficerProfile() {
 
         return;
       }
-
-      // ======================================
-      // MOBILE
-      // ======================================
 
       Alert.alert(
         'Delete Officer',
@@ -638,25 +680,27 @@ export default function OfficerProfile() {
   // OPEN FINE
   // ==========================================
 
-  const handleFinePress = (
-    fineId: number
-  ) => {
-    router.push(
-      `/admin/fines/${fineId}` as any
-    );
-  };
+  const handleFinePress =
+    (
+      fineId: number
+    ) => {
+      router.push(
+        `/admin/fines/${fineId}` as any
+      );
+    };
 
   // ==========================================
   // SIDEBAR NAVIGATION
   // ==========================================
 
-  const handleNavigation = (
-    item: NavItem
-  ) => {
-    router.push(
-      item.route as any
-    );
-  };
+  const handleNavigation =
+    (
+      item: NavItem
+    ) => {
+      router.push(
+        item.route as any
+      );
+    };
 
   // ==========================================
   // LOGOUT
@@ -830,6 +874,21 @@ export default function OfficerProfile() {
           ''
         }`.toUpperCase();
 
+      // ======================================
+      // PROFILE PICTURE
+      // ======================================
+
+      const profilePictureUrl =
+        getProfilePictureUrl(
+          officer.profile_picture_uri
+        );
+
+      const showProfilePicture =
+        Boolean(
+          profilePictureUrl
+        ) &&
+        !profileImageFailed;
+
       return (
         <>
           {/* ==================================
@@ -848,23 +907,50 @@ export default function OfficerProfile() {
                 styles.profileTop
               }
             >
-              {/* AVATAR */}
+              {/* ==================================
+                  AVATAR / PROFILE PICTURE
+              ================================== */}
 
-              <View
-                style={
-                  styles.avatar
-                }
-              >
-                <Text
+              {showProfilePicture ? (
+                <Image
+                  source={{
+                    uri:
+                      profilePictureUrl!,
+                  }}
+                  style={[
+                    styles.avatar,
+                    {
+                      resizeMode:
+                        'cover',
+                    },
+                  ]}
+                  onError={() => {
+                    console.log(
+                      'Officer profile image failed:',
+                      profilePictureUrl
+                    );
+
+                    setProfileImageFailed(
+                      true
+                    );
+                  }}
+                />
+              ) : (
+                <View
                   style={
-                    styles.avatarText
+                    styles.avatar
                   }
                 >
-                  {
-                    initials
-                  }
-                </Text>
-              </View>
+                  <Text
+                    style={
+                      styles.avatarText
+                    }
+                  >
+                    {initials ||
+                      'OF'}
+                  </Text>
+                </View>
+              )}
 
               {/* NAME */}
 
@@ -1334,7 +1420,9 @@ export default function OfficerProfile() {
                   </View>
                 ) : (
                   recentFines.map(
-                    (fine) => {
+                    (
+                      fine
+                    ) => {
                       const fineStatus =
                         normalizeFineStatus(
                           fine.fine_status
@@ -1522,7 +1610,9 @@ export default function OfficerProfile() {
             }
           >
             {navItems.map(
-              (item) => {
+              (
+                item
+              ) => {
                 const active =
                   item.label ===
                   'Officers';
@@ -1618,7 +1708,9 @@ export default function OfficerProfile() {
               }
             >
               {navItems.map(
-                (item) => {
+                (
+                  item
+                ) => {
                   const active =
                     item.label ===
                     'Officers';
@@ -1739,7 +1831,9 @@ function normalizeFineStatus(
 function getFineStatusLabel(
   status: string
 ) {
-  switch (status) {
+  switch (
+    status
+  ) {
     case 'PAID':
       return 'Paid';
 
@@ -1764,7 +1858,9 @@ function getFineStatusLabel(
 function getFineStatusBadgeStyle(
   status: string
 ) {
-  switch (status) {
+  switch (
+    status
+  ) {
     case 'PAID':
       return {
         backgroundColor:
@@ -1804,7 +1900,9 @@ function getFineStatusBadgeStyle(
 function getFineStatusTextStyle(
   status: string
 ) {
-  switch (status) {
+  switch (
+    status
+  ) {
     case 'PAID':
       return {
         color:
@@ -1845,7 +1943,8 @@ function formatMoney(
   amount: number
 ) {
   return `₱${Number(
-    amount || 0
+    amount ||
+      0
   ).toLocaleString(
     'en-PH',
     {
@@ -1875,7 +1974,9 @@ function formatDate(
   }
 
   const normalized =
-    value.includes('T')
+    value.includes(
+      'T'
+    )
       ? value
       : value.replace(
           ' ',
@@ -1917,7 +2018,9 @@ function formatDate(
 function getMenuSymbol(
   label: string
 ) {
-  switch (label) {
+  switch (
+    label
+  ) {
     case 'Dashboard':
       return '⌂';
 

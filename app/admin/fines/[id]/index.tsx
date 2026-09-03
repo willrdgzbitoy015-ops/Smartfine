@@ -136,6 +136,7 @@ type Fine = {
 type NavItem = {
   label: string;
   route: string;
+  icon?: any;
 };
 
 // ==========================================
@@ -230,6 +231,8 @@ export default function FineDetailedView() {
 
       route:
         '/admin/dashboard',
+
+      icon: require('../../../../assets/icons/dashboard.png'),
     },
 
     {
@@ -238,6 +241,8 @@ export default function FineDetailedView() {
 
       route:
         '/admin/students',
+
+      icon: require('../../../../assets/icons/students.png'),
     },
 
     {
@@ -246,6 +251,8 @@ export default function FineDetailedView() {
 
       route:
         '/admin/fines',
+
+      icon: require('../../../../assets/icons/fines.png'),
     },
 
     {
@@ -254,6 +261,8 @@ export default function FineDetailedView() {
 
       route:
         '/admin/qr-scanner',
+
+      icon: require('../../../../assets/icons/qr-codeWhite.png'),
     },
 
     {
@@ -262,6 +271,8 @@ export default function FineDetailedView() {
 
       route:
         '/admin/reports',
+
+      icon: require('../../../../assets/icons/reports.png'),
     },
 
     {
@@ -270,6 +281,8 @@ export default function FineDetailedView() {
 
       route:
         '/admin/settings',
+
+      icon: require('../../../../assets/icons/settings.png'),
     },
 
     {
@@ -278,6 +291,8 @@ export default function FineDetailedView() {
 
       route:
         '/admin/officers',
+
+      icon: require('../../../../assets/icons/officers.png'),
     },
   ];
 

@@ -27,6 +27,7 @@ type DashboardStats = {
 type NavItem = {
   label: string;
   route?: string;
+  icon?: any;
 };
 
 type SummaryCard = {
@@ -196,30 +197,37 @@ export default function AdminDashboard() {
     {
       label: 'Dashboard',
       route: '/admin/dashboard',
+      icon: require('../../../assets/icons/dashboard.png'),
     },
     {
       label: 'Students',
       route: '/admin/students',
+      icon: require('../../../assets/icons/students.png'),
     },
     {
       label: 'Fines',
       route: '/admin/fines',
+      icon: require('../../../assets/icons/fines.png'),
     },
     {
       label: 'QR Scanner',
       route: '/admin/qr-scanner',
+      icon: require('../../../assets/icons/qr-codeWhite.png'),
     },
     {
       label: 'Reports',
       route: '/admin/reports',
+      icon: require('../../../assets/icons/reports.png'),
     },
     {
       label: 'Settings',
       route: '/admin/settings',
+      icon: require('../../../assets/icons/settings.png'),
     },
     {
       label: 'Officers',
       route: '/admin/officers',
+      icon: require('../../../assets/icons/officers.png'),
     },
   ];
 
@@ -387,15 +395,13 @@ export default function AdminDashboard() {
                     handleNavigation(item)
                   }
                 >
-                  <Text
-                    style={[
-                      styles.navIcon,
-                      isActive &&
-                        styles.navTextActive,
-                    ]}
-                  >
-                    {getMenuSymbol(item.label)}
-                  </Text>
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
                   <Text
                     style={[
@@ -661,30 +667,3 @@ export default function AdminDashboard() {
   );
 }
 
-function getMenuSymbol(label: string) {
-  switch (label) {
-    case 'Dashboard':
-      return '⌂';
-
-    case 'Students':
-      return '◎';
-
-    case 'Fines':
-      return '▤';
-
-    case 'QR Scanner':
-      return '▦';
-
-    case 'Reports':
-      return '▧';
-
-    case 'Settings':
-      return '⚙';
-
-    case 'Officers':
-      return '●';
-
-    default:
-      return '•';
-  }
-}

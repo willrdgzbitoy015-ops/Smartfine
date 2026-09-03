@@ -20,6 +20,9 @@ import {
   useRouter,
 } from 'expo-router';
 
+import * as ImagePicker
+  from 'expo-image-picker';
+
 import {
   useAuth,
 } from '@/hooks/use-auth';
@@ -39,6 +42,7 @@ import {
 type NavItem = {
   label: string;
   route: string;
+  icon?: any;
 };
 
 // ==========================================
@@ -101,18 +105,33 @@ export default function AddOfficer() {
     width >= 768;
 
   // ==========================================
+  // PROFILE PICTURE
+  // ==========================================
+
+  const [
+    profilePicture,
+    setProfilePicture,
+  ] =
+    useState<
+      ImagePicker.ImagePickerAsset |
+      null
+    >(null);
+
+  // ==========================================
   // EMPLOYEE NUMBER
   // ==========================================
 
   const [
     employeeNumber,
     setEmployeeNumber,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     employeeNumberLoading,
     setEmployeeNumberLoading,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   // ==========================================
   // OFFICER INFORMATION
@@ -121,32 +140,38 @@ export default function AddOfficer() {
   const [
     firstName,
     setFirstName,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     middleName,
     setMiddleName,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     lastName,
     setLastName,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     email,
     setEmail,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     contactNumber,
     setContactNumber,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     assignedArea,
     setAssignedArea,
-  ] = useState('');
+  ] =
+    useState('');
 
   // ==========================================
   // ACCOUNT INFORMATION
@@ -155,32 +180,38 @@ export default function AddOfficer() {
   const [
     username,
     setUsername,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     usernameManuallyEdited,
     setUsernameManuallyEdited,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     password,
     setPassword,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     confirmPassword,
     setConfirmPassword,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     showPassword,
     setShowPassword,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     accountActive,
     setAccountActive,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   // ==========================================
   // PAGE STATE
@@ -189,12 +220,14 @@ export default function AddOfficer() {
   const [
     loading,
     setLoading,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] = useState('');
+  ] =
+    useState('');
 
   // ==========================================
   // NAVIGATION
@@ -202,38 +235,73 @@ export default function AddOfficer() {
 
   const navItems: NavItem[] = [
     {
-      label: 'Dashboard',
-      route: '/admin/dashboard',
+      label:
+        'Dashboard',
+
+      route:
+        '/admin/dashboard',
+
+      icon: require('../../../../assets/icons/dashboard.png'),
     },
 
     {
-      label: 'Students',
-      route: '/admin/students',
+      label:
+        'Students',
+
+      route:
+        '/admin/students',
+
+      icon: require('../../../../assets/icons/students.png'),
     },
 
     {
-      label: 'Fines',
-      route: '/admin/fines',
+      label:
+        'Fines',
+
+      route:
+        '/admin/fines',
+
+      icon: require('../../../../assets/icons/fines.png'),
     },
 
     {
-      label: 'QR Scanner',
-      route: '/admin/qr-scanner',
+      label:
+        'QR Scanner',
+
+      route:
+        '/admin/qr-scanner',
+
+      icon: require('../../../../assets/icons/qr-codeWhite.png'),
     },
 
     {
-      label: 'Reports',
-      route: '/admin/reports',
+      label:
+        'Reports',
+
+      route:
+        '/admin/reports',
+
+      icon: require('../../../../assets/icons/reports.png'),
     },
 
     {
-      label: 'Settings',
-      route: '/admin/settings',
+      label:
+        'Settings',
+
+      route:
+        '/admin/settings',
+
+      icon: require('../../../../assets/icons/settings.png'),
     },
 
     {
-      label: 'Officers',
-      route: '/admin/officers',
+      label:
+        'Officers',
+
+      route:
+        '/admin/officers',
+
+      icon: require('../../../../assets/icons/officers.png'),
     },
   ];
 
@@ -248,7 +316,9 @@ export default function AddOfficer() {
           true
         );
 
-        setErrorMessage('');
+        setErrorMessage(
+          ''
+        );
 
         const response =
           await fetch(
@@ -267,7 +337,9 @@ export default function AddOfficer() {
           !response.ok ||
           !data.success
         ) {
-          setEmployeeNumber('');
+          setEmployeeNumber(
+            ''
+          );
 
           setErrorMessage(
             data.message ||
@@ -287,7 +359,9 @@ export default function AddOfficer() {
           error
         );
 
-        setEmployeeNumber('');
+        setEmployeeNumber(
+          ''
+        );
 
         setErrorMessage(
           'Could not connect to the SmartFine server.'
@@ -338,7 +412,253 @@ export default function AddOfficer() {
       if (
         errorMessage
       ) {
-        setErrorMessage('');
+        setErrorMessage(
+          ''
+        );
+      }
+    };
+
+  // ==========================================
+  // PROFILE PICTURE INITIALS
+  // ==========================================
+
+  const getOfficerInitials =
+    () => {
+      const firstInitial =
+        firstName
+          .trim()
+          .charAt(0)
+          .toUpperCase();
+
+      const lastInitial =
+        lastName
+          .trim()
+          .charAt(0)
+          .toUpperCase();
+
+      return (
+        `${firstInitial}${lastInitial}` ||
+        'OF'
+      );
+    };
+
+  // ==========================================
+  // SELECT PROFILE PICTURE
+  // ==========================================
+
+  const handleChooseProfilePicture =
+    async () => {
+      try {
+        clearError();
+
+        // ======================================
+        // NATIVE PERMISSION
+        // ======================================
+
+        if (
+          Platform.OS !==
+          'web'
+        ) {
+          const permission =
+            await ImagePicker
+              .requestMediaLibraryPermissionsAsync();
+
+          if (
+            !permission.granted
+          ) {
+            Alert.alert(
+              'Permission Required',
+              'Please allow SmartFine to access your photos so you can select an officer profile picture.'
+            );
+
+            return;
+          }
+        }
+
+        // ======================================
+        // OPEN IMAGE LIBRARY
+        // ======================================
+
+        const result =
+          await ImagePicker
+            .launchImageLibraryAsync({
+              mediaTypes: [
+                'images',
+              ],
+
+              allowsEditing:
+                true,
+
+              aspect: [
+                1,
+                1,
+              ],
+
+              quality:
+                0.85,
+            });
+
+        if (
+          result.canceled
+        ) {
+          return;
+        }
+
+        const selectedAsset =
+          result.assets?.[0];
+
+        if (
+          !selectedAsset
+        ) {
+          return;
+        }
+
+        setProfilePicture(
+          selectedAsset
+        );
+      } catch (error) {
+        console.error(
+          'Choose officer profile picture error:',
+          error
+        );
+
+        setErrorMessage(
+          'Could not select the profile picture.'
+        );
+      }
+    };
+
+  // ==========================================
+  // REMOVE SELECTED PROFILE PICTURE
+  // ==========================================
+
+  const handleRemoveSelectedPicture =
+    () => {
+      setProfilePicture(
+        null
+      );
+
+      clearError();
+    };
+
+  // ==========================================
+  // UPLOAD PROFILE PICTURE
+  //
+  // POST:
+  // /api/officers/:id/profile-picture
+  //
+  // FormData field:
+  // profilePicture
+  // ==========================================
+
+  const uploadOfficerProfilePicture =
+    async (
+      officerId: number
+    ) => {
+      if (
+        !profilePicture
+      ) {
+        return;
+      }
+
+      const formData =
+        new FormData();
+
+      // ======================================
+      // WEB
+      // ======================================
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        if (
+          profilePicture.file
+        ) {
+          formData.append(
+            'profilePicture',
+            profilePicture.file
+          );
+        } else {
+          const imageResponse =
+            await fetch(
+              profilePicture.uri
+            );
+
+          const blob =
+            await imageResponse.blob();
+
+          const extension =
+            getImageExtension(
+              profilePicture
+            );
+
+          formData.append(
+            'profilePicture',
+            blob,
+            `officer-profile.${extension}`
+          );
+        }
+      } else {
+        // ====================================
+        // ANDROID / IOS
+        // ====================================
+
+        const extension =
+          getImageExtension(
+            profilePicture
+          );
+
+        const mimeType =
+          getImageMimeType(
+            profilePicture,
+            extension
+          );
+
+        formData.append(
+          'profilePicture',
+          {
+            uri:
+              profilePicture.uri,
+
+            name:
+              profilePicture.fileName ||
+              `officer-profile.${extension}`,
+
+            type:
+              mimeType,
+          } as any
+        );
+      }
+
+      const response =
+        await fetch(
+          `${API_BASE}/api/officers/${officerId}/profile-picture`,
+          {
+            method:
+              'POST',
+
+            body:
+              formData,
+          }
+        );
+
+      const data =
+        await response.json();
+
+      console.log(
+        'Officer profile picture upload response:',
+        data
+      );
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            'Officer account was created, but the profile picture could not be uploaded.'
+        );
       }
     };
 
@@ -348,7 +668,9 @@ export default function AddOfficer() {
 
   const handleCreateOfficer =
     async () => {
-      setErrorMessage('');
+      setErrorMessage(
+        ''
+      );
 
       // ======================================
       // EMPLOYEE NUMBER
@@ -392,7 +714,8 @@ export default function AddOfficer() {
       if (
         firstName
           .trim()
-          .length < 2
+          .length <
+        2
       ) {
         setErrorMessage(
           'First Name must contain at least 2 characters.'
@@ -404,7 +727,8 @@ export default function AddOfficer() {
       if (
         lastName
           .trim()
-          .length < 2
+          .length <
+        2
       ) {
         setErrorMessage(
           'Last Name must contain at least 2 characters.'
@@ -506,7 +830,8 @@ export default function AddOfficer() {
       if (
         assignedArea
           .trim()
-          .length < 2
+          .length <
+        2
       ) {
         setErrorMessage(
           'Please enter a valid assigned area.'
@@ -520,7 +845,8 @@ export default function AddOfficer() {
       // ======================================
 
       if (
-        password.length < 8
+        password.length <
+        8
       ) {
         setErrorMessage(
           'Password must contain at least 8 characters.'
@@ -581,17 +907,20 @@ export default function AddOfficer() {
       }
 
       // ======================================
-      // SEND TO BACKEND
+      // CREATE ACCOUNT
       // ======================================
 
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
         const response =
           await fetch(
             `${API_BASE}/api/officers`,
             {
-              method: 'POST',
+              method:
+                'POST',
 
               headers: {
                 'Content-Type':
@@ -653,14 +982,76 @@ export default function AddOfficer() {
           return;
         }
 
-        handleSuccess(
+        // ======================================
+        // CREATED DATABASE USER ID
+        // ======================================
+
+        const createdOfficerId =
+          Number(
+            data.officer?.id
+          );
+
+        const createdEmployeeNumber =
           data.officer
             ?.employeeNumber ||
-            employeeNumber,
+          data.officer
+            ?.employee_number ||
+          employeeNumber;
 
+        const createdUsername =
           data.officer
             ?.username ||
-            normalizedUsername
+          normalizedUsername;
+
+        // ======================================
+        // PROFILE PICTURE UPLOAD
+        // ======================================
+
+        if (
+          profilePicture &&
+          Number.isInteger(
+            createdOfficerId
+          ) &&
+          createdOfficerId >
+            0
+        ) {
+          try {
+            await uploadOfficerProfilePicture(
+              createdOfficerId
+            );
+          } catch (
+            profileError
+          ) {
+            console.error(
+              'Officer was created but profile upload failed:',
+              profileError
+            );
+
+            const profileMessage =
+              profileError instanceof
+              Error
+                ? profileError.message
+                : 'Profile picture could not be uploaded.';
+
+            handlePartialSuccess(
+              createdOfficerId,
+              createdEmployeeNumber,
+              createdUsername,
+              profileMessage
+            );
+
+            return;
+          }
+        }
+
+        // ======================================
+        // FULL SUCCESS
+        // ======================================
+
+        handleSuccess(
+          createdOfficerId,
+          createdEmployeeNumber,
+          createdUsername
         );
       } catch (error) {
         console.error(
@@ -672,7 +1063,9 @@ export default function AddOfficer() {
           'Could not connect to the SmartFine server.'
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     };
 
@@ -682,16 +1075,25 @@ export default function AddOfficer() {
 
   const handleSuccess =
     (
+      createdOfficerId:
+        number,
+
       createdEmployeeNumber:
         string,
 
       createdUsername:
         string
     ) => {
+      const pictureMessage =
+        profilePicture
+          ? '\nProfile Picture: Uploaded'
+          : '';
+
       const message =
         `Officer account created successfully.\n\n` +
         `Employee Number: ${createdEmployeeNumber}\n` +
-        `Username: ${createdUsername}`;
+        `Username: ${createdUsername}` +
+        pictureMessage;
 
       if (
         Platform.OS ===
@@ -701,26 +1103,137 @@ export default function AddOfficer() {
           message
         );
 
-        router.replace(
-          '/admin/officers' as any
-        );
+        if (
+          Number.isInteger(
+            createdOfficerId
+          ) &&
+          createdOfficerId >
+            0
+        ) {
+          router.replace(
+            `/admin/officers/${createdOfficerId}` as any
+          );
+        } else {
+          router.replace(
+            '/admin/officers' as any
+          );
+        }
 
         return;
       }
 
       Alert.alert(
         'Officer Created',
-
         message,
-
         [
           {
-            text: 'OK',
+            text:
+              'OK',
 
-            onPress: () =>
-              router.replace(
-                '/admin/officers' as any
-              ),
+            onPress: () => {
+              if (
+                Number.isInteger(
+                  createdOfficerId
+                ) &&
+                createdOfficerId >
+                  0
+              ) {
+                router.replace(
+                  `/admin/officers/${createdOfficerId}` as any
+                );
+              } else {
+                router.replace(
+                  '/admin/officers' as any
+                );
+              }
+            },
+          },
+        ]
+      );
+    };
+
+  // ==========================================
+  // PARTIAL SUCCESS
+  //
+  // Officer account exists, but picture failed.
+  // We must NOT let the user submit again,
+  // because that could create a duplicate
+  // officer account.
+  // ==========================================
+
+  const handlePartialSuccess =
+    (
+      createdOfficerId:
+        number,
+
+      createdEmployeeNumber:
+        string,
+
+      createdUsername:
+        string,
+
+      profileError:
+        string
+    ) => {
+      const message =
+        `The officer account was created successfully, but the profile picture could not be uploaded.\n\n` +
+        `Employee Number: ${createdEmployeeNumber}\n` +
+        `Username: ${createdUsername}\n\n` +
+        `${profileError}\n\n` +
+        `You can add the picture later from Edit Officer.`;
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        window.alert(
+          message
+        );
+
+        if (
+          Number.isInteger(
+            createdOfficerId
+          ) &&
+          createdOfficerId >
+            0
+        ) {
+          router.replace(
+            `/admin/officers/${createdOfficerId}` as any
+          );
+        } else {
+          router.replace(
+            '/admin/officers' as any
+          );
+        }
+
+        return;
+      }
+
+      Alert.alert(
+        'Officer Created',
+        message,
+        [
+          {
+            text:
+              'OK',
+
+            onPress: () => {
+              if (
+                Number.isInteger(
+                  createdOfficerId
+                ) &&
+                createdOfficerId >
+                  0
+              ) {
+                router.replace(
+                  `/admin/officers/${createdOfficerId}` as any
+                );
+              } else {
+                router.replace(
+                  '/admin/officers' as any
+                );
+              }
+            },
           },
         ]
       );
@@ -741,13 +1254,14 @@ export default function AddOfficer() {
   // NAVIGATION
   // ==========================================
 
-  const handleNavigation = (
-    item: NavItem
-  ) => {
-    router.push(
-      item.route as any
-    );
-  };
+  const handleNavigation =
+    (
+      item: NavItem
+    ) => {
+      router.push(
+        item.route as any
+      );
+    };
 
   // ==========================================
   // LOGOUT
@@ -796,13 +1310,20 @@ export default function AddOfficer() {
 
         [
           {
-            text: 'Cancel',
-            style: 'cancel',
+            text:
+              'Cancel',
+
+            style:
+              'cancel',
           },
 
           {
-            text: 'Log Out',
-            style: 'destructive',
+            text:
+              'Log Out',
+
+            style:
+              'destructive',
+
             onPress:
               performLogout,
           },
@@ -850,7 +1371,9 @@ export default function AddOfficer() {
             }
           >
             {navItems.map(
-              (item) => {
+              (
+                item
+              ) => {
                 const active =
                   item.label ===
                   'Officers';
@@ -872,15 +1395,17 @@ export default function AddOfficer() {
                       )
                     }
                   >
-                    <Text
+                    <View
                       style={
-                        styles.navIcon
+                        styles.navIconContainer
                       }
                     >
-                      {getMenuSymbol(
-                        item.label
-                      )}
-                    </Text>
+                      <Image
+                        source={item.icon}
+                        style={styles.navImageIcon}
+                        resizeMode="contain"
+                      />
+                    </View>
 
                     <Text
                       style={
@@ -949,7 +1474,9 @@ export default function AddOfficer() {
               }
             >
               {navItems.map(
-                (item) => {
+                (
+                  item
+                ) => {
                   const active =
                     item.label ===
                     'Officers';
@@ -1041,6 +1568,261 @@ export default function AddOfficer() {
               >
                 Officer Information
               </Text>
+
+              {/* ==================================
+                  PROFILE PICTURE
+              ================================== */}
+
+              <View
+                style={{
+                  alignItems:
+                    'center',
+
+                  marginBottom:
+                    24,
+                }}
+              >
+                {profilePicture ? (
+                  <Image
+                    source={{
+                      uri:
+                        profilePicture.uri,
+                    }}
+                    style={{
+                      width:
+                        110,
+
+                      height:
+                        110,
+
+                      borderRadius:
+                        55,
+
+                      backgroundColor:
+                        '#E6E8EC',
+
+                      borderWidth:
+                        3,
+
+                      borderColor:
+                        '#173A73',
+                    }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width:
+                        110,
+
+                      height:
+                        110,
+
+                      borderRadius:
+                        55,
+
+                      backgroundColor:
+                        '#173A73',
+
+                      alignItems:
+                        'center',
+
+                      justifyContent:
+                        'center',
+
+                      borderWidth:
+                        3,
+
+                      borderColor:
+                        '#D6DFEA',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color:
+                          '#FFFFFF',
+
+                        fontSize:
+                          30,
+
+                        fontWeight:
+                          '800',
+                      }}
+                    >
+                      {
+                        getOfficerInitials()
+                      }
+                    </Text>
+                  </View>
+                )}
+
+                <Text
+                  style={{
+                    color:
+                      '#123266',
+
+                    fontSize:
+                      13,
+
+                    fontWeight:
+                      '700',
+
+                    marginTop:
+                      12,
+                  }}
+                >
+                  Profile Picture
+                </Text>
+
+                <Text
+                  style={{
+                    color:
+                      '#8C939F',
+
+                    fontSize:
+                      10,
+
+                    textAlign:
+                      'center',
+
+                    marginTop:
+                      4,
+
+                    marginBottom:
+                      12,
+                  }}
+                >
+                  Optional • JPG, PNG or WEBP • Maximum 5 MB
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection:
+                      'row',
+
+                    flexWrap:
+                      'wrap',
+
+                    justifyContent:
+                      'center',
+
+                    gap:
+                      8,
+                  }}
+                >
+                  <TouchableOpacity
+                    style={{
+                      minWidth:
+                        150,
+
+                      height:
+                        40,
+
+                      paddingHorizontal:
+                        16,
+
+                      borderRadius:
+                        8,
+
+                      backgroundColor:
+                        '#173A73',
+
+                      alignItems:
+                        'center',
+
+                      justifyContent:
+                        'center',
+
+                      opacity:
+                        loading
+                          ? 0.5
+                          : 1,
+                    }}
+                    onPress={
+                      handleChooseProfilePicture
+                    }
+                    disabled={
+                      loading
+                    }
+                  >
+                    <Text
+                      style={{
+                        color:
+                          '#FFFFFF',
+
+                        fontSize:
+                          11,
+
+                        fontWeight:
+                          '700',
+                      }}
+                    >
+                      {profilePicture
+                        ? 'Change Picture'
+                        : 'Choose Picture'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {profilePicture && (
+                    <TouchableOpacity
+                      style={{
+                        minWidth:
+                          100,
+
+                        height:
+                          40,
+
+                        paddingHorizontal:
+                          16,
+
+                        borderRadius:
+                          8,
+
+                        backgroundColor:
+                          '#F2F3F5',
+
+                        borderWidth:
+                          1,
+
+                        borderColor:
+                          '#CFD4DB',
+
+                        alignItems:
+                          'center',
+
+                        justifyContent:
+                          'center',
+
+                        opacity:
+                          loading
+                            ? 0.5
+                            : 1,
+                      }}
+                      onPress={
+                        handleRemoveSelectedPicture
+                      }
+                      disabled={
+                        loading
+                      }
+                    >
+                      <Text
+                        style={{
+                          color:
+                            '#D32F2F',
+
+                          fontSize:
+                            11,
+
+                          fontWeight:
+                            '700',
+                        }}
+                      >
+                        Remove
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
 
               {/* EMPLOYEE NUMBER */}
 
@@ -1331,9 +2113,7 @@ export default function AddOfficer() {
                 Account Information
               </Text>
 
-              {/* ==================================
-                  USERNAME
-              ================================== */}
+              {/* USERNAME */}
 
               <Text
                 style={
@@ -1642,9 +2422,11 @@ export default function AddOfficer() {
               style={[
                 styles.createButton,
 
-                (loading ||
+                (
+                  loading ||
                   employeeNumberLoading ||
-                  !employeeNumber) &&
+                  !employeeNumber
+                ) &&
                   styles.createButtonDisabled,
               ]}
               onPress={
@@ -1679,35 +2461,89 @@ export default function AddOfficer() {
 }
 
 // ==========================================
-// SIDEBAR SYMBOLS
+// IMAGE EXTENSION
 // ==========================================
 
-function getMenuSymbol(
-  label: string
+function getImageExtension(
+  asset:
+    ImagePicker.ImagePickerAsset
 ) {
-  switch (label) {
-    case 'Dashboard':
-      return '⌂';
+  const fileName =
+    asset.fileName ||
+    '';
 
-    case 'Students':
-      return '◎';
+  const fileNameMatch =
+    fileName
+      .toLowerCase()
+      .match(
+        /\.(jpg|jpeg|png|webp)$/
+      );
 
-    case 'Fines':
-      return '▤';
+  if (
+    fileNameMatch?.[1]
+  ) {
+    const extension =
+      fileNameMatch[1];
 
-    case 'QR Scanner':
-      return '▦';
+    return extension ===
+      'jpeg'
+      ? 'jpg'
+      : extension;
+  }
 
-    case 'Reports':
-      return '▧';
+  const mimeType =
+    String(
+      asset.mimeType ||
+        ''
+    ).toLowerCase();
 
-    case 'Settings':
-      return '⚙';
+  if (
+    mimeType.includes(
+      'png'
+    )
+  ) {
+    return 'png';
+  }
 
-    case 'Officers':
-      return '●';
+  if (
+    mimeType.includes(
+      'webp'
+    )
+  ) {
+    return 'webp';
+  }
+
+  return 'jpg';
+}
+
+// ==========================================
+// IMAGE MIME TYPE
+// ==========================================
+
+function getImageMimeType(
+  asset:
+    ImagePicker.ImagePickerAsset,
+
+  extension:
+    string
+) {
+  if (
+    asset.mimeType
+  ) {
+    return asset.mimeType;
+  }
+
+  switch (
+    extension
+  ) {
+    case 'png':
+      return 'image/png';
+
+    case 'webp':
+      return 'image/webp';
 
     default:
-      return '•';
+      return 'image/jpeg';
   }
 }
+

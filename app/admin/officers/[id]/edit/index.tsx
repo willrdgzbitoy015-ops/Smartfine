@@ -21,6 +21,9 @@ import {
   useRouter,
 } from 'expo-router';
 
+import * as ImagePicker
+  from 'expo-image-picker';
+
 import {
   useAuth,
 } from '@/hooks/use-auth';
@@ -70,6 +73,10 @@ type Officer = {
 
   account_status: string;
 
+  profile_picture_uri:
+    | string
+    | null;
+
   created_at:
     | string
     | null;
@@ -112,9 +119,44 @@ export default function EditOfficer() {
     params.id;
 
   const officerId =
-    Array.isArray(rawId)
+    Array.isArray(
+      rawId
+    )
       ? rawId[0]
       : rawId;
+
+  // ==========================================
+  // PROFILE PICTURE
+  // ==========================================
+
+  const [
+    currentProfilePictureUri,
+    setCurrentProfilePictureUri,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    newProfilePicture,
+    setNewProfilePicture,
+  ] =
+    useState<
+      ImagePicker.ImagePickerAsset |
+      null
+    >(null);
+
+  const [
+    profileImageFailed,
+    setProfileImageFailed,
+  ] =
+    useState(false);
+
+  const [
+    removingPicture,
+    setRemovingPicture,
+  ] =
+    useState(false);
 
   // ==========================================
   // FORM
@@ -123,47 +165,56 @@ export default function EditOfficer() {
   const [
     employeeNumber,
     setEmployeeNumber,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     username,
     setUsername,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     firstName,
     setFirstName,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     middleName,
     setMiddleName,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     lastName,
     setLastName,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     email,
     setEmail,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     contactNumber,
     setContactNumber,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     assignedArea,
     setAssignedArea,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     accountActive,
     setAccountActive,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   // ==========================================
   // PAGE STATE
@@ -172,17 +223,20 @@ export default function EditOfficer() {
   const [
     loading,
     setLoading,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const [
     saving,
     setSaving,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] = useState('');
+  ] =
+    useState('');
 
   // ==========================================
   // NAVIGATION
@@ -190,40 +244,121 @@ export default function EditOfficer() {
 
   const navItems: NavItem[] = [
     {
-      label: 'Dashboard',
-      route: '/admin/dashboard',
+      label:
+        'Dashboard',
+
+      route:
+        '/admin/dashboard',
     },
 
     {
-      label: 'Students',
-      route: '/admin/students',
+      label:
+        'Students',
+
+      route:
+        '/admin/students',
     },
 
     {
-      label: 'Fines',
-      route: '/admin/fines',
+      label:
+        'Fines',
+
+      route:
+        '/admin/fines',
     },
 
     {
-      label: 'QR Scanner',
-      route: '/admin/qr-scanner',
+      label:
+        'QR Scanner',
+
+      route:
+        '/admin/qr-scanner',
     },
 
     {
-      label: 'Reports',
-      route: '/admin/reports',
+      label:
+        'Reports',
+
+      route:
+        '/admin/reports',
     },
 
     {
-      label: 'Settings',
-      route: '/admin/settings',
+      label:
+        'Settings',
+
+      route:
+        '/admin/settings',
     },
 
     {
-      label: 'Officers',
-      route: '/admin/officers',
+      label:
+        'Officers',
+
+      route:
+        '/admin/officers',
     },
   ];
+
+  // ==========================================
+  // PROFILE PICTURE URL
+  // ==========================================
+
+  const getProfilePictureUrl =
+    (
+      uri:
+        | string
+        | null
+        | undefined
+    ) => {
+      if (
+        !uri
+      ) {
+        return null;
+      }
+
+      const normalizedUri =
+        String(
+          uri
+        ).trim();
+
+      if (
+        normalizedUri.startsWith(
+          'http://'
+        ) ||
+        normalizedUri.startsWith(
+          'https://'
+        )
+      ) {
+        return normalizedUri;
+      }
+
+      return `${API_BASE}${normalizedUri}`;
+    };
+
+  // ==========================================
+  // OFFICER INITIALS
+  // ==========================================
+
+  const getOfficerInitials =
+    () => {
+      const firstInitial =
+        firstName
+          .trim()
+          .charAt(0)
+          .toUpperCase();
+
+      const lastInitial =
+        lastName
+          .trim()
+          .charAt(0)
+          .toUpperCase();
+
+      return (
+        `${firstInitial}${lastInitial}` ||
+        'OF'
+      );
+    };
 
   // ==========================================
   // LOAD OFFICER
@@ -231,20 +366,32 @@ export default function EditOfficer() {
 
   const loadOfficer =
     async () => {
-      if (!officerId) {
+      if (
+        !officerId
+      ) {
         setErrorMessage(
           'Officer ID is missing.'
         );
 
-        setLoading(false);
+        setLoading(
+          false
+        );
 
         return;
       }
 
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
-        setErrorMessage('');
+        setErrorMessage(
+          ''
+        );
+
+        setProfileImageFailed(
+          false
+        );
 
         const response =
           await fetch(
@@ -274,6 +421,23 @@ export default function EditOfficer() {
         const officer:
           Officer =
           data.officer;
+
+        // ======================================
+        // PROFILE PICTURE
+        // ======================================
+
+        setCurrentProfilePictureUri(
+          officer.profile_picture_uri ||
+            null
+        );
+
+        setNewProfilePicture(
+          null
+        );
+
+        // ======================================
+        // FORM
+        // ======================================
 
         setEmployeeNumber(
           officer.employee_number ||
@@ -332,13 +496,17 @@ export default function EditOfficer() {
           'Could not connect to the SmartFine server.'
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     };
 
   useEffect(() => {
     loadOfficer();
-  }, [officerId]);
+  }, [
+    officerId,
+  ]);
 
   // ==========================================
   // CLEAR ERROR
@@ -349,8 +517,371 @@ export default function EditOfficer() {
       if (
         errorMessage
       ) {
-        setErrorMessage('');
+        setErrorMessage(
+          ''
+        );
       }
+    };
+
+  // ==========================================
+  // CHOOSE NEW PROFILE PICTURE
+  // ==========================================
+
+  const handleChooseProfilePicture =
+    async () => {
+      try {
+        clearError();
+
+        // ======================================
+        // MOBILE PERMISSION
+        // ======================================
+
+        if (
+          Platform.OS !==
+          'web'
+        ) {
+          const permission =
+            await ImagePicker
+              .requestMediaLibraryPermissionsAsync();
+
+          if (
+            !permission.granted
+          ) {
+            Alert.alert(
+              'Permission Required',
+
+              'Please allow SmartFine to access your photos so you can select an officer profile picture.'
+            );
+
+            return;
+          }
+        }
+
+        // ======================================
+        // IMAGE PICKER
+        // ======================================
+
+        const result =
+          await ImagePicker
+            .launchImageLibraryAsync({
+              mediaTypes: [
+                'images',
+              ],
+
+              allowsEditing:
+                true,
+
+              aspect: [
+                1,
+                1,
+              ],
+
+              quality:
+                0.85,
+            });
+
+        if (
+          result.canceled
+        ) {
+          return;
+        }
+
+        const asset =
+          result.assets?.[0];
+
+        if (
+          !asset
+        ) {
+          return;
+        }
+
+        setNewProfilePicture(
+          asset
+        );
+
+        setProfileImageFailed(
+          false
+        );
+      } catch (error) {
+        console.error(
+          'Choose officer picture error:',
+          error
+        );
+
+        setErrorMessage(
+          'Could not select the profile picture.'
+        );
+      }
+    };
+
+  // ==========================================
+  // CANCEL NEW PICTURE
+  // ==========================================
+
+  const handleCancelNewPicture =
+    () => {
+      setNewProfilePicture(
+        null
+      );
+
+      setProfileImageFailed(
+        false
+      );
+
+      clearError();
+    };
+
+  // ==========================================
+  // UPLOAD NEW PROFILE PICTURE
+  // ==========================================
+
+  const uploadProfilePicture =
+    async () => {
+      if (
+        !officerId ||
+        !newProfilePicture
+      ) {
+        return null;
+      }
+
+      const formData =
+        new FormData();
+
+      // ======================================
+      // WEB
+      // ======================================
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        if (
+          newProfilePicture.file
+        ) {
+          formData.append(
+            'profilePicture',
+            newProfilePicture.file
+          );
+        } else {
+          const imageResponse =
+            await fetch(
+              newProfilePicture.uri
+            );
+
+          const blob =
+            await imageResponse.blob();
+
+          const extension =
+            getImageExtension(
+              newProfilePicture
+            );
+
+          formData.append(
+            'profilePicture',
+            blob,
+            `officer-profile.${extension}`
+          );
+        }
+      } else {
+        // ====================================
+        // ANDROID / IOS
+        // ====================================
+
+        const extension =
+          getImageExtension(
+            newProfilePicture
+          );
+
+        const mimeType =
+          getImageMimeType(
+            newProfilePicture,
+            extension
+          );
+
+        formData.append(
+          'profilePicture',
+          {
+            uri:
+              newProfilePicture.uri,
+
+            name:
+              newProfilePicture.fileName ||
+              `officer-profile.${extension}`,
+
+            type:
+              mimeType,
+          } as any
+        );
+      }
+
+      const response =
+        await fetch(
+          `${API_BASE}/api/officers/${officerId}/profile-picture`,
+          {
+            method:
+              'POST',
+
+            body:
+              formData,
+          }
+        );
+
+      const data =
+        await response.json();
+
+      console.log(
+        'Update officer profile picture response:',
+        data
+      );
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            'Could not update officer profile picture.'
+        );
+      }
+
+      return (
+        data.profile_picture_uri ||
+        data.officer
+          ?.profile_picture_uri ||
+        null
+      );
+    };
+
+  // ==========================================
+  // REMOVE EXISTING PROFILE PICTURE
+  // ==========================================
+
+  const performRemoveProfilePicture =
+    async () => {
+      if (
+        !officerId
+      ) {
+        return;
+      }
+
+      try {
+        setRemovingPicture(
+          true
+        );
+
+        setErrorMessage(
+          ''
+        );
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/officers/${officerId}/profile-picture`,
+            {
+              method:
+                'DELETE',
+            }
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'Remove officer profile picture response:',
+          data
+        );
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          setErrorMessage(
+            data.message ||
+              'Could not remove officer profile picture.'
+          );
+
+          return;
+        }
+
+        setCurrentProfilePictureUri(
+          null
+        );
+
+        setNewProfilePicture(
+          null
+        );
+
+        setProfileImageFailed(
+          false
+        );
+      } catch (error) {
+        console.error(
+          'Remove officer profile picture error:',
+          error
+        );
+
+        setErrorMessage(
+          'Could not connect to the SmartFine server.'
+        );
+      } finally {
+        setRemovingPicture(
+          false
+        );
+      }
+    };
+
+  // ==========================================
+  // CONFIRM REMOVE PROFILE PICTURE
+  // ==========================================
+
+  const handleRemoveProfilePicture =
+    () => {
+      const message =
+        'Remove this officer profile picture? The officer will return to the initials avatar.';
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        const confirmed =
+          window.confirm(
+            message
+          );
+
+        if (
+          confirmed
+        ) {
+          performRemoveProfilePicture();
+        }
+
+        return;
+      }
+
+      Alert.alert(
+        'Remove Profile Picture',
+
+        message,
+
+        [
+          {
+            text:
+              'Cancel',
+
+            style:
+              'cancel',
+          },
+
+          {
+            text:
+              'Remove',
+
+            style:
+              'destructive',
+
+            onPress:
+              performRemoveProfilePicture,
+          },
+        ]
+      );
     };
 
   // ==========================================
@@ -359,7 +890,9 @@ export default function EditOfficer() {
 
   const handleSave =
     async () => {
-      setErrorMessage('');
+      setErrorMessage(
+        ''
+      );
 
       // ======================================
       // REQUIRED FIELDS
@@ -387,7 +920,8 @@ export default function EditOfficer() {
       if (
         firstName
           .trim()
-          .length < 2
+          .length <
+        2
       ) {
         setErrorMessage(
           'First Name must contain at least 2 characters.'
@@ -403,7 +937,8 @@ export default function EditOfficer() {
       if (
         lastName
           .trim()
-          .length < 2
+          .length <
+        2
       ) {
         setErrorMessage(
           'Last Name must contain at least 2 characters.'
@@ -507,7 +1042,8 @@ export default function EditOfficer() {
       if (
         assignedArea
           .trim()
-          .length < 2
+          .length <
+        2
       ) {
         setErrorMessage(
           'Please enter a valid assigned area.'
@@ -521,7 +1057,13 @@ export default function EditOfficer() {
       // ======================================
 
       try {
-        setSaving(true);
+        setSaving(
+          true
+        );
+
+        // ====================================
+        // UPDATE OFFICER INFORMATION
+        // ====================================
 
         const response =
           await fetch(
@@ -586,6 +1128,58 @@ export default function EditOfficer() {
           return;
         }
 
+        // ====================================
+        // UPLOAD NEW PROFILE PICTURE
+        // ====================================
+
+        if (
+          newProfilePicture
+        ) {
+          try {
+            const uploadedUri =
+              await uploadProfilePicture();
+
+            if (
+              uploadedUri
+            ) {
+              setCurrentProfilePictureUri(
+                uploadedUri
+              );
+            }
+
+            setNewProfilePicture(
+              null
+            );
+
+            setProfileImageFailed(
+              false
+            );
+          } catch (
+            profileError
+          ) {
+            console.error(
+              'Officer information saved but picture upload failed:',
+              profileError
+            );
+
+            const message =
+              profileError instanceof
+              Error
+                ? profileError.message
+                : 'Profile picture upload failed.';
+
+            setErrorMessage(
+              `Officer information was saved successfully, but the profile picture could not be updated. ${message}`
+            );
+
+            return;
+          }
+        }
+
+        // ====================================
+        // SUCCESS
+        // ====================================
+
         handleSuccess();
       } catch (error) {
         console.error(
@@ -597,7 +1191,9 @@ export default function EditOfficer() {
           'Could not connect to the SmartFine server.'
         );
       } finally {
-        setSaving(false);
+        setSaving(
+          false
+        );
       }
     };
 
@@ -608,7 +1204,9 @@ export default function EditOfficer() {
   const handleSuccess =
     () => {
       const message =
-        'Officer information updated successfully.';
+        newProfilePicture
+          ? 'Officer information and profile picture updated successfully.'
+          : 'Officer information updated successfully.';
 
       if (
         Platform.OS ===
@@ -632,7 +1230,8 @@ export default function EditOfficer() {
 
         [
           {
-            text: 'OK',
+            text:
+              'OK',
 
             onPress: () =>
               router.replace(
@@ -669,13 +1268,14 @@ export default function EditOfficer() {
   // NAVIGATION
   // ==========================================
 
-  const handleNavigation = (
-    item: NavItem
-  ) => {
-    router.push(
-      item.route as any
-    );
-  };
+  const handleNavigation =
+    (
+      item: NavItem
+    ) => {
+      router.push(
+        item.route as any
+      );
+    };
 
   // ==========================================
   // LOGOUT
@@ -724,13 +1324,16 @@ export default function EditOfficer() {
 
         [
           {
-            text: 'Cancel',
+            text:
+              'Cancel',
 
-            style: 'cancel',
+            style:
+              'cancel',
           },
 
           {
-            text: 'Log Out',
+            text:
+              'Log Out',
 
             style:
               'destructive',
@@ -746,7 +1349,9 @@ export default function EditOfficer() {
   // LOADING
   // ==========================================
 
-  if (loading) {
+  if (
+    loading
+  ) {
     return (
       <View
         style={
@@ -804,6 +1409,30 @@ export default function EditOfficer() {
   }
 
   // ==========================================
+  // CURRENT DISPLAY PICTURE
+  // ==========================================
+
+  const existingProfilePictureUrl =
+    getProfilePictureUrl(
+      currentProfilePictureUri
+    );
+
+  const displayPictureUri =
+    newProfilePicture
+      ? newProfilePicture.uri
+      : existingProfilePictureUrl;
+
+  const showProfilePicture =
+    Boolean(
+      displayPictureUri
+    ) &&
+    !profileImageFailed;
+
+  const busy =
+    saving ||
+    removingPicture;
+
+  // ==========================================
   // UI
   // ==========================================
 
@@ -813,7 +1442,9 @@ export default function EditOfficer() {
         styles.screen
       }
     >
-      {/* SIDEBAR */}
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
 
       {isTablet && (
         <View
@@ -841,7 +1472,9 @@ export default function EditOfficer() {
             }
           >
             {navItems.map(
-              (item) => {
+              (
+                item
+              ) => {
                 const active =
                   item.label ===
                   'Officers';
@@ -907,7 +1540,9 @@ export default function EditOfficer() {
         </View>
       )}
 
-      {/* MAIN */}
+      {/* ======================================
+          MAIN
+      ====================================== */}
 
       <View
         style={
@@ -923,7 +1558,9 @@ export default function EditOfficer() {
           }
           keyboardShouldPersistTaps="handled"
         >
-          {/* MOBILE NAV */}
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
 
           {!isTablet && (
             <ScrollView
@@ -936,7 +1573,9 @@ export default function EditOfficer() {
               }
             >
               {navItems.map(
-                (item) => {
+                (
+                  item
+                ) => {
                   const active =
                     item.label ===
                     'Officers';
@@ -977,7 +1616,9 @@ export default function EditOfficer() {
             </ScrollView>
           )}
 
-          {/* HEADER */}
+          {/* ==================================
+              HEADER
+          ================================== */}
 
           <View
             style={
@@ -1026,7 +1667,9 @@ export default function EditOfficer() {
             </Text>
           </View>
 
-          {/* ERROR */}
+          {/* ==================================
+              ERROR
+          ================================== */}
 
           {errorMessage !==
             '' && (
@@ -1055,14 +1698,18 @@ export default function EditOfficer() {
             </View>
           )}
 
-          {/* FORM */}
+          {/* ==================================
+              FORM
+          ================================== */}
 
           <View
             style={
               styles.formCard
             }
           >
-            {/* EMPLOYEE NUMBER */}
+            {/* ==================================
+                OFFICER INFORMATION
+            ================================== */}
 
             <View
               style={
@@ -1076,6 +1723,372 @@ export default function EditOfficer() {
               >
                 Officer Information
               </Text>
+
+              {/* ==================================
+                  PROFILE PICTURE
+              ================================== */}
+
+              <View
+                style={{
+                  alignItems:
+                    'center',
+
+                  marginBottom:
+                    26,
+                }}
+              >
+                {showProfilePicture ? (
+                  <Image
+                    source={{
+                      uri:
+                        displayPictureUri!,
+                    }}
+                    style={{
+                      width:
+                        115,
+
+                      height:
+                        115,
+
+                      borderRadius:
+                        58,
+
+                      backgroundColor:
+                        '#E6E8EC',
+
+                      borderWidth:
+                        3,
+
+                      borderColor:
+                        '#173A73',
+                    }}
+                    resizeMode="cover"
+                    onError={() => {
+                      setProfileImageFailed(
+                        true
+                      );
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width:
+                        115,
+
+                      height:
+                        115,
+
+                      borderRadius:
+                        58,
+
+                      backgroundColor:
+                        '#173A73',
+
+                      borderWidth:
+                        3,
+
+                      borderColor:
+                        '#D6DFEA',
+
+                      alignItems:
+                        'center',
+
+                      justifyContent:
+                        'center',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color:
+                          '#FFFFFF',
+
+                        fontSize:
+                          31,
+
+                        fontWeight:
+                          '800',
+                      }}
+                    >
+                      {
+                        getOfficerInitials()
+                      }
+                    </Text>
+                  </View>
+                )}
+
+                <Text
+                  style={{
+                    color:
+                      '#123266',
+
+                    fontSize:
+                      13,
+
+                    fontWeight:
+                      '700',
+
+                    marginTop:
+                      12,
+                  }}
+                >
+                  Profile Picture
+                </Text>
+
+                <Text
+                  style={{
+                    color:
+                      '#8C939F',
+
+                    fontSize:
+                      10,
+
+                    textAlign:
+                      'center',
+
+                    marginTop:
+                      4,
+
+                    marginBottom:
+                      12,
+                  }}
+                >
+                  JPG, PNG or WEBP • Maximum 5 MB
+                </Text>
+
+                {/* ==================================
+                    PROFILE PICTURE BUTTONS
+                ================================== */}
+
+                <View
+                  style={{
+                    flexDirection:
+                      'row',
+
+                    flexWrap:
+                      'wrap',
+
+                    justifyContent:
+                      'center',
+
+                    gap:
+                      8,
+                  }}
+                >
+                  {/* CHOOSE / CHANGE */}
+
+                  <TouchableOpacity
+                    style={{
+                      minWidth:
+                        145,
+
+                      height:
+                        40,
+
+                      borderRadius:
+                        8,
+
+                      paddingHorizontal:
+                        16,
+
+                      backgroundColor:
+                        '#173A73',
+
+                      alignItems:
+                        'center',
+
+                      justifyContent:
+                        'center',
+
+                      opacity:
+                        busy
+                          ? 0.5
+                          : 1,
+                    }}
+                    onPress={
+                      handleChooseProfilePicture
+                    }
+                    disabled={
+                      busy
+                    }
+                  >
+                    <Text
+                      style={{
+                        color:
+                          '#FFFFFF',
+
+                        fontSize:
+                          11,
+
+                        fontWeight:
+                          '700',
+                      }}
+                    >
+                      {displayPictureUri
+                        ? 'Change Picture'
+                        : 'Add Picture'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* CANCEL NEW PICTURE */}
+
+                  {newProfilePicture && (
+                    <TouchableOpacity
+                      style={{
+                        minWidth:
+                          125,
+
+                        height:
+                          40,
+
+                        borderRadius:
+                          8,
+
+                        paddingHorizontal:
+                          16,
+
+                        backgroundColor:
+                          '#F2F3F5',
+
+                        borderWidth:
+                          1,
+
+                        borderColor:
+                          '#CFD4DB',
+
+                        alignItems:
+                          'center',
+
+                        justifyContent:
+                          'center',
+
+                        opacity:
+                          busy
+                            ? 0.5
+                            : 1,
+                      }}
+                      onPress={
+                        handleCancelNewPicture
+                      }
+                      disabled={
+                        busy
+                      }
+                    >
+                      <Text
+                        style={{
+                          color:
+                            '#173A73',
+
+                          fontSize:
+                            11,
+
+                          fontWeight:
+                            '700',
+                        }}
+                      >
+                        Cancel New Picture
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* REMOVE CURRENT PICTURE */}
+
+                  {!newProfilePicture &&
+                    currentProfilePictureUri && (
+                    <TouchableOpacity
+                      style={{
+                        minWidth:
+                          125,
+
+                        height:
+                          40,
+
+                        borderRadius:
+                          8,
+
+                        paddingHorizontal:
+                          16,
+
+                        backgroundColor:
+                          '#FFF0F0',
+
+                        borderWidth:
+                          1,
+
+                        borderColor:
+                          '#F3B6B6',
+
+                        alignItems:
+                          'center',
+
+                        justifyContent:
+                          'center',
+
+                        opacity:
+                          busy
+                            ? 0.5
+                            : 1,
+                      }}
+                      onPress={
+                        handleRemoveProfilePicture
+                      }
+                      disabled={
+                        busy
+                      }
+                    >
+                      {removingPicture ? (
+                        <ActivityIndicator
+                          size="small"
+                          color="#D32F2F"
+                        />
+                      ) : (
+                        <Text
+                          style={{
+                            color:
+                              '#D32F2F',
+
+                            fontSize:
+                              11,
+
+                            fontWeight:
+                              '700',
+                          }}
+                        >
+                          Remove Picture
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* PREVIEW NOTICE */}
+
+                {newProfilePicture && (
+                  <Text
+                    style={{
+                      color:
+                        '#45B94F',
+
+                      fontSize:
+                        10,
+
+                      fontWeight:
+                        '700',
+
+                      marginTop:
+                        10,
+
+                      textAlign:
+                        'center',
+                    }}
+                  >
+                    New picture selected. Tap Save Changes to upload it.
+                  </Text>
+                )}
+              </View>
+
+              {/* ==================================
+                  EMPLOYEE NUMBER
+              ================================== */}
 
               <Text
                 style={
@@ -1109,7 +2122,9 @@ export default function EditOfficer() {
                 Employee Number is permanent and cannot be changed.
               </Text>
 
-              {/* FIRST + MIDDLE */}
+              {/* ==================================
+                  FIRST + MIDDLE
+              ================================== */}
 
               <View
                 style={
@@ -1148,7 +2163,7 @@ export default function EditOfficer() {
                     placeholder="First name"
                     placeholderTextColor="#8C939F"
                     editable={
-                      !saving
+                      !busy
                     }
                   />
                 </View>
@@ -1185,13 +2200,15 @@ export default function EditOfficer() {
                     placeholder="Middle name"
                     placeholderTextColor="#8C939F"
                     editable={
-                      !saving
+                      !busy
                     }
                   />
                 </View>
               </View>
 
-              {/* LAST */}
+              {/* ==================================
+                  LAST NAME
+              ================================== */}
 
               <Text
                 style={
@@ -1220,11 +2237,13 @@ export default function EditOfficer() {
                 placeholder="Last name"
                 placeholderTextColor="#8C939F"
                 editable={
-                  !saving
+                  !busy
                 }
               />
 
-              {/* EMAIL */}
+              {/* ==================================
+                  EMAIL
+              ================================== */}
 
               <Text
                 style={
@@ -1258,11 +2277,13 @@ export default function EditOfficer() {
                   false
                 }
                 editable={
-                  !saving
+                  !busy
                 }
               />
 
-              {/* CONTACT */}
+              {/* ==================================
+                  CONTACT
+              ================================== */}
 
               <Text
                 style={
@@ -1297,13 +2318,17 @@ export default function EditOfficer() {
                 placeholder="09123456789"
                 placeholderTextColor="#8C939F"
                 keyboardType="phone-pad"
-                maxLength={15}
+                maxLength={
+                  15
+                }
                 editable={
-                  !saving
+                  !busy
                 }
               />
 
-              {/* AREA */}
+              {/* ==================================
+                  ASSIGNED AREA
+              ================================== */}
 
               <Text
                 style={
@@ -1332,12 +2357,14 @@ export default function EditOfficer() {
                 placeholder="Example: Main Campus"
                 placeholderTextColor="#8C939F"
                 editable={
-                  !saving
+                  !busy
                 }
               />
             </View>
 
-            {/* ACCOUNT */}
+            {/* ==================================
+                ACCOUNT
+            ================================== */}
 
             <View
               style={
@@ -1393,7 +2420,7 @@ export default function EditOfficer() {
                   false
                 }
                 editable={
-                  !saving
+                  !busy
                 }
               />
 
@@ -1405,7 +2432,9 @@ export default function EditOfficer() {
                 Username is used by the officer to log in to SmartFine.
               </Text>
 
-              {/* STATUS */}
+              {/* ==================================
+                  STATUS
+              ================================== */}
 
               <View
                 style={
@@ -1465,7 +2494,7 @@ export default function EditOfficer() {
                     clearError();
                   }}
                   disabled={
-                    saving
+                    busy
                   }
                 >
                   <View
@@ -1481,7 +2510,9 @@ export default function EditOfficer() {
             </View>
           </View>
 
-          {/* ACTIONS */}
+          {/* ==================================
+              ACTIONS
+          ================================== */}
 
           <View
             style={
@@ -1496,7 +2527,7 @@ export default function EditOfficer() {
                 handleCancel
               }
               disabled={
-                saving
+                busy
               }
             >
               <Text
@@ -1512,14 +2543,14 @@ export default function EditOfficer() {
               style={[
                 styles.saveButton,
 
-                saving &&
+                busy &&
                   styles.saveButtonDisabled,
               ]}
               onPress={
                 handleSave
               }
               disabled={
-                saving
+                busy
               }
             >
               {saving ? (
@@ -1545,13 +2576,102 @@ export default function EditOfficer() {
 }
 
 // ==========================================
+// IMAGE EXTENSION
+// ==========================================
+
+function getImageExtension(
+  asset:
+    ImagePicker.ImagePickerAsset
+) {
+  const fileName =
+    asset.fileName ||
+    '';
+
+  const match =
+    fileName
+      .toLowerCase()
+      .match(
+        /\.(jpg|jpeg|png|webp)$/
+      );
+
+  if (
+    match?.[1]
+  ) {
+    const extension =
+      match[1];
+
+    return extension ===
+      'jpeg'
+      ? 'jpg'
+      : extension;
+  }
+
+  const mimeType =
+    String(
+      asset.mimeType ||
+        ''
+    ).toLowerCase();
+
+  if (
+    mimeType.includes(
+      'png'
+    )
+  ) {
+    return 'png';
+  }
+
+  if (
+    mimeType.includes(
+      'webp'
+    )
+  ) {
+    return 'webp';
+  }
+
+  return 'jpg';
+}
+
+// ==========================================
+// IMAGE MIME TYPE
+// ==========================================
+
+function getImageMimeType(
+  asset:
+    ImagePicker.ImagePickerAsset,
+
+  extension:
+    string
+) {
+  if (
+    asset.mimeType
+  ) {
+    return asset.mimeType;
+  }
+
+  switch (
+    extension
+  ) {
+    case 'png':
+      return 'image/png';
+
+    case 'webp':
+      return 'image/webp';
+
+    default:
+      return 'image/jpeg';
+  }
+}
+
+// ==========================================
 // SIDEBAR SYMBOLS
 // ==========================================
 
 function getMenuSymbol(
   label: string
 ) {
-  switch (label) {
+  switch (
+    label
+  ) {
     case 'Dashboard':
       return '⌂';
 
