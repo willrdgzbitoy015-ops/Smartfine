@@ -41,3 +41,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Student profile uploads
+server/uploads/student-profiles/*
+!server/uploads/student-profiles/.gitkeep
