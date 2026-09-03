@@ -1,0 +1,1713 @@
+import {
+  useEffect,
+  useState,
+} from 'react';
+
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  useWindowDimensions,
+  ActivityIndicator,
+  Image,
+  Alert,
+  Platform,
+} from 'react-native';
+
+import {
+  useRouter,
+} from 'expo-router';
+
+import {
+  useAuth,
+} from '@/hooks/use-auth';
+
+import {
+  API_BASE,
+} from '@/constants/api';
+
+import {
+  styles,
+} from './add-officer.styles';
+
+// ==========================================
+// TYPES
+// ==========================================
+
+type NavItem = {
+  label: string;
+  route: string;
+};
+
+// ==========================================
+// USERNAME SUGGESTION
+//
+// Will Bitoy -> wbitoy
+// Maria Reyes -> mreyes
+// ==========================================
+
+function generateSuggestedUsername(
+  firstName: string,
+  lastName: string
+) {
+  const cleanFirstName =
+    firstName
+      .trim()
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]/g,
+        ''
+      );
+
+  const cleanLastName =
+    lastName
+      .trim()
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]/g,
+        ''
+      );
+
+  if (
+    !cleanFirstName ||
+    !cleanLastName
+  ) {
+    return '';
+  }
+
+  return (
+    cleanFirstName.charAt(0) +
+    cleanLastName
+  );
+}
+
+// ==========================================
+// ADD OFFICER
+// ==========================================
+
+export default function AddOfficer() {
+  const router =
+    useRouter();
+
+  const { logout } =
+    useAuth();
+
+  const { width } =
+    useWindowDimensions();
+
+  const isTablet =
+    width >= 768;
+
+  // ==========================================
+  // EMPLOYEE NUMBER
+  // ==========================================
+
+  const [
+    employeeNumber,
+    setEmployeeNumber,
+  ] = useState('');
+
+  const [
+    employeeNumberLoading,
+    setEmployeeNumberLoading,
+  ] = useState(true);
+
+  // ==========================================
+  // OFFICER INFORMATION
+  // ==========================================
+
+  const [
+    firstName,
+    setFirstName,
+  ] = useState('');
+
+  const [
+    middleName,
+    setMiddleName,
+  ] = useState('');
+
+  const [
+    lastName,
+    setLastName,
+  ] = useState('');
+
+  const [
+    email,
+    setEmail,
+  ] = useState('');
+
+  const [
+    contactNumber,
+    setContactNumber,
+  ] = useState('');
+
+  const [
+    assignedArea,
+    setAssignedArea,
+  ] = useState('');
+
+  // ==========================================
+  // ACCOUNT INFORMATION
+  // ==========================================
+
+  const [
+    username,
+    setUsername,
+  ] = useState('');
+
+  const [
+    usernameManuallyEdited,
+    setUsernameManuallyEdited,
+  ] = useState(false);
+
+  const [
+    password,
+    setPassword,
+  ] = useState('');
+
+  const [
+    confirmPassword,
+    setConfirmPassword,
+  ] = useState('');
+
+  const [
+    showPassword,
+    setShowPassword,
+  ] = useState(false);
+
+  const [
+    accountActive,
+    setAccountActive,
+  ] = useState(true);
+
+  // ==========================================
+  // PAGE STATE
+  // ==========================================
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState('');
+
+  // ==========================================
+  // NAVIGATION
+  // ==========================================
+
+  const navItems: NavItem[] = [
+    {
+      label: 'Dashboard',
+      route: '/admin/dashboard',
+    },
+
+    {
+      label: 'Students',
+      route: '/admin/students',
+    },
+
+    {
+      label: 'Fines',
+      route: '/admin/fines',
+    },
+
+    {
+      label: 'QR Scanner',
+      route: '/admin/qr-scanner',
+    },
+
+    {
+      label: 'Reports',
+      route: '/admin/reports',
+    },
+
+    {
+      label: 'Settings',
+      route: '/admin/settings',
+    },
+
+    {
+      label: 'Officers',
+      route: '/admin/officers',
+    },
+  ];
+
+  // ==========================================
+  // LOAD NEXT EMPLOYEE NUMBER
+  // ==========================================
+
+  const loadNextEmployeeNumber =
+    async () => {
+      try {
+        setEmployeeNumberLoading(
+          true
+        );
+
+        setErrorMessage('');
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/officers/next-id`
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'Next employee number:',
+          data
+        );
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          setEmployeeNumber('');
+
+          setErrorMessage(
+            data.message ||
+              'Could not generate employee number.'
+          );
+
+          return;
+        }
+
+        setEmployeeNumber(
+          data.employeeNumber ||
+            ''
+        );
+      } catch (error) {
+        console.error(
+          'Employee number error:',
+          error
+        );
+
+        setEmployeeNumber('');
+
+        setErrorMessage(
+          'Could not connect to the SmartFine server.'
+        );
+      } finally {
+        setEmployeeNumberLoading(
+          false
+        );
+      }
+    };
+
+  useEffect(() => {
+    loadNextEmployeeNumber();
+  }, []);
+
+  // ==========================================
+  // AUTOMATIC USERNAME SUGGESTION
+  // ==========================================
+
+  useEffect(() => {
+    if (
+      usernameManuallyEdited
+    ) {
+      return;
+    }
+
+    const suggestion =
+      generateSuggestedUsername(
+        firstName,
+        lastName
+      );
+
+    setUsername(
+      suggestion
+    );
+  }, [
+    firstName,
+    lastName,
+    usernameManuallyEdited,
+  ]);
+
+  // ==========================================
+  // CLEAR ERROR
+  // ==========================================
+
+  const clearError =
+    () => {
+      if (
+        errorMessage
+      ) {
+        setErrorMessage('');
+      }
+    };
+
+  // ==========================================
+  // CREATE OFFICER
+  // ==========================================
+
+  const handleCreateOfficer =
+    async () => {
+      setErrorMessage('');
+
+      // ======================================
+      // EMPLOYEE NUMBER
+      // ======================================
+
+      if (
+        !employeeNumber
+      ) {
+        setErrorMessage(
+          'Employee Number is not available. Please reload the page.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // REQUIRED FIELDS
+      // ======================================
+
+      if (
+        !firstName.trim() ||
+        !lastName.trim() ||
+        !email.trim() ||
+        !contactNumber.trim() ||
+        !assignedArea.trim() ||
+        !username.trim() ||
+        !password ||
+        !confirmPassword
+      ) {
+        setErrorMessage(
+          'Please complete all required fields.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // NAME VALIDATION
+      // ======================================
+
+      if (
+        firstName
+          .trim()
+          .length < 2
+      ) {
+        setErrorMessage(
+          'First Name must contain at least 2 characters.'
+        );
+
+        return;
+      }
+
+      if (
+        lastName
+          .trim()
+          .length < 2
+      ) {
+        setErrorMessage(
+          'Last Name must contain at least 2 characters.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // USERNAME VALIDATION
+      // ======================================
+
+      const normalizedUsername =
+        username
+          .trim()
+          .toLowerCase();
+
+      const usernamePattern =
+        /^[a-z0-9]+$/;
+
+      if (
+        !usernamePattern.test(
+          normalizedUsername
+        )
+      ) {
+        setErrorMessage(
+          'Username may contain letters and numbers only.'
+        );
+
+        return;
+      }
+
+      if (
+        normalizedUsername.length <
+        3
+      ) {
+        setErrorMessage(
+          'Username must contain at least 3 characters.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // EMAIL
+      // ======================================
+
+      const emailPattern =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (
+        !emailPattern.test(
+          email.trim()
+        )
+      ) {
+        setErrorMessage(
+          'Please enter a valid email address.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // CONTACT NUMBER
+      // ======================================
+
+      const normalizedContact =
+        contactNumber.trim();
+
+      if (
+        !/^[0-9]+$/.test(
+          normalizedContact
+        )
+      ) {
+        setErrorMessage(
+          'Contact Number must contain numbers only.'
+        );
+
+        return;
+      }
+
+      if (
+        normalizedContact.length <
+          10 ||
+        normalizedContact.length >
+          15
+      ) {
+        setErrorMessage(
+          'Contact Number must contain 10 to 15 digits.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // ASSIGNED AREA
+      // ======================================
+
+      if (
+        assignedArea
+          .trim()
+          .length < 2
+      ) {
+        setErrorMessage(
+          'Please enter a valid assigned area.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // PASSWORD
+      // ======================================
+
+      if (
+        password.length < 8
+      ) {
+        setErrorMessage(
+          'Password must contain at least 8 characters.'
+        );
+
+        return;
+      }
+
+      if (
+        !/[A-Za-z]/.test(
+          password
+        )
+      ) {
+        setErrorMessage(
+          'Password must contain at least one letter.'
+        );
+
+        return;
+      }
+
+      if (
+        !/[0-9]/.test(
+          password
+        )
+      ) {
+        setErrorMessage(
+          'Password must contain at least one number.'
+        );
+
+        return;
+      }
+
+      if (
+        !/[^A-Za-z0-9\s]/.test(
+          password
+        )
+      ) {
+        setErrorMessage(
+          'Password must contain at least one special character such as !, @, #, $, %, or &.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // CONFIRM PASSWORD
+      // ======================================
+
+      if (
+        password !==
+        confirmPassword
+      ) {
+        setErrorMessage(
+          'Password and Confirm Password do not match.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // SEND TO BACKEND
+      // ======================================
+
+      try {
+        setLoading(true);
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/officers`,
+            {
+              method: 'POST',
+
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+
+              body:
+                JSON.stringify({
+                  username:
+                    normalizedUsername,
+
+                  firstName:
+                    firstName.trim(),
+
+                  middleName:
+                    middleName.trim(),
+
+                  lastName:
+                    lastName.trim(),
+
+                  email:
+                    email
+                      .trim()
+                      .toLowerCase(),
+
+                  contactNumber:
+                    normalizedContact,
+
+                  assignedArea:
+                    assignedArea.trim(),
+
+                  password,
+
+                  accountStatus:
+                    accountActive
+                      ? 'ACTIVE'
+                      : 'INACTIVE',
+                }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'Create officer response:',
+          data
+        );
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          setErrorMessage(
+            data.message ||
+              'Could not create officer account.'
+          );
+
+          return;
+        }
+
+        handleSuccess(
+          data.officer
+            ?.employeeNumber ||
+            employeeNumber,
+
+          data.officer
+            ?.username ||
+            normalizedUsername
+        );
+      } catch (error) {
+        console.error(
+          'Create officer error:',
+          error
+        );
+
+        setErrorMessage(
+          'Could not connect to the SmartFine server.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  // ==========================================
+  // SUCCESS
+  // ==========================================
+
+  const handleSuccess =
+    (
+      createdEmployeeNumber:
+        string,
+
+      createdUsername:
+        string
+    ) => {
+      const message =
+        `Officer account created successfully.\n\n` +
+        `Employee Number: ${createdEmployeeNumber}\n` +
+        `Username: ${createdUsername}`;
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        window.alert(
+          message
+        );
+
+        router.replace(
+          '/admin/officers' as any
+        );
+
+        return;
+      }
+
+      Alert.alert(
+        'Officer Created',
+
+        message,
+
+        [
+          {
+            text: 'OK',
+
+            onPress: () =>
+              router.replace(
+                '/admin/officers' as any
+              ),
+          },
+        ]
+      );
+    };
+
+  // ==========================================
+  // CANCEL
+  // ==========================================
+
+  const handleCancel =
+    () => {
+      router.replace(
+        '/admin/officers' as any
+      );
+    };
+
+  // ==========================================
+  // NAVIGATION
+  // ==========================================
+
+  const handleNavigation = (
+    item: NavItem
+  ) => {
+    router.push(
+      item.route as any
+    );
+  };
+
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
+  const performLogout =
+    async () => {
+      try {
+        await logout();
+
+        router.replace(
+          '/login' as any
+        );
+      } catch (error) {
+        console.error(
+          'Logout error:',
+          error
+        );
+      }
+    };
+
+  const handleLogout =
+    () => {
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        const confirmed =
+          window.confirm(
+            'Are you sure you want to log out?'
+          );
+
+        if (
+          confirmed
+        ) {
+          performLogout();
+        }
+
+        return;
+      }
+
+      Alert.alert(
+        'Log Out',
+
+        'Are you sure you want to log out?',
+
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+
+          {
+            text: 'Log Out',
+            style: 'destructive',
+            onPress:
+              performLogout,
+          },
+        ]
+      );
+    };
+
+  // ==========================================
+  // UI
+  // ==========================================
+
+  return (
+    <View
+      style={
+        styles.screen
+      }
+    >
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
+
+      {isTablet && (
+        <View
+          style={
+            styles.sidebar
+          }
+        >
+          <View
+            style={
+              styles.logoArea
+            }
+          >
+            <Image
+              source={require('../../../../assets/branding/smartfineNoBG.png')}
+              style={
+                styles.smartFineLogo
+              }
+              resizeMode="contain"
+            />
+          </View>
+
+          <View
+            style={
+              styles.navigation
+            }
+          >
+            {navItems.map(
+              (item) => {
+                const active =
+                  item.label ===
+                  'Officers';
+
+                return (
+                  <TouchableOpacity
+                    key={
+                      item.label
+                    }
+                    style={[
+                      styles.navItem,
+
+                      active &&
+                        styles.navItemActive,
+                    ]}
+                    onPress={() =>
+                      handleNavigation(
+                        item
+                      )
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.navIcon
+                      }
+                    >
+                      {getMenuSymbol(
+                        item.label
+                      )}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.navText
+                      }
+                    >
+                      {
+                        item.label
+                      }
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={
+              styles.logoutButton
+            }
+            onPress={
+              handleLogout
+            }
+          >
+            <Text
+              style={
+                styles.logoutText
+              }
+            >
+              Log Out
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ======================================
+          MAIN
+      ====================================== */}
+
+      <View
+        style={
+          styles.main
+        }
+      >
+        <ScrollView
+          contentContainerStyle={
+            styles.scrollContent
+          }
+          showsVerticalScrollIndicator={
+            false
+          }
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
+
+          {!isTablet && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={
+                false
+              }
+              contentContainerStyle={
+                styles.mobileNav
+              }
+            >
+              {navItems.map(
+                (item) => {
+                  const active =
+                    item.label ===
+                    'Officers';
+
+                  return (
+                    <TouchableOpacity
+                      key={
+                        item.label
+                      }
+                      style={[
+                        styles.mobileNavItem,
+
+                        active &&
+                          styles.mobileNavItemActive,
+                      ]}
+                      onPress={() =>
+                        handleNavigation(
+                          item
+                        )
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.mobileNavText,
+
+                          active &&
+                            styles.mobileNavTextActive,
+                        ]}
+                      >
+                        {
+                          item.label
+                        }
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }
+              )}
+            </ScrollView>
+          )}
+
+          {/* ==================================
+              HEADER
+          ================================== */}
+
+          <View
+            style={
+              styles.header
+            }
+          >
+            <Text
+              style={
+                styles.pageTitle
+              }
+            >
+              Add New Officer
+            </Text>
+
+            <Text
+              style={
+                styles.subtitle
+              }
+            >
+              Create a new SmartFine fines officer account
+            </Text>
+          </View>
+
+          {/* ==================================
+              FORM
+          ================================== */}
+
+          <View
+            style={
+              styles.formContainer
+            }
+          >
+            {/* ==================================
+                OFFICER INFORMATION
+            ================================== */}
+
+            <View
+              style={
+                styles.formCard
+              }
+            >
+              <Text
+                style={
+                  styles.cardTitle
+                }
+              >
+                Officer Information
+              </Text>
+
+              {/* EMPLOYEE NUMBER */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Employee Number
+              </Text>
+
+              <View
+                style={
+                  styles.readOnlyBox
+                }
+              >
+                {employeeNumberLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#173A73"
+                  />
+                ) : (
+                  <Text
+                    style={
+                      employeeNumber
+                        ? styles.readOnlyText
+                        : styles.readOnlyPlaceholder
+                    }
+                  >
+                    {employeeNumber ||
+                      'Unable to generate employee number'}
+                  </Text>
+                )}
+              </View>
+
+              <Text
+                style={
+                  styles.helperText
+                }
+              >
+                Employee Number is generated automatically and cannot be changed.
+              </Text>
+
+              {/* FIRST + MIDDLE */}
+
+              <View
+                style={
+                  styles.twoColumnRow
+                }
+              >
+                <View
+                  style={
+                    styles.flexField
+                  }
+                >
+                  <Text
+                    style={
+                      styles.label
+                    }
+                  >
+                    First Name *
+                  </Text>
+
+                  <TextInput
+                    style={
+                      styles.input
+                    }
+                    value={
+                      firstName
+                    }
+                    onChangeText={(
+                      text
+                    ) => {
+                      setFirstName(
+                        text
+                      );
+
+                      clearError();
+                    }}
+                    placeholder="First name"
+                    placeholderTextColor="#8C939F"
+                    editable={
+                      !loading
+                    }
+                  />
+                </View>
+
+                <View
+                  style={
+                    styles.flexField
+                  }
+                >
+                  <Text
+                    style={
+                      styles.label
+                    }
+                  >
+                    Middle Name
+                  </Text>
+
+                  <TextInput
+                    style={
+                      styles.input
+                    }
+                    value={
+                      middleName
+                    }
+                    onChangeText={(
+                      text
+                    ) => {
+                      setMiddleName(
+                        text
+                      );
+
+                      clearError();
+                    }}
+                    placeholder="Middle name"
+                    placeholderTextColor="#8C939F"
+                    editable={
+                      !loading
+                    }
+                  />
+                </View>
+              </View>
+
+              {/* LAST NAME */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Last Name *
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  lastName
+                }
+                onChangeText={(
+                  text
+                ) => {
+                  setLastName(
+                    text
+                  );
+
+                  clearError();
+                }}
+                placeholder="Last name"
+                placeholderTextColor="#8C939F"
+                editable={
+                  !loading
+                }
+              />
+
+              {/* EMAIL */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Email Address *
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  email
+                }
+                onChangeText={(
+                  text
+                ) => {
+                  setEmail(
+                    text
+                  );
+
+                  clearError();
+                }}
+                placeholder="officer@example.com"
+                placeholderTextColor="#8C939F"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={
+                  false
+                }
+                editable={
+                  !loading
+                }
+              />
+
+              {/* CONTACT */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Contact Number *
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  contactNumber
+                }
+                onChangeText={(
+                  text
+                ) => {
+                  const numbersOnly =
+                    text.replace(
+                      /[^0-9]/g,
+                      ''
+                    );
+
+                  setContactNumber(
+                    numbersOnly
+                  );
+
+                  clearError();
+                }}
+                placeholder="09123456789"
+                placeholderTextColor="#8C939F"
+                keyboardType="phone-pad"
+                maxLength={
+                  15
+                }
+                editable={
+                  !loading
+                }
+              />
+
+              {/* ASSIGNED AREA */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Assigned Area *
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  assignedArea
+                }
+                onChangeText={(
+                  text
+                ) => {
+                  setAssignedArea(
+                    text
+                  );
+
+                  clearError();
+                }}
+                placeholder="Example: Main Campus"
+                placeholderTextColor="#8C939F"
+                editable={
+                  !loading
+                }
+              />
+            </View>
+
+            {/* ==================================
+                ACCOUNT INFORMATION
+            ================================== */}
+
+            <View
+              style={
+                styles.formCard
+              }
+            >
+              <Text
+                style={
+                  styles.cardTitle
+                }
+              >
+                Account Information
+              </Text>
+
+              {/* ==================================
+                  USERNAME
+              ================================== */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Username *
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  username
+                }
+                onChangeText={(
+                  text
+                ) => {
+                  const cleaned =
+                    text
+                      .toLowerCase()
+                      .replace(
+                        /[^a-z0-9]/g,
+                        ''
+                      );
+
+                  setUsername(
+                    cleaned
+                  );
+
+                  setUsernameManuallyEdited(
+                    true
+                  );
+
+                  clearError();
+                }}
+                placeholder="Suggested from officer name"
+                placeholderTextColor="#8C939F"
+                autoCapitalize="none"
+                autoCorrect={
+                  false
+                }
+                editable={
+                  !loading
+                }
+              />
+
+              <Text
+                style={
+                  styles.helperText
+                }
+              >
+                Suggested automatically from the officer&apos;s name. You may change it before creating the account.
+              </Text>
+
+              {/* PASSWORD */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Enter Password *
+              </Text>
+
+              <View
+                style={
+                  styles.passwordContainer
+                }
+              >
+                <TextInput
+                  style={
+                    styles.passwordInput
+                  }
+                  value={
+                    password
+                  }
+                  onChangeText={(
+                    text
+                  ) => {
+                    setPassword(
+                      text
+                    );
+
+                    clearError();
+                  }}
+                  placeholder="Enter password"
+                  placeholderTextColor="#8C939F"
+                  secureTextEntry={
+                    !showPassword
+                  }
+                  autoCapitalize="none"
+                  autoCorrect={
+                    false
+                  }
+                  editable={
+                    !loading
+                  }
+                />
+
+                <TouchableOpacity
+                  style={
+                    styles.passwordToggle
+                  }
+                  onPress={() =>
+                    setShowPassword(
+                      !showPassword
+                    )
+                  }
+                  disabled={
+                    loading
+                  }
+                >
+                  <Text
+                    style={
+                      styles.passwordToggleText
+                    }
+                  >
+                    {showPassword
+                      ? 'Hide'
+                      : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text
+                style={
+                  styles.helperText
+                }
+              >
+                Minimum 8 characters with at least one letter, one number, and one special character.
+              </Text>
+
+              {/* CONFIRM PASSWORD */}
+
+              <Text
+                style={
+                  styles.label
+                }
+              >
+                Confirm Password *
+              </Text>
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  confirmPassword
+                }
+                onChangeText={(
+                  text
+                ) => {
+                  setConfirmPassword(
+                    text
+                  );
+
+                  clearError();
+                }}
+                placeholder="Confirm password"
+                placeholderTextColor="#8C939F"
+                secureTextEntry={
+                  !showPassword
+                }
+                autoCapitalize="none"
+                autoCorrect={
+                  false
+                }
+                editable={
+                  !loading
+                }
+              />
+
+              {/* STATUS */}
+
+              <View
+                style={
+                  styles.statusCard
+                }
+              >
+                <View>
+                  <Text
+                    style={
+                      styles.statusLabel
+                    }
+                  >
+                    Account Status
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.statusValue,
+
+                      accountActive
+                        ? styles.statusActive
+                        : styles.statusInactive,
+                    ]}
+                  >
+                    {accountActive
+                      ? 'Active'
+                      : 'Inactive'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.switchTrack,
+
+                    accountActive &&
+                      styles.switchTrackActive,
+                  ]}
+                  onPress={() => {
+                    setAccountActive(
+                      !accountActive
+                    );
+
+                    clearError();
+                  }}
+                  disabled={
+                    loading
+                  }
+                >
+                  <View
+                    style={[
+                      styles.switchThumb,
+
+                      accountActive &&
+                        styles.switchThumbActive,
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <Text
+                style={
+                  styles.statusNote
+                }
+              >
+                Active officers can log in immediately. Inactive officers cannot access their account.
+              </Text>
+            </View>
+          </View>
+
+          {/* ==================================
+              ERROR
+          ================================== */}
+
+          {errorMessage !==
+            '' && (
+            <View
+              style={
+                styles.errorBox
+              }
+            >
+              <Text
+                style={
+                  styles.errorTitle
+                }
+              >
+                Unable to Create Officer
+              </Text>
+
+              <Text
+                style={
+                  styles.errorText
+                }
+              >
+                {
+                  errorMessage
+                }
+              </Text>
+            </View>
+          )}
+
+          {/* ==================================
+              ACTIONS
+          ================================== */}
+
+          <View
+            style={
+              styles.actionRow
+            }
+          >
+            <TouchableOpacity
+              style={
+                styles.cancelButton
+              }
+              onPress={
+                handleCancel
+              }
+              disabled={
+                loading
+              }
+            >
+              <Text
+                style={
+                  styles.cancelButtonText
+                }
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.createButton,
+
+                (loading ||
+                  employeeNumberLoading ||
+                  !employeeNumber) &&
+                  styles.createButtonDisabled,
+              ]}
+              onPress={
+                handleCreateOfficer
+              }
+              disabled={
+                loading ||
+                employeeNumberLoading ||
+                !employeeNumber
+              }
+            >
+              {loading ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#FFFFFF"
+                />
+              ) : (
+                <Text
+                  style={
+                    styles.createButtonText
+                  }
+                >
+                  Create Officer Account
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
+
+// ==========================================
+// SIDEBAR SYMBOLS
+// ==========================================
+
+function getMenuSymbol(
+  label: string
+) {
+  switch (label) {
+    case 'Dashboard':
+      return '⌂';
+
+    case 'Students':
+      return '◎';
+
+    case 'Fines':
+      return '▤';
+
+    case 'QR Scanner':
+      return '▦';
+
+    case 'Reports':
+      return '▧';
+
+    case 'Settings':
+      return '⚙';
+
+    case 'Officers':
+      return '●';
+
+    default:
+      return '•';
+  }
+}

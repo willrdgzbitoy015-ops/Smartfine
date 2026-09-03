@@ -25,9 +25,12 @@ import {
 } from '@/hooks/use-auth';
 
 import {
+  API_BASE,
+} from '@/constants/api';
+
+import {
   styles,
 } from './student-profile.styles';
-import { API_BASE } from '@/constants/api';
 
 // ==========================================
 // TYPES
@@ -36,12 +39,8 @@ import { API_BASE } from '@/constants/api';
 type Student = {
   id: number;
 
-  // Permanent Student ID
-  // Example: 2026-0005
   student_id: string;
 
-  // Editable login username
-  // Example: wbitoy
   username: string;
 
   first_name: string;
@@ -71,10 +70,16 @@ type Student = {
     | null;
 
   account_status: string;
+
+  profile_picture_uri:
+    | string
+    | null;
 };
 
 type Fine = {
   id: number;
+
+  fine_reference?: string;
 
   violation_name: string;
 
@@ -82,9 +87,7 @@ type Fine = {
 
   issued_at: string;
 
-  status:
-    | 'PAID'
-    | 'UNPAID';
+  status: string;
 
   officer_name: string;
 };
@@ -127,13 +130,7 @@ export default function StudentProfile() {
     width >= 768;
 
   // ==========================================
-  // DATABASE STUDENT ID
-  //
-  // This is users.id,
-  // NOT student_number.
-  //
-  // Example route:
-  // /admin/students/5
+  // STUDENT ID
   // ==========================================
 
   const rawId =
@@ -145,7 +142,7 @@ export default function StudentProfile() {
       : rawId;
 
   // ==========================================
-  // PROFILE DATA
+  // STATE
   // ==========================================
 
   const [
@@ -167,6 +164,12 @@ export default function StudentProfile() {
     setError,
   ] =
     useState('');
+
+  const [
+    profileImageFailed,
+    setProfileImageFailed,
+  ] =
+    useState(false);
 
   // ==========================================
   // NAVIGATION
@@ -235,19 +238,29 @@ export default function StudentProfile() {
   // ==========================================
 
   useEffect(() => {
-    if (!studentId) {
+    if (
+      !studentId
+    ) {
       return;
     }
 
     loadStudent();
-  }, [studentId]);
+  }, [
+    studentId,
+  ]);
 
   const loadStudent =
     async () => {
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
         setError('');
+
+        setProfileImageFailed(
+          false
+        );
 
         const response =
           await fetch(
@@ -274,7 +287,9 @@ export default function StudentProfile() {
           return;
         }
 
-        setData(result);
+        setData(
+          result
+        );
       } catch (error) {
         console.error(
           'Student profile connection error:',
@@ -285,8 +300,99 @@ export default function StudentProfile() {
           'Could not connect to the SmartFine server.'
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
+    };
+
+  // ==========================================
+  // PROFILE IMAGE URL
+  // ==========================================
+
+  const getProfilePictureUrl =
+    (
+      uri:
+        | string
+        | null
+        | undefined
+    ) => {
+      if (
+        !uri
+      ) {
+        return null;
+      }
+
+      if (
+        uri.startsWith(
+          'http://'
+        ) ||
+        uri.startsWith(
+          'https://'
+        )
+      ) {
+        return uri;
+      }
+
+      return `${API_BASE}${uri}`;
+    };
+
+  // ==========================================
+  // EDIT
+  // ==========================================
+
+  const handleEdit =
+    () => {
+      if (
+        !studentId
+      ) {
+        return;
+      }
+
+      router.push(
+        `/admin/students/${studentId}/edit` as any
+      );
+    };
+
+  // ==========================================
+  // QR CODE
+  //
+  // REAL QR CODE WILL BE NEXT
+  // ==========================================
+
+  const handleQRCode =
+    () => {
+      const message =
+        'Student QR Code will be added next.';
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        window.alert(
+          message
+        );
+
+        return;
+      }
+
+      Alert.alert(
+        'QR Code',
+        message
+      );
+    };
+
+  // ==========================================
+  // OPEN FINE
+  // ==========================================
+
+  const handleFinePress =
+    (
+      fineId: number
+    ) => {
+      router.push(
+        `/admin/fines/${fineId}` as any
+      );
     };
 
   // ==========================================
@@ -299,679 +405,681 @@ export default function StudentProfile() {
         await logout();
 
         router.replace(
-          '/login'
+          '/login' as any
         );
       } catch (error) {
         console.error(
           'Logout error:',
           error
         );
-
-        if (
-          Platform.OS ===
-          'web'
-        ) {
-          window.alert(
-            'Could not log out. Please try again.'
-          );
-        } else {
-          Alert.alert(
-            'Logout Error',
-            'Could not log out. Please try again.'
-          );
-        }
       }
     };
 
-  const handleLogout = () => {
-    // WEB
-
-    if (
-      Platform.OS ===
-      'web'
-    ) {
+  const handleLogout =
+    () => {
       if (
-        window.confirm(
-          'Are you sure you want to log out?'
-        )
+        Platform.OS ===
+        'web'
       ) {
-        performLogout();
+        const confirmed =
+          window.confirm(
+            'Are you sure you want to log out?'
+          );
+
+        if (
+          confirmed
+        ) {
+          performLogout();
+        }
+
+        return;
       }
 
-      return;
-    }
-
-    // MOBILE
-
-    Alert.alert(
-      'Log Out',
-
-      'Are you sure you want to log out?',
-
-      [
-        {
-          text:
-            'Cancel',
-
-          style:
-            'cancel',
-        },
-
-        {
-          text:
-            'Log Out',
-
-          style:
-            'destructive',
-
-          onPress:
-            performLogout,
-        },
-      ]
-    );
-  };
-
-  // ==========================================
-  // QR CODE
-  //
-  // TEMPORARY UNTIL QR MODULE
-  // ==========================================
-
-  const handleQRCode = () => {
-    const message =
-      'Student QR Code will be added in the QR module.';
-
-    if (
-      Platform.OS ===
-      'web'
-    ) {
-      window.alert(
-        message
-      );
-    } else {
       Alert.alert(
-        'QR Code',
-        message
+        'Log Out',
+
+        'Are you sure you want to log out?',
+
+        [
+          {
+            text:
+              'Cancel',
+
+            style:
+              'cancel',
+          },
+
+          {
+            text:
+              'Log Out',
+
+            style:
+              'destructive',
+
+            onPress:
+              performLogout,
+          },
+        ]
       );
-    }
-  };
+    };
 
   // ==========================================
-  // EDIT STUDENT
-  //
-  // NOW CONNECTED TO:
-  //
-  // /admin/students/[id]/edit
+  // MAIN CONTENT
   // ==========================================
 
-  const handleEdit = () => {
-    if (!studentId) {
-      return;
-    }
+  const renderContent =
+    () => {
+      // ======================================
+      // LOADING
+      // ======================================
 
-    router.push(
-      `/admin/students/${studentId}/edit` as any
-    );
-  };
-
-  // ==========================================
-  // CONTENT
-  // ==========================================
-
-  const renderContent = () => {
-    // ======================================
-    // LOADING
-    // ======================================
-
-    if (loading) {
-      return (
-        <View
-          style={
-            styles.centerState
-          }
-        >
-          <ActivityIndicator
-            size="large"
-            color="#173A73"
-          />
-
-          <Text
-            style={
-              styles.stateText
-            }
-          >
-            Loading student profile...
-          </Text>
-        </View>
-      );
-    }
-
-    // ======================================
-    // ERROR
-    // ======================================
-
-    if (
-      error ||
-      !data
-    ) {
-      return (
-        <View
-          style={
-            styles.centerState
-          }
-        >
-          <Text
-            style={
-              styles.errorText
-            }
-          >
-            {error ||
-              'Student not found.'}
-          </Text>
-        </View>
-      );
-    }
-
-    const {
-      student,
-      totals,
-      fines,
-    } = data;
-
-    // ======================================
-    // INITIALS
-    //
-    // Will Bitoy
-    // -> WB
-    // ======================================
-
-    const initials =
-      `${
-        student
-          .first_name?.[0] ||
-        ''
-      }${
-        student
-          .last_name?.[0] ||
-        ''
-      }`.toUpperCase();
-
-    // ======================================
-    // GRADE + SECTION
-    // ======================================
-
-    const gradeSection =
-      [
-        student.grade_level,
-        student.section,
-      ]
-        .filter(Boolean)
-        .join(' - ') ||
-      'Not assigned';
-
-    const isActive =
-      String(
-        student.account_status
-      ).toUpperCase() ===
-      'ACTIVE';
-
-    return (
-      <>
-        {/* ==================================
-            STUDENT PROFILE HEADER
-        ================================== */}
-
-        <View
-          style={
-            styles.profileCard
-          }
-        >
-          {/* AVATAR */}
-
+      if (
+        loading
+      ) {
+        return (
           <View
             style={
-              styles.avatar
+              styles.centerState
             }
           >
+            <ActivityIndicator
+              size="large"
+              color="#173A73"
+            />
+
             <Text
               style={
-                styles.avatarText
+                styles.stateText
               }
             >
-              {initials}
+              Loading student profile...
             </Text>
           </View>
+        );
+      }
 
-          {/* STUDENT INFORMATION */}
+      // ======================================
+      // ERROR
+      // ======================================
 
+      if (
+        error ||
+        !data
+      ) {
+        return (
           <View
             style={
-              styles.studentInfo
+              styles.centerState
             }
           >
             <Text
               style={
-                styles.studentName
+                styles.errorText
               }
             >
-              {
-                student.full_name
-              }
+              {error ||
+                'Student not found.'}
             </Text>
-
-            {/* GRADE / SECTION */}
-
-            <Text
-              style={
-                styles.studentMeta
-              }
-            >
-              {gradeSection}
-            </Text>
-
-            {/* STUDENT ID */}
-
-            <Text
-              style={
-                styles.studentMeta
-              }
-            >
-              Student ID:{' '}
-              {
-                student.student_id
-              }
-            </Text>
-
-            {/* USERNAME */}
-
-            <Text
-              style={
-                styles.studentMeta
-              }
-            >
-              Username:{' '}
-              {
-                student.username ||
-                'Not provided'
-              }
-            </Text>
-
-            {/* EMAIL */}
-
-            <Text
-              style={
-                styles.studentMeta
-              }
-            >
-              Email:{' '}
-              {student.email ||
-                'Not provided'}
-            </Text>
-
-            {/* CONTACT */}
-
-            <Text
-              style={
-                styles.studentMeta
-              }
-            >
-              Contact:{' '}
-              {student.contact_number ||
-                'Not provided'}
-            </Text>
-
-            {/* STATUS */}
-
-            <Text
-              style={
-                styles.studentMeta
-              }
-            >
-              Status:{' '}
-              {isActive
-                ? 'Active'
-                : 'Inactive'}
-            </Text>
-          </View>
-
-          {/* ACTIONS */}
-
-          <View
-            style={
-              styles.profileActions
-            }
-          >
-            {/* VIEW QR */}
 
             <TouchableOpacity
               style={
-                styles.outlineButton
+                styles.retryButton
               }
               onPress={
-                handleQRCode
+                loadStudent
               }
             >
               <Text
                 style={
-                  styles.outlineButtonText
+                  styles.retryText
                 }
               >
-                ▦ View QR Code
-              </Text>
-            </TouchableOpacity>
-
-            {/* EDIT */}
-
-            <TouchableOpacity
-              style={
-                styles.outlineButton
-              }
-              onPress={
-                handleEdit
-              }
-            >
-              <Text
-                style={
-                  styles.outlineButtonText
-                }
-              >
-                ✎ Edit Information
+                Try Again
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        );
+      }
 
-        {/* ==================================
-            SUMMARY CARDS
-        ================================== */}
+      const {
+        student,
+        totals,
+        fines,
+      } =
+        data;
 
-        <View
-          style={
-            styles.summaryRow
-          }
-        >
-          {/* OUTSTANDING */}
+      // ======================================
+      // INITIALS
+      // ======================================
 
-          <View
-            style={
-              styles.summaryCard
-            }
-          >
-            <Text
-              style={
-                styles.summaryLabel
-              }
-            >
-              Outstanding Balance
-            </Text>
+      const initials =
+        `${
+          student
+            .first_name?.[0] ||
+          ''
+        }${
+          student
+            .last_name?.[0] ||
+          ''
+        }`.toUpperCase();
 
-            <Text
-              style={
-                styles.outstandingValue
-              }
-            >
-              ₱
-              {Number(
-                totals.outstandingBalance
-              ).toFixed(2)}
-            </Text>
-          </View>
+      // ======================================
+      // PROFILE PHOTO
+      // ======================================
 
-          {/* TOTAL PAID */}
+      const profilePictureUrl =
+        getProfilePictureUrl(
+          student.profile_picture_uri
+        );
 
-          <View
-            style={
-              styles.summaryCard
-            }
-          >
-            <Text
-              style={
-                styles.summaryLabel
-              }
-            >
-              Total Paid
-            </Text>
+      const showPicture =
+        Boolean(
+          profilePictureUrl
+        ) &&
+        !profileImageFailed;
 
-            <Text
-              style={
-                styles.paidValue
-              }
-            >
-              ₱
-              {Number(
-                totals.totalPaid
-              ).toFixed(2)}
-            </Text>
-          </View>
-        </View>
+      // ======================================
+      // GRADE / SECTION
+      // ======================================
 
-        {/* ==================================
-            FINES HISTORY
-        ================================== */}
+      const gradeSection =
+        [
+          student.grade_level,
+          student.section,
+        ]
+          .filter(
+            Boolean
+          )
+          .join(
+            ' - '
+          ) ||
+        'Not assigned';
 
-        <View
-          style={
-            styles.historyCard
-          }
-        >
-          {/* TITLE */}
+      return (
+        <>
+          {/* ==================================
+              COMPACT PROFILE CARD
+          ================================== */}
 
           <View
             style={
-              styles.historyTitleBar
+              styles.profileCard
             }
           >
-            <Text
-              style={
-                styles.historyTitle
-              }
-            >
-              Recent Violations & Fines History
-            </Text>
-          </View>
+            {/* ==================================
+                LEFT SIDE
+            ================================== */}
 
-          {/* TABLE */}
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={
-              false
-            }
-          >
             <View
               style={
-                styles.historyTable
+                styles.profileLeft
               }
             >
-              {/* TABLE HEADER */}
+              {/* PROFILE PHOTO */}
 
-              <View
-                style={
-                  styles.historyHeader
-                }
-              >
-                <Text
-                  style={[
-                    styles.historyHeaderText,
-                    styles.violationColumn,
-                  ]}
-                >
-                  Violation Type
-                </Text>
-
-                <Text
-                  style={[
-                    styles.historyHeaderText,
-                    styles.dateColumn,
-                  ]}
-                >
-                  Date
-                </Text>
-
-                <Text
-                  style={[
-                    styles.historyHeaderText,
-                    styles.amountColumn,
-                  ]}
-                >
-                  Amount
-                </Text>
-
-                <Text
-                  style={[
-                    styles.historyHeaderText,
-                    styles.fineStatusColumn,
-                  ]}
-                >
-                  Status
-                </Text>
-
-                <Text
-                  style={[
-                    styles.historyHeaderText,
-                    styles.officerColumn,
-                  ]}
-                >
-                  Officer
-                </Text>
-              </View>
-
-              {/* NO FINES */}
-
-              {fines.length ===
-              0 ? (
+              {showPicture ? (
+                <Image
+                  source={{
+                    uri:
+                      profilePictureUrl!,
+                  }}
+                  style={
+                    styles.avatarImage
+                  }
+                  resizeMode="cover"
+                  onError={() => {
+                    setProfileImageFailed(
+                      true
+                    );
+                  }}
+                />
+              ) : (
                 <View
                   style={
-                    styles.emptyHistory
+                    styles.avatar
                   }
                 >
                   <Text
                     style={
-                      styles.emptyHistoryText
+                      styles.avatarText
                     }
                   >
-                    No fines recorded for this student.
+                    {initials ||
+                      'ST'}
                   </Text>
                 </View>
-              ) : (
-                // ==================================
-                // FINES
-                // ==================================
+              )}
 
-                fines.map(
-                  (fine) => {
-                    const isPaid =
-                      fine.status ===
-                      'PAID';
+              {/* STUDENT DETAILS */}
 
-                    return (
-                      <View
-                        key={
-                          fine.id
-                        }
-                        style={
-                          styles.historyRow
-                        }
-                      >
-                        {/* VIOLATION */}
+              <View
+                style={
+                  styles.studentInfo
+                }
+              >
+                <Text
+                  style={
+                    styles.studentName
+                  }
+                >
+                  {
+                    student.full_name
+                  }
+                </Text>
 
-                        <Text
-                          style={[
-                            styles.historyCell,
-                            styles.violationColumn,
-                            styles.violationText,
-                          ]}
-                        >
-                          {
-                            fine.violation_name
+                <Text
+                  style={
+                    styles.studentMeta
+                  }
+                >
+                  {
+                    gradeSection
+                  }
+                </Text>
+
+                <Text
+                  style={
+                    styles.studentMeta
+                  }
+                >
+                  Student ID:{' '}
+                  {
+                    student.student_id
+                  }
+                </Text>
+
+                <Text
+                  style={
+                    styles.studentMeta
+                  }
+                >
+                  Email:{' '}
+                  {student.email ||
+                    'Not provided'}
+                </Text>
+              </View>
+            </View>
+
+            {/* ==================================
+                RIGHT SIDE ACTIONS
+            ================================== */}
+
+            <View
+              style={
+                styles.profileActions
+              }
+            >
+              {/* QR */}
+
+              <TouchableOpacity
+                style={
+                  styles.outlineButton
+                }
+                onPress={
+                  handleQRCode
+                }
+              >
+                <Text
+                  style={
+                    styles.qrIcon
+                  }
+                >
+                  ▦
+                </Text>
+
+                <Text
+                  style={
+                    styles.outlineButtonText
+                  }
+                >
+                  View QR Code
+                </Text>
+              </TouchableOpacity>
+
+              {/* EDIT */}
+
+              <TouchableOpacity
+                style={
+                  styles.outlineButton
+                }
+                onPress={
+                  handleEdit
+                }
+              >
+                <Text
+                  style={
+                    styles.editIcon
+                  }
+                >
+                  ✎
+                </Text>
+
+                <Text
+                  style={
+                    styles.outlineButtonText
+                  }
+                >
+                  Edit Information
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ==================================
+              SUMMARY
+          ================================== */}
+
+          <View
+            style={
+              styles.summaryRow
+            }
+          >
+            {/* OUTSTANDING */}
+
+            <View
+              style={
+                styles.summaryCard
+              }
+            >
+              <Text
+                style={
+                  styles.summaryLabel
+                }
+              >
+                Outstanding Balance
+              </Text>
+
+              <Text
+                style={
+                  styles.outstandingValue
+                }
+              >
+                ₱
+                {Number(
+                  totals.outstandingBalance ||
+                    0
+                ).toFixed(
+                  2
+                )}
+              </Text>
+            </View>
+
+            {/* PAID */}
+
+            <View
+              style={
+                styles.summaryCard
+              }
+            >
+              <Text
+                style={
+                  styles.summaryLabel
+                }
+              >
+                Total Paid
+              </Text>
+
+              <Text
+                style={
+                  styles.paidValue
+                }
+              >
+                ₱
+                {Number(
+                  totals.totalPaid ||
+                    0
+                ).toFixed(
+                  2
+                )}
+              </Text>
+            </View>
+          </View>
+
+          {/* ==================================
+              HISTORY
+          ================================== */}
+
+          <View
+            style={
+              styles.historyCard
+            }
+          >
+            <View
+              style={
+                styles.historyTitleBar
+              }
+            >
+              <Text
+                style={
+                  styles.historyTitle
+                }
+              >
+                Recent Violations & Fines History
+              </Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={
+                false
+              }
+            >
+              <View
+                style={
+                  styles.historyTable
+                }
+              >
+                {/* TABLE HEADER */}
+
+                <View
+                  style={
+                    styles.historyHeader
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.historyHeaderText,
+                      styles.violationColumn,
+                    ]}
+                  >
+                    Violation Type
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.historyHeaderText,
+                      styles.dateColumn,
+                    ]}
+                  >
+                    Date
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.historyHeaderText,
+                      styles.amountColumn,
+                    ]}
+                  >
+                    Amount
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.historyHeaderText,
+                      styles.fineStatusColumn,
+                    ]}
+                  >
+                    Status
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.historyHeaderText,
+                      styles.officerColumn,
+                    ]}
+                  >
+                    Officer
+                  </Text>
+                </View>
+
+                {/* EMPTY */}
+
+                {fines.length ===
+                0 ? (
+                  <View
+                    style={
+                      styles.emptyHistory
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.emptyHistoryText
+                      }
+                    >
+                      No fines recorded for this student.
+                    </Text>
+                  </View>
+                ) : (
+                  fines.map(
+                    (
+                      fine
+                    ) => {
+                      const status =
+                        String(
+                          fine.status ||
+                            ''
+                        ).toUpperCase();
+
+                      const isPaid =
+                        status ===
+                        'PAID';
+
+                      const isCancelled =
+                        status ===
+                        'CANCELLED';
+
+                      return (
+                        <TouchableOpacity
+                          key={
+                            fine.id
                           }
-                        </Text>
-
-                        {/* DATE */}
-
-                        <Text
-                          style={[
-                            styles.historyCell,
-                            styles.dateColumn,
-                          ]}
-                        >
-                          {formatDate(
-                            fine.issued_at
-                          )}
-                        </Text>
-
-                        {/* AMOUNT */}
-
-                        <Text
-                          style={[
-                            styles.historyCell,
-                            styles.amountColumn,
-                            styles.amountText,
-                          ]}
-                        >
-                          ₱
-                          {Number(
-                            fine.amount
-                          ).toFixed(
-                            2
-                          )}
-                        </Text>
-
-                        {/* STATUS */}
-
-                        <View
                           style={
-                            styles.fineStatusColumn
+                            styles.historyRow
+                          }
+                          activeOpacity={
+                            0.7
+                          }
+                          onPress={() =>
+                            handleFinePress(
+                              fine.id
+                            )
                           }
                         >
-                          <View
-                            style={[
-                              styles.statusBadge,
+                          {/* VIOLATION */}
 
-                              isPaid
-                                ? styles.paidBadge
-                                : styles.unpaidBadge,
+                          <Text
+                            style={[
+                              styles.historyCell,
+                              styles.violationColumn,
+                              styles.violationText,
                             ]}
                           >
-                            <Text
+                            {
+                              fine.violation_name
+                            }
+                          </Text>
+
+                          {/* DATE */}
+
+                          <Text
+                            style={[
+                              styles.historyCell,
+                              styles.dateColumn,
+                            ]}
+                          >
+                            {formatDate(
+                              fine.issued_at
+                            )}
+                          </Text>
+
+                          {/* AMOUNT */}
+
+                          <Text
+                            style={[
+                              styles.historyCell,
+                              styles.amountColumn,
+                              styles.amountText,
+                            ]}
+                          >
+                            ₱
+                            {Number(
+                              fine.amount ||
+                                0
+                            ).toFixed(
+                              2
+                            )}
+                          </Text>
+
+                          {/* STATUS */}
+
+                          <View
+                            style={
+                              styles.fineStatusColumn
+                            }
+                          >
+                            <View
                               style={[
-                                styles.statusBadgeText,
+                                styles.statusBadge,
 
                                 isPaid
-                                  ? styles.paidBadgeText
-                                  : styles.unpaidBadgeText,
+                                  ? styles.paidBadge
+                                  : styles.unpaidBadge,
+
+                                isCancelled &&
+                                  styles.cancelledBadge,
                               ]}
                             >
-                              {isPaid
-                                ? 'Paid'
-                                : 'Unpaid'}
-                            </Text>
+                              <Text
+                                style={[
+                                  styles.statusBadgeText,
+
+                                  isPaid
+                                    ? styles.paidBadgeText
+                                    : styles.unpaidBadgeText,
+
+                                  isCancelled &&
+                                    styles.cancelledBadgeText,
+                                ]}
+                              >
+                                {formatFineStatus(
+                                  status
+                                )}
+                              </Text>
+                            </View>
                           </View>
-                        </View>
 
-                        {/* OFFICER */}
+                          {/* OFFICER */}
 
-                        <Text
-                          style={[
-                            styles.historyCell,
-                            styles.officerColumn,
-                          ]}
-                        >
-                          {
-                            fine.officer_name
-                          }
-                        </Text>
-                      </View>
-                    );
-                  }
-                )
-              )}
-            </View>
-          </ScrollView>
-        </View>
-      </>
-    );
-  };
+                          <Text
+                            style={[
+                              styles.historyCell,
+                              styles.officerColumn,
+                            ]}
+                          >
+                            {fine.officer_name ||
+                              'Unknown'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    }
+                  )
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </>
+      );
+    };
 
   // ==========================================
   // UI
@@ -993,8 +1101,6 @@ export default function StudentProfile() {
             styles.sidebar
           }
         >
-          {/* LOGO */}
-
           <View
             style={
               styles.logoArea
@@ -1009,15 +1115,15 @@ export default function StudentProfile() {
             />
           </View>
 
-          {/* NAVIGATION */}
-
           <View
             style={
               styles.navigation
             }
           >
             {navItems.map(
-              (item) => {
+              (
+                item
+              ) => {
                 const active =
                   item.label ===
                   'Students';
@@ -1064,8 +1170,6 @@ export default function StudentProfile() {
             )}
           </View>
 
-          {/* LOGOUT */}
-
           <TouchableOpacity
             style={
               styles.logoutButton
@@ -1110,7 +1214,7 @@ export default function StudentProfile() {
             }
             onPress={() =>
               router.push(
-                '/admin/students'
+                '/admin/students' as any
               )
             }
           >
@@ -1123,9 +1227,7 @@ export default function StudentProfile() {
             </Text>
           </TouchableOpacity>
 
-          {/* ==================================
-              MOBILE NAV
-          ================================== */}
+          {/* MOBILE NAV */}
 
           {!isTablet && (
             <ScrollView
@@ -1138,7 +1240,9 @@ export default function StudentProfile() {
               }
             >
               {navItems.map(
-                (item) => (
+                (
+                  item
+                ) => (
                   <TouchableOpacity
                     key={
                       item.label
@@ -1175,9 +1279,9 @@ export default function StudentProfile() {
             </ScrollView>
           )}
 
-          {/* PROFILE CONTENT */}
-
-          {renderContent()}
+          {
+            renderContent()
+          }
         </ScrollView>
       </View>
     </View>
@@ -1185,14 +1289,62 @@ export default function StudentProfile() {
 }
 
 // ==========================================
-// FORMAT DATE
+// FINE STATUS
+// ==========================================
+
+function formatFineStatus(
+  status: string
+) {
+  switch (
+    String(
+      status ||
+        ''
+    ).toUpperCase()
+  ) {
+    case 'PAID':
+      return 'Paid';
+
+    case 'CANCELLED':
+      return 'Cancelled';
+
+    case 'WAIVED':
+      return 'Waived';
+
+    case 'PENDING':
+      return 'Pending';
+
+    default:
+      return 'Unpaid';
+  }
+}
+
+// ==========================================
+// DATE
 // ==========================================
 
 function formatDate(
   value: string
 ) {
+  if (
+    !value
+  ) {
+    return '—';
+  }
+
+  const normalized =
+    value.includes(
+      'T'
+    )
+      ? value
+      : value.replace(
+          ' ',
+          'T'
+        );
+
   const date =
-    new Date(value);
+    new Date(
+      normalized
+    );
 
   if (
     Number.isNaN(
@@ -1227,13 +1379,15 @@ function formatDate(
 }
 
 // ==========================================
-// TEMPORARY SIDEBAR SYMBOLS
+// SIDEBAR ICONS
 // ==========================================
 
 function getMenuSymbol(
   label: string
 ) {
-  switch (label) {
+  switch (
+    label
+  ) {
     case 'Dashboard':
       return '⌂';
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const authRoutes =
   require('./routes/auth');
@@ -12,6 +13,9 @@ const studentsRoutes =
 
   const finesRoutes =
   require('./routes/fines');
+
+  const officersRoutes =
+  require('./routes/officers');
 
 const app = express();
 
@@ -48,7 +52,20 @@ app.use(
   '/api/fines',
   finesRoutes
 );
+app.use(
+  '/api/officers',
+  officersRoutes
+);
 
+app.use(
+  '/uploads',
+  express.static(
+    path.join(
+      __dirname,
+      'uploads'
+    )
+  )
+);
 // ==========================================
 // API TEST
 // ==========================================

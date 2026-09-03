@@ -21,14 +21,19 @@ import {
   useRouter,
 } from 'expo-router';
 
+import * as ImagePicker from 'expo-image-picker';
+
 import {
   useAuth,
 } from '@/hooks/use-auth';
 
 import {
+  API_BASE,
+} from '@/constants/api';
+
+import {
   styles,
 } from './edit-student.styles';
-import { API_BASE } from '@/constants/api';
 
 // ==========================================
 // TYPES
@@ -42,10 +47,18 @@ type Student = {
   username: string;
 
   first_name: string;
-  middle_name: string | null;
+
+  middle_name:
+    | string
+    | null;
+
   last_name: string;
 
-  email: string | null;
+  full_name?: string;
+
+  email:
+    | string
+    | null;
 
   contact_number:
     | string
@@ -60,6 +73,10 @@ type Student = {
     | null;
 
   account_status: string;
+
+  profile_picture_uri:
+    | string
+    | null;
 };
 
 type NavItem = {
@@ -103,6 +120,31 @@ export default function EditStudent() {
     studentNumber,
     setStudentNumber,
   ] = useState('');
+
+  // ==========================================
+  // PROFILE PICTURE
+  // ==========================================
+
+  const [
+    profilePictureUri,
+    setProfilePictureUri,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    selectedProfilePicture,
+    setSelectedProfilePicture,
+  ] =
+    useState<ImagePicker.ImagePickerAsset | null>(
+      null
+    );
+
+  const [
+    removingPicture,
+    setRemovingPicture,
+  ] = useState(false);
 
   // ==========================================
   // FORM VALUES
@@ -180,6 +222,7 @@ export default function EditStudent() {
     {
       label:
         'Dashboard',
+
       route:
         '/admin/dashboard',
     },
@@ -187,6 +230,7 @@ export default function EditStudent() {
     {
       label:
         'Students',
+
       route:
         '/admin/students',
     },
@@ -194,6 +238,7 @@ export default function EditStudent() {
     {
       label:
         'Fines',
+
       route:
         '/admin/fines',
     },
@@ -201,6 +246,7 @@ export default function EditStudent() {
     {
       label:
         'QR Scanner',
+
       route:
         '/admin/qr-scanner',
     },
@@ -208,6 +254,7 @@ export default function EditStudent() {
     {
       label:
         'Reports',
+
       route:
         '/admin/reports',
     },
@@ -215,6 +262,7 @@ export default function EditStudent() {
     {
       label:
         'Settings',
+
       route:
         '/admin/settings',
     },
@@ -222,10 +270,67 @@ export default function EditStudent() {
     {
       label:
         'Officers',
+
       route:
         '/admin/officers',
     },
   ];
+
+  // ==========================================
+  // PROFILE PICTURE URL
+  // ==========================================
+
+  const getProfilePictureUrl =
+    (
+      uri:
+        | string
+        | null
+    ) => {
+      if (
+        !uri
+      ) {
+        return null;
+      }
+
+      if (
+        uri.startsWith(
+          'http://'
+        ) ||
+        uri.startsWith(
+          'https://'
+        )
+      ) {
+        return uri;
+      }
+
+      return `${API_BASE}${uri}`;
+    };
+
+  // ==========================================
+  // DISPLAYED PROFILE PICTURE
+  // ==========================================
+
+  const displayedPictureUri =
+    selectedProfilePicture
+      ? selectedProfilePicture.uri
+      : getProfilePictureUrl(
+          profilePictureUri
+        );
+
+  // ==========================================
+  // STUDENT INITIALS
+  // ==========================================
+
+  const initials =
+    `${
+      firstName
+        .trim()
+        .charAt(0) || ''
+    }${
+      lastName
+        .trim()
+        .charAt(0) || ''
+    }`.toUpperCase();
 
   // ==========================================
   // LOAD STUDENT
@@ -239,14 +344,20 @@ export default function EditStudent() {
     }
 
     loadStudent();
-  }, [studentDatabaseId]);
+  }, [
+    studentDatabaseId,
+  ]);
 
   const loadStudent =
     async () => {
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
-        setErrorMessage('');
+        setErrorMessage(
+          ''
+        );
 
         const response =
           await fetch(
@@ -255,6 +366,11 @@ export default function EditStudent() {
 
         const data =
           await response.json();
+
+        console.log(
+          'Edit student load response:',
+          data
+        );
 
         if (
           !response.ok ||
@@ -322,12 +438,19 @@ export default function EditStudent() {
             ''
         );
 
-        // ACTIVE = switch ON
-        // INACTIVE = switch OFF
+        setProfilePictureUri(
+          student.profile_picture_uri ||
+            null
+        );
+
+        setSelectedProfilePicture(
+          null
+        );
 
         setAccountActive(
           String(
-            student.account_status
+            student.account_status ||
+              ''
           ).toUpperCase() ===
             'ACTIVE'
         );
@@ -341,7 +464,9 @@ export default function EditStudent() {
           'Could not connect to the SmartFine server.'
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     };
 
@@ -351,15 +476,442 @@ export default function EditStudent() {
 
   const clearError =
     () => {
-      if (errorMessage) {
-        setErrorMessage('');
+      if (
+        errorMessage
+      ) {
+        setErrorMessage(
+          ''
+        );
       }
     };
 
   // ==========================================
+  // MESSAGE HELPER
+  // ==========================================
+
+  const showMessage =
+    (
+      title: string,
+      message: string
+    ) => {
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        window.alert(
+          `${title}\n\n${message}`
+        );
+
+        return;
+      }
+
+      Alert.alert(
+        title,
+        message
+      );
+    };
+
+  // ==========================================
+  // SELECT PROFILE PICTURE
+  // ==========================================
+
+  const handlePickProfilePicture =
+    async () => {
+      try {
+        clearError();
+
+        // ======================================
+        // MOBILE PERMISSION
+        // ======================================
+
+        if (
+          Platform.OS !==
+          'web'
+        ) {
+          const permission =
+            await ImagePicker
+              .requestMediaLibraryPermissionsAsync();
+
+          if (
+            !permission.granted
+          ) {
+            showMessage(
+              'Permission Required',
+              'SmartFine needs access to your photo library to select a student profile picture.'
+            );
+
+            return;
+          }
+        }
+
+        // ======================================
+        // OPEN IMAGE PICKER
+        // ======================================
+
+        const result =
+          await ImagePicker
+            .launchImageLibraryAsync({
+              mediaTypes: [
+                'images',
+              ],
+
+              allowsEditing:
+                true,
+
+              aspect: [
+                1,
+                1,
+              ],
+
+              quality:
+                0.8,
+            });
+
+        if (
+          result.canceled ||
+          !result.assets ||
+          result.assets.length ===
+            0
+        ) {
+          return;
+        }
+
+        const asset =
+          result.assets[0];
+
+        // ======================================
+        // 5 MB CHECK
+        // ======================================
+
+        if (
+          asset.fileSize &&
+          asset.fileSize >
+            5 *
+              1024 *
+              1024
+        ) {
+          showMessage(
+            'Image Too Large',
+            'Profile picture must not exceed 5 MB.'
+          );
+
+          return;
+        }
+
+        setSelectedProfilePicture(
+          asset
+        );
+      } catch (error) {
+        console.error(
+          'Pick profile picture error:',
+          error
+        );
+
+        showMessage(
+          'Profile Picture',
+          'Could not select the profile picture.'
+        );
+      }
+    };
+
+  // ==========================================
+  // CANCEL SELECTED NEW PICTURE
+  // ==========================================
+
+  const handleCancelSelectedPicture =
+    () => {
+      setSelectedProfilePicture(
+        null
+      );
+    };
+
+  // ==========================================
+  // UPLOAD PROFILE PICTURE
+  // ==========================================
+
+  const uploadProfilePicture =
+    async () => {
+      if (
+        !studentDatabaseId ||
+        !selectedProfilePicture
+      ) {
+        return {
+          success: true,
+        };
+      }
+
+      try {
+        const formData =
+          new FormData();
+
+        // ======================================
+        // WEB
+        // ======================================
+
+        if (
+          Platform.OS ===
+          'web'
+        ) {
+          if (
+            selectedProfilePicture.file
+          ) {
+            formData.append(
+              'profilePicture',
+              selectedProfilePicture.file
+            );
+          } else {
+            const fileResponse =
+              await fetch(
+                selectedProfilePicture.uri
+              );
+
+            const blob =
+              await fileResponse.blob();
+
+            const fileName =
+              selectedProfilePicture.fileName ||
+              `student-${studentDatabaseId}.jpg`;
+
+            formData.append(
+              'profilePicture',
+              blob,
+              fileName
+            );
+          }
+        } else {
+          // ====================================
+          // ANDROID / IOS
+          // ====================================
+
+          const fileName =
+            selectedProfilePicture.fileName ||
+            `student-${studentDatabaseId}.jpg`;
+
+          const mimeType =
+            selectedProfilePicture.mimeType ||
+            'image/jpeg';
+
+          formData.append(
+            'profilePicture',
+            {
+              uri:
+                selectedProfilePicture.uri,
+
+              name:
+                fileName,
+
+              type:
+                mimeType,
+            } as any
+          );
+        }
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/students/${studentDatabaseId}/profile-picture`,
+            {
+              method:
+                'POST',
+
+              body:
+                formData,
+            }
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'Edit profile picture upload:',
+          data
+        );
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          return {
+            success:
+              false,
+
+            message:
+              data.message ||
+              'Could not upload the profile picture.',
+          };
+        }
+
+        setProfilePictureUri(
+          data.profilePictureUri ||
+            null
+        );
+
+        setSelectedProfilePicture(
+          null
+        );
+
+        return {
+          success:
+            true,
+        };
+      } catch (error) {
+        console.error(
+          'Upload profile picture error:',
+          error
+        );
+
+        return {
+          success:
+            false,
+
+          message:
+            'Student information was saved, but the profile picture could not be uploaded.',
+        };
+      }
+    };
+
+  // ==========================================
+  // REMOVE CURRENT PROFILE PICTURE
+  // ==========================================
+
+  const performRemoveProfilePicture =
+    async () => {
+      if (
+        !studentDatabaseId
+      ) {
+        return;
+      }
+
+      try {
+        setRemovingPicture(
+          true
+        );
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/students/${studentDatabaseId}/profile-picture`,
+            {
+              method:
+                'DELETE',
+            }
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'Remove profile picture response:',
+          data
+        );
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          showMessage(
+            'Remove Profile Picture',
+            data.message ||
+              'Could not remove the profile picture.'
+          );
+
+          return;
+        }
+
+        setProfilePictureUri(
+          null
+        );
+
+        setSelectedProfilePicture(
+          null
+        );
+
+        showMessage(
+          'Profile Picture Removed',
+          'The student profile picture was removed successfully.'
+        );
+      } catch (error) {
+        console.error(
+          'Remove profile picture error:',
+          error
+        );
+
+        showMessage(
+          'Connection Error',
+          'Could not connect to the SmartFine server.'
+        );
+      } finally {
+        setRemovingPicture(
+          false
+        );
+      }
+    };
+
+  // ==========================================
+  // CONFIRM REMOVE
+  // ==========================================
+
+  const handleRemoveProfilePicture =
+    () => {
+      if (
+        !profilePictureUri
+      ) {
+        return;
+      }
+
+      const message =
+        'Are you sure you want to remove this student profile picture?';
+
+      // WEB
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        const confirmed =
+          window.confirm(
+            message
+          );
+
+        if (
+          confirmed
+        ) {
+          performRemoveProfilePicture();
+        }
+
+        return;
+      }
+
+      // MOBILE
+
+      Alert.alert(
+        'Remove Profile Picture',
+
+        message,
+
+        [
+          {
+            text:
+              'Cancel',
+
+            style:
+              'cancel',
+          },
+
+          {
+            text:
+              'Remove',
+
+            style:
+              'destructive',
+
+            onPress:
+              performRemoveProfilePicture,
+          },
+        ]
+      );
+    };
+
+  // ==========================================
   // USERNAME CHANGE
-  //
-  // Alphanumeric only
   // ==========================================
 
   const handleUsernameChange = (
@@ -373,7 +925,9 @@ export default function EditStudent() {
           ''
         );
 
-    setUsername(cleaned);
+    setUsername(
+      cleaned
+    );
 
     clearError();
   };
@@ -387,7 +941,7 @@ export default function EditStudent() {
       setErrorMessage('');
 
       // ======================================
-      // REQUIRED FIELDS
+      // REQUIRED
       // ======================================
 
       if (
@@ -407,15 +961,54 @@ export default function EditStudent() {
       }
 
       // ======================================
+      // FIRST NAME
+      // ======================================
+
+      if (
+        firstName
+          .trim()
+          .length <
+        2
+      ) {
+        setErrorMessage(
+          'First Name must contain at least 2 characters.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // LAST NAME
+      // ======================================
+
+      if (
+        lastName
+          .trim()
+          .length <
+        2
+      ) {
+        setErrorMessage(
+          'Last Name must contain at least 2 characters.'
+        );
+
+        return;
+      }
+
+      // ======================================
       // USERNAME
       // ======================================
+
+      const normalizedUsername =
+        username
+          .trim()
+          .toLowerCase();
 
       const usernamePattern =
         /^[a-z0-9]+$/;
 
       if (
         !usernamePattern.test(
-          username.trim()
+          normalizedUsername
         )
       ) {
         setErrorMessage(
@@ -425,16 +1018,69 @@ export default function EditStudent() {
         return;
       }
 
+      if (
+        normalizedUsername.length <
+        3
+      ) {
+        setErrorMessage(
+          'Username must contain at least 3 characters.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // CONTACT NUMBER
+      // ======================================
+
+      const normalizedContact =
+        contactNumber
+          .trim()
+          .replace(
+            /[^0-9]/g,
+            ''
+          );
+
+      if (
+        !/^[0-9]+$/.test(
+          normalizedContact
+        )
+      ) {
+        setErrorMessage(
+          'Contact Number must contain numbers only.'
+        );
+
+        return;
+      }
+
+      if (
+        normalizedContact.length <
+          10 ||
+        normalizedContact.length >
+          15
+      ) {
+        setErrorMessage(
+          'Contact Number must contain 10 to 15 digits.'
+        );
+
+        return;
+      }
+
       // ======================================
       // EMAIL
       // ======================================
+
+      const normalizedEmail =
+        email
+          .trim()
+          .toLowerCase();
 
       const emailPattern =
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (
         !emailPattern.test(
-          email.trim()
+          normalizedEmail
         )
       ) {
         setErrorMessage(
@@ -445,11 +1091,13 @@ export default function EditStudent() {
       }
 
       // ======================================
-      // SEND UPDATE
+      // SEND STUDENT UPDATE
       // ======================================
 
       try {
-        setSaving(true);
+        setSaving(
+          true
+        );
 
         const response =
           await fetch(
@@ -466,9 +1114,7 @@ export default function EditStudent() {
               body:
                 JSON.stringify({
                   username:
-                    username
-                      .trim()
-                      .toLowerCase(),
+                    normalizedUsername,
 
                   firstName:
                     firstName.trim(),
@@ -480,25 +1126,16 @@ export default function EditStudent() {
                     lastName.trim(),
 
                   email:
-                    email
-                      .trim()
-                      .toLowerCase(),
+                    normalizedEmail,
 
                   contactNumber:
-                    contactNumber.trim(),
+                    normalizedContact,
 
                   gradeLevel:
                     gradeLevel.trim(),
 
                   section:
                     section.trim(),
-
-                  // ==================================
-                  // FIXED ACCOUNT STATUS
-                  //
-                  // Switch ON  = ACTIVE
-                  // Switch OFF = INACTIVE
-                  // ==================================
 
                   accountStatus:
                     accountActive
@@ -528,6 +1165,32 @@ export default function EditStudent() {
           return;
         }
 
+        // ======================================
+        // UPLOAD NEW PROFILE PICTURE
+        // ======================================
+
+        if (
+          selectedProfilePicture
+        ) {
+          const uploadResult =
+            await uploadProfilePicture();
+
+          if (
+            !uploadResult.success
+          ) {
+            showPartialSuccess(
+              uploadResult.message ||
+                'The profile picture could not be uploaded.'
+            );
+
+            return;
+          }
+        }
+
+        // ======================================
+        // EVERYTHING SAVED
+        // ======================================
+
         showSuccess();
       } catch (error) {
         console.error(
@@ -539,18 +1202,22 @@ export default function EditStudent() {
           'Could not connect to the SmartFine server.'
         );
       } finally {
-        setSaving(false);
+        setSaving(
+          false
+        );
       }
     };
 
   // ==========================================
-  // SUCCESS
+  // FULL SUCCESS
   // ==========================================
 
   const showSuccess =
     () => {
       const message =
-        'Student information updated successfully.';
+        selectedProfilePicture
+          ? 'Student information and profile picture updated successfully.'
+          : 'Student information updated successfully.';
 
       if (
         Platform.OS ===
@@ -569,7 +1236,9 @@ export default function EditStudent() {
 
       Alert.alert(
         'Student Updated',
+
         message,
+
         [
           {
             text:
@@ -581,6 +1250,36 @@ export default function EditStudent() {
               ),
           },
         ]
+      );
+    };
+
+  // ==========================================
+  // PARTIAL SUCCESS
+  // ==========================================
+
+  const showPartialSuccess =
+    (
+      pictureError:
+        string
+    ) => {
+      const message =
+        `Student information was updated successfully, but the profile picture could not be updated.\n\n${pictureError}`;
+
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        window.alert(
+          message
+        );
+
+        return;
+      }
+
+      Alert.alert(
+        'Student Updated',
+
+        message
       );
     };
 
@@ -605,7 +1304,7 @@ export default function EditStudent() {
         await logout();
 
         router.replace(
-          '/login'
+          '/login' as any
         );
       } catch (error) {
         console.error(
@@ -626,7 +1325,9 @@ export default function EditStudent() {
             'Are you sure you want to log out?'
           );
 
-        if (confirmed) {
+        if (
+          confirmed
+        ) {
           performLogout();
         }
 
@@ -635,7 +1336,9 @@ export default function EditStudent() {
 
       Alert.alert(
         'Log Out',
+
         'Are you sure you want to log out?',
+
         [
           {
             text:
@@ -663,7 +1366,9 @@ export default function EditStudent() {
   // LOADING
   // ==========================================
 
-  if (loading) {
+  if (
+    loading
+  ) {
     return (
       <View
         style={
@@ -829,9 +1534,7 @@ export default function EditStudent() {
             </Text>
           </TouchableOpacity>
 
-          {/* ==================================
-              MOBILE NAV
-          ================================== */}
+          {/* MOBILE NAV */}
 
           {!isTablet && (
             <ScrollView
@@ -903,8 +1606,370 @@ export default function EditStudent() {
                 styles.subtitle
               }
             >
-              Update student and account information
+              Update student, profile picture, and account information
             </Text>
+          </View>
+
+          {/* ==================================
+              PROFILE PICTURE CARD
+          ================================== */}
+
+          <View
+            style={{
+              width:
+                '100%',
+
+              maxWidth:
+                1100,
+
+              alignSelf:
+                'center',
+
+              backgroundColor:
+                '#FFFFFF',
+
+              borderRadius:
+                15,
+
+              padding:
+                24,
+
+              marginBottom:
+                22,
+
+              flexDirection:
+                'row',
+
+              flexWrap:
+                'wrap',
+
+              alignItems:
+                'center',
+
+              gap:
+                22,
+            }}
+          >
+            {/* PHOTO / INITIALS */}
+
+            {displayedPictureUri ? (
+              <Image
+                source={{
+                  uri:
+                    displayedPictureUri,
+                }}
+                style={{
+                  width:
+                    110,
+
+                  height:
+                    110,
+
+                  borderRadius:
+                    55,
+
+                  backgroundColor:
+                    '#E8E8E8',
+                }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View
+                style={{
+                  width:
+                    110,
+
+                  height:
+                    110,
+
+                  borderRadius:
+                    55,
+
+                  backgroundColor:
+                    '#173A73',
+
+                  alignItems:
+                    'center',
+
+                  justifyContent:
+                    'center',
+                }}
+              >
+                <Text
+                  style={{
+                    color:
+                      '#FFFFFF',
+
+                    fontSize:
+                      30,
+
+                    fontWeight:
+                      '800',
+                  }}
+                >
+                  {initials ||
+                    'ST'}
+                </Text>
+              </View>
+            )}
+
+            {/* PROFILE INFO */}
+
+            <View
+              style={{
+                flex:
+                  1,
+
+                minWidth:
+                  240,
+              }}
+            >
+              <Text
+                style={{
+                  color:
+                    '#123266',
+
+                  fontSize:
+                    18,
+
+                  fontWeight:
+                    '800',
+
+                  marginBottom:
+                    5,
+                }}
+              >
+                Profile Picture
+              </Text>
+
+              <Text
+                style={{
+                  color:
+                    '#8C939F',
+
+                  fontSize:
+                    11,
+
+                  lineHeight:
+                    17,
+
+                  marginBottom:
+                    15,
+                }}
+              >
+                JPG, PNG, or WEBP. Maximum file size is 5 MB.
+              </Text>
+
+              {selectedProfilePicture && (
+                <Text
+                  style={{
+                    color:
+                      '#45B94F',
+
+                    fontSize:
+                      11,
+
+                    fontWeight:
+                      '700',
+
+                    marginBottom:
+                      12,
+                  }}
+                >
+                  New picture selected. Click Save Changes to upload it.
+                </Text>
+              )}
+
+              <View
+                style={{
+                  flexDirection:
+                    'row',
+
+                  flexWrap:
+                    'wrap',
+
+                  gap:
+                    10,
+                }}
+              >
+                {/* ADD / CHANGE */}
+
+                <TouchableOpacity
+                  style={{
+                    minWidth:
+                      170,
+
+                    height:
+                      42,
+
+                    borderRadius:
+                      8,
+
+                    backgroundColor:
+                      '#173A73',
+
+                    alignItems:
+                      'center',
+
+                    justifyContent:
+                      'center',
+
+                    paddingHorizontal:
+                      16,
+
+                    opacity:
+                      saving ||
+                      removingPicture
+                        ? 0.5
+                        : 1,
+                  }}
+                  onPress={
+                    handlePickProfilePicture
+                  }
+                  disabled={
+                    saving ||
+                    removingPicture
+                  }
+                >
+                  <Text
+                    style={{
+                      color:
+                        '#FFFFFF',
+
+                      fontSize:
+                        11,
+
+                      fontWeight:
+                        '800',
+                    }}
+                  >
+                    {profilePictureUri
+                      ? 'Change Profile Picture'
+                      : 'Add Profile Picture'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* CANCEL NEW */}
+
+                {selectedProfilePicture && (
+                  <TouchableOpacity
+                    style={{
+                      minWidth:
+                        150,
+
+                      height:
+                        42,
+
+                      borderRadius:
+                        8,
+
+                      borderWidth:
+                        1,
+
+                      borderColor:
+                        '#173A73',
+
+                      backgroundColor:
+                        '#FFFFFF',
+
+                      alignItems:
+                        'center',
+
+                      justifyContent:
+                        'center',
+
+                      paddingHorizontal:
+                        16,
+                    }}
+                    onPress={
+                      handleCancelSelectedPicture
+                    }
+                    disabled={
+                      saving
+                    }
+                  >
+                    <Text
+                      style={{
+                        color:
+                          '#173A73',
+
+                        fontSize:
+                          11,
+
+                        fontWeight:
+                          '800',
+                      }}
+                    >
+                      Cancel New Picture
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* REMOVE CURRENT */}
+
+                {profilePictureUri &&
+                  !selectedProfilePicture && (
+                    <TouchableOpacity
+                      style={{
+                        minWidth:
+                          170,
+
+                        height:
+                          42,
+
+                        borderRadius:
+                          8,
+
+                        backgroundColor:
+                          '#D32F2F',
+
+                        alignItems:
+                          'center',
+
+                        justifyContent:
+                          'center',
+
+                        paddingHorizontal:
+                          16,
+
+                        opacity:
+                          removingPicture
+                            ? 0.5
+                            : 1,
+                      }}
+                      onPress={
+                        handleRemoveProfilePicture
+                      }
+                      disabled={
+                        removingPicture ||
+                        saving
+                      }
+                    >
+                      {removingPicture ? (
+                        <ActivityIndicator
+                          size="small"
+                          color="#FFFFFF"
+                        />
+                      ) : (
+                        <Text
+                          style={{
+                            color:
+                              '#FFFFFF',
+
+                            fontSize:
+                              11,
+
+                            fontWeight:
+                              '800',
+                          }}
+                        >
+                          Remove Profile Picture
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+              </View>
+            </View>
           </View>
 
           {/* ==================================
@@ -933,9 +1998,7 @@ export default function EditStudent() {
                 Student Information
               </Text>
 
-              {/* ==================================
-                  FIXED STUDENT ID
-              ================================== */}
+              {/* STUDENT ID */}
 
               <Text
                 style={
@@ -969,9 +2032,7 @@ export default function EditStudent() {
                 Student ID is permanent and cannot be changed.
               </Text>
 
-              {/* ==================================
-                  FIRST / MIDDLE
-              ================================== */}
+              {/* FIRST / MIDDLE */}
 
               <View
                 style={
@@ -1049,9 +2110,7 @@ export default function EditStudent() {
                 </View>
               </View>
 
-              {/* ==================================
-                  LAST NAME
-              ================================== */}
+              {/* LAST */}
 
               <Text
                 style={
@@ -1082,9 +2141,7 @@ export default function EditStudent() {
                 }
               />
 
-              {/* ==================================
-                  GRADE / SECTION
-              ================================== */}
+              {/* GRADE / SECTION */}
 
               <View
                 style={
@@ -1162,9 +2219,7 @@ export default function EditStudent() {
                 </View>
               </View>
 
-              {/* ==================================
-                  CONTACT
-              ================================== */}
+              {/* CONTACT */}
 
               <Text
                 style={
@@ -1184,21 +2239,28 @@ export default function EditStudent() {
                 onChangeText={(
                   text
                 ) => {
+                  const numbersOnly =
+                    text.replace(
+                      /[^0-9]/g,
+                      ''
+                    );
+
                   setContactNumber(
-                    text
+                    numbersOnly
                   );
 
                   clearError();
                 }}
                 keyboardType="phone-pad"
+                maxLength={
+                  15
+                }
                 editable={
                   !saving
                 }
               />
 
-              {/* ==================================
-                  EMAIL
-              ================================== */}
+              {/* EMAIL */}
 
               <Text
                 style={
@@ -1252,9 +2314,7 @@ export default function EditStudent() {
                 Account Information
               </Text>
 
-              {/* ==================================
-                  USERNAME
-              ================================== */}
+              {/* USERNAME */}
 
               <Text
                 style={
@@ -1291,9 +2351,7 @@ export default function EditStudent() {
                 Username is editable and is used by the student when logging in.
               </Text>
 
-              {/* ==================================
-                  ACCOUNT STATUS
-              ================================== */}
+              {/* ACCOUNT STATUS */}
 
               <View
                 style={
@@ -1359,9 +2417,7 @@ export default function EditStudent() {
                 Inactive students cannot log in to SmartFine. Their existing fine and payment records are preserved.
               </Text>
 
-              {/* ==================================
-                  PASSWORD NOTE
-              ================================== */}
+              {/* PASSWORD NOTE */}
 
               <View
                 style={
@@ -1458,7 +2514,8 @@ export default function EditStudent() {
                 handleSave
               }
               disabled={
-                saving
+                saving ||
+                removingPicture
               }
             >
               {saving ? (
@@ -1484,13 +2541,15 @@ export default function EditStudent() {
 }
 
 // ==========================================
-// TEMPORARY SIDEBAR SYMBOLS
+// SIDEBAR SYMBOLS
 // ==========================================
 
 function getMenuSymbol(
   label: string
 ) {
-  switch (label) {
+  switch (
+    label
+  ) {
     case 'Dashboard':
       return '⌂';
 

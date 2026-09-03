@@ -20,14 +20,19 @@ import {
   useRouter,
 } from 'expo-router';
 
+import * as ImagePicker from 'expo-image-picker';
+
 import {
   useAuth,
 } from '@/hooks/use-auth';
 
 import {
+  API_BASE,
+} from '@/constants/api';
+
+import {
   styles,
 } from './add-student.styles';
-import { API_BASE } from '@/constants/api';
 
 // ==========================================
 // TYPES
@@ -68,6 +73,18 @@ export default function AddStudent() {
     studentIdLoading,
     setStudentIdLoading,
   ] = useState(true);
+
+  // ==========================================
+  // PROFILE PICTURE
+  // ==========================================
+
+  const [
+    profilePicture,
+    setProfilePicture,
+  ] =
+    useState<ImagePicker.ImagePickerAsset | null>(
+      null
+    );
 
   // ==========================================
   // STUDENT INFORMATION
@@ -209,10 +226,6 @@ export default function AddStudent() {
   //
   // Will Bitoy
   // -> wbitoy
-  //
-  // John Dela Cruz
-  // -> jdelacruz
-  //
   // ==========================================
 
   const createSuggestedUsername = (
@@ -298,7 +311,7 @@ export default function AddStudent() {
     };
 
   // ==========================================
-  // LOAD WHEN SCREEN OPENS
+  // LOAD SCREEN
   // ==========================================
 
   useEffect(() => {
@@ -306,26 +319,131 @@ export default function AddStudent() {
   }, []);
 
   // ==========================================
-  // NAVIGATION
-  // ==========================================
-
-  const handleNavigation = (
-    item: NavItem
-  ) => {
-    router.push(
-      item.route as any
-    );
-  };
-
-  // ==========================================
   // CLEAR ERROR
   // ==========================================
 
-  const clearError = () => {
-    if (errorMessage) {
-      setErrorMessage('');
-    }
-  };
+  const clearError =
+    () => {
+      if (
+        errorMessage
+      ) {
+        setErrorMessage('');
+      }
+    };
+
+  // ==========================================
+  // PICK PROFILE PICTURE
+  // ==========================================
+
+  const handlePickProfilePicture =
+    async () => {
+      try {
+        clearError();
+
+        // ======================================
+        // REQUEST PERMISSION ON MOBILE
+        // ======================================
+
+        if (
+          Platform.OS !==
+          'web'
+        ) {
+          const permission =
+            await ImagePicker
+              .requestMediaLibraryPermissionsAsync();
+
+          if (
+            !permission.granted
+          ) {
+            showMessage(
+              'Permission Required',
+              'SmartFine needs access to your photo library so you can select a student profile picture.'
+            );
+
+            return;
+          }
+        }
+
+        // ======================================
+        // OPEN IMAGE LIBRARY
+        // ======================================
+
+        const result =
+          await ImagePicker
+            .launchImageLibraryAsync({
+              mediaTypes: [
+                'images',
+              ],
+
+              allowsEditing:
+                true,
+
+              aspect: [
+                1,
+                1,
+              ],
+
+              quality:
+                0.8,
+            });
+
+        if (
+          result.canceled ||
+          !result.assets ||
+          result.assets.length ===
+            0
+        ) {
+          return;
+        }
+
+        const selectedAsset =
+          result.assets[0];
+
+        // ======================================
+        // CHECK FILE SIZE
+        // ======================================
+
+        if (
+          selectedAsset.fileSize &&
+          selectedAsset.fileSize >
+            5 *
+              1024 *
+              1024
+        ) {
+          showMessage(
+            'Image Too Large',
+            'Profile picture must not exceed 5 MB.'
+          );
+
+          return;
+        }
+
+        setProfilePicture(
+          selectedAsset
+        );
+      } catch (error) {
+        console.error(
+          'Select profile picture error:',
+          error
+        );
+
+        showMessage(
+          'Profile Picture',
+          'Could not select the profile picture.'
+        );
+      }
+    };
+
+  // ==========================================
+  // REMOVE SELECTED PROFILE PICTURE
+  // ==========================================
+
+  const handleRemoveSelectedPicture =
+    () => {
+      setProfilePicture(
+        null
+      );
+    };
 
   // ==========================================
   // FIRST NAME CHANGE
@@ -334,9 +452,13 @@ export default function AddStudent() {
   const handleFirstNameChange = (
     text: string
   ) => {
-    setFirstName(text);
+    setFirstName(
+      text
+    );
 
-    if (!usernameEdited) {
+    if (
+      !usernameEdited
+    ) {
       setUsername(
         createSuggestedUsername(
           text,
@@ -355,9 +477,13 @@ export default function AddStudent() {
   const handleLastNameChange = (
     text: string
   ) => {
-    setLastName(text);
+    setLastName(
+      text
+    );
 
-    if (!usernameEdited) {
+    if (
+      !usernameEdited
+    ) {
       setUsername(
         createSuggestedUsername(
           firstName,
@@ -371,7 +497,6 @@ export default function AddStudent() {
 
   // ==========================================
   // USERNAME CHANGE
-  // Editable by Admin
   // ==========================================
 
   const handleUsernameChange = (
@@ -395,6 +520,149 @@ export default function AddStudent() {
 
     clearError();
   };
+
+  // ==========================================
+  // UPLOAD PROFILE PICTURE
+  // ==========================================
+
+  const uploadProfilePicture =
+    async (
+      studentDatabaseId:
+        number
+    ) => {
+      if (
+        !profilePicture
+      ) {
+        return {
+          success: true,
+        };
+      }
+
+      try {
+        const formData =
+          new FormData();
+
+        // ======================================
+        // WEB
+        // ======================================
+
+        if (
+          Platform.OS ===
+          'web'
+        ) {
+          if (
+            profilePicture.file
+          ) {
+            formData.append(
+              'profilePicture',
+              profilePicture.file
+            );
+          } else {
+            const fileResponse =
+              await fetch(
+                profilePicture.uri
+              );
+
+            const blob =
+              await fileResponse.blob();
+
+            const fileName =
+              profilePicture.fileName ||
+              `student-${studentDatabaseId}.jpg`;
+
+            formData.append(
+              'profilePicture',
+              blob,
+              fileName
+            );
+          }
+        } else {
+          // ====================================
+          // ANDROID / IOS
+          // ====================================
+
+          const fileName =
+            profilePicture.fileName ||
+            `student-${studentDatabaseId}.jpg`;
+
+          const mimeType =
+            profilePicture.mimeType ||
+            'image/jpeg';
+
+          formData.append(
+            'profilePicture',
+            {
+              uri:
+                profilePicture.uri,
+
+              name:
+                fileName,
+
+              type:
+                mimeType,
+            } as any
+          );
+        }
+
+        // ======================================
+        // SEND UPLOAD
+        // ======================================
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/students/${studentDatabaseId}/profile-picture`,
+            {
+              method:
+                'POST',
+
+              body:
+                formData,
+            }
+          );
+
+        const data =
+          await response.json();
+
+        console.log(
+          'Profile picture upload response:',
+          data
+        );
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          return {
+            success:
+              false,
+
+            message:
+              data.message ||
+              'Profile picture could not be uploaded.',
+          };
+        }
+
+        return {
+          success:
+            true,
+
+          data,
+        };
+      } catch (error) {
+        console.error(
+          'Upload profile picture error:',
+          error
+        );
+
+        return {
+          success:
+            false,
+
+          message:
+            'Student account was created, but the profile picture could not be uploaded.',
+        };
+      }
+    };
 
   // ==========================================
   // CREATE STUDENT
@@ -427,16 +695,52 @@ export default function AddStudent() {
       }
 
       // ======================================
-      // USERNAME VALIDATION
-      // Alphanumeric only
+      // FIRST NAME
       // ======================================
+
+      if (
+        firstName
+          .trim()
+          .length < 2
+      ) {
+        setErrorMessage(
+          'First Name must contain at least 2 characters.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // LAST NAME
+      // ======================================
+
+      if (
+        lastName
+          .trim()
+          .length < 2
+      ) {
+        setErrorMessage(
+          'Last Name must contain at least 2 characters.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // USERNAME
+      // ======================================
+
+      const normalizedUsername =
+        username
+          .trim()
+          .toLowerCase();
 
       const usernamePattern =
         /^[a-z0-9]+$/;
 
       if (
         !usernamePattern.test(
-          username
+          normalizedUsername
         )
       ) {
         setErrorMessage(
@@ -446,8 +750,56 @@ export default function AddStudent() {
         return;
       }
 
+      if (
+        normalizedUsername.length <
+        3
+      ) {
+        setErrorMessage(
+          'Username must contain at least 3 characters.'
+        );
+
+        return;
+      }
+
       // ======================================
-      // EMAIL VALIDATION
+      // CONTACT NUMBER
+      // ======================================
+
+      const normalizedContact =
+        contactNumber
+          .trim()
+          .replace(
+            /[^0-9]/g,
+            ''
+          );
+
+      if (
+        !/^[0-9]+$/.test(
+          normalizedContact
+        )
+      ) {
+        setErrorMessage(
+          'Contact Number must contain numbers only.'
+        );
+
+        return;
+      }
+
+      if (
+        normalizedContact.length <
+          10 ||
+        normalizedContact.length >
+          15
+      ) {
+        setErrorMessage(
+          'Contact Number must contain 10 to 15 digits.'
+        );
+
+        return;
+      }
+
+      // ======================================
+      // EMAIL
       // ======================================
 
       const emailPattern =
@@ -467,16 +819,11 @@ export default function AddStudent() {
 
       // ======================================
       // PASSWORD
-      //
-      // REQUIRED:
-      // 8+ characters
-      // 1 letter
-      // 1 number
-      // 1 special character
       // ======================================
 
       if (
-        password.length < 8
+        password.length <
+        8
       ) {
         setErrorMessage(
           'Password must contain at least 8 characters.'
@@ -500,7 +847,9 @@ export default function AddStudent() {
           password
         );
 
-      if (!hasLetter) {
+      if (
+        !hasLetter
+      ) {
         setErrorMessage(
           'Password must contain at least one letter.'
         );
@@ -508,7 +857,9 @@ export default function AddStudent() {
         return;
       }
 
-      if (!hasNumber) {
+      if (
+        !hasNumber
+      ) {
         setErrorMessage(
           'Password must contain at least one number.'
         );
@@ -542,11 +893,13 @@ export default function AddStudent() {
       }
 
       // ======================================
-      // SEND TO BACKEND
+      // CREATE ACCOUNT
       // ======================================
 
       try {
-        setLoading(true);
+        setLoading(
+          true
+        );
 
         const response =
           await fetch(
@@ -563,9 +916,7 @@ export default function AddStudent() {
               body:
                 JSON.stringify({
                   username:
-                    username
-                      .trim()
-                      .toLowerCase(),
+                    normalizedUsername,
 
                   firstName:
                     firstName.trim(),
@@ -582,7 +933,7 @@ export default function AddStudent() {
                       .toLowerCase(),
 
                   contactNumber:
-                    contactNumber.trim(),
+                    normalizedContact,
 
                   gradeLevel:
                     gradeLevel.trim(),
@@ -595,7 +946,7 @@ export default function AddStudent() {
                   accountStatus:
                     accountActive
                       ? 'ACTIVE'
-                      : 'DEACTIVATED',
+                      : 'INACTIVE',
                 }),
             }
           );
@@ -609,7 +960,7 @@ export default function AddStudent() {
         );
 
         // ======================================
-        // BACKEND ERROR
+        // CREATE ERROR
         // ======================================
 
         if (
@@ -624,13 +975,55 @@ export default function AddStudent() {
           return;
         }
 
+        const newStudent =
+          data.student;
+
+        const studentDatabaseId =
+          Number(
+            newStudent?.id
+          );
+
+        // ======================================
+        // UPLOAD PROFILE PICTURE
+        // ======================================
+
+        let pictureUploadSucceeded =
+          true;
+
+        let pictureUploadMessage =
+          '';
+
+        if (
+          profilePicture &&
+          studentDatabaseId
+        ) {
+          const uploadResult =
+            await uploadProfilePicture(
+              studentDatabaseId
+            );
+
+          if (
+            !uploadResult.success
+          ) {
+            pictureUploadSucceeded =
+              false;
+
+            pictureUploadMessage =
+              uploadResult.message ||
+              'The profile picture could not be uploaded.';
+          }
+        }
+
         // ======================================
         // SUCCESS
         // ======================================
 
         handleSuccess(
-          data.student.studentId,
-          data.student.username
+          newStudent.studentId,
+          newStudent.username,
+          studentDatabaseId,
+          pictureUploadSucceeded,
+          pictureUploadMessage
         );
       } catch (error) {
         console.error(
@@ -642,7 +1035,9 @@ export default function AddStudent() {
           'Could not connect to the SmartFine server. Please check the backend connection.'
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     };
 
@@ -651,13 +1046,47 @@ export default function AddStudent() {
   // ==========================================
 
   const handleSuccess = (
-    generatedStudentId: string,
-    createdUsername: string
+    generatedStudentId:
+      string,
+
+    createdUsername:
+      string,
+
+    studentDatabaseId:
+      number,
+
+    pictureUploadSucceeded:
+      boolean,
+
+    pictureUploadMessage:
+      string
   ) => {
-    const message =
+    let message =
       `Student account created successfully.\n\n` +
       `Student ID: ${generatedStudentId}\n` +
       `Username: ${createdUsername}`;
+
+    if (
+      profilePicture &&
+      pictureUploadSucceeded
+    ) {
+      message +=
+        '\n\nProfile picture uploaded successfully.';
+    }
+
+    if (
+      profilePicture &&
+      !pictureUploadSucceeded
+    ) {
+      message +=
+        `\n\nThe account was created, but the profile picture was not uploaded.\n\n` +
+        `${pictureUploadMessage}\n\n` +
+        `You can add the picture from Edit Student.`;
+    }
+
+    // ======================================
+    // WEB
+    // ======================================
 
     if (
       Platform.OS ===
@@ -667,25 +1096,56 @@ export default function AddStudent() {
         message
       );
 
+      if (
+        profilePicture &&
+        !pictureUploadSucceeded &&
+        studentDatabaseId
+      ) {
+        router.replace(
+          `/admin/students/${studentDatabaseId}` as any
+        );
+
+        return;
+      }
+
       router.replace(
-        '/admin/students'
+        '/admin/students' as any
       );
 
       return;
     }
 
+    // ======================================
+    // MOBILE
+    // ======================================
+
     Alert.alert(
       'Student Created',
+
       message,
+
       [
         {
           text:
             'OK',
 
-          onPress: () =>
+          onPress: () => {
+            if (
+              profilePicture &&
+              !pictureUploadSucceeded &&
+              studentDatabaseId
+            ) {
+              router.replace(
+                `/admin/students/${studentDatabaseId}` as any
+              );
+
+              return;
+            }
+
             router.replace(
-              '/admin/students'
-            ),
+              '/admin/students' as any
+            );
+          },
         },
       ]
     );
@@ -695,9 +1155,22 @@ export default function AddStudent() {
   // CANCEL
   // ==========================================
 
-  const handleCancel = () => {
-    router.replace(
-      '/admin/students'
+  const handleCancel =
+    () => {
+      router.replace(
+        '/admin/students' as any
+      );
+    };
+
+  // ==========================================
+  // NAVIGATION
+  // ==========================================
+
+  const handleNavigation = (
+    item: NavItem
+  ) => {
+    router.push(
+      item.route as any
     );
   };
 
@@ -711,7 +1184,7 @@ export default function AddStudent() {
         await logout();
 
         router.replace(
-          '/login'
+          '/login' as any
         );
       } catch (error) {
         console.error(
@@ -721,46 +1194,76 @@ export default function AddStudent() {
       }
     };
 
-  const handleLogout = () => {
+  const handleLogout =
+    () => {
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        const confirmed =
+          window.confirm(
+            'Are you sure you want to log out?'
+          );
+
+        if (
+          confirmed
+        ) {
+          performLogout();
+        }
+
+        return;
+      }
+
+      Alert.alert(
+        'Log Out',
+
+        'Are you sure you want to log out?',
+
+        [
+          {
+            text:
+              'Cancel',
+
+            style:
+              'cancel',
+          },
+
+          {
+            text:
+              'Log Out',
+
+            style:
+              'destructive',
+
+            onPress:
+              performLogout,
+          },
+        ]
+      );
+    };
+
+  // ==========================================
+  // MESSAGE
+  // ==========================================
+
+  const showMessage = (
+    title: string,
+    message: string
+  ) => {
     if (
       Platform.OS ===
       'web'
     ) {
-      const confirmed =
-        window.confirm(
-          'Are you sure you want to log out?'
-        );
-
-      if (confirmed) {
-        performLogout();
-      }
+      window.alert(
+        `${title}\n\n${message}`
+      );
 
       return;
     }
 
     Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text:
-            'Cancel',
-
-          style:
-            'cancel',
-        },
-
-        {
-          text:
-            'Log Out',
-
-          style:
-            'destructive',
-
-          onPress:
-            performLogout,
-        },
-      ]
+      title,
+      message
     );
   };
 
@@ -919,17 +1422,149 @@ export default function AddStudent() {
               style={
                 styles.uploadButton
               }
-              disabled
+              onPress={
+                handlePickProfilePicture
+              }
+              disabled={
+                loading
+              }
             >
               <Text
                 style={
                   styles.uploadButtonText
                 }
               >
-                Upload a Profile Picture
+                {profilePicture
+                  ? 'Change Profile Picture'
+                  : 'Upload a Profile Picture'}
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* ==================================
+              PROFILE PICTURE PREVIEW
+          ================================== */}
+
+          {profilePicture && (
+            <View
+              style={{
+                width:
+                  '100%',
+
+                maxWidth:
+                  1250,
+
+                alignSelf:
+                  'center',
+
+                backgroundColor:
+                  '#FFFFFF',
+
+                borderRadius:
+                  14,
+
+                padding:
+                  18,
+
+                marginBottom:
+                  20,
+
+                flexDirection:
+                  'row',
+
+                alignItems:
+                  'center',
+
+                gap:
+                  16,
+              }}
+            >
+              <Image
+                source={{
+                  uri:
+                    profilePicture.uri,
+                }}
+                style={{
+                  width:
+                    90,
+
+                  height:
+                    90,
+
+                  borderRadius:
+                    45,
+
+                  backgroundColor:
+                    '#E8E8E8',
+                }}
+                resizeMode="cover"
+              />
+
+              <View
+                style={{
+                  flex:
+                    1,
+                }}
+              >
+                <Text
+                  style={{
+                    color:
+                      '#123266',
+
+                    fontSize:
+                      14,
+
+                    fontWeight:
+                      '800',
+
+                    marginBottom:
+                      4,
+                  }}
+                >
+                  Profile Picture Selected
+                </Text>
+
+                <Text
+                  style={{
+                    color:
+                      '#8C939F',
+
+                    fontSize:
+                      11,
+
+                    marginBottom:
+                      10,
+                  }}
+                >
+                  This picture will be uploaded after the student account is created.
+                </Text>
+
+                <TouchableOpacity
+                  onPress={
+                    handleRemoveSelectedPicture
+                  }
+                  disabled={
+                    loading
+                  }
+                >
+                  <Text
+                    style={{
+                      color:
+                        '#D32F2F',
+
+                      fontSize:
+                        11,
+
+                      fontWeight:
+                        '800',
+                    }}
+                  >
+                    Remove Selected Picture
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* ==================================
               MOBILE NAV
@@ -1262,13 +1897,22 @@ export default function AddStudent() {
                 onChangeText={(
                   text
                 ) => {
+                  const numbersOnly =
+                    text.replace(
+                      /[^0-9]/g,
+                      ''
+                    );
+
                   setContactNumber(
-                    text
+                    numbersOnly
                   );
 
                   clearError();
                 }}
                 keyboardType="phone-pad"
+                maxLength={
+                  15
+                }
                 editable={
                   !loading
                 }
@@ -1652,7 +2296,7 @@ export default function AddStudent() {
 }
 
 // ==========================================
-// TEMPORARY SIDEBAR SYMBOLS
+// SIDEBAR SYMBOLS
 // ==========================================
 
 function getMenuSymbol(

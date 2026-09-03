@@ -1,11 +1,225 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
 
 const db = require('../database/database');
 
 console.log('students.js loaded');
+
+// ==========================================
+// PROFILE PICTURE UPLOAD DIRECTORY
+// ==========================================
+
+const studentProfileUploadDirectory =
+  path.join(
+    __dirname,
+    '..',
+    'uploads',
+    'student-profiles'
+  );
+
+// ==========================================
+// CREATE DIRECTORY IF IT DOES NOT EXIST
+// ==========================================
+
+if (
+  !fs.existsSync(
+    studentProfileUploadDirectory
+  )
+) {
+  fs.mkdirSync(
+    studentProfileUploadDirectory,
+    {
+      recursive: true,
+    }
+  );
+}
+
+// ==========================================
+// MULTER STORAGE
+// ==========================================
+
+const profilePictureStorage =
+  multer.diskStorage({
+    destination: (
+      req,
+      file,
+      callback
+    ) => {
+      callback(
+        null,
+        studentProfileUploadDirectory
+      );
+    },
+
+    filename: (
+      req,
+      file,
+      callback
+    ) => {
+      const studentId =
+        String(
+          req.params.id ||
+            'student'
+        );
+
+      const extension =
+        getImageExtension(
+          file
+        );
+
+      const filename =
+        `student-${studentId}-${Date.now()}${extension}`;
+
+      callback(
+        null,
+        filename
+      );
+    },
+  });
+
+// ==========================================
+// IMAGE FILTER
+// ==========================================
+
+function profilePictureFilter(
+  req,
+  file,
+  callback
+) {
+  const allowedTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+  ];
+
+  if (
+    allowedTypes.includes(
+      file.mimetype
+    )
+  ) {
+    callback(
+      null,
+      true
+    );
+
+    return;
+  }
+
+  callback(
+    new Error(
+      'Only JPG, JPEG, PNG, and WEBP images are allowed.'
+    )
+  );
+}
+
+// ==========================================
+// PROFILE PICTURE UPLOAD
+// ==========================================
+
+const uploadProfilePicture =
+  multer({
+    storage:
+      profilePictureStorage,
+
+    fileFilter:
+      profilePictureFilter,
+
+    limits: {
+      fileSize:
+        5 * 1024 * 1024,
+    },
+  });
+
+// ==========================================
+// GET IMAGE EXTENSION
+// ==========================================
+
+function getImageExtension(
+  file
+) {
+  const originalExtension =
+    path
+      .extname(
+        file.originalname ||
+          ''
+      )
+      .toLowerCase();
+
+  if (
+    originalExtension ===
+      '.jpg' ||
+    originalExtension ===
+      '.jpeg' ||
+    originalExtension ===
+      '.png' ||
+    originalExtension ===
+      '.webp'
+  ) {
+    return originalExtension;
+  }
+
+  switch (
+    file.mimetype
+  ) {
+    case 'image/png':
+      return '.png';
+
+    case 'image/webp':
+      return '.webp';
+
+    default:
+      return '.jpg';
+  }
+}
+
+// ==========================================
+// DELETE PROFILE PICTURE FILE
+// ==========================================
+
+function deleteProfilePictureFile(
+  profilePictureUri
+) {
+  try {
+    if (
+      !profilePictureUri
+    ) {
+      return;
+    }
+
+    const filename =
+      path.basename(
+        profilePictureUri
+      );
+
+    const absolutePath =
+      path.join(
+        studentProfileUploadDirectory,
+        filename
+      );
+
+    if (
+      fs.existsSync(
+        absolutePath
+      )
+    ) {
+      fs.unlinkSync(
+        absolutePath
+      );
+    }
+  } catch (error) {
+    console.error(
+      'Delete profile picture file error:',
+      error
+    );
+  }
+}
 
 // ==========================================
 // GENERATE NEXT STUDENT ID
@@ -47,17 +261,20 @@ function generateNextStudentId() {
     ).split('-');
 
   const lastNumber =
-    Number(parts[1]) || 0;
+    Number(
+      parts[1]
+    ) || 0;
 
   const nextNumber =
     lastNumber + 1;
 
   const formattedNumber =
-    String(nextNumber)
-      .padStart(
-        4,
-        '0'
-      );
+    String(
+      nextNumber
+    ).padStart(
+      4,
+      '0'
+    );
 
   return `${currentYear}-${formattedNumber}`;
 }
@@ -71,7 +288,10 @@ function generateSuggestedUsername(
   lastName
 ) {
   const cleanFirstName =
-    String(firstName || '')
+    String(
+      firstName ||
+        ''
+    )
       .trim()
       .toLowerCase()
       .replace(
@@ -80,7 +300,10 @@ function generateSuggestedUsername(
       );
 
   const cleanLastName =
-    String(lastName || '')
+    String(
+      lastName ||
+        ''
+    )
       .trim()
       .toLowerCase()
       .replace(
@@ -96,7 +319,9 @@ function generateSuggestedUsername(
   }
 
   return (
-    cleanFirstName.charAt(0) +
+    cleanFirstName.charAt(
+      0
+    ) +
     cleanLastName
   );
 }
@@ -128,13 +353,17 @@ function formatName(
 
 router.get(
   '/next-id',
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     try {
       const studentId =
         generateNextStudentId();
 
       return res.json({
         success: true,
+
         studentId,
       });
     } catch (error) {
@@ -166,7 +395,10 @@ router.get(
 
 router.get(
   '/',
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     try {
       const students =
         db.prepare(`
@@ -180,6 +412,10 @@ router.get(
 
             u.username,
 
+            u.first_name,
+            u.middle_name,
+            u.last_name,
+
             TRIM(
               u.first_name || ' ' ||
               COALESCE(
@@ -190,11 +426,14 @@ router.get(
             ) AS full_name,
 
             u.email,
+            u.contact_number,
 
             u.grade_level,
             u.section,
 
             u.account_status,
+
+            u.profile_picture_uri,
 
             COALESCE(
               SUM(
@@ -283,9 +522,11 @@ router.get(
             u.middle_name,
             u.last_name,
             u.email,
+            u.contact_number,
             u.grade_level,
             u.section,
-            u.account_status
+            u.account_status,
+            u.profile_picture_uri
 
           ORDER BY
             u.last_name ASC,
@@ -294,6 +535,7 @@ router.get(
 
       return res.json({
         success: true,
+
         students,
       });
     } catch (error) {
@@ -346,7 +588,8 @@ router.post(
         password,
 
         accountStatus,
-      } = req.body;
+      } =
+        req.body;
 
       // ======================================
       // REQUIRED FIELDS
@@ -375,7 +618,7 @@ router.post(
       }
 
       // ======================================
-      // NORMALIZE VALUES
+      // NORMALIZE
       // ======================================
 
       const normalizedFirstName =
@@ -483,13 +726,31 @@ router.post(
           });
       }
 
+      if (
+        normalizedUsername.length <
+        3
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_USERNAME',
+
+            message:
+              'Username must contain at least 3 characters.',
+          });
+      }
+
       // ======================================
       // DUPLICATE USERNAME
       // ======================================
 
       const existingUsername =
         db.prepare(`
-          SELECT id
+          SELECT
+            id
 
           FROM users
 
@@ -544,7 +805,8 @@ router.post(
 
       const existingEmail =
         db.prepare(`
-          SELECT id
+          SELECT
+            id
 
           FROM users
 
@@ -569,6 +831,47 @@ router.post(
 
             message:
               'This email address is already being used.',
+          });
+      }
+
+      // ======================================
+      // CONTACT NUMBER
+      // ======================================
+
+      if (
+        !/^[0-9]+$/.test(
+          normalizedContactNumber
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_CONTACT_NUMBER',
+
+            message:
+              'Contact Number must contain numbers only.',
+          });
+      }
+
+      if (
+        normalizedContactNumber.length <
+          10 ||
+        normalizedContactNumber.length >
+          15
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_CONTACT_NUMBER',
+
+            message:
+              'Contact Number must contain 10 to 15 digits.',
           });
       }
 
@@ -608,7 +911,9 @@ router.post(
           passwordValue
         );
 
-      if (!hasLetter) {
+      if (
+        !hasLetter
+      ) {
         return res
           .status(400)
           .json({
@@ -622,7 +927,9 @@ router.post(
           });
       }
 
-      if (!hasNumber) {
+      if (
+        !hasNumber
+      ) {
         return res
           .status(400)
           .json({
@@ -684,7 +991,8 @@ router.post(
 
       const existingStudentNumber =
         db.prepare(`
-          SELECT id
+          SELECT
+            id
 
           FROM users
 
@@ -721,7 +1029,7 @@ router.post(
         );
 
       // ======================================
-      // INSERT
+      // CREATE STUDENT
       // ======================================
 
       const result =
@@ -744,7 +1052,9 @@ router.post(
             account_status,
 
             grade_level,
-            section
+            section,
+
+            profile_picture_uri
           )
 
           VALUES (
@@ -765,7 +1075,9 @@ router.post(
             ?,
 
             ?,
-            ?
+            ?,
+
+            NULL
           )
         `).run(
           generatedStudentId,
@@ -786,6 +1098,15 @@ router.post(
           normalizedSection
         );
 
+      const createdStudentId =
+        Number(
+          result.lastInsertRowid
+        );
+
+      // ======================================
+      // SUCCESS
+      // ======================================
+
       return res
         .status(201)
         .json({
@@ -796,9 +1117,7 @@ router.post(
 
           student: {
             id:
-              Number(
-                result.lastInsertRowid
-              ),
+              createdStudentId,
 
             studentId:
               generatedStudentId,
@@ -815,6 +1134,13 @@ router.post(
             lastName:
               normalizedLastName,
 
+            fullName:
+              formatName(
+                normalizedFirstName,
+                normalizedMiddleName,
+                normalizedLastName
+              ),
+
             email:
               normalizedEmail,
 
@@ -829,6 +1155,9 @@ router.post(
 
             accountStatus:
               normalizedStatus,
+
+            profilePictureUri:
+              null,
 
             role:
               'STUDENT',
@@ -859,6 +1188,436 @@ router.post(
 );
 
 // ==========================================
+// UPLOAD / CHANGE PROFILE PICTURE
+//
+// POST /api/students/:id/profile-picture
+//
+// FORM-DATA FIELD:
+// profilePicture
+// ==========================================
+
+router.post(
+  '/:id/profile-picture',
+  (
+    req,
+    res
+  ) => {
+    uploadProfilePicture.single(
+      'profilePicture'
+    )(
+      req,
+      res,
+      (
+        uploadError
+      ) => {
+        if (
+          uploadError
+        ) {
+          console.error(
+            'Profile picture upload error:',
+            uploadError
+          );
+
+          let message =
+            uploadError.message ||
+            'Failed to upload profile picture.';
+
+          if (
+            uploadError.code ===
+            'LIMIT_FILE_SIZE'
+          ) {
+            message =
+              'Profile picture must not exceed 5 MB.';
+          }
+
+          return res
+            .status(400)
+            .json({
+              success: false,
+
+              code:
+                'PROFILE_PICTURE_UPLOAD_ERROR',
+
+              message,
+            });
+        }
+
+        try {
+          const studentId =
+            Number(
+              req.params.id
+            );
+
+          // ====================================
+          // VALIDATE ID
+          // ====================================
+
+          if (
+            !Number.isInteger(
+              studentId
+            ) ||
+            studentId <= 0
+          ) {
+            if (
+              req.file
+            ) {
+              deleteProfilePictureFile(
+                req.file.path
+              );
+            }
+
+            return res
+              .status(400)
+              .json({
+                success: false,
+
+                code:
+                  'INVALID_STUDENT_ID',
+
+                message:
+                  'Invalid student ID.',
+              });
+          }
+
+          // ====================================
+          // FILE REQUIRED
+          // ====================================
+
+          if (
+            !req.file
+          ) {
+            return res
+              .status(400)
+              .json({
+                success: false,
+
+                code:
+                  'PROFILE_PICTURE_REQUIRED',
+
+                message:
+                  'Please select a profile picture.',
+              });
+          }
+
+          // ====================================
+          // FIND STUDENT
+          // ====================================
+
+          const student =
+            db.prepare(`
+              SELECT
+                id,
+
+                student_number,
+
+                first_name,
+                middle_name,
+                last_name,
+
+                profile_picture_uri
+
+              FROM users
+
+              WHERE
+                id = ?
+
+                AND
+                role =
+                  'STUDENT'
+            `).get(
+              studentId
+            );
+
+          if (
+            !student
+          ) {
+            deleteProfilePictureFile(
+              req.file.path
+            );
+
+            return res
+              .status(404)
+              .json({
+                success: false,
+
+                code:
+                  'STUDENT_NOT_FOUND',
+
+                message:
+                  'Student not found.',
+              });
+          }
+
+          // ====================================
+          // NEW PUBLIC URI
+          // ====================================
+
+          const profilePictureUri =
+            `/uploads/student-profiles/${req.file.filename}`;
+
+          // ====================================
+          // SAVE URI
+          // ====================================
+
+          db.prepare(`
+            UPDATE users
+
+            SET
+              profile_picture_uri = ?,
+
+              updated_at =
+                CURRENT_TIMESTAMP
+
+            WHERE
+              id = ?
+
+              AND
+              role =
+                'STUDENT'
+          `).run(
+            profilePictureUri,
+            studentId
+          );
+
+          // ====================================
+          // DELETE OLD FILE
+          // ====================================
+
+          if (
+            student.profile_picture_uri
+          ) {
+            deleteProfilePictureFile(
+              student.profile_picture_uri
+            );
+          }
+
+          // ====================================
+          // SUCCESS
+          // ====================================
+
+          return res.json({
+            success: true,
+
+            message:
+              'Profile picture updated successfully.',
+
+            profilePictureUri,
+
+            student: {
+              id:
+                student.id,
+
+              studentId:
+                student.student_number,
+
+              fullName:
+                formatName(
+                  student.first_name,
+                  student.middle_name,
+                  student.last_name
+                ),
+
+              profilePictureUri,
+            },
+          });
+        } catch (error) {
+          console.error(
+            'Save profile picture error:',
+            error
+          );
+
+          if (
+            req.file
+          ) {
+            deleteProfilePictureFile(
+              req.file.path
+            );
+          }
+
+          return res
+            .status(500)
+            .json({
+              success: false,
+
+              code:
+                'SAVE_PROFILE_PICTURE_ERROR',
+
+              message:
+                'Failed to save student profile picture.',
+
+              error:
+                error.message,
+            });
+        }
+      }
+    );
+  }
+);
+
+// ==========================================
+// REMOVE PROFILE PICTURE
+//
+// DELETE /api/students/:id/profile-picture
+// ==========================================
+
+router.delete(
+  '/:id/profile-picture',
+  (
+    req,
+    res
+  ) => {
+    try {
+      const studentId =
+        Number(
+          req.params.id
+        );
+
+      // ======================================
+      // VALIDATE
+      // ======================================
+
+      if (
+        !Number.isInteger(
+          studentId
+        ) ||
+        studentId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_STUDENT_ID',
+
+            message:
+              'Invalid student ID.',
+          });
+      }
+
+      // ======================================
+      // FIND STUDENT
+      // ======================================
+
+      const student =
+        db.prepare(`
+          SELECT
+            id,
+
+            profile_picture_uri
+
+          FROM users
+
+          WHERE
+            id = ?
+
+            AND
+            role =
+              'STUDENT'
+        `).get(
+          studentId
+        );
+
+      if (
+        !student
+      ) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+
+            code:
+              'STUDENT_NOT_FOUND',
+
+            message:
+              'Student not found.',
+          });
+      }
+
+      // ======================================
+      // NOTHING TO REMOVE
+      // ======================================
+
+      if (
+        !student.profile_picture_uri
+      ) {
+        return res.json({
+          success: true,
+
+          message:
+            'Student does not have a profile picture.',
+
+          profilePictureUri:
+            null,
+        });
+      }
+
+      // ======================================
+      // REMOVE FROM DATABASE
+      // ======================================
+
+      db.prepare(`
+        UPDATE users
+
+        SET
+          profile_picture_uri =
+            NULL,
+
+          updated_at =
+            CURRENT_TIMESTAMP
+
+        WHERE
+          id = ?
+
+          AND
+          role =
+            'STUDENT'
+      `).run(
+        studentId
+      );
+
+      // ======================================
+      // REMOVE FILE
+      // ======================================
+
+      deleteProfilePictureFile(
+        student.profile_picture_uri
+      );
+
+      return res.json({
+        success: true,
+
+        message:
+          'Profile picture removed successfully.',
+
+        profilePictureUri:
+          null,
+      });
+    } catch (error) {
+      console.error(
+        'Remove profile picture error:',
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          code:
+            'REMOVE_PROFILE_PICTURE_ERROR',
+
+          message:
+            'Failed to remove student profile picture.',
+
+          error:
+            error.message,
+        });
+    }
+  }
+);
+
+// ==========================================
 // GET SINGLE STUDENT PROFILE
 //
 // GET /api/students/:id
@@ -866,7 +1625,10 @@ router.post(
 
 router.get(
   '/:id',
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     try {
       const studentId =
         Number(
@@ -928,19 +1690,25 @@ router.get(
             grade_level,
             section,
 
-            account_status
+            account_status,
+
+            profile_picture_uri
 
           FROM users
 
           WHERE
             id = ?
-            AND role =
+
+            AND
+            role =
               'STUDENT'
         `).get(
           studentId
         );
 
-      if (!student) {
+      if (
+        !student
+      ) {
         return res
           .status(404)
           .json({
@@ -953,17 +1721,6 @@ router.get(
 
       // ======================================
       // FINANCIAL TOTALS
-      //
-      // CANCELLED:
-      // excluded from totals
-      //
-      // PAID:
-      // included in total fines
-      // included in total paid
-      //
-      // UNPAID:
-      // included in total fines
-      // included in outstanding
       // ======================================
 
       const totals =
@@ -1076,9 +1833,6 @@ router.get(
 
       // ======================================
       // FINES HISTORY
-      //
-      // IMPORTANT:
-      // Cancelled fines are included.
       // ======================================
 
       const fines =
@@ -1270,7 +2024,10 @@ router.get(
 
 router.put(
   '/:id',
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     try {
       const studentId =
         Number(
@@ -1304,15 +2061,21 @@ router.put(
         db.prepare(`
           SELECT
             id,
+
             student_number,
             username,
-            account_status
+
+            account_status,
+
+            profile_picture_uri
 
           FROM users
 
           WHERE
             id = ?
-            AND role =
+
+            AND
+            role =
               'STUDENT'
         `).get(
           studentId
@@ -1352,7 +2115,8 @@ router.put(
         section,
 
         accountStatus,
-      } = req.body;
+      } =
+        req.body;
 
       if (
         !username ||
@@ -1457,9 +2221,27 @@ router.put(
           });
       }
 
+      if (
+        normalizedUsername.length <
+        3
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_USERNAME',
+
+            message:
+              'Username must contain at least 3 characters.',
+          });
+      }
+
       const duplicateUsername =
         db.prepare(`
-          SELECT id
+          SELECT
+            id
 
           FROM users
 
@@ -1468,7 +2250,8 @@ router.put(
               =
             LOWER(?)
 
-            AND id != ?
+            AND
+            id != ?
         `).get(
           normalizedUsername,
           studentId
@@ -1517,7 +2300,8 @@ router.put(
 
       const duplicateEmail =
         db.prepare(`
-          SELECT id
+          SELECT
+            id
 
           FROM users
 
@@ -1526,7 +2310,8 @@ router.put(
               =
             LOWER(?)
 
-            AND id != ?
+            AND
+            id != ?
         `).get(
           normalizedEmail,
           studentId
@@ -1545,6 +2330,47 @@ router.put(
 
             message:
               'This email address is already being used by another account.',
+          });
+      }
+
+      // ======================================
+      // CONTACT NUMBER
+      // ======================================
+
+      if (
+        !/^[0-9]+$/.test(
+          normalizedContactNumber
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_CONTACT_NUMBER',
+
+            message:
+              'Contact Number must contain numbers only.',
+          });
+      }
+
+      if (
+        normalizedContactNumber.length <
+          10 ||
+        normalizedContactNumber.length >
+          15
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            code:
+              'INVALID_CONTACT_NUMBER',
+
+            message:
+              'Contact Number must contain 10 to 15 digits.',
           });
       }
 
@@ -1599,7 +2425,9 @@ router.put(
 
           WHERE
             id = ?
-            AND role =
+
+            AND
+            role =
               'STUDENT'
         `).run(
           normalizedUsername,
@@ -1637,6 +2465,10 @@ router.put(
           });
       }
 
+      // ======================================
+      // SUCCESS
+      // ======================================
+
       return res.json({
         success: true,
 
@@ -1662,6 +2494,13 @@ router.put(
           lastName:
             normalizedLastName,
 
+          fullName:
+            formatName(
+              normalizedFirstName,
+              normalizedMiddleName,
+              normalizedLastName
+            ),
+
           email:
             normalizedEmail,
 
@@ -1676,6 +2515,9 @@ router.put(
 
           accountStatus:
             normalizedStatus,
+
+          profilePictureUri:
+            existingStudent.profile_picture_uri,
         },
       });
     } catch (error) {
@@ -1710,7 +2552,10 @@ router.put(
 
 router.delete(
   '/:id',
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     try {
       const studentId =
         Number(
@@ -1752,19 +2597,25 @@ router.delete(
             middle_name,
             last_name,
 
-            account_status
+            account_status,
+
+            profile_picture_uri
 
           FROM users
 
           WHERE
             id = ?
-            AND role =
+
+            AND
+            role =
               'STUDENT'
         `).get(
           studentId
         );
 
-      if (!student) {
+      if (
+        !student
+      ) {
         return res
           .status(404)
           .json({
@@ -1794,7 +2645,9 @@ router.delete(
         accountStatus ===
           'DEACTIVATED';
 
-      if (!canDelete) {
+      if (
+        !canDelete
+      ) {
         return res
           .status(409)
           .json({
@@ -1882,7 +2735,7 @@ router.delete(
       }
 
       // ======================================
-      // DELETE
+      // DELETE STUDENT
       // ======================================
 
       const result =
@@ -1891,7 +2744,9 @@ router.delete(
 
           WHERE
             id = ?
-            AND role =
+
+            AND
+            role =
               'STUDENT'
         `).run(
           studentId
@@ -1914,6 +2769,22 @@ router.delete(
               'Student could not be found or deleted.',
           });
       }
+
+      // ======================================
+      // DELETE PROFILE PICTURE FILE
+      // ======================================
+
+      if (
+        student.profile_picture_uri
+      ) {
+        deleteProfilePictureFile(
+          student.profile_picture_uri
+        );
+      }
+
+      // ======================================
+      // SUCCESS
+      // ======================================
 
       return res.json({
         success: true,

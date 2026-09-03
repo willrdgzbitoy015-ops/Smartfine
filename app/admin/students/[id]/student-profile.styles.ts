@@ -3,29 +3,42 @@ import {
 } from 'react-native';
 
 const COLORS = {
-  navy: '#173A73',
+  navy:
+    '#173A73',
 
-  green: '#45B94F',
+  text:
+    '#123266',
 
-  lightGreen: '#56C85C',
+  green:
+    '#45B94F',
 
-  red: '#FF2424',
+  lightGreen:
+    '#56C85C',
 
-  background: '#E8E8E8',
+  white:
+    '#FFFFFF',
 
-  white: '#FFFFFF',
+  background:
+    '#E8E8E8',
 
-  text: '#123266',
+  muted:
+    '#777777',
 
-  muted: '#8C939F',
+  red:
+    '#FF2424',
 };
 
 export const styles =
   StyleSheet.create({
+    // ==========================================
+    // SCREEN
+    // ==========================================
+
     screen: {
       flex: 1,
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
       backgroundColor:
         COLORS.background,
@@ -38,24 +51,31 @@ export const styles =
     sidebar: {
       width: 220,
 
-      minHeight: '100%',
+      minHeight:
+        '100%',
 
       backgroundColor:
         COLORS.navy,
 
-      paddingHorizontal: 28,
+      paddingHorizontal:
+        28,
 
-      paddingTop: 30,
+      paddingTop:
+        30,
 
-      paddingBottom: 25,
+      paddingBottom:
+        25,
     },
 
     logoArea: {
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
 
-      marginBottom: 35,
+      marginBottom:
+        35,
     },
 
     smartFineLogo: {
@@ -71,13 +91,17 @@ export const styles =
     navItem: {
       height: 42,
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      paddingHorizontal: 12,
+      paddingHorizontal:
+        12,
 
-      borderRadius: 24,
+      borderRadius:
+        24,
     },
 
     navItemActive: {
@@ -88,27 +112,33 @@ export const styles =
     navIcon: {
       width: 28,
 
-      color: COLORS.white,
+      color:
+        COLORS.white,
 
       fontSize: 21,
 
-      fontWeight: '700',
+      fontWeight:
+        '700',
 
-      textAlign: 'center',
+      textAlign:
+        'center',
 
       marginRight: 10,
     },
 
     navText: {
-      color: COLORS.white,
+      color:
+        COLORS.white,
 
       fontSize: 14,
 
-      fontWeight: '600',
+      fontWeight:
+        '600',
     },
 
     logoutButton: {
-      marginTop: 'auto',
+      marginTop:
+        'auto',
 
       borderWidth: 1,
 
@@ -117,15 +147,19 @@ export const styles =
 
       borderRadius: 8,
 
-      paddingVertical: 10,
+      paddingVertical:
+        10,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
     },
 
     logoutText: {
-      color: COLORS.white,
+      color:
+        COLORS.white,
 
-      fontWeight: '600',
+      fontWeight:
+        '600',
     },
 
     // ==========================================
@@ -139,23 +173,42 @@ export const styles =
     scrollContent: {
       flexGrow: 1,
 
-      paddingHorizontal: 38,
+      paddingHorizontal:
+        38,
 
-      paddingVertical: 32,
+      paddingVertical:
+        35,
+
+      paddingBottom:
+        60,
     },
 
-    backButton: {
-      alignSelf: 'flex-start',
+    // ==========================================
+    // BACK
+    // ==========================================
 
-      marginBottom: 30,
+    backButton: {
+      width:
+        '100%',
+
+      maxWidth:
+        1080,
+
+      alignSelf:
+        'center',
+
+      marginBottom:
+        26,
     },
 
     backText: {
-      color: COLORS.text,
+      color:
+        COLORS.text,
 
-      fontSize: 25,
+      fontSize: 19,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
     },
 
     // ==========================================
@@ -165,18 +218,22 @@ export const styles =
     mobileNav: {
       gap: 8,
 
-      paddingBottom: 25,
+      marginBottom:
+        20,
     },
 
     mobileNavItem: {
       backgroundColor:
         COLORS.white,
 
-      borderRadius: 18,
+      borderRadius:
+        18,
 
-      paddingHorizontal: 16,
+      paddingHorizontal:
+        16,
 
-      paddingVertical: 8,
+      paddingVertical:
+        8,
     },
 
     mobileNavItemActive: {
@@ -185,121 +242,263 @@ export const styles =
     },
 
     mobileNavText: {
-      color: COLORS.navy,
+      color:
+        COLORS.navy,
 
       fontSize: 12,
 
-      fontWeight: '600',
+      fontWeight:
+        '700',
     },
 
     mobileNavTextActive: {
-      color: COLORS.white,
+      color:
+        COLORS.white,
     },
 
     // ==========================================
-    // PROFILE
+    // PROFILE CARD
+    // COMPACT LIKE PROTOTYPE
     // ==========================================
 
     profileCard: {
-      width: '100%',
+      width:
+        '100%',
 
-      maxWidth: 980,
+      maxWidth:
+        1080,
 
-      alignSelf: 'center',
+      minHeight:
+        150,
+
+      alignSelf:
+        'center',
 
       backgroundColor:
         COLORS.white,
 
-      borderRadius: 12,
+      borderRadius:
+        12,
 
-      paddingHorizontal: 28,
+      paddingHorizontal:
+        28,
 
-      paddingVertical: 22,
+      paddingVertical:
+        22,
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      flexWrap: 'wrap',
+      alignItems:
+        'center',
 
-      alignItems: 'center',
+      justifyContent:
+        'space-between',
 
-      gap: 20,
+      gap: 25,
 
-      marginBottom: 32,
+      shadowColor:
+        '#000000',
+
+      shadowOpacity:
+        0.02,
+
+      shadowRadius:
+        3,
+
+      shadowOffset: {
+        width: 0,
+
+        height: 1,
+      },
+
+      elevation: 1,
     },
 
+    // ==========================================
+    // PROFILE LEFT
+    // ==========================================
+
+    profileLeft: {
+      flex: 1,
+
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      gap: 28,
+
+      minWidth:
+        400,
+    },
+
+    // ==========================================
+    // AVATAR
+    // ==========================================
+
     avatar: {
-      width: 78,
+      width: 96,
 
-      height: 78,
+      height: 96,
 
-      borderRadius: 39,
+      borderRadius:
+        48,
 
       backgroundColor:
         COLORS.navy,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
+
+      flexShrink:
+        0,
+    },
+
+    avatarImage: {
+      width: 96,
+
+      height: 96,
+
+      borderRadius:
+        48,
+
+      backgroundColor:
+        '#E2E2E2',
+
+      flexShrink:
+        0,
     },
 
     avatarText: {
-      color: COLORS.white,
+      color:
+        COLORS.white,
 
-      fontSize: 22,
+      fontSize: 27,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
     },
+
+    // ==========================================
+    // STUDENT INFORMATION
+    // ==========================================
 
     studentInfo: {
       flex: 1,
 
-      minWidth: 200,
+      justifyContent:
+        'center',
     },
 
     studentName: {
-      color: '#111111',
+      color:
+        '#111111',
 
-      fontSize: 24,
+      fontSize: 25,
 
-      fontWeight: '700',
+      fontWeight:
+        '800',
 
-      marginBottom: 6,
+      marginBottom:
+        8,
     },
 
     studentMeta: {
-      color: '#777777',
+      color:
+        COLORS.muted,
 
       fontSize: 13,
 
-      marginTop: 4,
+      lineHeight: 21,
     },
 
+    // ==========================================
+    // ACTION BUTTONS
+    // ==========================================
+
     profileActions: {
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      flexWrap: 'wrap',
+      alignItems:
+        'center',
 
-      gap: 10,
+      justifyContent:
+        'flex-end',
+
+      flexWrap:
+        'wrap',
+
+      gap: 12,
     },
 
     outlineButton: {
+      minWidth:
+        145,
+
+      height: 48,
+
       borderWidth: 1,
 
-      borderColor: '#333333',
+      borderColor:
+        '#222222',
 
-      borderRadius: 7,
+      borderRadius:
+        8,
 
-      paddingHorizontal: 15,
+      backgroundColor:
+        COLORS.white,
 
-      paddingVertical: 11,
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      paddingHorizontal:
+        16,
     },
 
     outlineButtonText: {
-      color: '#222222',
+      color:
+        '#111111',
 
       fontSize: 12,
 
-      fontWeight: '700',
+      fontWeight:
+        '800',
+    },
+
+    qrIcon: {
+      color:
+        '#111111',
+
+      fontSize: 17,
+
+      fontWeight:
+        '800',
+
+      marginRight: 7,
+    },
+
+    editIcon: {
+      color:
+        '#111111',
+
+      fontSize: 18,
+
+      fontWeight:
+        '800',
+
+      marginRight: 7,
     },
 
     // ==========================================
@@ -307,247 +506,330 @@ export const styles =
     // ==========================================
 
     summaryRow: {
-      width: '92%',
+      width:
+        '100%',
 
-      maxWidth: 900,
+      maxWidth:
+        1000,
 
-      alignSelf: 'center',
+      alignSelf:
+        'center',
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      flexWrap: 'wrap',
-
-      justifyContent:
-        'space-between',
+      flexWrap:
+        'wrap',
 
       gap: 25,
 
-      marginBottom: 35,
+      marginTop:
+        30,
     },
 
     summaryCard: {
-      flexGrow: 1,
+      flex: 1,
 
-      flexBasis: 300,
+      minWidth:
+        280,
 
-      minHeight: 115,
+      minHeight:
+        130,
 
       backgroundColor:
         COLORS.white,
 
       borderWidth: 1,
 
-      borderColor: '#333333',
+      borderColor:
+        '#333333',
 
-      borderRadius: 8,
+      borderRadius:
+        8,
 
-      paddingHorizontal: 20,
+      paddingHorizontal:
+        24,
 
-      paddingVertical: 16,
+      paddingVertical:
+        22,
+
+      justifyContent:
+        'center',
     },
 
     summaryLabel: {
-      color: COLORS.text,
+      color:
+        '#111111',
 
       fontSize: 13,
 
-      fontWeight: '700',
+      fontWeight:
+        '800',
 
-      marginBottom: 14,
+      marginBottom:
+        15,
     },
 
     outstandingValue: {
-      color: COLORS.red,
+      color:
+        '#E52323',
 
       fontSize: 26,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
     },
 
     paidValue: {
-      color: '#00B72A',
+      color:
+        '#00A21B',
 
       fontSize: 26,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
     },
 
     // ==========================================
-    // HISTORY
+    // HISTORY CARD
     // ==========================================
 
     historyCard: {
-      width: '100%',
+      width:
+        '100%',
 
-      maxWidth: 1000,
+      maxWidth:
+        1100,
 
-      minHeight: 330,
-
-      alignSelf: 'center',
+      alignSelf:
+        'center',
 
       backgroundColor:
         COLORS.white,
 
-      borderRadius: 12,
+      borderRadius:
+        12,
 
-      overflow: 'hidden',
+      marginTop:
+        30,
+
+      overflow:
+        'hidden',
     },
 
     historyTitleBar: {
+      minHeight:
+        58,
+
+      justifyContent:
+        'center',
+
       backgroundColor:
         COLORS.navy,
 
-      minHeight: 52,
-
-      justifyContent: 'center',
-
-      paddingHorizontal: 20,
+      paddingHorizontal:
+        24,
     },
 
     historyTitle: {
-      color: COLORS.white,
+      color:
+        COLORS.white,
 
-      fontSize: 14,
+      fontSize: 15,
 
-      fontWeight: '700',
+      fontWeight:
+        '800',
     },
 
-    historyTable: {
-      minWidth: 850,
+    // ==========================================
+    // HISTORY TABLE
+    // ==========================================
 
-      width: '100%',
+    historyTable: {
+      minWidth:
+        1000,
     },
 
     historyHeader: {
-      minHeight: 42,
+      minHeight:
+        48,
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
       backgroundColor:
-        '#F2F4F7',
+        '#F1F2F4',
 
-      paddingHorizontal: 14,
+      paddingHorizontal:
+        24,
     },
 
     historyHeaderText: {
-      color: '#666666',
+      color:
+        '#333333',
 
       fontSize: 11,
 
-      fontWeight: '600',
-
-      paddingHorizontal: 8,
+      fontWeight:
+        '700',
     },
 
     historyRow: {
-      minHeight: 55,
+      minHeight:
+        62,
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      paddingHorizontal: 14,
+      paddingHorizontal:
+        24,
 
-      borderBottomWidth: 1,
+      backgroundColor:
+        COLORS.white,
+
+      borderBottomWidth:
+        1,
 
       borderBottomColor:
-        '#E4E7EB',
+        '#E5E5E5',
     },
 
     historyCell: {
-      color: '#666666',
+      color:
+        '#555555',
 
       fontSize: 11,
-
-      paddingHorizontal: 8,
     },
 
     violationColumn: {
-      width: 220,
+      width: 240,
     },
 
     dateColumn: {
-      width: 210,
+      width: 230,
     },
 
     amountColumn: {
-      width: 120,
+      width: 140,
     },
 
     fineStatusColumn: {
-      width: 120,
+      width: 140,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
     },
 
     officerColumn: {
-      width: 170,
+      width: 190,
     },
 
     violationText: {
-      color: '#333333',
+      color:
+        '#222222',
 
-      fontWeight: '600',
+      fontWeight:
+        '600',
     },
 
     amountText: {
-      color: '#333333',
+      color:
+        '#222222',
 
-      fontWeight: '700',
+      fontWeight:
+        '800',
     },
+
+    // ==========================================
+    // STATUS
+    // ==========================================
 
     statusBadge: {
-      minWidth: 58,
+      minWidth:
+        67,
 
-      paddingHorizontal: 9,
+      alignItems:
+        'center',
 
-      paddingVertical: 5,
+      justifyContent:
+        'center',
 
-      borderRadius: 14,
+      borderRadius:
+        18,
 
-      alignItems: 'center',
-    },
+      paddingVertical:
+        5,
 
-    paidBadge: {
-      backgroundColor:
-        '#E9F8E9',
-    },
-
-    unpaidBadge: {
-      backgroundColor:
-        '#FFE8E8',
+      paddingHorizontal:
+        10,
     },
 
     statusBadgeText: {
       fontSize: 10,
 
-      fontWeight: '700',
+      fontWeight:
+        '800',
+    },
+
+    paidBadge: {
+      backgroundColor:
+        '#E3F5E7',
     },
 
     paidBadgeText: {
-      color: COLORS.green,
+      color:
+        '#2E9D43',
+    },
+
+    unpaidBadge: {
+      backgroundColor:
+        '#FFE5E5',
     },
 
     unpaidBadgeText: {
-      color: COLORS.red,
+      color:
+        '#E52323',
     },
 
+    cancelledBadge: {
+      backgroundColor:
+        '#ECEFF4',
+    },
+
+    cancelledBadgeText: {
+      color:
+        '#606775',
+    },
+
+    // ==========================================
+    // EMPTY HISTORY
+    // ==========================================
+
     emptyHistory: {
-      minHeight: 180,
+      minHeight:
+        150,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
     },
 
     emptyHistoryText: {
-      color: COLORS.muted,
+      color:
+        '#8C939F',
 
-      fontSize: 13,
+      fontSize: 11,
     },
 
     // ==========================================
@@ -555,26 +837,76 @@ export const styles =
     // ==========================================
 
     centerState: {
-      minHeight: 400,
+      width:
+        '100%',
 
-      alignItems: 'center',
+      maxWidth:
+        1080,
 
-      justifyContent: 'center',
+      minHeight:
+        350,
+
+      alignSelf:
+        'center',
+
+      backgroundColor:
+        COLORS.white,
+
+      borderRadius:
+        12,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      padding:
+        30,
     },
 
     stateText: {
-      color: COLORS.muted,
+      color:
+        '#8C939F',
 
-      marginTop: 15,
+      fontSize: 12,
 
-      fontSize: 13,
+      marginTop: 12,
     },
 
     errorText: {
-      color: COLORS.red,
+      color:
+        COLORS.red,
 
-      fontSize: 14,
+      fontSize: 12,
 
-      textAlign: 'center',
+      textAlign:
+        'center',
+
+      marginBottom:
+        18,
+    },
+
+    retryButton: {
+      backgroundColor:
+        COLORS.navy,
+
+      paddingHorizontal:
+        20,
+
+      paddingVertical:
+        10,
+
+      borderRadius: 8,
+    },
+
+    retryText: {
+      color:
+        COLORS.white,
+
+      fontSize: 12,
+
+      fontWeight:
+        '800',
     },
   });
