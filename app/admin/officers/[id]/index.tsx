@@ -1,36 +1,24 @@
-import {
-  useEffect,
-  useState,
-} from 'react';
+import { useEffect, useState } from "react";
 
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
   ScrollView,
+  Text,
   TouchableOpacity,
   useWindowDimensions,
-  ActivityIndicator,
-  Image,
-  Alert,
-  Platform,
-} from 'react-native';
+  View,
+} from "react-native";
 
-import {
-  useLocalSearchParams,
-  useRouter,
-} from 'expo-router';
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-import {
-  useAuth,
-} from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
-import {
-  API_BASE,
-} from '@/constants/api';
+import { API_BASE } from "@/constants/api";
 
-import {
-  styles,
-} from './officer-profile.styles';
+import { styles } from "./officer-profile.styles";
 
 // ==========================================
 // TYPES
@@ -47,39 +35,25 @@ type Officer = {
 
   first_name: string;
 
-  middle_name:
-    | string
-    | null;
+  middle_name: string | null;
 
   last_name: string;
 
   full_name: string;
 
-  email:
-    | string
-    | null;
+  email: string | null;
 
-  contact_number:
-    | string
-    | null;
+  contact_number: string | null;
 
-  assigned_area:
-    | string
-    | null;
+  assigned_area: string | null;
 
   account_status: string;
 
-  profile_picture_uri:
-    | string
-    | null;
+  profile_picture_uri: string | null;
 
-  created_at:
-    | string
-    | null;
+  created_at: string | null;
 
-  updated_at:
-    | string
-    | null;
+  updated_at: string | null;
 };
 
 type OfficerStats = {
@@ -118,7 +92,10 @@ type OfficerProfileResponse = {
 
 type NavItem = {
   label: string;
+
   route: string;
+
+  icon: any;
 };
 
 // ==========================================
@@ -126,68 +103,39 @@ type NavItem = {
 // ==========================================
 
 export default function OfficerProfile() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const params =
-    useLocalSearchParams();
+  const params = useLocalSearchParams();
 
-  const { logout } =
-    useAuth();
+  const { logout } = useAuth();
 
-  const { width } =
-    useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const isTablet =
-    width >= 768;
+  const isTablet = width >= 768;
+
+  const isCompact = width < 600;
 
   // ==========================================
   // OFFICER ID
   // ==========================================
 
-  const rawId =
-    params.id;
+  const rawId = params.id;
 
-  const officerId =
-    Array.isArray(rawId)
-      ? rawId[0]
-      : rawId;
+  const officerId = Array.isArray(rawId) ? rawId[0] : rawId;
 
   // ==========================================
-  // PAGE STATE
+  // STATE
   // ==========================================
 
-  const [
-    data,
-    setData,
-  ] =
-    useState<OfficerProfileResponse | null>(
-      null
-    );
+  const [data, setData] = useState<OfficerProfileResponse | null>(null);
 
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    deleting,
-    setDeleting,
-  ] =
-    useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const [
-    error,
-    setError,
-  ] =
-    useState('');
+  const [error, setError] = useState("");
 
-  const [
-    profileImageFailed,
-    setProfileImageFailed,
-  ] =
-    useState(false);
+  const [profileImageFailed, setProfileImageFailed] = useState(false);
 
   // ==========================================
   // NAVIGATION
@@ -195,59 +143,59 @@ export default function OfficerProfile() {
 
   const navItems: NavItem[] = [
     {
-      label:
-        'Dashboard',
+      label: "Dashboard",
 
-      route:
-        '/admin/dashboard',
+      route: "/admin/dashboard",
+
+      icon: require("../../../../assets/icons/dashboard.png"),
     },
 
     {
-      label:
-        'Students',
+      label: "Students",
 
-      route:
-        '/admin/students',
+      route: "/admin/students",
+
+      icon: require("../../../../assets/icons/students.png"),
     },
 
     {
-      label:
-        'Fines',
+      label: "Fines",
 
-      route:
-        '/admin/fines',
+      route: "/admin/fines",
+
+      icon: require("../../../../assets/icons/fines.png"),
     },
 
     {
-      label:
-        'QR Scanner',
+      label: "QR Scanner",
 
-      route:
-        '/admin/qr-scanner',
+      route: "/admin/qr-scanner",
+
+      icon: require("../../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
-      label:
-        'Reports',
+      label: "Reports",
 
-      route:
-        '/admin/reports',
+      route: "/admin/reports",
+
+      icon: require("../../../../assets/icons/reports.png"),
     },
 
     {
-      label:
-        'Settings',
+      label: "Settings",
 
-      route:
-        '/admin/settings',
+      route: "/admin/settings",
+
+      icon: require("../../../../assets/icons/settings.png"),
     },
 
     {
-      label:
-        'Officers',
+      label: "Officers",
 
-      route:
-        '/admin/officers',
+      route: "/admin/officers",
+
+      icon: require("../../../../assets/icons/officers.png"),
     },
   ];
 
@@ -255,1425 +203,714 @@ export default function OfficerProfile() {
   // PROFILE PICTURE URL
   // ==========================================
 
-  const getProfilePictureUrl =
-    (
-      uri:
-        | string
-        | null
-        | undefined
-    ) => {
-      if (
-        !uri
-      ) {
-        return null;
-      }
+  const getProfilePictureUrl = (uri: string | null | undefined) => {
+    if (!uri) {
+      return null;
+    }
 
-      const normalizedUri =
-        String(
-          uri
-        ).trim();
+    const normalizedUri = String(uri).trim();
 
-      if (
-        normalizedUri.startsWith(
-          'http://'
-        ) ||
-        normalizedUri.startsWith(
-          'https://'
-        )
-      ) {
-        return normalizedUri;
-      }
+    if (
+      normalizedUri.startsWith("http://") ||
+      normalizedUri.startsWith("https://")
+    ) {
+      return normalizedUri;
+    }
 
-      return `${API_BASE}${normalizedUri}`;
-    };
+    return `${API_BASE}${normalizedUri}`;
+  };
 
   // ==========================================
-  // LOAD OFFICER PROFILE
+  // LOAD OFFICER
   // ==========================================
 
-  const loadOfficer =
-    async () => {
-      if (
-        !officerId
-      ) {
-        setError(
-          'Officer ID is missing.'
-        );
+  const loadOfficer = async () => {
+    if (!officerId) {
+      setError("Officer ID is missing.");
 
-        setLoading(
-          false
-        );
+      setLoading(false);
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      setError("");
+
+      setProfileImageFailed(false);
+
+      const response = await fetch(`${API_BASE}/api/officers/${officerId}`);
+
+      const result = await response.json();
+
+      console.log("Officer profile response:", result);
+
+      if (!response.ok || !result.success) {
+        setError(result.message || "Failed to load officer profile.");
 
         return;
       }
 
-      try {
-        setLoading(
-          true
-        );
+      setData(result);
+    } catch (error) {
+      console.error("Officer profile connection error:", error);
 
-        setError(
-          ''
-        );
-
-        setProfileImageFailed(
-          false
-        );
-
-        const response =
-          await fetch(
-            `${API_BASE}/api/officers/${officerId}`
-          );
-
-        const result =
-          await response.json();
-
-        console.log(
-          'Officer profile response:',
-          result
-        );
-
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          setError(
-            result.message ||
-              'Failed to load officer profile.'
-          );
-
-          return;
-        }
-
-        setData(
-          result
-        );
-      } catch (error) {
-        console.error(
-          'Officer profile connection error:',
-          error
-        );
-
-        setError(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setLoading(
-          false
-        );
-      }
-    };
-
-  // ==========================================
-  // LOAD
-  // ==========================================
+      setError("Could not connect to the SmartFine server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadOfficer();
-  }, [
-    officerId,
-  ]);
+  }, [officerId]);
 
   // ==========================================
   // BACK
   // ==========================================
 
-  const handleBack =
-    () => {
-      router.replace(
-        '/admin/officers' as any
-      );
-    };
+  const handleBack = () => {
+    router.replace("/admin/officers" as any);
+  };
 
   // ==========================================
-  // EDIT OFFICER
+  // EDIT
   // ==========================================
 
-  const handleEdit =
-    () => {
-      if (
-        !officerId
-      ) {
-        return;
-      }
+  const handleEdit = () => {
+    if (!officerId) {
+      return;
+    }
 
-      router.push(
-        `/admin/officers/${officerId}/edit` as any
-      );
-    };
+    router.push(`/admin/officers/${officerId}/edit` as any);
+  };
 
   // ==========================================
   // DELETE OFFICER
   // ==========================================
 
-  const performDeleteOfficer =
-    async () => {
-      if (
-        !officerId ||
-        !data?.officer
-      ) {
+  const performDeleteOfficer = async () => {
+    if (!officerId || !data?.officer) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+
+      const response = await fetch(`${API_BASE}/api/officers/${officerId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      console.log("Delete officer response:", result);
+
+      if (!response.ok || !result.success) {
+        const message = result.message || "Could not delete officer.";
+
+        if (Platform.OS === "web") {
+          window.alert(message);
+
+          return;
+        }
+
+        Alert.alert("Unable to Delete Officer", message);
+
         return;
       }
 
-      try {
-        setDeleting(
-          true
-        );
+      if (Platform.OS === "web") {
+        window.alert("Officer deleted successfully.");
 
-        const response =
-          await fetch(
-            `${API_BASE}/api/officers/${officerId}`,
-            {
-              method:
-                'DELETE',
-            }
-          );
+        router.replace("/admin/officers" as any);
 
-        const result =
-          await response.json();
-
-        console.log(
-          'Delete officer response:',
-          result
-        );
-
-        // ======================================
-        // BACKEND ERROR
-        // ======================================
-
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          const message =
-            result.message ||
-            'Could not delete officer.';
-
-          if (
-            Platform.OS ===
-            'web'
-          ) {
-            window.alert(
-              message
-            );
-
-            return;
-          }
-
-          Alert.alert(
-            'Unable to Delete Officer',
-            message
-          );
-
-          return;
-        }
-
-        // ======================================
-        // SUCCESS - WEB
-        // ======================================
-
-        if (
-          Platform.OS ===
-          'web'
-        ) {
-          window.alert(
-            'Officer deleted successfully.'
-          );
-
-          router.replace(
-            '/admin/officers' as any
-          );
-
-          return;
-        }
-
-        // ======================================
-        // SUCCESS - MOBILE
-        // ======================================
-
-        Alert.alert(
-          'Officer Deleted',
-
-          'Officer deleted successfully.',
-
-          [
-            {
-              text:
-                'OK',
-
-              onPress: () =>
-                router.replace(
-                  '/admin/officers' as any
-                ),
-            },
-          ]
-        );
-      } catch (error) {
-        console.error(
-          'Delete officer error:',
-          error
-        );
-
-        const message =
-          'Could not connect to the SmartFine server.';
-
-        if (
-          Platform.OS ===
-          'web'
-        ) {
-          window.alert(
-            message
-          );
-
-          return;
-        }
-
-        Alert.alert(
-          'Unable to Delete Officer',
-          message
-        );
-      } finally {
-        setDeleting(
-          false
-        );
+        return;
       }
-    };
+
+      Alert.alert(
+        "Officer Deleted",
+
+        "Officer deleted successfully.",
+
+        [
+          {
+            text: "OK",
+
+            onPress: () => router.replace("/admin/officers" as any),
+          },
+        ],
+      );
+    } catch (error) {
+      console.error("Delete officer error:", error);
+
+      const message = "Could not connect to the SmartFine server.";
+
+      if (Platform.OS === "web") {
+        window.alert(message);
+
+        return;
+      }
+
+      Alert.alert("Unable to Delete Officer", message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // ==========================================
   // CONFIRM DELETE
   // ==========================================
 
-  const handleDeleteOfficer =
-    () => {
-      if (
-        !data?.officer
-      ) {
-        return;
-      }
+  const handleDeleteOfficer = () => {
+    if (!data?.officer) {
+      return;
+    }
 
-      const officer =
-        data.officer;
+    const officer = data.officer;
 
-      const status =
-        String(
-          officer.account_status ||
-            ''
-        ).toUpperCase();
+    const status = String(officer.account_status || "").toUpperCase();
 
-      // ======================================
-      // ACTIVE OFFICER
-      // ======================================
-
-      if (
-        status ===
-        'ACTIVE'
-      ) {
-        const message =
-          'Active officers cannot be deleted. Edit the officer and set the account status to Inactive first.';
-
-        if (
-          Platform.OS ===
-          'web'
-        ) {
-          window.alert(
-            message
-          );
-
-          return;
-        }
-
-        Alert.alert(
-          'Officer is Active',
-          message
-        );
-
-        return;
-      }
-
-      // ======================================
-      // OFFICER HAS FINE HISTORY
-      // ======================================
-
-      if (
-        Number(
-          data.stats?.totalFines ||
-            0
-        ) > 0
-      ) {
-        const message =
-          'This officer cannot be permanently deleted because the account already has recorded fines. Keep the officer inactive to preserve SmartFine history.';
-
-        if (
-          Platform.OS ===
-          'web'
-        ) {
-          window.alert(
-            message
-          );
-
-          return;
-        }
-
-        Alert.alert(
-          'Officer Has Fine Records',
-          message
-        );
-
-        return;
-      }
-
-      // ======================================
-      // CONFIRM DELETE
-      // ======================================
-
+    if (status === "ACTIVE") {
       const message =
-        `Permanently delete ${officer.full_name} (${officer.employee_number})?\n\n` +
-        'This action cannot be undone.';
+        "Active officers cannot be deleted. Edit the officer and set the account status to Inactive first.";
 
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            message
-          );
-
-        if (
-          confirmed
-        ) {
-          performDeleteOfficer();
-        }
+      if (Platform.OS === "web") {
+        window.alert(message);
 
         return;
       }
 
-      Alert.alert(
-        'Delete Officer',
+      Alert.alert("Officer is Active", message);
 
-        message,
+      return;
+    }
 
-        [
-          {
-            text:
-              'Cancel',
+    if (Number(data.stats?.totalFines || 0) > 0) {
+      const message =
+        "This officer cannot be permanently deleted because the account already has recorded fines. Keep the officer inactive to preserve SmartFine history.";
 
-            style:
-              'cancel',
-          },
+      if (Platform.OS === "web") {
+        window.alert(message);
 
-          {
-            text:
-              'Delete',
+        return;
+      }
 
-            style:
-              'destructive',
+      Alert.alert("Officer Has Fine Records", message);
 
-            onPress:
-              performDeleteOfficer,
-          },
-        ]
-      );
-    };
+      return;
+    }
+
+    const message =
+      `Permanently delete ${officer.full_name} (${officer.employee_number})?\n\n` +
+      "This action cannot be undone.";
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(message);
+
+      if (confirmed) {
+        performDeleteOfficer();
+      }
+
+      return;
+    }
+
+    Alert.alert(
+      "Delete Officer",
+
+      message,
+
+      [
+        {
+          text: "Cancel",
+
+          style: "cancel",
+        },
+
+        {
+          text: "Delete",
+
+          style: "destructive",
+
+          onPress: performDeleteOfficer,
+        },
+      ],
+    );
+  };
 
   // ==========================================
   // OPEN FINE
   // ==========================================
 
-  const handleFinePress =
-    (
-      fineId: number
-    ) => {
-      router.push(
-        `/admin/fines/${fineId}` as any
-      );
-    };
+  const handleFinePress = (fineId: number) => {
+    router.push(`/admin/fines/${fineId}` as any);
+  };
 
   // ==========================================
-  // SIDEBAR NAVIGATION
+  // NAVIGATION
   // ==========================================
 
-  const handleNavigation =
-    (
-      item: NavItem
-    ) => {
-      router.push(
-        item.route as any
-      );
-    };
+  const handleNavigation = (item: NavItem) => {
+    router.push(item.route as any);
+  };
 
   // ==========================================
   // LOGOUT
   // ==========================================
 
-  const performLogout =
-    async () => {
-      try {
-        await logout();
+  const performLogout = async () => {
+    try {
+      await logout();
 
-        router.replace(
-          '/login' as any
-        );
-      } catch (error) {
-        console.error(
-          'Logout error:',
-          error
-        );
-      }
-    };
+      router.replace("/login" as any);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
-  const handleLogout =
-    () => {
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            'Are you sure you want to log out?'
-          );
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to log out?");
 
-        if (
-          confirmed
-        ) {
-          performLogout();
-        }
-
-        return;
+      if (confirmed) {
+        performLogout();
       }
 
-      Alert.alert(
-        'Log Out',
+      return;
+    }
 
-        'Are you sure you want to log out?',
+    Alert.alert(
+      "Log Out",
 
-        [
-          {
-            text:
-              'Cancel',
+      "Are you sure you want to log out?",
 
-            style:
-              'cancel',
-          },
+      [
+        {
+          text: "Cancel",
 
-          {
-            text:
-              'Log Out',
+          style: "cancel",
+        },
 
-            style:
-              'destructive',
+        {
+          text: "Log Out",
 
-            onPress:
-              performLogout,
-          },
-        ]
-      );
-    };
+          style: "destructive",
+
+          onPress: performLogout,
+        },
+      ],
+    );
+  };
 
   // ==========================================
   // CONTENT
   // ==========================================
 
-  const renderContent =
-    () => {
-      // ======================================
-      // LOADING
-      // ======================================
-
-      if (
-        loading
-      ) {
-        return (
-          <View
-            style={
-              styles.centerState
-            }
-          >
-            <ActivityIndicator
-              size="large"
-              color="#173A73"
-            />
-
-            <Text
-              style={
-                styles.stateText
-              }
-            >
-              Loading officer profile...
-            </Text>
-          </View>
-        );
-      }
-
-      // ======================================
-      // ERROR
-      // ======================================
-
-      if (
-        error ||
-        !data
-      ) {
-        return (
-          <View
-            style={
-              styles.centerState
-            }
-          >
-            <Text
-              style={
-                styles.errorText
-              }
-            >
-              {error ||
-                'Officer not found.'}
-            </Text>
-
-            <TouchableOpacity
-              style={
-                styles.retryButton
-              }
-              onPress={
-                loadOfficer
-              }
-            >
-              <Text
-                style={
-                  styles.retryText
-                }
-              >
-                Try Again
-              </Text>
-            </TouchableOpacity>
-          </View>
-        );
-      }
-
-      const {
-        officer,
-        stats,
-        recentFines,
-      } =
-        data;
-
-      const status =
-        String(
-          officer.account_status ||
-            ''
-        ).toUpperCase();
-
-      const isActive =
-        status ===
-        'ACTIVE';
-
-      const initials =
-        `${
-          officer.first_name?.[0] ||
-          ''
-        }${
-          officer.last_name?.[0] ||
-          ''
-        }`.toUpperCase();
-
-      // ======================================
-      // PROFILE PICTURE
-      // ======================================
-
-      const profilePictureUrl =
-        getProfilePictureUrl(
-          officer.profile_picture_uri
-        );
-
-      const showProfilePicture =
-        Boolean(
-          profilePictureUrl
-        ) &&
-        !profileImageFailed;
-
+  const renderContent = () => {
+    if (loading) {
       return (
-        <>
-          {/* ==================================
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color="#173A73" />
+
+          <Text style={styles.stateText}>Loading officer profile...</Text>
+        </View>
+      );
+    }
+
+    if (error || !data) {
+      return (
+        <View style={styles.centerState}>
+          <Text style={styles.errorText}>{error || "Officer not found."}</Text>
+
+          <TouchableOpacity style={styles.retryButton} onPress={loadOfficer}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const { officer, stats, recentFines } = data;
+
+    const status = String(officer.account_status || "").toUpperCase();
+
+    const isActive = status === "ACTIVE";
+
+    const initials = `${officer.first_name?.[0] || ""}${
+      officer.last_name?.[0] || ""
+    }`.toUpperCase();
+
+    const profilePictureUrl = getProfilePictureUrl(officer.profile_picture_uri);
+
+    const showProfilePicture =
+      Boolean(profilePictureUrl) && !profileImageFailed;
+
+    return (
+      <>
+        {/* ==================================
               PROFILE CARD
           ================================== */}
 
+        <View
+          style={[styles.profileCard, isCompact && styles.profileCardCompact]}
+        >
           <View
-            style={
-              styles.profileCard
-            }
+            style={[styles.profileTop, isCompact && styles.profileTopCompact]}
           >
-            {/* PROFILE TOP */}
+            {/* PROFILE PICTURE */}
 
-            <View
-              style={
-                styles.profileTop
-              }
-            >
-              {/* ==================================
-                  AVATAR / PROFILE PICTURE
-              ================================== */}
-
-              {showProfilePicture ? (
-                <Image
-                  source={{
-                    uri:
-                      profilePictureUrl!,
-                  }}
+            {showProfilePicture ? (
+              <Image
+                source={{
+                  uri: profilePictureUrl!,
+                }}
+                style={[styles.avatarImage, isCompact && styles.avatarCompact]}
+                resizeMode="cover"
+                onError={() => {
+                  setProfileImageFailed(true);
+                }}
+              />
+            ) : (
+              <View style={[styles.avatar, isCompact && styles.avatarCompact]}>
+                <Text
                   style={[
-                    styles.avatar,
-                    {
-                      resizeMode:
-                        'cover',
-                    },
+                    styles.avatarText,
+
+                    isCompact && styles.avatarTextCompact,
                   ]}
-                  onError={() => {
-                    console.log(
-                      'Officer profile image failed:',
-                      profilePictureUrl
-                    );
-
-                    setProfileImageFailed(
-                      true
-                    );
-                  }}
-                />
-              ) : (
-                <View
-                  style={
-                    styles.avatar
-                  }
                 >
-                  <Text
-                    style={
-                      styles.avatarText
-                    }
-                  >
-                    {initials ||
-                      'OF'}
-                  </Text>
-                </View>
-              )}
+                  {initials || "OF"}
+                </Text>
+              </View>
+            )}
 
-              {/* NAME */}
+            {/* HEADING */}
+
+            <View style={styles.profileHeading}>
+              <Text
+                style={[
+                  styles.officerName,
+
+                  isCompact && styles.officerNameCompact,
+                ]}
+              >
+                {officer.full_name}
+              </Text>
+
+              <Text style={styles.employeeNumber}>
+                {officer.employee_number}
+              </Text>
 
               <View
-                style={
-                  styles.profileHeading
-                }
+                style={[
+                  styles.statusBadge,
+
+                  isActive ? styles.activeBadge : styles.inactiveBadge,
+                ]}
               >
                 <Text
-                  style={
-                    styles.officerName
-                  }
-                >
-                  {
-                    officer.full_name
-                  }
-                </Text>
-
-                <Text
-                  style={
-                    styles.employeeNumber
-                  }
-                >
-                  {
-                    officer.employee_number
-                  }
-                </Text>
-
-                <View
                   style={[
-                    styles.statusBadge,
+                    styles.statusBadgeText,
 
                     isActive
-                      ? styles.activeBadge
-                      : styles.inactiveBadge,
+                      ? styles.activeStatusText
+                      : styles.inactiveStatusText,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.statusBadgeText,
-
-                      isActive
-                        ? styles.activeStatusText
-                        : styles.inactiveStatusText,
-                    ]}
-                  >
-                    {isActive
-                      ? 'Active'
-                      : 'Inactive'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* ==================================
-                  ACTIONS
-              ================================== */}
-
-              <View
-                style={
-                  styles.profileActions
-                }
-              >
-                {/* EDIT */}
-
-                <TouchableOpacity
-                  style={
-                    styles.editButton
-                  }
-                  onPress={
-                    handleEdit
-                  }
-                  disabled={
-                    deleting
-                  }
-                >
-                  <Text
-                    style={
-                      styles.editButtonText
-                    }
-                  >
-                    ✎ Edit Officer
-                  </Text>
-                </TouchableOpacity>
-
-                {/* DELETE */}
-
-                <TouchableOpacity
-                  style={[
-                    styles.deleteButton,
-
-                    deleting &&
-                      styles.deleteButtonDisabled,
-                  ]}
-                  onPress={
-                    handleDeleteOfficer
-                  }
-                  disabled={
-                    deleting
-                  }
-                >
-                  {deleting ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="#FFFFFF"
-                    />
-                  ) : (
-                    <Text
-                      style={
-                        styles.deleteButtonText
-                      }
-                    >
-                      Delete Officer
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  {isActive ? "Active" : "Inactive"}
+                </Text>
               </View>
             </View>
 
-            {/* DIVIDER */}
+            {/* ACTIONS */}
 
             <View
-              style={
-                styles.divider
-              }
-            />
+              style={[
+                styles.profileActions,
 
-            {/* ==================================
-                DETAILS
-            ================================== */}
-
-            <View
-              style={
-                styles.detailsGrid
-              }
+                isCompact && styles.profileActionsCompact,
+              ]}
             >
-              {/* EMPLOYEE NUMBER */}
+              <TouchableOpacity
+                style={[
+                  styles.editButton,
 
-              <View
-                style={
-                  styles.detailItem
-                }
+                  isCompact && styles.profileActionButtonCompact,
+                ]}
+                onPress={handleEdit}
+                disabled={deleting}
+                activeOpacity={0.75}
               >
-                <Text
-                  style={
-                    styles.detailLabel
-                  }
-                >
-                  Employee Number
-                </Text>
+                <Text style={styles.editButtonText}>Edit Officer</Text>
+              </TouchableOpacity>
 
-                <Text
-                  style={
-                    styles.detailValueStrong
-                  }
-                >
-                  {
-                    officer.employee_number
-                  }
-                </Text>
-              </View>
+              <TouchableOpacity
+                style={[
+                  styles.deleteButton,
 
-              {/* USERNAME */}
+                  isCompact && styles.profileActionButtonCompact,
 
-              <View
-                style={
-                  styles.detailItem
-                }
+                  deleting && styles.deleteButtonDisabled,
+                ]}
+                onPress={handleDeleteOfficer}
+                disabled={deleting}
+                activeOpacity={0.75}
               >
-                <Text
-                  style={
-                    styles.detailLabel
-                  }
-                >
-                  Username
-                </Text>
-
-                <Text
-                  style={
-                    styles.detailValue
-                  }
-                >
-                  {
-                    officer.username
-                  }
-                </Text>
-              </View>
-
-              {/* ASSIGNED AREA */}
-
-              <View
-                style={
-                  styles.detailItem
-                }
-              >
-                <Text
-                  style={
-                    styles.detailLabel
-                  }
-                >
-                  Assigned Area
-                </Text>
-
-                <Text
-                  style={
-                    styles.detailValue
-                  }
-                >
-                  {officer.assigned_area ||
-                    'Not assigned'}
-                </Text>
-              </View>
-
-              {/* EMAIL */}
-
-              <View
-                style={
-                  styles.detailItem
-                }
-              >
-                <Text
-                  style={
-                    styles.detailLabel
-                  }
-                >
-                  Email Address
-                </Text>
-
-                <Text
-                  style={
-                    styles.detailValue
-                  }
-                >
-                  {officer.email ||
-                    'Not provided'}
-                </Text>
-              </View>
-
-              {/* CONTACT */}
-
-              <View
-                style={
-                  styles.detailItem
-                }
-              >
-                <Text
-                  style={
-                    styles.detailLabel
-                  }
-                >
-                  Contact Number
-                </Text>
-
-                <Text
-                  style={
-                    styles.detailValue
-                  }
-                >
-                  {officer.contact_number ||
-                    'Not provided'}
-                </Text>
-              </View>
-
-              {/* CREATED */}
-
-              <View
-                style={
-                  styles.detailItem
-                }
-              >
-                <Text
-                  style={
-                    styles.detailLabel
-                  }
-                >
-                  Account Created
-                </Text>
-
-                <Text
-                  style={
-                    styles.detailValue
-                  }
-                >
-                  {formatDate(
-                    officer.created_at
-                  )}
-                </Text>
-              </View>
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.deleteButtonText}>Delete Officer</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
+          <View style={styles.divider} />
+
           {/* ==================================
+                OFFICER DETAILS
+            ================================== */}
+
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Employee Number</Text>
+
+              <Text style={styles.detailValueStrong}>
+                {officer.employee_number}
+              </Text>
+            </View>
+
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Username</Text>
+
+              <Text style={styles.detailValue}>{officer.username}</Text>
+            </View>
+
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Assigned Area</Text>
+
+              <Text style={styles.detailValue}>
+                {officer.assigned_area || "Not assigned"}
+              </Text>
+            </View>
+
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Email Address</Text>
+
+              <Text style={styles.detailValue}>
+                {officer.email || "Not provided"}
+              </Text>
+            </View>
+
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Contact Number</Text>
+
+              <Text style={styles.detailValue}>
+                {officer.contact_number || "Not provided"}
+              </Text>
+            </View>
+
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Account Created</Text>
+
+              <Text style={styles.detailValue}>
+                {formatDate(officer.created_at)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ==================================
               SUMMARY
           ================================== */}
 
+        <View style={styles.summaryRow}>
           <View
-            style={
-              styles.summaryRow
-            }
+            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
           >
-            <View
-              style={
-                styles.summaryCard
-              }
-            >
-              <Text
-                style={
-                  styles.summaryLabel
-                }
-              >
-                Total Fines Recorded
-              </Text>
+            <Text style={styles.summaryLabel}>Total Fines Recorded</Text>
 
-              <Text
-                style={
-                  styles.summaryValue
-                }
-              >
-                {
-                  stats.totalFines
-                }
-              </Text>
-            </View>
-
-            <View
-              style={
-                styles.summaryCard
-              }
-            >
-              <Text
-                style={
-                  styles.summaryLabel
-                }
-              >
-                Active Fine Records
-              </Text>
-
-              <Text
-                style={
-                  styles.summaryValueGreen
-                }
-              >
-                {
-                  stats.activeFines
-                }
-              </Text>
-            </View>
+            <Text style={styles.summaryValue}>{stats.totalFines}</Text>
           </View>
 
-          {/* ==================================
+          <View
+            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
+          >
+            <Text style={styles.summaryLabel}>Active Fine Records</Text>
+
+            <Text style={styles.summaryValueGreen}>{stats.activeFines}</Text>
+          </View>
+        </View>
+
+        {/* ==================================
               RECENT FINES
           ================================== */}
 
-          <View
-            style={
-              styles.historyCard
-            }
-          >
-            <View
-              style={
-                styles.historyHeaderBar
-              }
-            >
-              <Text
-                style={
-                  styles.historyTitle
-                }
-              >
-                Recent Fines Recorded
-              </Text>
+        <View style={styles.historyCard}>
+          <View style={styles.historyHeaderBar}>
+            <Text style={styles.historyTitle}>Recent Fines Recorded</Text>
 
-              <Text
-                style={
-                  styles.historySubtitle
-                }
-              >
-                Most recent fines recorded by this officer
-              </Text>
-            </View>
+            <Text style={styles.historySubtitle}>
+              Most recent fines recorded by this officer
+            </Text>
+          </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator
-            >
-              <View
-                style={
-                  styles.historyTable
-                }
-              >
-                {/* TABLE HEADER */}
+          <ScrollView horizontal showsHorizontalScrollIndicator>
+            <View style={styles.historyTable}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.headerCell, styles.referenceColumn]}>
+                  Fine Reference
+                </Text>
 
-                <View
-                  style={
-                    styles.tableHeader
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.headerCell,
-                      styles.referenceColumn,
-                    ]}
-                  >
-                    Fine Reference
-                  </Text>
+                <Text style={[styles.headerCell, styles.studentColumn]}>
+                  Student
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.headerCell,
-                      styles.studentColumn,
-                    ]}
-                  >
-                    Student
-                  </Text>
+                <Text style={[styles.headerCell, styles.violationColumn]}>
+                  Violation
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.headerCell,
-                      styles.violationColumn,
-                    ]}
-                  >
-                    Violation
-                  </Text>
+                <Text style={[styles.headerCell, styles.dateColumn]}>Date</Text>
 
-                  <Text
-                    style={[
-                      styles.headerCell,
-                      styles.dateColumn,
-                    ]}
-                  >
-                    Date
-                  </Text>
+                <Text style={[styles.headerCell, styles.amountColumn]}>
+                  Amount
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.headerCell,
-                      styles.amountColumn,
-                    ]}
-                  >
-                    Amount
-                  </Text>
+                <Text style={[styles.headerCell, styles.statusColumn]}>
+                  Status
+                </Text>
+              </View>
 
-                  <Text
-                    style={[
-                      styles.headerCell,
-                      styles.statusColumn,
-                    ]}
-                  >
-                    Status
+              {recentFines.length === 0 ? (
+                <View style={styles.emptyHistory}>
+                  <Text style={styles.emptyHistoryText}>
+                    This officer has not recorded any fines yet.
                   </Text>
                 </View>
+              ) : (
+                recentFines.map((fine) => {
+                  const fineStatus = normalizeFineStatus(fine.fine_status);
 
-                {/* EMPTY */}
-
-                {recentFines.length ===
-                0 ? (
-                  <View
-                    style={
-                      styles.emptyHistory
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.emptyHistoryText
-                      }
+                  return (
+                    <TouchableOpacity
+                      key={fine.id}
+                      style={styles.historyRow}
+                      activeOpacity={0.7}
+                      onPress={() => handleFinePress(fine.id)}
                     >
-                      This officer has not recorded any fines yet.
-                    </Text>
-                  </View>
-                ) : (
-                  recentFines.map(
-                    (
-                      fine
-                    ) => {
-                      const fineStatus =
-                        normalizeFineStatus(
-                          fine.fine_status
-                        );
+                      <Text
+                        style={[
+                          styles.bodyCell,
+                          styles.referenceColumn,
+                          styles.referenceText,
+                        ]}
+                      >
+                        {fine.fine_reference}
+                      </Text>
 
-                      return (
-                        <TouchableOpacity
-                          key={
-                            fine.id
-                          }
-                          style={
-                            styles.historyRow
-                          }
-                          activeOpacity={
-                            0.7
-                          }
-                          onPress={() =>
-                            handleFinePress(
-                              fine.id
-                            )
-                          }
+                      <View style={styles.studentColumn}>
+                        <Text style={styles.studentName}>
+                          {fine.student_name}
+                        </Text>
+
+                        <Text style={styles.studentNumber}>
+                          {fine.student_number}
+                        </Text>
+                      </View>
+
+                      <Text style={[styles.bodyCell, styles.violationColumn]}>
+                        {fine.violation_name}
+                      </Text>
+
+                      <Text style={[styles.bodyCell, styles.dateColumn]}>
+                        {formatDate(fine.issued_at)}
+                      </Text>
+
+                      <Text
+                        style={[
+                          styles.bodyCell,
+                          styles.amountColumn,
+                          styles.amountText,
+                        ]}
+                      >
+                        {formatMoney(fine.amount)}
+                      </Text>
+
+                      <View style={styles.statusColumn}>
+                        <View
+                          style={[
+                            styles.fineStatusBadge,
+
+                            getFineStatusBadgeStyle(fineStatus),
+                          ]}
                         >
-                          {/* REFERENCE */}
-
                           <Text
                             style={[
-                              styles.bodyCell,
-                              styles.referenceColumn,
-                              styles.referenceText,
+                              styles.fineStatusText,
+
+                              getFineStatusTextStyle(fineStatus),
                             ]}
                           >
-                            {
-                              fine.fine_reference
-                            }
+                            {getFineStatusLabel(fineStatus)}
                           </Text>
-
-                          {/* STUDENT */}
-
-                          <View
-                            style={
-                              styles.studentColumn
-                            }
-                          >
-                            <Text
-                              style={
-                                styles.studentName
-                              }
-                            >
-                              {
-                                fine.student_name
-                              }
-                            </Text>
-
-                            <Text
-                              style={
-                                styles.studentNumber
-                              }
-                            >
-                              {
-                                fine.student_number
-                              }
-                            </Text>
-                          </View>
-
-                          {/* VIOLATION */}
-
-                          <Text
-                            style={[
-                              styles.bodyCell,
-                              styles.violationColumn,
-                            ]}
-                          >
-                            {
-                              fine.violation_name
-                            }
-                          </Text>
-
-                          {/* DATE */}
-
-                          <Text
-                            style={[
-                              styles.bodyCell,
-                              styles.dateColumn,
-                            ]}
-                          >
-                            {formatDate(
-                              fine.issued_at
-                            )}
-                          </Text>
-
-                          {/* AMOUNT */}
-
-                          <Text
-                            style={[
-                              styles.bodyCell,
-                              styles.amountColumn,
-                              styles.amountText,
-                            ]}
-                          >
-                            {formatMoney(
-                              fine.amount
-                            )}
-                          </Text>
-
-                          {/* STATUS */}
-
-                          <View
-                            style={
-                              styles.statusColumn
-                            }
-                          >
-                            <View
-                              style={[
-                                styles.fineStatusBadge,
-
-                                getFineStatusBadgeStyle(
-                                  fineStatus
-                                ),
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.fineStatusText,
-
-                                  getFineStatusTextStyle(
-                                    fineStatus
-                                  ),
-                                ]}
-                              >
-                                {getFineStatusLabel(
-                                  fineStatus
-                                )}
-                              </Text>
-                            </View>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    }
-                  )
-                )}
-              </View>
-            </ScrollView>
-          </View>
-        </>
-      );
-    };
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      </>
+    );
+  };
 
   // ==========================================
   // UI
   // ==========================================
 
   return (
-    <View
-      style={
-        styles.screen
-      }
-    >
+    <View style={styles.screen}>
       {/* ======================================
           SIDEBAR
       ====================================== */}
 
       {isTablet && (
-        <View
-          style={
-            styles.sidebar
-          }
-        >
-          <View
-            style={
-              styles.logoArea
-            }
-          >
+        <View style={styles.sidebar}>
+          <View style={styles.logoArea}>
             <Image
-              source={require('../../../../assets/branding/smartfineNoBG.png')}
-              style={
-                styles.smartFineLogo
-              }
+              source={require("../../../../assets/branding/smartfineNoBG.png")}
+              style={styles.smartFineLogo}
               resizeMode="contain"
             />
           </View>
 
-          <View
-            style={
-              styles.navigation
-            }
-          >
-            {navItems.map(
-              (
-                item
-              ) => {
-                const active =
-                  item.label ===
-                  'Officers';
+          <View style={styles.navigation}>
+            {navItems.map((item) => {
+              const active = item.label === "Officers";
 
-                return (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
-                    style={[
-                      styles.navItem,
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => handleNavigation(item)}
+                >
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-                      active &&
-                        styles.navItemActive,
-                    ]}
-                    onPress={() =>
-                      handleNavigation(
-                        item
-                      )
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.navIcon
-                      }
-                    >
-                      {getMenuSymbol(
-                        item.label
-                      )}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.navText
-                      }
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-            )}
+                  <Text style={styles.navText}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          <TouchableOpacity
-            style={
-              styles.logoutButton
-            }
-            onPress={
-              handleLogout
-            }
-          >
-            <Text
-              style={
-                styles.logoutText
-              }
-            >
-              Log Out
-            </Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1682,129 +919,85 @@ export default function OfficerProfile() {
           MAIN
       ====================================== */}
 
-      <View
-        style={
-          styles.main
-        }
-      >
+      <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
-          showsVerticalScrollIndicator={
-            false
-          }
+          contentContainerStyle={[
+            styles.scrollContent,
+
+            isCompact && styles.scrollContentCompact,
+          ]}
+          showsVerticalScrollIndicator={false}
         >
-          {/* MOBILE NAV */}
-
-          {!isTablet && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
-            >
-              {navItems.map(
-                (
-                  item
-                ) => {
-                  const active =
-                    item.label ===
-                    'Officers';
-
-                  return (
-                    <TouchableOpacity
-                      key={
-                        item.label
-                      }
-                      style={[
-                        styles.mobileNavItem,
-
-                        active &&
-                          styles.mobileNavItemActive,
-                      ]}
-                      onPress={() =>
-                        handleNavigation(
-                          item
-                        )
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.mobileNavText,
-
-                          active &&
-                            styles.mobileNavTextActive,
-                        ]}
-                      >
-                        {
-                          item.label
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
-            </ScrollView>
-          )}
-
           {/* ==================================
-              PAGE HEADER
+              PAGE HEADER / BACK
           ================================== */}
 
-          <View
-            style={
-              styles.pageHeader
-            }
-          >
+          <View style={styles.pageHeader}>
             <TouchableOpacity
-              style={
-                styles.backButton
-              }
-              onPress={
-                handleBack
-              }
+              style={styles.backButton}
+              onPress={handleBack}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Back to Officers"
             >
-              <Text
-                style={
-                  styles.backIcon
-                }
-              >
-                ‹
-              </Text>
+              <Image
+                source={require("../../../../assets/icons/back_icon.png")}
+                style={styles.backIconImage}
+                resizeMode="contain"
+              />
 
               <Text
-                style={
-                  styles.backText
-                }
+                style={[styles.backText, isCompact && styles.backTextCompact]}
+                numberOfLines={1}
               >
-                Officers
+                Officer Profile
               </Text>
             </TouchableOpacity>
 
-            <Text
-              style={
-                styles.pageTitle
-              }
-            >
-              Officer Profile
-            </Text>
-
-            <Text
-              style={
-                styles.pageSubtitle
-              }
-            >
+            <Text style={[styles.pageSubtitle, styles.headerSubtitle]}>
               View officer account information and fine history
             </Text>
           </View>
 
-          {
-            renderContent()
-          }
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
+
+          {!isTablet && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
+            >
+              {navItems.map((item) => {
+                const active = item.label === "Officers";
+
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={[
+                      styles.mobileNavItem,
+
+                      active && styles.mobileNavItemActive,
+                    ]}
+                    onPress={() => handleNavigation(item)}
+                  >
+                    <Text
+                      style={[
+                        styles.mobileNavText,
+
+                        active && styles.mobileNavTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          {renderContent()}
         </ScrollView>
       </View>
     </View>
@@ -1812,237 +1005,124 @@ export default function OfficerProfile() {
 }
 
 // ==========================================
-// NORMALIZE FINE STATUS
+// FINE STATUS
 // ==========================================
 
-function normalizeFineStatus(
-  status: string
-) {
-  return String(
-    status ||
-      'UNPAID'
-  ).toUpperCase();
+function normalizeFineStatus(status: string) {
+  return String(status || "UNPAID").toUpperCase();
 }
 
-// ==========================================
-// FINE STATUS LABEL
-// ==========================================
+function getFineStatusLabel(status: string) {
+  switch (status) {
+    case "PAID":
+      return "Paid";
 
-function getFineStatusLabel(
-  status: string
-) {
-  switch (
-    status
-  ) {
-    case 'PAID':
-      return 'Paid';
+    case "CANCELLED":
+      return "Cancelled";
 
-    case 'CANCELLED':
-      return 'Cancelled';
+    case "PENDING":
+      return "Pending";
 
-    case 'PENDING':
-      return 'Pending';
-
-    case 'WAIVED':
-      return 'Waived';
+    case "WAIVED":
+      return "Waived";
 
     default:
-      return 'Unpaid';
+      return "Unpaid";
   }
 }
 
-// ==========================================
-// FINE STATUS BADGE
-// ==========================================
-
-function getFineStatusBadgeStyle(
-  status: string
-) {
-  switch (
-    status
-  ) {
-    case 'PAID':
+function getFineStatusBadgeStyle(status: string) {
+  switch (status) {
+    case "PAID":
       return {
-        backgroundColor:
-          '#E5F7E8',
+        backgroundColor: "#E5F7E8",
       };
 
-    case 'CANCELLED':
+    case "CANCELLED":
       return {
-        backgroundColor:
-          '#ECEFF4',
+        backgroundColor: "#ECEFF4",
       };
 
-    case 'PENDING':
+    case "PENDING":
       return {
-        backgroundColor:
-          '#FFF4D6',
+        backgroundColor: "#FFF4D6",
       };
 
-    case 'WAIVED':
+    case "WAIVED":
       return {
-        backgroundColor:
-          '#E8F2FF',
+        backgroundColor: "#E8F2FF",
       };
 
     default:
       return {
-        backgroundColor:
-          '#FFEAEA',
+        backgroundColor: "#FFEAEA",
       };
   }
 }
 
-// ==========================================
-// FINE STATUS TEXT
-// ==========================================
-
-function getFineStatusTextStyle(
-  status: string
-) {
-  switch (
-    status
-  ) {
-    case 'PAID':
+function getFineStatusTextStyle(status: string) {
+  switch (status) {
+    case "PAID":
       return {
-        color:
-          '#2E9D43',
+        color: "#2E9D43",
       };
 
-    case 'CANCELLED':
+    case "CANCELLED":
       return {
-        color:
-          '#606775',
+        color: "#606775",
       };
 
-    case 'PENDING':
+    case "PENDING":
       return {
-        color:
-          '#A16A00',
+        color: "#A16A00",
       };
 
-    case 'WAIVED':
+    case "WAIVED":
       return {
-        color:
-          '#173A73',
+        color: "#173A73",
       };
 
     default:
       return {
-        color:
-          '#D32F2F',
+        color: "#D32F2F",
       };
   }
 }
 
 // ==========================================
-// FORMAT MONEY
+// MONEY
 // ==========================================
 
-function formatMoney(
-  amount: number
-) {
-  return `₱${Number(
-    amount ||
-      0
-  ).toLocaleString(
-    'en-PH',
-    {
-      minimumFractionDigits:
-        2,
+function formatMoney(amount: number) {
+  return `₱${Number(amount || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
 
-      maximumFractionDigits:
-        2,
-    }
-  )}`;
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 // ==========================================
-// FORMAT DATE
+// DATE
 // ==========================================
 
-function formatDate(
-  value:
-    | string
-    | null
-    | undefined
-) {
-  if (
-    !value
-  ) {
-    return '—';
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return "—";
   }
 
-  const normalized =
-    value.includes(
-      'T'
-    )
-      ? value
-      : value.replace(
-          ' ',
-          'T'
-        );
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
 
-  const date =
-    new Date(
-      normalized
-    );
+  const date = new Date(normalized);
 
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return date.toLocaleDateString(
-    'en-US',
-    {
-      month:
-        'long',
+  return date.toLocaleDateString("en-US", {
+    month: "long",
 
-      day:
-        'numeric',
+    day: "numeric",
 
-      year:
-        'numeric',
-    }
-  );
-}
-
-// ==========================================
-// SIDEBAR SYMBOLS
-// ==========================================
-
-function getMenuSymbol(
-  label: string
-) {
-  switch (
-    label
-  ) {
-    case 'Dashboard':
-      return '⌂';
-
-    case 'Students':
-      return '◎';
-
-    case 'Fines':
-      return '▤';
-
-    case 'QR Scanner':
-      return '▦';
-
-    case 'Reports':
-      return '▧';
-
-    case 'Settings':
-      return '⚙';
-
-    case 'Officers':
-      return '●';
-
-    default:
-      return '•';
-  }
+    year: "numeric",
+  });
 }

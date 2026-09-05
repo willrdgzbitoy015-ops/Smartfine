@@ -1,1176 +1,1005 @@
-import {
-  StyleSheet,
-} from 'react-native';
+import { StyleSheet } from "react-native";
 
 const COLORS = {
-  navy:
-    '#173A73',
+  navy: "#173A73",
 
-  text:
-    '#123266',
+  text: "#123266",
 
-  green:
-    '#45B94F',
+  green: "#45B94F",
 
-  lightGreen:
-    '#56C85C',
+  lightGreen: "#56C85C",
 
-  white:
-    '#FFFFFF',
+  white: "#FFFFFF",
 
-  background:
-    '#E8E8E8',
+  background: "#E8E8E8",
 
-  muted:
-    '#777777',
+  muted: "#777777",
 
-  red:
-    '#FF2424',
+  red: "#FF2424",
 };
 
-export const styles =
-  StyleSheet.create({
-    // ==========================================
-    // SCREEN
-    // ==========================================
+export const styles = StyleSheet.create({
+  // ==========================================
+  // SCREEN
+  // ==========================================
 
-    screen: {
-      flex: 1,
+  screen: {
+    flex: 1,
 
-      flexDirection:
-        'row',
+    flexDirection: "row",
 
-      backgroundColor:
-        COLORS.background,
-    },
+    backgroundColor: COLORS.background,
+  },
 
-    // ==========================================
-    // SIDEBAR
-    // ==========================================
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
 
-    sidebar: {
-      width: 220,
+  sidebar: {
+    width: 220,
 
-      minHeight:
-        '100%',
+    minHeight: "100%",
 
-      backgroundColor:
-        COLORS.navy,
+    backgroundColor: COLORS.navy,
 
-      paddingHorizontal:
-        28,
+    paddingHorizontal: 28,
 
-      paddingTop:
-        30,
+    paddingTop: 30,
 
-      paddingBottom:
-        25,
-    },
+    paddingBottom: 25,
+  },
 
-    logoArea: {
-      alignItems:
-        'center',
+  logoArea: {
+    alignItems: "center",
 
-      justifyContent:
-        'center',
+    justifyContent: "center",
 
-      marginBottom:
-        35,
-    },
+    marginBottom: 35,
+  },
 
-    smartFineLogo: {
-      width: 150,
+  smartFineLogo: {
+    width: 150,
 
-      height: 90,
-    },
+    height: 90,
+  },
 
-    navigation: {
-      gap: 10,
-    },
+  navigation: {
+    gap: 10,
+  },
 
-    navItem: {
-      height: 42,
+  navItem: {
+    height: 42,
 
-      flexDirection:
-        'row',
+    flexDirection: "row",
 
-      alignItems:
-        'center',
+    alignItems: "center",
 
-      paddingHorizontal:
-        12,
+    paddingHorizontal: 12,
 
-      borderRadius:
-        24,
-    },
+    borderRadius: 24,
+  },
 
-    navItemActive: {
-      backgroundColor:
-        COLORS.lightGreen,
-    },
+  navItemActive: {
+    backgroundColor: COLORS.lightGreen,
+  },
 
-    navIcon: {
-      width: 28,
+  navIconContainer: {
+    width: 28,
 
-      color:
-        COLORS.white,
+    height: 28,
 
-      fontSize: 21,
+    marginRight: 10,
 
-      fontWeight:
-        '700',
+    alignItems: "center",
 
-      textAlign:
-        'center',
+    justifyContent: "center",
+  },
 
-      marginRight: 10,
-    },
+  navImageIcon: {
+    width: 20,
 
-    navIconContainer: {
-      width: 28,
-      height: 28,
-      marginRight: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    height: 20,
+  },
 
-    navImageIcon: {
-      width: 20,
-      height: 20,
-    },
+  navText: {
+    color: COLORS.white,
 
-    navText: {
-      color:
-        COLORS.white,
+    fontSize: 14,
 
-      fontSize: 14,
+    fontWeight: "600",
+  },
 
-      fontWeight:
-        '600',
-    },
+  logoutButton: {
+    marginTop: "auto",
 
-    logoutButton: {
-      marginTop:
-        'auto',
+    borderWidth: 1,
 
-      borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
 
-      borderColor:
-        'rgba(255,255,255,0.5)',
+    borderRadius: 8,
 
-      borderRadius: 8,
+    paddingVertical: 10,
 
-      paddingVertical:
-        10,
+    alignItems: "center",
+  },
 
-      alignItems:
-        'center',
-    },
+  logoutText: {
+    color: COLORS.white,
 
-    logoutText: {
-      color:
-        COLORS.white,
+    fontWeight: "600",
+  },
 
-      fontWeight:
-        '600',
-    },
+  // ==========================================
+  // MAIN
+  // ==========================================
 
-    // ==========================================
-    // MAIN
-    // ==========================================
+  main: {
+    flex: 1,
 
-    main: {
-      flex: 1,
-    },
+    minWidth: 0,
+  },
 
-    scrollContent: {
-      flexGrow: 1,
+  scrollContent: {
+    flexGrow: 1,
 
-      paddingHorizontal:
-        38,
+    width: "100%",
 
-      paddingVertical:
-        35,
+    paddingHorizontal: 38,
 
-      paddingBottom:
-        60,
-    },
+    paddingTop: 30,
 
-    // ==========================================
-    // BACK
-    // ==========================================
+    paddingBottom: 60,
+  },
 
-    backButton: {
-      width:
-        '100%',
+  scrollContentCompact: {
+    paddingHorizontal: 16,
 
-      maxWidth:
-        1080,
+    paddingTop: 18,
 
-      alignSelf:
-        'center',
+    paddingBottom: 35,
+  },
 
-      marginBottom:
-        26,
-    },
+  // ==========================================
+  // BACK / PAGE TITLE
+  // ==========================================
 
-    backText: {
-      color:
-        COLORS.text,
+  backButton: {
+    width: "100%",
 
-      fontSize: 19,
+    maxWidth: 1080,
 
-      fontWeight:
-        '800',
-    },
+    alignSelf: "center",
 
-    // ==========================================
-    // MOBILE NAV
-    // ==========================================
+    flexDirection: "row",
 
-    mobileNav: {
-      gap: 8,
+    alignItems: "center",
 
-      marginBottom:
-        20,
-    },
+    minHeight: 44,
 
-    mobileNavItem: {
-      backgroundColor:
-        COLORS.white,
+    marginBottom: 22,
+  },
 
-      borderRadius:
-        18,
+  backIconImage: {
+    width: 22,
 
-      paddingHorizontal:
-        16,
+    height: 22,
 
-      paddingVertical:
-        8,
-    },
+    marginRight: 10,
 
-    mobileNavItemActive: {
-      backgroundColor:
-        COLORS.green,
-    },
+    flexShrink: 0,
 
-    mobileNavText: {
-      color:
-        COLORS.navy,
+    transform: [
+      {
+        rotate: "180deg",
+      },
+    ],
+  },
 
-      fontSize: 12,
+  backText: {
+    color: COLORS.text,
 
-      fontWeight:
-        '700',
-    },
+    fontSize: 20,
 
-    mobileNavTextActive: {
-      color:
-        COLORS.white,
-    },
+    fontWeight: "800",
 
-    // ==========================================
-    // PROFILE CARD
-    // ==========================================
+    flexShrink: 1,
+  },
 
-    profileCard: {
-      width:
-        '100%',
+  backTextCompact: {
+    fontSize: 18,
+  },
 
-      maxWidth:
-        1080,
+  // ==========================================
+  // MOBILE NAV
+  // ==========================================
 
-      minHeight:
-        150,
+  mobileNav: {
+    gap: 8,
 
-      alignSelf:
-        'center',
+    marginBottom: 20,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  mobileNavItem: {
+    backgroundColor: COLORS.white,
 
-      borderRadius:
-        12,
+    borderRadius: 18,
 
-      paddingHorizontal:
-        28,
+    paddingHorizontal: 16,
 
-      paddingVertical:
-        22,
+    paddingVertical: 8,
+  },
 
-      flexDirection:
-        'row',
+  mobileNavItemActive: {
+    backgroundColor: COLORS.green,
+  },
 
-      alignItems:
-        'center',
+  mobileNavText: {
+    color: COLORS.navy,
 
-      justifyContent:
-        'space-between',
+    fontSize: 12,
 
-      flexWrap:
-        'wrap',
+    fontWeight: "700",
+  },
 
-      gap: 25,
+  mobileNavTextActive: {
+    color: COLORS.white,
+  },
 
-      elevation: 1,
-    },
+  // ==========================================
+  // PROFILE CARD
+  // ==========================================
 
-    profileLeft: {
-      flex: 1,
+  profileCard: {
+    width: "100%",
 
-      flexDirection:
-        'row',
+    maxWidth: 1080,
 
-      alignItems:
-        'center',
+    minHeight: 150,
 
-      gap: 28,
+    alignSelf: "center",
 
-      minWidth:
-        400,
-    },
+    backgroundColor: COLORS.white,
 
-    // ==========================================
-    // AVATAR
-    // ==========================================
+    borderRadius: 12,
 
-    avatar: {
-      width: 96,
+    paddingHorizontal: 28,
 
-      height: 96,
+    paddingVertical: 22,
 
-      borderRadius:
-        48,
+    flexDirection: "row",
 
-      backgroundColor:
-        COLORS.navy,
+    alignItems: "center",
 
-      alignItems:
-        'center',
+    justifyContent: "space-between",
 
-      justifyContent:
-        'center',
+    flexWrap: "wrap",
 
-      flexShrink:
-        0,
-    },
+    gap: 25,
 
-    avatarImage: {
-      width: 96,
+    elevation: 1,
+  },
 
-      height: 96,
+  profileCardCompact: {
+    paddingHorizontal: 18,
 
-      borderRadius:
-        48,
+    paddingVertical: 18,
 
-      backgroundColor:
-        '#E2E2E2',
+    gap: 18,
+  },
 
-      flexShrink:
-        0,
-    },
+  profileLeft: {
+    flexGrow: 1,
 
-    avatarText: {
-      color:
-        COLORS.white,
+    flexShrink: 1,
 
-      fontSize: 27,
+    flexBasis: 420,
 
-      fontWeight:
-        '800',
-    },
+    minWidth: 0,
 
-    // ==========================================
-    // STUDENT INFO
-    // ==========================================
+    flexDirection: "row",
 
-    studentInfo: {
-      flex: 1,
+    alignItems: "center",
 
-      justifyContent:
-        'center',
-    },
+    gap: 28,
+  },
 
-    studentName: {
-      color:
-        '#111111',
+  profileLeftCompact: {
+    flexBasis: "100%",
 
-      fontSize: 25,
+    gap: 16,
+  },
 
-      fontWeight:
-        '800',
+  // ==========================================
+  // AVATAR
+  // ==========================================
 
-      marginBottom:
-        8,
-    },
+  avatar: {
+    width: 96,
 
-    studentMeta: {
-      color:
-        COLORS.muted,
+    height: 96,
 
-      fontSize: 13,
+    borderRadius: 48,
 
-      lineHeight: 21,
-    },
+    backgroundColor: COLORS.navy,
 
-    // ==========================================
-    // PROFILE ACTIONS
-    // ==========================================
+    alignItems: "center",
 
-    profileActions: {
-      flexDirection:
-        'row',
+    justifyContent: "center",
 
-      alignItems:
-        'center',
+    flexShrink: 0,
+  },
 
-      justifyContent:
-        'flex-end',
+  avatarImage: {
+    width: 96,
 
-      flexWrap:
-        'wrap',
+    height: 96,
 
-      gap: 12,
-    },
+    borderRadius: 48,
 
-    outlineButton: {
-      minWidth:
-        145,
+    backgroundColor: "#E2E2E2",
 
-      height: 48,
+    flexShrink: 0,
+  },
 
-      borderWidth: 1,
+  avatarCompact: {
+    width: 74,
 
-      borderColor:
-        '#222222',
+    height: 74,
 
-      borderRadius:
-        8,
+    borderRadius: 37,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  avatarText: {
+    color: COLORS.white,
 
-      flexDirection:
-        'row',
+    fontSize: 27,
 
-      alignItems:
-        'center',
+    fontWeight: "800",
+  },
 
-      justifyContent:
-        'center',
+  avatarTextCompact: {
+    fontSize: 22,
+  },
 
-      paddingHorizontal:
-        16,
-    },
+  // ==========================================
+  // STUDENT INFO
+  // ==========================================
 
-    outlineButtonText: {
-      color:
-        '#111111',
+  studentInfo: {
+    flex: 1,
 
-      fontSize: 12,
+    minWidth: 0,
 
-      fontWeight:
-        '800',
-    },
+    justifyContent: "center",
+  },
 
-    qrIcon: {
-      color:
-        '#111111',
+  studentName: {
+    color: "#111111",
 
-      fontSize: 17,
+    fontSize: 25,
 
-      fontWeight:
-        '800',
+    fontWeight: "800",
 
-      marginRight: 7,
-    },
+    marginBottom: 8,
+  },
 
-    editIcon: {
-      color:
-        '#111111',
+  studentNameCompact: {
+    fontSize: 19,
 
-      fontSize: 18,
+    marginBottom: 5,
+  },
 
-      fontWeight:
-        '800',
+  studentMeta: {
+    color: COLORS.muted,
 
-      marginRight: 7,
-    },
+    fontSize: 13,
 
-    // ==========================================
-    // SUMMARY
-    // ==========================================
+    lineHeight: 21,
+  },
 
-    summaryRow: {
-      width:
-        '100%',
+  // ==========================================
+  // PROFILE ACTIONS
+  // ==========================================
 
-      maxWidth:
-        1000,
+  profileActions: {
+    flexDirection: "row",
 
-      alignSelf:
-        'center',
+    alignItems: "center",
 
-      flexDirection:
-        'row',
+    justifyContent: "flex-end",
 
-      flexWrap:
-        'wrap',
+    flexWrap: "wrap",
 
-      gap: 25,
+    gap: 12,
+  },
 
-      marginTop:
-        30,
-    },
+  profileActionsCompact: {
+    width: "100%",
 
-    summaryCard: {
-      flex: 1,
+    justifyContent: "flex-start",
+  },
 
-      minWidth:
-        280,
+  outlineButton: {
+    minWidth: 145,
 
-      minHeight:
-        130,
+    height: 48,
 
-      backgroundColor:
-        COLORS.white,
+    borderWidth: 1,
 
-      borderWidth: 1,
+    borderColor: "#222222",
 
-      borderColor:
-        '#333333',
+    borderRadius: 8,
 
-      borderRadius:
-        8,
+    backgroundColor: COLORS.white,
 
-      paddingHorizontal:
-        24,
+    flexDirection: "row",
 
-      paddingVertical:
-        22,
+    alignItems: "center",
 
-      justifyContent:
-        'center',
-    },
+    justifyContent: "center",
 
-    summaryLabel: {
-      color:
-        '#111111',
+    paddingHorizontal: 16,
+  },
 
-      fontSize: 13,
+  outlineButtonCompact: {
+    flexGrow: 1,
 
-      fontWeight:
-        '800',
+    flexShrink: 1,
 
-      marginBottom:
-        15,
-    },
+    flexBasis: 150,
 
-    outstandingValue: {
-      color:
-        '#E52323',
+    minWidth: 135,
+  },
 
-      fontSize: 26,
+  outlineButtonText: {
+    color: "#111111",
 
-      fontWeight:
-        '800',
-    },
+    fontSize: 12,
 
-    paidValue: {
-      color:
-        '#00A21B',
+    fontWeight: "800",
+  },
 
-      fontSize: 26,
+  actionButtonIcon: {
+    width: 20,
 
-      fontWeight:
-        '800',
-    },
+    height: 20,
 
-    // ==========================================
-    // HISTORY
-    // ==========================================
+    marginRight: 8,
 
-    historyCard: {
-      width:
-        '100%',
+    flexShrink: 0,
+  },
 
-      maxWidth:
-        1100,
+  // ==========================================
+  // SUMMARY
+  // ==========================================
 
-      alignSelf:
-        'center',
+  summaryRow: {
+    width: "100%",
 
-      backgroundColor:
-        COLORS.white,
+    maxWidth: 1000,
 
-      borderRadius:
-        12,
+    alignSelf: "center",
 
-      marginTop:
-        30,
+    flexDirection: "row",
 
-      overflow:
-        'hidden',
-    },
+    flexWrap: "wrap",
 
-    historyTitleBar: {
-      minHeight:
-        58,
+    gap: 25,
 
-      justifyContent:
-        'center',
+    marginTop: 30,
+  },
 
-      backgroundColor:
-        COLORS.navy,
+  summaryCard: {
+    flexGrow: 1,
 
-      paddingHorizontal:
-        24,
-    },
+    flexShrink: 1,
 
-    historyTitle: {
-      color:
-        COLORS.white,
+    flexBasis: 320,
 
-      fontSize: 15,
+    minWidth: 260,
 
-      fontWeight:
-        '800',
-    },
+    minHeight: 130,
 
-    historyTable: {
-      minWidth:
-        1000,
-    },
+    backgroundColor: COLORS.white,
 
-    historyHeader: {
-      minHeight:
-        48,
+    borderWidth: 1,
 
-      flexDirection:
-        'row',
+    borderColor: "#333333",
 
-      alignItems:
-        'center',
+    borderRadius: 8,
 
-      backgroundColor:
-        '#F1F2F4',
+    paddingHorizontal: 24,
 
-      paddingHorizontal:
-        24,
-    },
+    paddingVertical: 22,
 
-    historyHeaderText: {
-      color:
-        '#333333',
+    justifyContent: "center",
+  },
 
-      fontSize: 11,
+  summaryCardCompact: {
+    flexBasis: "100%",
 
-      fontWeight:
-        '700',
-    },
+    minWidth: 0,
 
-    historyRow: {
-      minHeight:
-        62,
+    minHeight: 105,
 
-      flexDirection:
-        'row',
+    paddingHorizontal: 20,
 
-      alignItems:
-        'center',
+    paddingVertical: 18,
+  },
 
-      paddingHorizontal:
-        24,
+  summaryLabel: {
+    color: "#111111",
 
-      backgroundColor:
-        COLORS.white,
+    fontSize: 13,
 
-      borderBottomWidth:
-        1,
+    fontWeight: "800",
 
-      borderBottomColor:
-        '#E5E5E5',
-    },
+    marginBottom: 15,
+  },
 
-    historyCell: {
-      color:
-        '#555555',
+  outstandingValue: {
+    color: "#E52323",
 
-      fontSize: 11,
-    },
+    fontSize: 26,
 
-    violationColumn: {
-      width: 240,
-    },
+    fontWeight: "800",
+  },
 
-    dateColumn: {
-      width: 230,
-    },
+  paidValue: {
+    color: "#00A21B",
 
-    amountColumn: {
-      width: 140,
-    },
+    fontSize: 26,
 
-    fineStatusColumn: {
-      width: 140,
+    fontWeight: "800",
+  },
 
-      alignItems:
-        'center',
+  // ==========================================
+  // HISTORY
+  // ==========================================
 
-      justifyContent:
-        'center',
-    },
+  historyCard: {
+    width: "100%",
 
-    officerColumn: {
-      width: 190,
-    },
+    maxWidth: 1100,
 
-    violationText: {
-      color:
-        '#222222',
+    alignSelf: "center",
 
-      fontWeight:
-        '600',
-    },
+    backgroundColor: COLORS.white,
 
-    amountText: {
-      color:
-        '#222222',
+    borderRadius: 12,
 
-      fontWeight:
-        '800',
-    },
+    marginTop: 30,
 
-    // ==========================================
-    // STATUS
-    // ==========================================
+    overflow: "hidden",
+  },
 
-    statusBadge: {
-      minWidth:
-        67,
+  historyTitleBar: {
+    minHeight: 58,
 
-      alignItems:
-        'center',
+    justifyContent: "center",
 
-      justifyContent:
-        'center',
+    backgroundColor: COLORS.navy,
 
-      borderRadius:
-        18,
+    paddingHorizontal: 24,
+  },
 
-      paddingVertical:
-        5,
+  historyTitle: {
+    color: COLORS.white,
 
-      paddingHorizontal:
-        10,
-    },
+    fontSize: 15,
 
-    statusBadgeText: {
-      fontSize: 10,
+    fontWeight: "800",
+  },
 
-      fontWeight:
-        '800',
-    },
+  historyTable: {
+    minWidth: 1000,
+  },
 
-    paidBadge: {
-      backgroundColor:
-        '#E3F5E7',
-    },
+  historyHeader: {
+    minHeight: 48,
 
-    paidBadgeText: {
-      color:
-        '#2E9D43',
-    },
+    flexDirection: "row",
 
-    unpaidBadge: {
-      backgroundColor:
-        '#FFE5E5',
-    },
+    alignItems: "center",
 
-    unpaidBadgeText: {
-      color:
-        '#E52323',
-    },
+    backgroundColor: "#F1F2F4",
 
-    cancelledBadge: {
-      backgroundColor:
-        '#ECEFF4',
-    },
+    paddingHorizontal: 24,
+  },
 
-    cancelledBadgeText: {
-      color:
-        '#606775',
-    },
+  historyHeaderText: {
+    color: "#333333",
 
-    // ==========================================
-    // EMPTY
-    // ==========================================
+    fontSize: 11,
 
-    emptyHistory: {
-      minHeight:
-        150,
+    fontWeight: "700",
+  },
 
-      alignItems:
-        'center',
+  historyRow: {
+    minHeight: 62,
 
-      justifyContent:
-        'center',
-    },
+    flexDirection: "row",
 
-    emptyHistoryText: {
-      color:
-        '#8C939F',
+    alignItems: "center",
 
-      fontSize: 11,
-    },
+    paddingHorizontal: 24,
 
-    // ==========================================
-    // LOADING / ERROR
-    // ==========================================
+    backgroundColor: COLORS.white,
 
-    centerState: {
-      width:
-        '100%',
+    borderBottomWidth: 1,
 
-      maxWidth:
-        1080,
+    borderBottomColor: "#E5E5E5",
+  },
 
-      minHeight:
-        350,
+  historyCell: {
+    color: "#555555",
 
-      alignSelf:
-        'center',
+    fontSize: 11,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  violationColumn: {
+    width: 240,
+  },
 
-      borderRadius:
-        12,
+  dateColumn: {
+    width: 230,
+  },
 
-      alignItems:
-        'center',
+  amountColumn: {
+    width: 140,
+  },
 
-      justifyContent:
-        'center',
+  fineStatusColumn: {
+    width: 140,
 
-      padding:
-        30,
-    },
+    alignItems: "center",
 
-    stateText: {
-      color:
-        '#8C939F',
+    justifyContent: "center",
+  },
 
-      fontSize: 12,
+  officerColumn: {
+    width: 190,
+  },
 
-      marginTop: 12,
-    },
+  violationText: {
+    color: "#222222",
 
-    errorText: {
-      color:
-        COLORS.red,
+    fontWeight: "600",
+  },
 
-      fontSize: 12,
+  amountText: {
+    color: "#222222",
 
-      textAlign:
-        'center',
+    fontWeight: "800",
+  },
 
-      marginBottom:
-        18,
-    },
+  // ==========================================
+  // STATUS
+  // ==========================================
 
-    retryButton: {
-      backgroundColor:
-        COLORS.navy,
+  statusBadge: {
+    minWidth: 67,
 
-      paddingHorizontal:
-        20,
+    alignItems: "center",
 
-      paddingVertical:
-        10,
+    justifyContent: "center",
 
-      borderRadius: 8,
-    },
+    borderRadius: 18,
 
-    retryText: {
-      color:
-        COLORS.white,
+    paddingVertical: 5,
 
-      fontSize: 12,
+    paddingHorizontal: 10,
+  },
 
-      fontWeight:
-        '800',
-    },
+  statusBadgeText: {
+    fontSize: 10,
 
-    // ==========================================
-    // QR MODAL
-    // ==========================================
+    fontWeight: "800",
+  },
 
-    modalOverlay: {
-      flex: 1,
+  paidBadge: {
+    backgroundColor: "#E3F5E7",
+  },
 
-      alignItems:
-        'center',
+  paidBadgeText: {
+    color: "#2E9D43",
+  },
 
-      justifyContent:
-        'center',
+  unpaidBadge: {
+    backgroundColor: "#FFE5E5",
+  },
 
-      padding:
-        20,
+  unpaidBadgeText: {
+    color: "#E52323",
+  },
 
-      backgroundColor:
-        'rgba(0,0,0,0.55)',
-    },
+  cancelledBadge: {
+    backgroundColor: "#ECEFF4",
+  },
 
-    modalBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-    },
+  cancelledBadgeText: {
+    color: "#606775",
+  },
 
-    qrModal: {
-      width:
-        '100%',
+  // ==========================================
+  // EMPTY
+  // ==========================================
 
-      maxWidth:
-        460,
+  emptyHistory: {
+    minHeight: 150,
 
-      backgroundColor:
-        COLORS.white,
+    alignItems: "center",
 
-      borderRadius:
-        18,
+    justifyContent: "center",
+  },
 
-      paddingHorizontal:
-        28,
+  emptyHistoryText: {
+    color: "#8C939F",
 
-      paddingVertical:
-        26,
+    fontSize: 11,
+  },
 
-      elevation:
-        10,
-    },
+  // ==========================================
+  // LOADING / ERROR
+  // ==========================================
 
-    qrModalHeader: {
-      flexDirection:
-        'row',
+  centerState: {
+    width: "100%",
 
-      alignItems:
-        'flex-start',
+    maxWidth: 1080,
 
-      justifyContent:
-        'space-between',
+    minHeight: 350,
 
-      gap:
-        15,
+    alignSelf: "center",
 
-      marginBottom:
-        24,
-    },
+    backgroundColor: COLORS.white,
 
-    qrModalTitle: {
-      color:
-        COLORS.text,
+    borderRadius: 12,
 
-      fontSize:
-        21,
+    alignItems: "center",
 
-      fontWeight:
-        '800',
-    },
+    justifyContent: "center",
 
-    qrModalSubtitle: {
-      color:
-        '#7A8290',
+    padding: 30,
+  },
 
-      fontSize:
-        11,
+  stateText: {
+    color: "#8C939F",
 
-      lineHeight:
-        17,
+    fontSize: 12,
 
-      marginTop:
-        4,
+    marginTop: 12,
+  },
 
-      maxWidth:
-        320,
-    },
+  errorText: {
+    color: COLORS.red,
 
-    closeIconButton: {
-      width:
-        34,
+    fontSize: 12,
 
-      height:
-        34,
+    textAlign: "center",
 
-      borderRadius:
-        17,
+    marginBottom: 18,
+  },
 
-      backgroundColor:
-        '#EFF1F4',
+  retryButton: {
+    backgroundColor: COLORS.navy,
 
-      alignItems:
-        'center',
+    paddingHorizontal: 20,
 
-      justifyContent:
-        'center',
-    },
+    paddingVertical: 10,
 
-    closeIconText: {
-      color:
-        '#444444',
+    borderRadius: 8,
+  },
 
-      fontSize:
-        22,
+  retryText: {
+    color: COLORS.white,
 
-      fontWeight:
-        '700',
+    fontSize: 12,
 
-      lineHeight:
-        24,
-    },
+    fontWeight: "800",
+  },
 
-    qrContainer: {
-      alignItems:
-        'center',
+  // ==========================================
+  // QR MODAL
+  // ==========================================
 
-      justifyContent:
-        'center',
+  modalOverlay: {
+    flex: 1,
 
-      marginBottom:
-        20,
-    },
+    alignItems: "center",
 
-    qrWhiteBox: {
-      backgroundColor:
-        '#FFFFFF',
+    justifyContent: "center",
 
-      borderWidth:
-        1,
+    padding: 20,
 
-      borderColor:
-        '#E0E2E5',
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
 
-      borderRadius:
-        14,
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
 
-      padding:
-        15,
-    },
+  qrModal: {
+    width: "100%",
 
-    qrStudentName: {
-      color:
-        '#111111',
+    maxWidth: 460,
 
-      fontSize:
-        20,
+    backgroundColor: COLORS.white,
 
-      fontWeight:
-        '800',
+    borderRadius: 18,
 
-      textAlign:
-        'center',
-    },
+    paddingHorizontal: 28,
 
-    qrStudentId: {
-      color:
-        COLORS.navy,
+    paddingVertical: 26,
 
-      fontSize:
-        13,
+    elevation: 10,
+  },
 
-      fontWeight:
-        '800',
+  qrModalCompact: {
+    paddingHorizontal: 18,
 
-      textAlign:
-        'center',
+    paddingVertical: 20,
+  },
 
-      marginTop:
-        6,
-    },
+  qrModalHeader: {
+    flexDirection: "row",
 
-    qrGradeSection: {
-      color:
-        '#777777',
+    alignItems: "flex-start",
 
-      fontSize:
-        12,
+    justifyContent: "space-between",
 
-      textAlign:
-        'center',
+    gap: 15,
 
-      marginTop:
-        4,
-    },
+    marginBottom: 24,
+  },
 
-    qrNoteBox: {
-      backgroundColor:
-        '#F3F6FA',
+  qrModalTitle: {
+    color: COLORS.text,
 
-      borderRadius:
-        10,
+    fontSize: 21,
 
-      paddingHorizontal:
-        15,
+    fontWeight: "800",
+  },
 
-      paddingVertical:
-        13,
+  qrModalSubtitle: {
+    color: "#7A8290",
 
-      marginTop:
-        20,
-    },
+    fontSize: 11,
 
-    qrNoteTitle: {
-      color:
-        COLORS.navy,
+    lineHeight: 17,
 
-      fontSize:
-        11,
+    marginTop: 4,
 
-      fontWeight:
-        '800',
+    maxWidth: 320,
+  },
 
-      marginBottom:
-        4,
-    },
+  closeIconButton: {
+    width: 34,
 
-    qrNoteText: {
-      color:
-        '#707784',
+    height: 34,
 
-      fontSize:
-        10,
+    borderRadius: 17,
 
-      lineHeight:
-        15,
-    },
+    backgroundColor: "#EFF1F4",
 
-    qrCloseButton: {
-      height:
-        45,
+    alignItems: "center",
 
-      backgroundColor:
-        COLORS.navy,
+    justifyContent: "center",
 
-      borderRadius:
-        8,
+    flexShrink: 0,
+  },
 
-      alignItems:
-        'center',
+  closeIconText: {
+    color: "#444444",
 
-      justifyContent:
-        'center',
+    fontSize: 22,
 
-      marginTop:
-        20,
-    },
+    fontWeight: "700",
 
-    qrCloseButtonText: {
-      color:
-        COLORS.white,
+    lineHeight: 24,
+  },
 
-      fontSize:
-        12,
+  qrContainer: {
+    alignItems: "center",
 
-      fontWeight:
-        '800',
-    },
-  });
+    justifyContent: "center",
+
+    marginBottom: 20,
+  },
+
+  qrWhiteBox: {
+    backgroundColor: "#FFFFFF",
+
+    borderWidth: 1,
+
+    borderColor: "#E0E2E5",
+
+    borderRadius: 14,
+
+    padding: 15,
+  },
+
+  qrStudentName: {
+    color: "#111111",
+
+    fontSize: 20,
+
+    fontWeight: "800",
+
+    textAlign: "center",
+  },
+
+  qrStudentId: {
+    color: COLORS.navy,
+
+    fontSize: 13,
+
+    fontWeight: "800",
+
+    textAlign: "center",
+
+    marginTop: 6,
+  },
+
+  qrGradeSection: {
+    color: "#777777",
+
+    fontSize: 12,
+
+    textAlign: "center",
+
+    marginTop: 4,
+  },
+
+  qrNoteBox: {
+    backgroundColor: "#F3F6FA",
+
+    borderRadius: 10,
+
+    paddingHorizontal: 15,
+
+    paddingVertical: 13,
+
+    marginTop: 20,
+  },
+
+  qrNoteTitle: {
+    color: COLORS.navy,
+
+    fontSize: 11,
+
+    fontWeight: "800",
+
+    marginBottom: 4,
+  },
+
+  qrNoteText: {
+    color: "#707784",
+
+    fontSize: 10,
+
+    lineHeight: 15,
+  },
+
+  qrCloseButton: {
+    height: 45,
+
+    backgroundColor: COLORS.navy,
+
+    borderRadius: 8,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    marginTop: 20,
+  },
+
+  qrCloseButtonText: {
+    color: COLORS.white,
+
+    fontSize: 12,
+
+    fontWeight: "800",
+  },
+});

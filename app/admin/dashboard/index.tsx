@@ -1,21 +1,23 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
 
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  useWindowDimensions,
   Alert,
   Image,
   Platform,
-} from 'react-native';
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-import { useRouter } from 'expo-router';
+import { useRouter } from "expo-router";
 
-import { styles } from './dashboard.styles';
-import { API_BASE } from '@/constants/api';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { API_BASE } from "@/constants/api";
+import { styles } from "./dashboard.styles";
 
 type DashboardStats = {
   totalStudents: number;
@@ -33,7 +35,7 @@ type NavItem = {
 type SummaryCard = {
   label: string;
   value: string;
-  type: 'normal' | 'danger' | 'success' | 'money';
+  type: "normal" | "danger" | "success" | "money";
 };
 
 type Activity = {
@@ -42,19 +44,24 @@ type Activity = {
   description: string;
   amount: number;
   created_at: string;
-  activity_type: 'paid' | 'fine';
+  activity_type: "paid" | "fine";
   details: string;
+};
+
+type AdminProfile = {
+  profilePictureUri: string | null;
 };
 
 export default function AdminDashboard() {
   const router = useRouter();
+
   const { logout } = useAuth();
 
   const { width } = useWindowDimensions();
 
   const isTablet = width >= 768;
 
-  const [activeMenu, setActiveMenu] = useState('Dashboard');
+  const [activeMenu, setActiveMenu] = useState("Dashboard");
 
   // ==========================================
   // DASHBOARD STATS
@@ -73,18 +80,23 @@ export default function AdminDashboard() {
   // RECENT ACTIVITIES
   // ==========================================
 
-  const [recentActivities, setRecentActivities] =
-    useState<Activity[]>([]);
+  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
 
-  const [activitiesLoading, setActivitiesLoading] =
-    useState(true);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+
+  // ==========================================
+  // ADMIN PROFILE
+  // ==========================================
+
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
+
+  const [adminImageFailed, setAdminImageFailed] = useState(false);
 
   // ==========================================
   // REAL-TIME DATE AND TIME
   // ==========================================
 
-  const [currentDateTime, setCurrentDateTime] =
-    useState(new Date());
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -94,17 +106,23 @@ export default function AdminDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  const formattedDateTime =
-    currentDateTime.toLocaleString('en-US', {
-      weekday: 'long',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    });
+  const formattedDateTime = currentDateTime.toLocaleString("en-US", {
+    weekday: "long",
+
+    month: "short",
+
+    day: "numeric",
+
+    year: "numeric",
+
+    hour: "numeric",
+
+    minute: "2-digit",
+
+    second: "2-digit",
+
+    hour12: true,
+  });
 
   // ==========================================
   // LOAD DASHBOARD STATS
@@ -118,29 +136,21 @@ export default function AdminDashboard() {
     try {
       setStatsLoading(true);
 
-      const response = await fetch(
-        `${API_BASE}/api/dashboard/stats`
-      );
+      const response = await fetch(`${API_BASE}/api/dashboard/stats`);
 
       const data = await response.json();
 
-      console.log('Dashboard stats response:', data);
+      console.log("Dashboard stats response:", data);
 
       if (!response.ok || !data.success) {
-        console.error(
-          'Failed to load dashboard stats:',
-          data
-        );
+        console.error("Failed to load dashboard stats:", data);
 
         return;
       }
 
       setStats(data.stats);
     } catch (error) {
-      console.error(
-        'Dashboard stats connection error:',
-        error
-      );
+      console.error("Dashboard stats connection error:", error);
     } finally {
       setStatsLoading(false);
     }
@@ -159,33 +169,66 @@ export default function AdminDashboard() {
       setActivitiesLoading(true);
 
       const response = await fetch(
-        `${API_BASE}/api/dashboard/recent-activities`
+        `${API_BASE}/api/dashboard/recent-activities`,
       );
 
       const data = await response.json();
 
-      console.log(
-        'Recent activities response:',
-        data
-      );
+      console.log("Recent activities response:", data);
 
       if (!response.ok || !data.success) {
-        console.error(
-          'Failed to load recent activities:',
-          data
-        );
+        console.error("Failed to load recent activities:", data);
 
         return;
       }
 
       setRecentActivities(data.activities);
     } catch (error) {
-      console.error(
-        'Recent activities connection error:',
-        error
-      );
+      console.error("Recent activities connection error:", error);
     } finally {
       setActivitiesLoading(false);
+    }
+  };
+
+  // ==========================================
+  // LOAD ADMIN PROFILE
+  // ==========================================
+
+  useEffect(() => {
+    loadAdminProfile();
+  }, []);
+
+  const loadAdminProfile = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        console.log("Admin dashboard profile: token not found.");
+
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      console.log("Admin dashboard profile response:", data);
+
+      if (!response.ok || !data.success || !data.user) {
+        console.error("Failed to load admin profile:", data);
+
+        return;
+      }
+
+      setAdminProfile(data.user);
+
+      setAdminImageFailed(false);
+    } catch (error) {
+      console.error("Admin profile connection error:", error);
     }
   };
 
@@ -195,39 +238,59 @@ export default function AdminDashboard() {
 
   const navItems: NavItem[] = [
     {
-      label: 'Dashboard',
-      route: '/admin/dashboard',
-      icon: require('../../../assets/icons/dashboard.png'),
+      label: "Dashboard",
+
+      route: "/admin/dashboard",
+
+      icon: require("../../../assets/icons/dashboard.png"),
     },
+
     {
-      label: 'Students',
-      route: '/admin/students',
-      icon: require('../../../assets/icons/students.png'),
+      label: "Students",
+
+      route: "/admin/students",
+
+      icon: require("../../../assets/icons/students.png"),
     },
+
     {
-      label: 'Fines',
-      route: '/admin/fines',
-      icon: require('../../../assets/icons/fines.png'),
+      label: "Fines",
+
+      route: "/admin/fines",
+
+      icon: require("../../../assets/icons/fines.png"),
     },
+
     {
-      label: 'QR Scanner',
-      route: '/admin/qr-scanner',
-      icon: require('../../../assets/icons/qr-codeWhite.png'),
+      label: "QR Scanner",
+
+      route: "/admin/qr-scanner",
+
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
+
     {
-      label: 'Reports',
-      route: '/admin/reports',
-      icon: require('../../../assets/icons/reports.png'),
+      label: "Reports",
+
+      route: "/admin/reports",
+
+      icon: require("../../../assets/icons/reports.png"),
     },
+
     {
-      label: 'Settings',
-      route: '/admin/settings',
-      icon: require('../../../assets/icons/settings.png'),
+      label: "Settings",
+
+      route: "/admin/settings",
+
+      icon: require("../../../assets/icons/settings.png"),
     },
+
     {
-      label: 'Officers',
-      route: '/admin/officers',
-      icon: require('../../../assets/icons/officers.png'),
+      label: "Officers",
+
+      route: "/admin/officers",
+
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
 
@@ -237,34 +300,37 @@ export default function AdminDashboard() {
 
   const summaryCards: SummaryCard[] = [
     {
-      label: 'Total Students',
-      value: statsLoading
-        ? '...'
-        : String(stats.totalStudents),
-      type: 'success',
+      label: "Total Students",
+
+      value: statsLoading ? "..." : String(stats.totalStudents),
+
+      type: "success",
     },
+
     {
-      label: 'Unpaid Fines',
-      value: statsLoading
-        ? '...'
-        : String(stats.unpaidFines),
-      type: 'danger',
+      label: "Unpaid Fines",
+
+      value: statsLoading ? "..." : String(stats.unpaidFines),
+
+      type: "danger",
     },
+
     {
       label: "Today's Collection",
+
       value: statsLoading
-        ? '...'
-        : `₱ ${Number(
-            stats.todayCollection
-          ).toFixed(2)}`,
-      type: 'money',
+        ? "..."
+        : `₱ ${Number(stats.todayCollection).toFixed(2)}`,
+
+      type: "money",
     },
+
     {
-      label: 'Paid Fines',
-      value: statsLoading
-        ? '...'
-        : String(stats.paidFines),
-      type: 'success',
+      label: "Paid Fines",
+
+      value: statsLoading ? "..." : String(stats.paidFines),
+
+      type: "success",
     },
   ];
 
@@ -287,7 +353,7 @@ export default function AdminDashboard() {
   // ==========================================
 
   const handleViewActivities = () => {
-    router.push('/admin/fines' as any);
+    router.push("/admin/fines" as any);
   };
 
   // ==========================================
@@ -296,40 +362,27 @@ export default function AdminDashboard() {
 
   const performLogout = async () => {
     try {
-      console.log('Logout button pressed');
+      console.log("Logout button pressed");
 
       await logout();
 
-      console.log(
-        'Admin logged out successfully.'
-      );
+      console.log("Admin logged out successfully.");
 
-      router.replace('/login');
+      router.replace("/login");
     } catch (error) {
-      console.error(
-        'Logout error:',
-        error
-      );
+      console.error("Logout error:", error);
 
-      if (Platform.OS === 'web') {
-        window.alert(
-          'Could not log out. Please try again.'
-        );
+      if (Platform.OS === "web") {
+        window.alert("Could not log out. Please try again.");
       } else {
-        Alert.alert(
-          'Logout Error',
-          'Could not log out. Please try again.'
-        );
+        Alert.alert("Logout Error", "Could not log out. Please try again.");
       }
     }
   };
 
   const handleLogout = () => {
-    // WEB / BROWSER
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        'Are you sure you want to log out?'
-      );
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to log out?");
 
       if (confirmed) {
         performLogout();
@@ -338,23 +391,36 @@ export default function AdminDashboard() {
       return;
     }
 
-    // ANDROID / IOS
     Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
+      "Log Out",
+
+      "Are you sure you want to log out?",
+
       [
         {
-          text: 'Cancel',
-          style: 'cancel',
+          text: "Cancel",
+
+          style: "cancel",
         },
+
         {
-          text: 'Log Out',
-          style: 'destructive',
+          text: "Log Out",
+
+          style: "destructive",
+
           onPress: performLogout,
         },
-      ]
+      ],
     );
   };
+
+  // ==========================================
+  // ADMIN PROFILE PICTURE URL
+  // ==========================================
+
+  const adminProfilePictureUrl = getProfilePictureUrl(
+    adminProfile?.profilePictureUri,
+  );
 
   // ==========================================
   // UI
@@ -370,7 +436,7 @@ export default function AdminDashboard() {
 
           <View style={styles.logoArea}>
             <Image
-              source={require('../../../assets/branding/smartfineNoBG.png')}
+              source={require("../../../assets/branding/smartfineNoBG.png")}
               style={styles.smartFineLogo}
               resizeMode="contain"
             />
@@ -380,20 +446,13 @@ export default function AdminDashboard() {
 
           <View style={styles.navigation}>
             {navItems.map((item) => {
-              const isActive =
-                activeMenu === item.label;
+              const isActive = activeMenu === item.label;
 
               return (
                 <TouchableOpacity
                   key={item.label}
-                  style={[
-                    styles.navItem,
-                    isActive &&
-                      styles.navItemActive,
-                  ]}
-                  onPress={() =>
-                    handleNavigation(item)
-                  }
+                  style={[styles.navItem, isActive && styles.navItemActive]}
+                  onPress={() => handleNavigation(item)}
                 >
                   <View style={styles.navIconContainer}>
                     <Image
@@ -404,11 +463,7 @@ export default function AdminDashboard() {
                   </View>
 
                   <Text
-                    style={[
-                      styles.navText,
-                      isActive &&
-                        styles.navTextActive,
-                    ]}
+                    style={[styles.navText, isActive && styles.navTextActive]}
                   >
                     {item.label}
                   </Text>
@@ -419,13 +474,8 @@ export default function AdminDashboard() {
 
           {/* LOGOUT BUTTON */}
 
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Text style={styles.logoutText}>
-              Log Out
-            </Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -434,41 +484,40 @@ export default function AdminDashboard() {
 
       <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {/* HEADER */}
 
           <View style={styles.header}>
             <View>
-              <Text style={styles.pageTitle}>
-                Dashboard
-              </Text>
+              <Text style={styles.pageTitle}>Dashboard</Text>
 
-              <Text style={styles.dateText}>
-                {formattedDateTime}
-              </Text>
+              <Text style={styles.dateText}>{formattedDateTime}</Text>
             </View>
 
             <View style={styles.profileArea}>
-              <View
-                style={styles.profileTextArea}
-              >
-                <Text style={styles.adminName}>
-                  WILL R. BITOY
-                </Text>
+              <View style={styles.profileTextArea}>
+                <Text style={styles.adminName}>WILL R. BITOY</Text>
 
-                <Text style={styles.adminRole}>
-                  Administrator
-                </Text>
+                <Text style={styles.adminRole}>Administrator</Text>
               </View>
 
+              {/* ADMIN PROFILE PHOTO */}
+
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  WB
-                </Text>
+                {adminProfilePictureUrl && !adminImageFailed ? (
+                  <Image
+                    source={{
+                      uri: adminProfilePictureUrl,
+                    }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                    onError={() => setAdminImageFailed(true)}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>WB</Text>
+                )}
               </View>
             </View>
           </View>
@@ -478,34 +527,27 @@ export default function AdminDashboard() {
           {!isTablet && (
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
             >
               {navItems.map((item) => {
-                const isActive =
-                  activeMenu === item.label;
+                const isActive = activeMenu === item.label;
 
                 return (
                   <TouchableOpacity
                     key={item.label}
                     style={[
                       styles.mobileNavItem,
-                      isActive &&
-                        styles.mobileNavItemActive,
+
+                      isActive && styles.mobileNavItemActive,
                     ]}
-                    onPress={() =>
-                      handleNavigation(item)
-                    }
+                    onPress={() => handleNavigation(item)}
                   >
                     <Text
                       style={[
                         styles.mobileNavText,
-                        isActive &&
-                          styles.mobileNavTextActive,
+
+                        isActive && styles.mobileNavTextActive,
                       ]}
                     >
                       {item.label}
@@ -525,32 +567,24 @@ export default function AdminDashboard() {
                 style={[
                   styles.summaryCard,
 
-                  card.type === 'danger' &&
-                    styles.cardDanger,
+                  card.type === "danger" && styles.cardDanger,
 
-                  card.type === 'success' &&
-                    styles.cardSuccess,
+                  card.type === "success" && styles.cardSuccess,
 
-                  card.type === 'money' &&
-                    styles.cardMoney,
+                  card.type === "money" && styles.cardMoney,
                 ]}
               >
-                <Text style={styles.cardLabel}>
-                  {card.label}
-                </Text>
+                <Text style={styles.cardLabel}>{card.label}</Text>
 
                 <Text
                   style={[
                     styles.cardValue,
 
-                    card.type === 'danger' &&
-                      styles.valueDanger,
+                    card.type === "danger" && styles.valueDanger,
 
-                    card.type === 'success' &&
-                      styles.valueSuccess,
+                    card.type === "success" && styles.valueSuccess,
 
-                    card.type === 'money' &&
-                      styles.valueMoney,
+                    card.type === "money" && styles.valueMoney,
                   ]}
                 >
                   {card.value}
@@ -562,103 +596,56 @@ export default function AdminDashboard() {
           {/* RECENT ACTIVITIES */}
 
           <View style={styles.activityPanel}>
-            <Text style={styles.activityTitle}>
-              Recent Activities
-            </Text>
+            <Text style={styles.activityTitle}>Recent Activities</Text>
 
             <View style={styles.activityList}>
               {activitiesLoading ? (
-                <Text
-                  style={styles.activityDetails}
-                >
+                <Text style={styles.activityDetails}>
                   Loading recent activities...
                 </Text>
               ) : recentActivities.length === 0 ? (
-                <Text
-                  style={styles.activityDetails}
-                >
+                <Text style={styles.activityDetails}>
                   No recent activities yet.
                 </Text>
               ) : (
-                recentActivities.map(
-                  (activity) => (
-                    <View
-                      key={`${activity.activity_type}-${activity.id}`}
-                      style={styles.activityItem}
-                    >
-                      <View
-                        style={
-                          styles.activityTextArea
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.activityDescription
-                          }
-                        >
-                          <Text
-                            style={
-                              styles.activityName
-                            }
-                          >
-                            {activity.name}
-                          </Text>{' '}
-                          {activity.description}
-                        </Text>
+                recentActivities.map((activity) => (
+                  <View
+                    key={`${activity.activity_type}-${activity.id}`}
+                    style={styles.activityItem}
+                  >
+                    <View style={styles.activityTextArea}>
+                      <Text style={styles.activityDescription}>
+                        <Text style={styles.activityName}>{activity.name}</Text>{" "}
+                        {activity.description}
+                      </Text>
 
-                        <Text
-                          style={
-                            styles.activityDetails
-                          }
-                        >
-                          {new Date(
-                            activity.created_at
-                          ).toLocaleString(
-                            'en-US',
-                            {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            }
-                          )}{' '}
-                          • {activity.details}
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={[
-                          styles.activityAmount,
-
-                          activity.activity_type ===
-                          'paid'
-                            ? styles.amountPaid
-                            : styles.amountFine,
-                        ]}
-                      >
-                        ₱
-                        {Number(
-                          activity.amount
-                        ).toFixed(2)}
+                      <Text style={styles.activityDetails}>
+                        {formatActivityTime(activity.created_at)} •{" "}
+                        {activity.details}
                       </Text>
                     </View>
-                  )
-                )
+
+                    <Text
+                      style={[
+                        styles.activityAmount,
+
+                        activity.activity_type === "paid"
+                          ? styles.amountPaid
+                          : styles.amountFine,
+                      ]}
+                    >
+                      ₱{Number(activity.amount).toFixed(2)}
+                    </Text>
+                  </View>
+                ))
               )}
             </View>
 
             <TouchableOpacity
-              style={
-                styles.viewActivitiesButton
-              }
+              style={styles.viewActivitiesButton}
               onPress={handleViewActivities}
             >
-              <Text
-                style={
-                  styles.viewActivitiesText
-                }
-              >
-                View all activities
-              </Text>
+              <Text style={styles.viewActivitiesText}>View all activities</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -667,3 +654,61 @@ export default function AdminDashboard() {
   );
 }
 
+// ==========================================
+// PROFILE PICTURE URL
+// ==========================================
+
+function getProfilePictureUrl(uri: string | null | undefined) {
+  if (!uri) {
+    return null;
+  }
+
+  if (uri.startsWith("http://") || uri.startsWith("https://")) {
+    return uri;
+  }
+
+  return `${API_BASE}${uri}`;
+}
+
+// ==========================================
+// ACTIVITY RECORDED TIME
+// ==========================================
+
+function formatActivityTime(value: string | null | undefined) {
+  if (!value) {
+    return "--";
+  }
+
+  try {
+    let normalized = value.trim();
+
+    // SQLite CURRENT_TIMESTAMP:
+    // YYYY-MM-DD HH:MM:SS
+    // is UTC.
+    //
+    // Convert it into an ISO UTC value
+    // before displaying Philippine time.
+
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
+      normalized = normalized.replace(" ", "T") + "Z";
+    }
+
+    const date = new Date(normalized);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+
+      minute: "2-digit",
+
+      hour12: true,
+
+      timeZone: "Asia/Manila",
+    });
+  } catch {
+    return value;
+  }
+}

@@ -1,1119 +1,973 @@
-import {
-  StyleSheet,
-} from 'react-native';
+import { StyleSheet } from "react-native";
 
 const COLORS = {
-  navy:
-    '#173A73',
+  navy: "#173A73",
 
-  text:
-    '#123266',
+  text: "#123266",
 
-  green:
-    '#45B94F',
+  green: "#45B94F",
 
-  lightGreen:
-    '#56C85C',
+  lightGreen: "#56C85C",
 
-  white:
-    '#FFFFFF',
+  white: "#FFFFFF",
 
-  background:
-    '#E8E8E8',
+  background: "#E8E8E8",
 
-  muted:
-    '#8C939F',
+  muted: "#8C939F",
 
-  red:
-    '#D32F2F',
-
-  border:
-    '#DADDE2',
+  red: "#D32F2F",
 };
 
-export const styles =
-  StyleSheet.create({
-    // ==========================================
-    // SCREEN
-    // ==========================================
+export const styles = StyleSheet.create({
+  // ==========================================
+  // SCREEN
+  // ==========================================
 
-    screen: {
-      flex: 1,
+  screen: {
+    flex: 1,
 
-      flexDirection:
-        'row',
+    flexDirection: "row",
 
-      backgroundColor:
-        COLORS.background,
-    },
+    backgroundColor: COLORS.background,
+  },
 
-    // ==========================================
-    // SIDEBAR
-    // ==========================================
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
 
-    sidebar: {
-      width: 220,
+  sidebar: {
+    width: 220,
 
-      minHeight:
-        '100%',
+    minHeight: "100%",
 
-      backgroundColor:
-        COLORS.navy,
+    backgroundColor: COLORS.navy,
 
-      paddingHorizontal:
-        28,
+    paddingHorizontal: 28,
 
-      paddingTop:
-        30,
+    paddingTop: 30,
 
-      paddingBottom:
-        25,
-    },
+    paddingBottom: 25,
+  },
 
-    logoArea: {
-      alignItems:
-        'center',
+  logoArea: {
+    alignItems: "center",
 
-      justifyContent:
-        'center',
+    justifyContent: "center",
 
-      marginBottom:
-        35,
-    },
+    marginBottom: 35,
+  },
 
-    smartFineLogo: {
-      width: 150,
+  smartFineLogo: {
+    width: 150,
 
-      height: 90,
-    },
+    height: 90,
+  },
 
-    navigation: {
-      gap: 10,
-    },
+  navigation: {
+    gap: 10,
+  },
 
-    navItem: {
-      height: 42,
+  navItem: {
+    height: 42,
 
-      flexDirection:
-        'row',
+    flexDirection: "row",
 
-      alignItems:
-        'center',
+    alignItems: "center",
 
-      paddingHorizontal:
-        12,
+    paddingHorizontal: 12,
 
-      borderRadius:
-        24,
-    },
+    borderRadius: 24,
+  },
 
-    navItemActive: {
-      backgroundColor:
-        COLORS.lightGreen,
-    },
+  navItemActive: {
+    backgroundColor: COLORS.lightGreen,
+  },
 
-    navIcon: {
-      width: 28,
+  navIconContainer: {
+    width: 28,
 
-      color:
-        COLORS.white,
+    height: 28,
 
-      fontSize: 21,
+    marginRight: 10,
 
-      fontWeight:
-        '700',
+    alignItems: "center",
 
-      textAlign:
-        'center',
+    justifyContent: "center",
+  },
 
-      marginRight: 10,
-    },
+  navImageIcon: {
+    width: 20,
 
-    navIconContainer: {
-      width: 28,
-      height: 28,
-      marginRight: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    height: 20,
+  },
 
-    navImageIcon: {
-      width: 20,
-      height: 20,
-    },
+  navText: {
+    color: COLORS.white,
 
-    navText: {
-      color:
-        COLORS.white,
+    fontSize: 14,
 
-      fontSize: 14,
+    fontWeight: "600",
+  },
 
-      fontWeight:
-        '600',
-    },
+  logoutButton: {
+    marginTop: "auto",
 
-    logoutButton: {
-      marginTop:
-        'auto',
+    borderWidth: 1,
 
-      borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
 
-      borderColor:
-        'rgba(255,255,255,0.5)',
+    borderRadius: 8,
 
-      borderRadius: 8,
+    paddingVertical: 10,
 
-      paddingVertical:
-        10,
+    alignItems: "center",
+  },
 
-      alignItems:
-        'center',
-    },
+  logoutText: {
+    color: COLORS.white,
 
-    logoutText: {
-      color:
-        COLORS.white,
+    fontWeight: "600",
+  },
 
-      fontWeight:
-        '600',
-    },
+  // ==========================================
+  // MAIN
+  // ==========================================
 
-    // ==========================================
-    // MAIN
-    // ==========================================
+  main: {
+    flex: 1,
 
-    main: {
-      flex: 1,
-    },
+    minWidth: 0,
+  },
 
-    scrollContent: {
-      flexGrow: 1,
+  scrollContent: {
+    flexGrow: 1,
 
-      paddingHorizontal:
-        38,
+    width: "100%",
 
-      paddingVertical:
-        35,
+    paddingHorizontal: 38,
 
-      paddingBottom:
-        60,
-    },
+    paddingTop: 35,
 
-    // ==========================================
-    // MOBILE NAV
-    // ==========================================
+    paddingBottom: 60,
+  },
 
-    mobileNav: {
-      gap: 8,
+  scrollContentCompact: {
+    paddingHorizontal: 16,
 
-      paddingBottom:
-        25,
-    },
+    paddingTop: 18,
 
-    mobileNavItem: {
-      backgroundColor:
-        COLORS.white,
+    paddingBottom: 35,
+  },
 
-      borderRadius:
-        18,
+  // ==========================================
+  // MOBILE NAV
+  // ==========================================
 
-      paddingHorizontal:
-        16,
+  mobileNav: {
+    gap: 8,
 
-      paddingVertical:
-        8,
-    },
+    paddingBottom: 25,
+  },
 
-    mobileNavItemActive: {
-      backgroundColor:
-        COLORS.green,
-    },
+  mobileNavItem: {
+    backgroundColor: COLORS.white,
 
-    mobileNavText: {
-      color:
-        COLORS.navy,
+    borderRadius: 18,
 
-      fontSize: 12,
+    paddingHorizontal: 16,
 
-      fontWeight:
-        '600',
-    },
+    paddingVertical: 8,
+  },
 
-    mobileNavTextActive: {
-      color:
-        COLORS.white,
-    },
+  mobileNavItemActive: {
+    backgroundColor: COLORS.green,
+  },
 
-    // ==========================================
-    // PAGE HEADER
-    // ==========================================
+  mobileNavText: {
+    color: COLORS.navy,
 
-    pageHeader: {
-      width:
-        '100%',
+    fontSize: 12,
 
-      maxWidth:
-        1050,
+    fontWeight: "600",
+  },
 
-      alignSelf:
-        'center',
+  mobileNavTextActive: {
+    color: COLORS.white,
+  },
 
-      marginBottom:
-        28,
-    },
+  // ==========================================
+  // PAGE HEADER / BACK ICON
+  // ==========================================
 
-    backButton: {
-      alignSelf:
-        'flex-start',
+  pageHeader: {
+    width: "100%",
 
-      minHeight: 46,
+    maxWidth: 1050,
 
-      flexDirection:
-        'row',
+    alignSelf: "center",
 
-      alignItems:
-        'center',
+    marginBottom: 28,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  backButton: {
+    alignSelf: "flex-start",
 
-      borderRadius:
-        10,
+    flexDirection: "row",
 
-      borderWidth:
-        1,
+    alignItems: "center",
 
-      borderColor:
-        '#CCD1D8',
+    maxWidth: "100%",
 
-      paddingHorizontal:
-        16,
+    minHeight: 44,
+  },
 
-      marginBottom:
-        22,
-    },
+  backIconImage: {
+    width: 22,
 
-    backIcon: {
-      color:
-        COLORS.navy,
+    height: 22,
 
-      fontSize: 30,
+    marginRight: 10,
 
-      fontWeight:
-        '700',
+    flexShrink: 0,
 
-      lineHeight: 32,
-
-      marginRight: 7,
-    },
-
-    backText: {
-      color:
-        COLORS.navy,
-
-      fontSize: 13,
-
-      fontWeight:
-        '800',
-    },
-
-    pageTitle: {
-      color:
-        COLORS.text,
-
-      fontSize: 27,
-
-      fontWeight:
-        '800',
-    },
-
-    pageSubtitle: {
-      color:
-        '#6F7682',
-
-      fontSize: 12,
-
-      marginTop: 5,
-    },
-
-    // ==========================================
-    // PROFILE CARD
-    // ==========================================
-
-    profileCard: {
-      width:
-        '100%',
-
-      maxWidth:
-        1050,
-
-      alignSelf:
-        'center',
-
-      backgroundColor:
-        COLORS.white,
-
-      borderRadius:
-        15,
-
-      paddingHorizontal:
-        30,
-
-      paddingVertical:
-        28,
-
-      shadowColor:
-        '#000000',
-
-      shadowOpacity:
-        0.04,
-
-      shadowRadius:
-        6,
-
-      shadowOffset: {
-        width: 0,
-
-        height: 2,
+    transform: [
+      {
+        rotate: "180deg",
       },
+    ],
+  },
 
-      elevation: 2,
+  backText: {
+    color: COLORS.text,
+
+    fontSize: 20,
+
+    fontWeight: "800",
+
+    flexShrink: 1,
+  },
+
+  backTextCompact: {
+    fontSize: 18,
+  },
+
+  headerSubtitle: {
+    marginLeft: 32,
+
+    marginTop: 4,
+  },
+
+  pageSubtitle: {
+    color: "#6F7682",
+
+    fontSize: 12,
+
+    lineHeight: 18,
+  },
+
+  // ==========================================
+  // PROFILE CARD
+  // ==========================================
+
+  profileCard: {
+    width: "100%",
+
+    maxWidth: 1050,
+
+    alignSelf: "center",
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 15,
+
+    paddingHorizontal: 30,
+
+    paddingVertical: 28,
+
+    shadowColor: "#000000",
+
+    shadowOpacity: 0.04,
+
+    shadowRadius: 6,
+
+    shadowOffset: {
+      width: 0,
+
+      height: 2,
     },
 
-    profileTop: {
-      flexDirection:
-        'row',
+    elevation: 2,
+  },
 
-      flexWrap:
-        'wrap',
+  profileCardCompact: {
+    paddingHorizontal: 18,
 
-      alignItems:
-        'center',
+    paddingVertical: 20,
+  },
 
-      gap: 20,
+  profileTop: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    alignItems: "center",
+
+    gap: 20,
+  },
+
+  profileTopCompact: {
+    alignItems: "flex-start",
+  },
+
+  // ==========================================
+  // AVATAR
+  // ==========================================
+
+  avatar: {
+    width: 82,
+
+    height: 82,
+
+    borderRadius: 41,
+
+    backgroundColor: COLORS.navy,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    flexShrink: 0,
+  },
+
+  avatarImage: {
+    width: 82,
+
+    height: 82,
+
+    borderRadius: 41,
+
+    backgroundColor: "#E6E8EC",
+
+    flexShrink: 0,
+  },
+
+  avatarCompact: {
+    width: 70,
+
+    height: 70,
+
+    borderRadius: 35,
+  },
+
+  avatarText: {
+    color: COLORS.white,
+
+    fontSize: 27,
+
+    fontWeight: "800",
+  },
+
+  avatarTextCompact: {
+    fontSize: 22,
+  },
+
+  // ==========================================
+  // PROFILE HEADING
+  // ==========================================
+
+  profileHeading: {
+    flexGrow: 1,
+
+    flexShrink: 1,
+
+    minWidth: 180,
+  },
+
+  officerName: {
+    color: COLORS.text,
+
+    fontSize: 23,
+
+    fontWeight: "800",
+  },
+
+  officerNameCompact: {
+    fontSize: 19,
+  },
+
+  employeeNumber: {
+    color: "#657080",
+
+    fontSize: 12,
+
+    fontWeight: "700",
+
+    marginTop: 4,
+  },
+
+  // ==========================================
+  // PROFILE ACTIONS
+  // ==========================================
+
+  profileActions: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    alignItems: "center",
+
+    justifyContent: "flex-end",
+
+    gap: 10,
+  },
+
+  profileActionsCompact: {
+    width: "100%",
+
+    justifyContent: "flex-start",
+  },
+
+  profileActionButtonCompact: {
+    flexGrow: 1,
+
+    flexShrink: 1,
+
+    flexBasis: 145,
+
+    minWidth: 130,
+  },
+
+  editButton: {
+    minWidth: 150,
+
+    minHeight: 44,
+
+    backgroundColor: COLORS.navy,
+
+    borderRadius: 8,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    paddingHorizontal: 18,
+  },
+
+  editButtonText: {
+    color: COLORS.white,
+
+    fontSize: 12,
+
+    fontWeight: "800",
+  },
+
+  deleteButton: {
+    minWidth: 150,
+
+    minHeight: 44,
+
+    backgroundColor: COLORS.red,
+
+    borderRadius: 8,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    paddingHorizontal: 18,
+  },
+
+  deleteButtonDisabled: {
+    opacity: 0.5,
+  },
+
+  deleteButtonText: {
+    color: COLORS.white,
+
+    fontSize: 12,
+
+    fontWeight: "800",
+  },
+
+  // ==========================================
+  // STATUS
+  // ==========================================
+
+  statusBadge: {
+    alignSelf: "flex-start",
+
+    minWidth: 74,
+
+    paddingHorizontal: 12,
+
+    paddingVertical: 6,
+
+    borderRadius: 20,
+
+    alignItems: "center",
+
+    marginTop: 9,
+  },
+
+  activeBadge: {
+    backgroundColor: "#E5F7E8",
+  },
+
+  inactiveBadge: {
+    backgroundColor: "#ECEFF4",
+  },
+
+  statusBadgeText: {
+    fontSize: 10,
+
+    fontWeight: "800",
+  },
+
+  activeStatusText: {
+    color: "#2E9D43",
+  },
+
+  inactiveStatusText: {
+    color: "#606775",
+  },
+
+  // ==========================================
+  // DIVIDER
+  // ==========================================
+
+  divider: {
+    height: 1,
+
+    backgroundColor: "#E3E5E8",
+
+    marginVertical: 28,
+  },
+
+  // ==========================================
+  // DETAILS
+  // ==========================================
+
+  detailsGrid: {
+    width: "100%",
+
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    gap: 22,
+  },
+
+  detailItem: {
+    flexGrow: 1,
+
+    flexShrink: 1,
+
+    flexBasis: 260,
+
+    minWidth: 0,
+
+    backgroundColor: "#F7F8FA",
+
+    borderRadius: 10,
+
+    paddingHorizontal: 16,
+
+    paddingVertical: 14,
+  },
+
+  detailLabel: {
+    color: COLORS.muted,
+
+    fontSize: 10,
+
+    fontWeight: "700",
+
+    marginBottom: 6,
+  },
+
+  detailValue: {
+    color: "#333333",
+
+    fontSize: 12,
+
+    fontWeight: "600",
+
+    flexShrink: 1,
+  },
+
+  detailValueStrong: {
+    color: COLORS.navy,
+
+    fontSize: 13,
+
+    fontWeight: "800",
+
+    flexShrink: 1,
+  },
+
+  // ==========================================
+  // SUMMARY
+  // ==========================================
+
+  summaryRow: {
+    width: "100%",
+
+    maxWidth: 1050,
+
+    alignSelf: "center",
+
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    gap: 20,
+
+    marginTop: 24,
+  },
+
+  summaryCard: {
+    flexGrow: 1,
+
+    flexShrink: 1,
+
+    flexBasis: 320,
+
+    minWidth: 230,
+
+    minHeight: 115,
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 14,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    padding: 20,
+
+    shadowColor: "#000000",
+
+    shadowOpacity: 0.04,
+
+    shadowRadius: 5,
+
+    shadowOffset: {
+      width: 0,
+
+      height: 2,
     },
 
-    avatar: {
-      width: 82,
+    elevation: 2,
+  },
 
-      height: 82,
+  summaryCardCompact: {
+    flexBasis: "100%",
 
-      borderRadius:
-        50,
+    minWidth: 0,
 
-      backgroundColor:
-        COLORS.navy,
+    minHeight: 100,
+  },
 
-      alignItems:
-        'center',
+  summaryLabel: {
+    color: "#6E7682",
 
-      justifyContent:
-        'center',
+    fontSize: 11,
+
+    fontWeight: "700",
+
+    marginBottom: 8,
+
+    textAlign: "center",
+  },
+
+  summaryValue: {
+    color: COLORS.navy,
+
+    fontSize: 27,
+
+    fontWeight: "800",
+  },
+
+  summaryValueGreen: {
+    color: COLORS.green,
+
+    fontSize: 27,
+
+    fontWeight: "800",
+  },
+
+  // ==========================================
+  // HISTORY
+  // ==========================================
+
+  historyCard: {
+    width: "100%",
+
+    maxWidth: 1050,
+
+    alignSelf: "center",
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 14,
+
+    marginTop: 24,
+
+    overflow: "hidden",
+
+    shadowColor: "#000000",
+
+    shadowOpacity: 0.04,
+
+    shadowRadius: 5,
+
+    shadowOffset: {
+      width: 0,
+
+      height: 2,
     },
 
-    avatarText: {
-      color:
-        COLORS.white,
+    elevation: 2,
+  },
 
-      fontSize: 27,
+  historyHeaderBar: {
+    paddingHorizontal: 24,
 
-      fontWeight:
-        '800',
-    },
+    paddingVertical: 20,
+  },
 
-    profileHeading: {
-      flex: 1,
+  historyTitle: {
+    color: COLORS.text,
 
-      minWidth:
-        220,
-    },
+    fontSize: 17,
 
-    officerName: {
-      color:
-        COLORS.text,
+    fontWeight: "800",
+  },
 
-      fontSize: 23,
+  historySubtitle: {
+    color: COLORS.muted,
 
-      fontWeight:
-        '800',
-    },
+    fontSize: 10,
 
-    employeeNumber: {
-      color:
-        '#657080',
+    marginTop: 4,
+  },
 
-      fontSize: 12,
+  historyTable: {
+    minWidth: 1000,
+  },
 
-      fontWeight:
-        '700',
+  tableHeader: {
+    minHeight: 55,
 
-      marginTop: 4,
-    },
+    flexDirection: "row",
 
-    // ==========================================
-    // PROFILE ACTIONS
-    // ==========================================
+    alignItems: "center",
 
-    profileActions: {
-      flexDirection:
-        'row',
+    backgroundColor: COLORS.navy,
 
-      flexWrap:
-        'wrap',
+    paddingHorizontal: 20,
+  },
 
-      alignItems:
-        'center',
+  headerCell: {
+    color: COLORS.white,
 
-      justifyContent:
-        'flex-end',
+    fontSize: 10,
 
-      gap: 10,
-    },
+    fontWeight: "800",
 
-    editButton: {
-      minWidth:
-        150,
+    textTransform: "uppercase",
+  },
 
-      height: 44,
+  historyRow: {
+    minHeight: 70,
 
-      backgroundColor:
-        COLORS.navy,
+    flexDirection: "row",
 
-      borderRadius: 8,
+    alignItems: "center",
 
-      alignItems:
-        'center',
+    backgroundColor: COLORS.white,
 
-      justifyContent:
-        'center',
+    paddingHorizontal: 20,
 
-      paddingHorizontal:
-        18,
-    },
+    borderBottomWidth: 1,
 
-    editButtonText: {
-      color:
-        COLORS.white,
+    borderBottomColor: "#ECEEF1",
+  },
 
-      fontSize: 12,
+  bodyCell: {
+    color: "#333333",
 
-      fontWeight:
-        '800',
-    },
+    fontSize: 11,
 
-    deleteButton: {
-      minWidth:
-        150,
+    paddingRight: 10,
+  },
 
-      height: 44,
+  // ==========================================
+  // COLUMNS
+  // ==========================================
 
-      backgroundColor:
-        COLORS.red,
+  referenceColumn: {
+    width: 150,
+  },
 
-      borderRadius: 8,
+  studentColumn: {
+    width: 190,
+  },
 
-      alignItems:
-        'center',
+  violationColumn: {
+    width: 210,
+  },
 
-      justifyContent:
-        'center',
+  dateColumn: {
+    width: 145,
+  },
 
-      paddingHorizontal:
-        18,
-    },
+  amountColumn: {
+    width: 130,
+  },
 
-    deleteButtonDisabled: {
-      opacity: 0.5,
-    },
+  statusColumn: {
+    width: 130,
 
-    deleteButtonText: {
-      color:
-        COLORS.white,
+    alignItems: "center",
 
-      fontSize: 12,
+    justifyContent: "center",
+  },
 
-      fontWeight:
-        '800',
-    },
+  referenceText: {
+    color: COLORS.navy,
 
-    // ==========================================
-    // OFFICER STATUS
-    // ==========================================
+    fontWeight: "800",
 
-    statusBadge: {
-      alignSelf:
-        'flex-start',
+    textDecorationLine: "underline",
+  },
 
-      minWidth:
-        74,
+  studentName: {
+    color: "#222222",
 
-      paddingHorizontal:
-        12,
+    fontSize: 11,
 
-      paddingVertical:
-        6,
+    fontWeight: "700",
+  },
 
-      borderRadius:
-        20,
+  studentNumber: {
+    color: COLORS.muted,
 
-      alignItems:
-        'center',
+    fontSize: 9,
 
-      marginTop: 9,
-    },
+    marginTop: 3,
+  },
 
-    activeBadge: {
-      backgroundColor:
-        '#E5F7E8',
-    },
+  amountText: {
+    color: COLORS.navy,
 
-    inactiveBadge: {
-      backgroundColor:
-        '#ECEFF4',
-    },
+    fontWeight: "800",
+  },
 
-    statusBadgeText: {
-      fontSize: 10,
+  // ==========================================
+  // FINE STATUS
+  // ==========================================
 
-      fontWeight:
-        '800',
-    },
+  fineStatusBadge: {
+    minWidth: 78,
 
-    activeStatusText: {
-      color:
-        '#2E9D43',
-    },
+    alignItems: "center",
 
-    inactiveStatusText: {
-      color:
-        '#606775',
-    },
+    justifyContent: "center",
 
-    divider: {
-      height: 1,
+    paddingHorizontal: 10,
 
-      backgroundColor:
-        '#E3E5E8',
+    paddingVertical: 6,
 
-      marginVertical:
-        28,
-    },
+    borderRadius: 20,
+  },
 
-    // ==========================================
-    // DETAILS
-    // ==========================================
+  fineStatusText: {
+    fontSize: 10,
 
-    detailsGrid: {
-      flexDirection:
-        'row',
+    fontWeight: "800",
+  },
 
-      flexWrap:
-        'wrap',
+  // ==========================================
+  // EMPTY HISTORY
+  // ==========================================
 
-      gap: 22,
-    },
+  emptyHistory: {
+    minHeight: 180,
 
-    detailItem: {
-      width:
-        '30%',
+    alignItems: "center",
 
-      minWidth:
-        220,
+    justifyContent: "center",
+  },
 
-      flexGrow: 1,
+  emptyHistoryText: {
+    color: COLORS.muted,
 
-      backgroundColor:
-        '#F7F8FA',
+    fontSize: 11,
 
-      borderRadius:
-        10,
+    textAlign: "center",
 
-      paddingHorizontal:
-        16,
+    paddingHorizontal: 20,
+  },
 
-      paddingVertical:
-        14,
-    },
+  // ==========================================
+  // LOADING / ERROR
+  // ==========================================
 
-    detailLabel: {
-      color:
-        COLORS.muted,
+  centerState: {
+    width: "100%",
 
-      fontSize: 10,
+    maxWidth: 1050,
 
-      fontWeight:
-        '700',
+    minHeight: 420,
 
-      marginBottom: 6,
-    },
+    alignSelf: "center",
 
-    detailValue: {
-      color:
-        '#333333',
+    backgroundColor: COLORS.white,
 
-      fontSize: 12,
+    borderRadius: 14,
 
-      fontWeight:
-        '600',
-    },
+    alignItems: "center",
 
-    detailValueStrong: {
-      color:
-        COLORS.navy,
+    justifyContent: "center",
 
-      fontSize: 13,
+    padding: 30,
+  },
 
-      fontWeight:
-        '800',
-    },
+  stateText: {
+    color: COLORS.muted,
 
-    // ==========================================
-    // SUMMARY
-    // ==========================================
+    fontSize: 12,
 
-    summaryRow: {
-      width:
-        '100%',
+    marginTop: 12,
+  },
 
-      maxWidth:
-        1050,
+  errorText: {
+    color: COLORS.red,
 
-      alignSelf:
-        'center',
+    fontSize: 12,
 
-      flexDirection:
-        'row',
+    textAlign: "center",
 
-      flexWrap:
-        'wrap',
+    marginBottom: 18,
+  },
 
-      gap: 20,
+  retryButton: {
+    backgroundColor: COLORS.navy,
 
-      marginTop:
-        24,
-    },
+    borderRadius: 8,
 
-    summaryCard: {
-      flex: 1,
+    paddingHorizontal: 20,
 
-      minWidth:
-        230,
+    paddingVertical: 10,
+  },
 
-      minHeight:
-        115,
+  retryText: {
+    color: COLORS.white,
 
-      backgroundColor:
-        COLORS.white,
+    fontSize: 12,
 
-      borderRadius:
-        14,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      padding:
-        20,
-
-      shadowColor:
-        '#000000',
-
-      shadowOpacity:
-        0.04,
-
-      shadowRadius:
-        5,
-
-      shadowOffset: {
-        width: 0,
-
-        height: 2,
-      },
-
-      elevation: 2,
-    },
-
-    summaryLabel: {
-      color:
-        '#6E7682',
-
-      fontSize: 11,
-
-      fontWeight:
-        '700',
-
-      marginBottom: 8,
-    },
-
-    summaryValue: {
-      color:
-        COLORS.navy,
-
-      fontSize: 27,
-
-      fontWeight:
-        '800',
-    },
-
-    summaryValueGreen: {
-      color:
-        COLORS.green,
-
-      fontSize: 27,
-
-      fontWeight:
-        '800',
-    },
-
-    // ==========================================
-    // HISTORY
-    // ==========================================
-
-    historyCard: {
-      width:
-        '100%',
-
-      maxWidth:
-        1050,
-
-      alignSelf:
-        'center',
-
-      backgroundColor:
-        COLORS.white,
-
-      borderRadius:
-        14,
-
-      marginTop:
-        24,
-
-      overflow:
-        'hidden',
-
-      shadowColor:
-        '#000000',
-
-      shadowOpacity:
-        0.04,
-
-      shadowRadius:
-        5,
-
-      shadowOffset: {
-        width: 0,
-
-        height: 2,
-      },
-
-      elevation: 2,
-    },
-
-    historyHeaderBar: {
-      paddingHorizontal:
-        24,
-
-      paddingVertical:
-        20,
-    },
-
-    historyTitle: {
-      color:
-        COLORS.text,
-
-      fontSize: 17,
-
-      fontWeight:
-        '800',
-    },
-
-    historySubtitle: {
-      color:
-        COLORS.muted,
-
-      fontSize: 10,
-
-      marginTop: 4,
-    },
-
-    historyTable: {
-      minWidth:
-        1000,
-    },
-
-    // ==========================================
-    // TABLE HEADER
-    // ==========================================
-
-    tableHeader: {
-      minHeight:
-        55,
-
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
-      backgroundColor:
-        COLORS.navy,
-
-      paddingHorizontal:
-        20,
-    },
-
-    headerCell: {
-      color:
-        COLORS.white,
-
-      fontSize: 10,
-
-      fontWeight:
-        '800',
-
-      textTransform:
-        'uppercase',
-    },
-
-    // ==========================================
-    // TABLE ROW
-    // ==========================================
-
-    historyRow: {
-      minHeight:
-        70,
-
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
-      backgroundColor:
-        COLORS.white,
-
-      paddingHorizontal:
-        20,
-
-      borderBottomWidth:
-        1,
-
-      borderBottomColor:
-        '#ECEEF1',
-    },
-
-    bodyCell: {
-      color:
-        '#333333',
-
-      fontSize: 11,
-
-      paddingRight:
-        10,
-    },
-
-    // ==========================================
-    // COLUMNS
-    // ==========================================
-
-    referenceColumn: {
-      width: 150,
-    },
-
-    studentColumn: {
-      width: 190,
-    },
-
-    violationColumn: {
-      width: 210,
-    },
-
-    dateColumn: {
-      width: 145,
-    },
-
-    amountColumn: {
-      width: 130,
-    },
-
-    statusColumn: {
-      width: 130,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-    },
-
-    referenceText: {
-      color:
-        COLORS.navy,
-
-      fontWeight:
-        '800',
-
-      textDecorationLine:
-        'underline',
-    },
-
-    studentName: {
-      color:
-        '#222222',
-
-      fontSize: 11,
-
-      fontWeight:
-        '700',
-    },
-
-    studentNumber: {
-      color:
-        COLORS.muted,
-
-      fontSize: 9,
-
-      marginTop: 3,
-    },
-
-    amountText: {
-      color:
-        COLORS.navy,
-
-      fontWeight:
-        '800',
-    },
-
-    // ==========================================
-    // FINE STATUS
-    // ==========================================
-
-    fineStatusBadge: {
-      minWidth:
-        78,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      paddingHorizontal:
-        10,
-
-      paddingVertical:
-        6,
-
-      borderRadius:
-        20,
-    },
-
-    fineStatusText: {
-      fontSize: 10,
-
-      fontWeight:
-        '800',
-    },
-
-    // ==========================================
-    // EMPTY HISTORY
-    // ==========================================
-
-    emptyHistory: {
-      minHeight:
-        180,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-    },
-
-    emptyHistoryText: {
-      color:
-        COLORS.muted,
-
-      fontSize: 11,
-    },
-
-    // ==========================================
-    // LOADING / ERROR
-    // ==========================================
-
-    centerState: {
-      width:
-        '100%',
-
-      maxWidth:
-        1050,
-
-      minHeight:
-        420,
-
-      alignSelf:
-        'center',
-
-      backgroundColor:
-        COLORS.white,
-
-      borderRadius:
-        14,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      padding:
-        30,
-    },
-
-    stateText: {
-      color:
-        COLORS.muted,
-
-      fontSize: 12,
-
-      marginTop: 12,
-    },
-
-    errorText: {
-      color:
-        COLORS.red,
-
-      fontSize: 12,
-
-      textAlign:
-        'center',
-
-      marginBottom:
-        18,
-    },
-
-    retryButton: {
-      backgroundColor:
-        COLORS.navy,
-
-      borderRadius: 8,
-
-      paddingHorizontal:
-        20,
-
-      paddingVertical:
-        10,
-    },
-
-    retryText: {
-      color:
-        COLORS.white,
-
-      fontSize: 12,
-
-      fontWeight:
-        '800',
-    },
-  });
+    fontWeight: "800",
+  },
+});

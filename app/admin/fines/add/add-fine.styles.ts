@@ -1,891 +1,747 @@
-import {
-  StyleSheet,
-} from 'react-native';
+import { StyleSheet } from "react-native";
 
 const COLORS = {
-  navy: '#173A73',
-  green: '#45B94F',
-  lightGreen: '#56C85C',
-  red: '#FF2424',
-  background: '#E8E8E8',
-  white: '#FFFFFF',
-  text: '#123266',
-  muted: '#8C939F',
+  navy: "#173A73",
+
+  green: "#45B94F",
+
+  lightGreen: "#56C85C",
+
+  red: "#FF2424",
+
+  background: "#E8E8E8",
+
+  white: "#FFFFFF",
+
+  text: "#123266",
+
+  muted: "#8C939F",
 };
 
-export const styles =
-  StyleSheet.create({
-    // ==========================================
-    // SCREEN
-    // ==========================================
+export const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
 
-    screen: {
-      flex: 1,
+    flexDirection: "row",
 
-      flexDirection:
-        'row',
+    backgroundColor: COLORS.background,
+  },
 
-      backgroundColor:
-        COLORS.background,
-    },
+  loadingScreen: {
+    flex: 1,
 
-    // ==========================================
-    // LOADING
-    // ==========================================
+    alignItems: "center",
 
-    loadingScreen: {
-      flex: 1,
+    justifyContent: "center",
 
-      alignItems:
-        'center',
+    backgroundColor: COLORS.background,
+  },
 
-      justifyContent:
-        'center',
+  loadingText: {
+    marginTop: 14,
 
-      backgroundColor:
-        COLORS.background,
-    },
+    color: COLORS.muted,
 
-    loadingText: {
-      marginTop: 14,
+    fontSize: 13,
+  },
 
-      color:
-        COLORS.muted,
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
 
-      fontSize: 13,
-    },
+  sidebar: {
+    width: 220,
 
-    // ==========================================
-    // SIDEBAR
-    // SAME AS STUDENTS / FINES
-    // ==========================================
+    minHeight: "100%",
 
-    sidebar: {
-      width: 220,
+    backgroundColor: COLORS.navy,
 
-      minHeight:
-        '100%',
+    paddingHorizontal: 28,
 
-      backgroundColor:
-        COLORS.navy,
+    paddingTop: 30,
 
-      paddingHorizontal:
-        28,
+    paddingBottom: 25,
+  },
 
-      paddingTop: 30,
+  logoArea: {
+    alignItems: "center",
 
-      paddingBottom:
-        25,
-    },
+    justifyContent: "center",
 
-    logoArea: {
-      alignItems:
-        'center',
+    marginBottom: 35,
+  },
 
-      justifyContent:
-        'center',
+  smartFineLogo: {
+    width: 150,
 
-      marginBottom:
-        35,
-    },
+    height: 90,
+  },
 
-    smartFineLogo: {
-      width: 150,
+  navigation: {
+    gap: 10,
+  },
 
-      height: 90,
-    },
+  navItem: {
+    height: 42,
 
-    navigation: {
-      gap: 10,
-    },
+    flexDirection: "row",
 
-    navItem: {
-      height: 42,
+    alignItems: "center",
 
-      flexDirection:
-        'row',
+    paddingHorizontal: 12,
 
-      alignItems:
-        'center',
+    borderRadius: 24,
+  },
 
-      paddingHorizontal:
-        12,
+  navItemActive: {
+    backgroundColor: COLORS.lightGreen,
+  },
 
-      borderRadius:
-        24,
-    },
+  navIconContainer: {
+    width: 28,
 
-    navItemActive: {
-      backgroundColor:
-        COLORS.lightGreen,
-    },
+    height: 28,
 
-    navIcon: {
-      width: 28,
+    marginRight: 10,
 
-      color:
-        COLORS.white,
+    alignItems: "center",
 
-      fontSize: 21,
+    justifyContent: "center",
+  },
 
-      fontWeight:
-        '700',
+  navImageIcon: {
+    width: 20,
 
-      textAlign:
-        'center',
+    height: 20,
+  },
 
-      marginRight: 10,
-    },
+  navText: {
+    color: COLORS.white,
 
-    navIconContainer: {
-      width: 28,
-      height: 28,
-      marginRight: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    fontSize: 14,
 
-    navImageIcon: {
-      width: 20,
-      height: 20,
-    },
+    fontWeight: "600",
+  },
 
-    navText: {
-      color:
-        COLORS.white,
+  logoutButton: {
+    marginTop: "auto",
 
-      fontSize: 14,
+    borderWidth: 1,
 
-      fontWeight:
-        '600',
-    },
+    borderColor: "rgba(255,255,255,0.5)",
 
-    logoutButton: {
-      marginTop:
-        'auto',
+    borderRadius: 8,
 
-      borderWidth: 1,
+    paddingVertical: 10,
 
-      borderColor:
-        'rgba(255,255,255,0.5)',
+    alignItems: "center",
+  },
 
-      borderRadius: 8,
+  logoutText: {
+    color: COLORS.white,
 
-      paddingVertical:
-        10,
+    fontWeight: "600",
+  },
 
-      alignItems:
-        'center',
-    },
+  // ==========================================
+  // MAIN
+  // ==========================================
 
-    logoutText: {
-      color:
-        COLORS.white,
+  main: {
+    flex: 1,
 
-      fontWeight:
-        '600',
-    },
+    minWidth: 0,
+  },
 
-    // ==========================================
-    // MAIN
-    // ==========================================
+  scrollContent: {
+    flexGrow: 1,
 
-    main: {
-      flex: 1,
-    },
+    width: "100%",
 
-    scrollContent: {
-      flexGrow: 1,
+    paddingHorizontal: 38,
 
-      paddingHorizontal:
-        38,
+    paddingTop: 30,
 
-      paddingVertical:
-        35,
-    },
+    paddingBottom: 40,
+  },
 
-    // ==========================================
-    // MOBILE NAV
-    // ==========================================
+  scrollContentCompact: {
+    paddingHorizontal: 16,
 
-    mobileNav: {
-      gap: 8,
+    paddingTop: 18,
 
-      paddingBottom:
-        25,
-    },
+    paddingBottom: 30,
+  },
 
-    mobileNavItem: {
-      backgroundColor:
-        COLORS.white,
+  // ==========================================
+  // BACK / TITLE
+  // ==========================================
 
-      borderRadius: 18,
+  backButton: {
+    width: "100%",
 
-      paddingHorizontal:
-        16,
+    maxWidth: 1000,
 
-      paddingVertical:
-        8,
-    },
+    alignSelf: "center",
 
-    mobileNavItemActive: {
-      backgroundColor:
-        COLORS.green,
-    },
+    flexDirection: "row",
 
-    mobileNavText: {
-      color:
-        COLORS.navy,
+    alignItems: "center",
 
-      fontSize: 12,
+    minHeight: 44,
 
-      fontWeight:
-        '600',
-    },
+    marginBottom: 35,
+  },
 
-    mobileNavTextActive: {
-      color:
-        COLORS.white,
-    },
+  backIconImage: {
+    width: 22,
 
-    // ==========================================
-    // HEADER
-    // ==========================================
+    height: 22,
 
-    header: {
-      width:
-        '100%',
+    marginRight: 10,
 
-      maxWidth: 1000,
+    flexShrink: 0,
 
-      alignSelf:
-        'center',
-
-      marginBottom:
-        75,
-    },
-
-    pageTitle: {
-      color:
-        COLORS.text,
-
-      fontSize: 27,
-
-      fontWeight:
-        '800',
-    },
-
-    // ==========================================
-    // FORM CARD
-    // ==========================================
-
-    formCard: {
-      width:
-        '100%',
-
-      maxWidth:
-        1000,
-
-      minHeight:
-        470,
-
-      alignSelf:
-        'center',
-
-      backgroundColor:
-        COLORS.white,
-
-      borderRadius:
-        16,
-
-      paddingHorizontal:
-        30,
-
-      paddingTop: 20,
-
-      paddingBottom:
-        30,
-
-      overflow:
-        'visible',
-    },
-
-    cardTitle: {
-      color:
-        COLORS.text,
-
-      fontSize: 20,
-
-      fontWeight:
-        '800',
-
-      marginBottom:
-        22,
-    },
-
-    // ==========================================
-    // FORM ROWS
-    // ==========================================
-
-    formRow: {
-      flexDirection:
-        'row',
-
-      flexWrap:
-        'wrap',
-
-      gap: 45,
-
-      marginBottom:
-        22,
-
-      position:
-        'relative',
-    },
-
-    formRowTop: {
-      zIndex: 500,
-    },
-
-    formRowMiddle: {
-      zIndex: 400,
-    },
-
-    formRowBottom: {
-      zIndex: 300,
-    },
-
-    fieldGroup: {
-      flex: 1,
-
-      minWidth: 300,
-
-      position:
-        'relative',
-    },
-
-    // ==========================================
-    // LABEL
-    // ==========================================
-
-    label: {
-      color:
-        '#202020',
-
-      fontSize: 13,
-
-      fontWeight:
-        '500',
-
-      marginBottom: 8,
-    },
-
-    // ==========================================
-    // NORMAL INPUT
-    // ==========================================
-
-    input: {
-      width:
-        '100%',
-
-      height: 46,
-
-      borderWidth: 1,
-
-      borderColor:
-        '#333333',
-
-      borderRadius: 7,
-
-      backgroundColor:
-        COLORS.white,
-
-      paddingHorizontal:
-        15,
-
-      fontSize: 13,
-
-      color:
-        '#222222',
-
-      outlineStyle:
-        'none',
-    } as any,
-
-    // ==========================================
-    // STUDENT SEARCH
-    // ==========================================
-
-    searchField: {
-      width:
-        '100%',
-
-      height: 46,
-
-      borderWidth: 1,
-
-      borderColor:
-        '#333333',
-
-      borderRadius: 7,
-
-      backgroundColor:
-        COLORS.white,
-
-      justifyContent:
-        'center',
-    },
-
-    searchInput: {
-      flex: 1,
-
-      height:
-        '100%',
-
-      paddingHorizontal:
-        15,
-
-      fontSize: 13,
-
-      color:
-        '#222222',
-
-      outlineStyle:
-        'none',
-    } as any,
-
-    // ==========================================
-    // STUDENT SUGGESTIONS
-    // ==========================================
-
-    suggestionMenu: {
-      position:
-        'absolute',
-
-      top: 72,
-
-      left: 0,
-
-      right: 0,
-
-      maxHeight: 260,
-
-      backgroundColor:
-        COLORS.white,
-
-      borderWidth: 1.5,
-
-      borderColor:
-        COLORS.navy,
-
-      borderRadius: 8,
-
-      overflow:
-        'hidden',
-
-      zIndex: 9999,
-
-      elevation: 30,
-
-      shadowColor:
-        '#000000',
-
-      shadowOpacity:
-        0.2,
-
-      shadowRadius: 10,
-
-      shadowOffset: {
-        width: 0,
-        height: 5,
+    transform: [
+      {
+        rotate: "180deg",
       },
+    ],
+  },
+
+  backText: {
+    color: COLORS.text,
+
+    fontSize: 20,
+
+    fontWeight: "800",
+
+    flexShrink: 1,
+  },
+
+  backTextCompact: {
+    fontSize: 18,
+  },
+
+  // ==========================================
+  // MOBILE NAV
+  // ==========================================
+
+  mobileNav: {
+    gap: 8,
+
+    paddingBottom: 25,
+  },
+
+  mobileNavItem: {
+    backgroundColor: COLORS.white,
+
+    borderRadius: 18,
+
+    paddingHorizontal: 16,
+
+    paddingVertical: 8,
+  },
+
+  mobileNavItemActive: {
+    backgroundColor: COLORS.green,
+  },
+
+  mobileNavText: {
+    color: COLORS.navy,
+
+    fontSize: 12,
+
+    fontWeight: "600",
+  },
+
+  mobileNavTextActive: {
+    color: COLORS.white,
+  },
+
+  // ==========================================
+  // FORM CARD
+  // ==========================================
+
+  formCard: {
+    width: "100%",
+
+    maxWidth: 1000,
+
+    minHeight: 470,
+
+    alignSelf: "center",
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 16,
+
+    paddingHorizontal: 30,
+
+    paddingTop: 20,
+
+    paddingBottom: 30,
+
+    overflow: "visible",
+  },
+
+  cardTitle: {
+    color: COLORS.text,
+
+    fontSize: 20,
+
+    fontWeight: "800",
+
+    marginBottom: 22,
+  },
+
+  // ==========================================
+  // FORM ROWS
+  // ==========================================
+
+  formRow: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    gap: 25,
+
+    marginBottom: 22,
+
+    position: "relative",
+  },
+
+  formRowTop: {
+    zIndex: 500,
+  },
+
+  formRowMiddle: {
+    zIndex: 400,
+  },
+
+  formRowBottom: {
+    zIndex: 300,
+  },
+
+  fieldGroup: {
+    flexGrow: 1,
+
+    flexShrink: 1,
+
+    flexBasis: 300,
+
+    minWidth: 0,
+
+    position: "relative",
+  },
+
+  label: {
+    color: "#202020",
+
+    fontSize: 13,
+
+    fontWeight: "500",
+
+    marginBottom: 8,
+  },
+
+  input: {
+    width: "100%",
+
+    height: 46,
+
+    borderWidth: 1,
+
+    borderColor: "#333333",
+
+    borderRadius: 7,
+
+    backgroundColor: COLORS.white,
+
+    paddingHorizontal: 15,
+
+    fontSize: 13,
+
+    color: "#222222",
+
+    outlineStyle: "none",
+  } as any,
+
+  searchField: {
+    width: "100%",
+
+    height: 46,
+
+    borderWidth: 1,
+
+    borderColor: "#333333",
+
+    borderRadius: 7,
+
+    backgroundColor: COLORS.white,
+
+    justifyContent: "center",
+  },
+
+  searchInput: {
+    flex: 1,
+
+    height: "100%",
+
+    paddingHorizontal: 15,
+
+    fontSize: 13,
+
+    color: "#222222",
+
+    outlineStyle: "none",
+  } as any,
+
+  suggestionMenu: {
+    position: "absolute",
+
+    top: 72,
+
+    left: 0,
+
+    right: 0,
+
+    maxHeight: 260,
+
+    backgroundColor: COLORS.white,
+
+    borderWidth: 1.5,
+
+    borderColor: COLORS.navy,
+
+    borderRadius: 8,
+
+    overflow: "hidden",
+
+    zIndex: 9999,
+
+    elevation: 30,
+
+    shadowColor: "#000000",
+
+    shadowOpacity: 0.2,
+
+    shadowRadius: 10,
+
+    shadowOffset: {
+      width: 0,
+
+      height: 5,
     },
+  },
 
-    suggestionScroll: {
-      maxHeight: 260,
+  suggestionScroll: {
+    maxHeight: 260,
+  },
+
+  suggestionItem: {
+    minHeight: 58,
+
+    backgroundColor: COLORS.white,
+
+    justifyContent: "center",
+
+    paddingHorizontal: 15,
+
+    paddingVertical: 10,
+
+    borderBottomWidth: 1,
+
+    borderBottomColor: "#E0E2E5",
+  },
+
+  suggestionTitle: {
+    color: COLORS.text,
+
+    fontSize: 13,
+
+    fontWeight: "700",
+  },
+
+  suggestionSubtitle: {
+    color: "#737B88",
+
+    fontSize: 10,
+
+    marginTop: 4,
+  },
+
+  selectButton: {
+    width: "100%",
+
+    height: 46,
+
+    backgroundColor: COLORS.white,
+
+    borderWidth: 1,
+
+    borderColor: "#333333",
+
+    borderRadius: 7,
+
+    paddingHorizontal: 14,
+
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent: "space-between",
+
+    gap: 10,
+  },
+
+  selectText: {
+    flex: 1,
+
+    color: "#222222",
+
+    fontSize: 13,
+
+    fontWeight: "500",
+  },
+
+  placeholderText: {
+    color: COLORS.muted,
+  },
+
+  selectArrow: {
+    color: "#111111",
+
+    fontSize: 12,
+
+    fontWeight: "800",
+  },
+
+  dropdownMenu: {
+    position: "absolute",
+
+    top: 72,
+
+    left: 0,
+
+    right: 0,
+
+    maxHeight: 260,
+
+    backgroundColor: COLORS.white,
+
+    borderWidth: 1.5,
+
+    borderColor: COLORS.navy,
+
+    borderRadius: 8,
+
+    overflow: "hidden",
+
+    zIndex: 9999,
+
+    elevation: 30,
+
+    shadowColor: "#000000",
+
+    shadowOpacity: 0.2,
+
+    shadowRadius: 10,
+
+    shadowOffset: {
+      width: 0,
+
+      height: 5,
     },
+  },
 
-    suggestionItem: {
-      minHeight: 58,
+  dropdownScroll: {
+    maxHeight: 260,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  dropdownItem: {
+    minHeight: 58,
 
-      justifyContent:
-        'center',
+    backgroundColor: COLORS.white,
 
-      paddingHorizontal:
-        15,
+    justifyContent: "center",
 
-      paddingVertical:
-        10,
+    paddingHorizontal: 15,
 
-      borderBottomWidth:
-        1,
+    paddingVertical: 10,
 
-      borderBottomColor:
-        '#E0E2E5',
-    },
+    borderBottomWidth: 1,
 
-    suggestionTitle: {
-      color:
-        COLORS.text,
+    borderBottomColor: "#E0E2E5",
+  },
 
-      fontSize: 13,
+  dropdownTitle: {
+    color: COLORS.text,
 
-      fontWeight:
-        '700',
-    },
+    fontSize: 13,
 
-    suggestionSubtitle: {
-      color:
-        '#737B88',
+    fontWeight: "700",
+  },
 
-      fontSize: 10,
+  dropdownSubtitle: {
+    color: "#737B88",
 
-      marginTop: 4,
-    },
+    fontSize: 10,
 
-    // ==========================================
-    // SELECT BUTTON
-    // ==========================================
+    marginTop: 4,
+  },
 
-    selectButton: {
-      width:
-        '100%',
+  emptyOption: {
+    minHeight: 60,
 
-      height: 46,
+    justifyContent: "center",
 
-      backgroundColor:
-        COLORS.white,
+    paddingHorizontal: 15,
 
-      borderWidth: 1,
+    backgroundColor: COLORS.white,
+  },
 
-      borderColor:
-        '#333333',
+  emptyOptionText: {
+    color: COLORS.muted,
 
-      borderRadius: 7,
+    fontSize: 11,
 
-      paddingHorizontal:
-        14,
+    textAlign: "center",
+  },
 
-      flexDirection:
-        'row',
+  amountBox: {
+    width: "100%",
 
-      alignItems:
-        'center',
+    height: 46,
 
-      justifyContent:
-        'space-between',
+    borderWidth: 1,
 
-      gap: 10,
-    },
+    borderColor: "#333333",
 
-    selectText: {
-      flex: 1,
+    borderRadius: 7,
 
-      color:
-        '#222222',
+    backgroundColor: COLORS.white,
 
-      fontSize: 13,
+    alignItems: "center",
 
-      fontWeight:
-        '500',
-    },
+    justifyContent: "center",
+  },
 
-    placeholderText: {
-      color:
-        COLORS.muted,
-    },
+  amountText: {
+    color: COLORS.navy,
 
-    selectArrow: {
-      color:
-        '#111111',
+    fontSize: 13,
 
-      fontSize: 12,
+    fontWeight: "800",
+  },
 
-      fontWeight:
-        '800',
-    },
+  errorBox: {
+    width: "100%",
 
-    // ==========================================
-    // DROPDOWNS
-    // ==========================================
+    backgroundColor: "#FFEAEA",
 
-    dropdownMenu: {
-      position:
-        'absolute',
+    borderWidth: 1,
 
-      top: 72,
+    borderColor: "#FF8B8B",
 
-      left: 0,
+    borderRadius: 8,
 
-      right: 0,
+    paddingHorizontal: 15,
 
-      maxHeight: 260,
+    paddingVertical: 11,
 
-      backgroundColor:
-        COLORS.white,
+    marginBottom: 18,
+  },
 
-      borderWidth: 1.5,
+  errorTitle: {
+    color: COLORS.red,
 
-      borderColor:
-        COLORS.navy,
+    fontSize: 12,
 
-      borderRadius: 8,
+    fontWeight: "800",
 
-      overflow:
-        'hidden',
+    marginBottom: 3,
+  },
 
-      zIndex: 9999,
+  errorText: {
+    color: "#D32F2F",
 
-      elevation: 30,
+    fontSize: 11,
+  },
 
-      shadowColor:
-        '#000000',
+  actionRow: {
+    marginTop: 50,
 
-      shadowOpacity:
-        0.2,
+    flexDirection: "row",
 
-      shadowRadius: 10,
+    flexWrap: "wrap",
 
-      shadowOffset: {
-        width: 0,
-        height: 5,
-      },
-    },
+    justifyContent: "center",
 
-    dropdownScroll: {
-      maxHeight: 260,
-    },
+    gap: 22,
+  },
 
-    dropdownItem: {
-      minHeight: 58,
+  cancelButton: {
+    flexGrow: 1,
 
-      backgroundColor:
-        COLORS.white,
+    flexShrink: 1,
 
-      justifyContent:
-        'center',
+    flexBasis: 200,
 
-      paddingHorizontal:
-        15,
+    maxWidth: 230,
 
-      paddingVertical:
-        10,
+    minHeight: 45,
 
-      borderBottomWidth:
-        1,
+    backgroundColor: "#E0E0E0",
 
-      borderBottomColor:
-        '#E0E2E5',
-    },
+    borderWidth: 1,
 
-    dropdownTitle: {
-      color:
-        COLORS.text,
+    borderColor: COLORS.navy,
 
-      fontSize: 13,
+    borderRadius: 8,
 
-      fontWeight:
-        '700',
-    },
+    alignItems: "center",
 
-    dropdownSubtitle: {
-      color:
-        '#737B88',
+    justifyContent: "center",
+  },
 
-      fontSize: 10,
+  cancelButtonText: {
+    color: "#111111",
 
-      marginTop: 4,
-    },
+    fontSize: 13,
 
-    emptyOption: {
-      minHeight: 60,
+    fontWeight: "700",
+  },
 
-      justifyContent:
-        'center',
+  saveButton: {
+    flexGrow: 1,
 
-      paddingHorizontal:
-        15,
+    flexShrink: 1,
 
-      backgroundColor:
-        COLORS.white,
-    },
+    flexBasis: 200,
 
-    emptyOptionText: {
-      color:
-        COLORS.muted,
+    maxWidth: 230,
 
-      fontSize: 11,
+    minHeight: 45,
 
-      textAlign:
-        'center',
-    },
+    backgroundColor: "#0AC62E",
 
-    // ==========================================
-    // AMOUNT
-    // ==========================================
+    borderRadius: 8,
 
-    amountBox: {
-      width:
-        '100%',
+    alignItems: "center",
 
-      height: 46,
+    justifyContent: "center",
+  },
 
-      borderWidth: 1,
+  saveButtonText: {
+    color: COLORS.white,
 
-      borderColor:
-        '#333333',
+    fontSize: 13,
 
-      borderRadius: 7,
+    fontWeight: "800",
+  },
 
-      backgroundColor:
-        COLORS.white,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-    },
-
-    amountText: {
-      color:
-        COLORS.navy,
-
-      fontSize: 13,
-
-      fontWeight:
-        '800',
-    },
-
-    // ==========================================
-    // ERROR
-    // ==========================================
-
-    errorBox: {
-      width:
-        '100%',
-
-      backgroundColor:
-        '#FFEAEA',
-
-      borderWidth: 1,
-
-      borderColor:
-        '#FF8B8B',
-
-      borderRadius: 8,
-
-      paddingHorizontal:
-        15,
-
-      paddingVertical:
-        11,
-
-      marginBottom:
-        18,
-    },
-
-    errorTitle: {
-      color:
-        COLORS.red,
-
-      fontSize: 12,
-
-      fontWeight:
-        '800',
-
-      marginBottom: 3,
-    },
-
-    errorText: {
-      color:
-        '#D32F2F',
-
-      fontSize: 11,
-    },
-
-    // ==========================================
-    // BUTTONS
-    // ==========================================
-
-    actionRow: {
-      marginTop: 50,
-
-      flexDirection:
-        'row',
-
-      flexWrap:
-        'wrap',
-
-      justifyContent:
-        'center',
-
-      gap: 22,
-    },
-
-    cancelButton: {
-      width: 230,
-
-      height: 45,
-
-      backgroundColor:
-        '#E0E0E0',
-
-      borderWidth: 1,
-
-      borderColor:
-        COLORS.navy,
-
-      borderRadius: 8,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-    },
-
-    cancelButtonText: {
-      color:
-        '#111111',
-
-      fontSize: 13,
-
-      fontWeight:
-        '700',
-    },
-
-    saveButton: {
-      width: 230,
-
-      height: 45,
-
-      backgroundColor:
-        '#0AC62E',
-
-      borderRadius: 8,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-    },
-
-    saveButtonText: {
-      color:
-        COLORS.white,
-
-      fontSize: 13,
-
-      fontWeight:
-        '800',
-    },
-
-    buttonDisabled: {
-      opacity: 0.55,
-    },
-  });
+  buttonDisabled: {
+    opacity: 0.55,
+  },
+});

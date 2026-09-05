@@ -1,38 +1,25 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useEffect, useMemo, useState } from "react";
 
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   useWindowDimensions,
-  Image,
-  Alert,
-  Platform,
-} from 'react-native';
+  View,
+} from "react-native";
 
-import {
-  useLocalSearchParams,
-  useRouter,
-} from 'expo-router';
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-import {
-  useAuth,
-} from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
-import {
-  API_BASE,
-} from '@/constants/api';
+import { API_BASE } from "@/constants/api";
 
-import {
-  styles,
-} from './add-fine.styles';
+import { styles } from "./add-fine.styles";
 
 // ==========================================
 // TYPES
@@ -47,35 +34,25 @@ type StudentOption = {
 
   first_name: string;
 
-  middle_name:
-    | string
-    | null;
+  middle_name: string | null;
 
   last_name: string;
 
   full_name: string;
 
-  grade_level:
-    | string
-    | null;
+  grade_level: string | null;
 
-  section:
-    | string
-    | null;
+  section: string | null;
 };
 
 type ViolationOption = {
   id: number;
 
-  violation_code:
-    | string
-    | null;
+  violation_code: string | null;
 
   violation_name: string;
 
-  description:
-    | string
-    | null;
+  description: string | null;
 
   amount_centavos: number;
 
@@ -89,9 +66,7 @@ type OfficerOption = {
 
   first_name: string;
 
-  middle_name:
-    | string
-    | null;
+  middle_name: string | null;
 
   last_name: string;
 
@@ -111,192 +86,101 @@ type NavItem = {
 // ==========================================
 
 export default function AddFine() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const params =
-    useLocalSearchParams();
+  const params = useLocalSearchParams();
 
-  const { logout } =
-    useAuth();
+  const { logout } = useAuth();
 
-  const { width } =
-    useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const isTablet =
-    width >= 768;
+  const isTablet = width >= 768;
+
+  const isCompact = width < 600;
 
   // ==========================================
   // STUDENT PASSED FROM QR SCANNER
-  //
-  // Example:
-  // /admin/fines/add?studentId=6
   // ==========================================
 
-  const rawScannedStudentId =
-    params.studentId;
+  const rawScannedStudentId = params.studentId;
 
-  const scannedStudentDatabaseId =
-    useMemo(() => {
-      const value =
-        Array.isArray(
-          rawScannedStudentId
-        )
-          ? rawScannedStudentId[0]
-          : rawScannedStudentId;
+  const scannedStudentDatabaseId = useMemo(() => {
+    const value = Array.isArray(rawScannedStudentId)
+      ? rawScannedStudentId[0]
+      : rawScannedStudentId;
 
-      if (
-        !value
-      ) {
-        return null;
-      }
+    if (!value) {
+      return null;
+    }
 
-      const numericValue =
-        Number(
-          value
-        );
+    const numericValue = Number(value);
 
-      if (
-        !Number.isInteger(
-          numericValue
-        ) ||
-        numericValue <= 0
-      ) {
-        return null;
-      }
+    if (!Number.isInteger(numericValue) || numericValue <= 0) {
+      return null;
+    }
 
-      return numericValue;
-    }, [
-      rawScannedStudentId,
-    ]);
+    return numericValue;
+  }, [rawScannedStudentId]);
 
   // ==========================================
   // OPTIONS
   // ==========================================
 
-  const [
-    students,
-    setStudents,
-  ] =
-    useState<StudentOption[]>(
-      []
-    );
+  const [students, setStudents] = useState<StudentOption[]>([]);
 
-  const [
-    violations,
-    setViolations,
-  ] =
-    useState<
-      ViolationOption[]
-    >([]);
+  const [violations, setViolations] = useState<ViolationOption[]>([]);
 
-  const [
-    officers,
-    setOfficers,
-  ] =
-    useState<
-      OfficerOption[]
-    >([]);
+  const [officers, setOfficers] = useState<OfficerOption[]>([]);
 
   // ==========================================
   // STUDENT SEARCH
   // ==========================================
 
-  const [
-    studentSearch,
-    setStudentSearch,
-  ] =
-    useState('');
+  const [studentSearch, setStudentSearch] = useState("");
 
-  const [
-    studentSuggestionsOpen,
-    setStudentSuggestionsOpen,
-  ] =
-    useState(false);
+  const [studentSuggestionsOpen, setStudentSuggestionsOpen] = useState(false);
 
-  const [
-    selectedStudentId,
-    setSelectedStudentId,
-  ] =
-    useState<
-      number | null
-    >(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(
+    null,
+  );
 
   // ==========================================
   // VIOLATION
   // ==========================================
 
-  const [
-    selectedViolationId,
-    setSelectedViolationId,
-  ] =
-    useState<
-      number | null
-    >(null);
+  const [selectedViolationId, setSelectedViolationId] = useState<number | null>(
+    null,
+  );
 
-  const [
-    violationMenuOpen,
-    setViolationMenuOpen,
-  ] =
-    useState(false);
+  const [violationMenuOpen, setViolationMenuOpen] = useState(false);
 
   // ==========================================
   // OFFICER
   // ==========================================
 
-  const [
-    selectedOfficerId,
-    setSelectedOfficerId,
-  ] =
-    useState<
-      number | null
-    >(null);
+  const [selectedOfficerId, setSelectedOfficerId] = useState<number | null>(
+    null,
+  );
 
-  const [
-    officerMenuOpen,
-    setOfficerMenuOpen,
-  ] =
-    useState(false);
+  const [officerMenuOpen, setOfficerMenuOpen] = useState(false);
 
   // ==========================================
   // OTHER FORM VALUES
   // ==========================================
 
-  const [
-    issuedAt,
-    setIssuedAt,
-  ] =
-    useState(
-      getTodayDate()
-    );
+  const [issuedAt, setIssuedAt] = useState(getTodayDate());
 
-  const [
-    remarks,
-    setRemarks,
-  ] =
-    useState('');
+  const [remarks, setRemarks] = useState("");
 
   // ==========================================
   // SCREEN STATE
   // ==========================================
 
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    saving,
-    setSaving,
-  ] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] =
-    useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
   // ==========================================
   // NAVIGATION
@@ -304,73 +188,59 @@ export default function AddFine() {
 
   const navItems: NavItem[] = [
     {
-      label:
-        'Dashboard',
+      label: "Dashboard",
 
-      route:
-        '/admin/dashboard',
+      route: "/admin/dashboard",
 
-      icon: require('../../../../assets/icons/dashboard.png'),
+      icon: require("../../../../assets/icons/dashboard.png"),
     },
 
     {
-      label:
-        'Students',
+      label: "Students",
 
-      route:
-        '/admin/students',
+      route: "/admin/students",
 
-      icon: require('../../../../assets/icons/students.png'),
+      icon: require("../../../../assets/icons/students.png"),
     },
 
     {
-      label:
-        'Fines',
+      label: "Fines",
 
-      route:
-        '/admin/fines',
+      route: "/admin/fines",
 
-      icon: require('../../../../assets/icons/fines.png'),
+      icon: require("../../../../assets/icons/fines.png"),
     },
 
     {
-      label:
-        'QR Scanner',
+      label: "QR Scanner",
 
-      route:
-        '/admin/qr-scanner',
+      route: "/admin/qr-scanner",
 
-      icon: require('../../../../assets/icons/qr-codeWhite.png'),
+      icon: require("../../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
-      label:
-        'Reports',
+      label: "Reports",
 
-      route:
-        '/admin/reports',
+      route: "/admin/reports",
 
-      icon: require('../../../../assets/icons/reports.png'),
+      icon: require("../../../../assets/icons/reports.png"),
     },
 
     {
-      label:
-        'Settings',
+      label: "Settings",
 
-      route:
-        '/admin/settings',
+      route: "/admin/settings",
 
-      icon: require('../../../../assets/icons/settings.png'),
+      icon: require("../../../../assets/icons/settings.png"),
     },
 
     {
-      label:
-        'Officers',
+      label: "Officers",
 
-      route:
-        '/admin/officers',
+      route: "/admin/officers",
 
-      icon: require('../../../../assets/icons/officers.png'),
+      icon: require("../../../../assets/icons/officers.png"),
     },
   ];
 
@@ -380,736 +250,380 @@ export default function AddFine() {
 
   useEffect(() => {
     loadOptions();
-  }, [
-    scannedStudentDatabaseId,
-  ]);
+  }, [scannedStudentDatabaseId]);
 
-  const loadOptions =
-    async () => {
-      try {
-        setLoading(
-          true
-        );
+  const loadOptions = async () => {
+    try {
+      setLoading(true);
 
-        setErrorMessage(
-          ''
-        );
+      setErrorMessage("");
 
-        const [
-          studentsResponse,
-          violationsResponse,
-          officersResponse,
-        ] =
-          await Promise.all([
-            fetch(
-              `${API_BASE}/api/fines/options/students`
-            ),
+      const [studentsResponse, violationsResponse, officersResponse] =
+        await Promise.all([
+          fetch(`${API_BASE}/api/fines/options/students`),
 
-            fetch(
-              `${API_BASE}/api/fines/options/violations`
-            ),
+          fetch(`${API_BASE}/api/fines/options/violations`),
 
-            fetch(
-              `${API_BASE}/api/fines/options/officers`
-            ),
-          ]);
+          fetch(`${API_BASE}/api/fines/options/officers`),
+        ]);
 
-        const studentsData =
-          await studentsResponse.json();
+      const studentsData = await studentsResponse.json();
 
-        const violationsData =
-          await violationsResponse.json();
+      const violationsData = await violationsResponse.json();
 
-        const officersData =
-          await officersResponse.json();
+      const officersData = await officersResponse.json();
 
-        // ======================================
-        // STUDENTS ERROR
-        // ======================================
+      if (!studentsResponse.ok || !studentsData.success) {
+        throw new Error(studentsData.message || "Failed to load students.");
+      }
 
-        if (
-          !studentsResponse.ok ||
-          !studentsData.success
-        ) {
-          throw new Error(
-            studentsData.message ||
-              'Failed to load students.'
-          );
-        }
-
-        // ======================================
-        // VIOLATIONS ERROR
-        // ======================================
-
-        if (
-          !violationsResponse.ok ||
-          !violationsData.success
-        ) {
-          throw new Error(
-            violationsData.message ||
-              'Failed to load violation types.'
-          );
-        }
-
-        // ======================================
-        // OFFICERS ERROR
-        // ======================================
-
-        if (
-          !officersResponse.ok ||
-          !officersData.success
-        ) {
-          throw new Error(
-            officersData.message ||
-              'Failed to load officers.'
-          );
-        }
-
-        // ======================================
-        // NORMALIZE OPTIONS
-        // ======================================
-
-        const loadedStudents:
-          StudentOption[] =
-          studentsData.students ||
-          [];
-
-        const loadedViolations:
-          ViolationOption[] =
-          violationsData.violations ||
-          [];
-
-        const loadedOfficers:
-          OfficerOption[] =
-          officersData.officers ||
-          [];
-
-        setStudents(
-          loadedStudents
-        );
-
-        setViolations(
-          loadedViolations
-        );
-
-        setOfficers(
-          loadedOfficers
-        );
-
-        // ======================================
-        // QR SCANNER STUDENT AUTO-SELECTION
-        // ======================================
-
-        if (
-          scannedStudentDatabaseId !==
-          null
-        ) {
-          const scannedStudent =
-            loadedStudents.find(
-              (
-                student
-              ) =>
-                Number(
-                  student.id
-                ) ===
-                scannedStudentDatabaseId
-            );
-
-          if (
-            scannedStudent
-          ) {
-            setSelectedStudentId(
-              scannedStudent.id
-            );
-
-            setStudentSearch(
-              scannedStudent.full_name
-            );
-
-            setStudentSuggestionsOpen(
-              false
-            );
-
-            console.log(
-              'Student preselected from QR Scanner:',
-              scannedStudent
-            );
-          } else {
-            setSelectedStudentId(
-              null
-            );
-
-            setStudentSearch(
-              ''
-            );
-
-            setErrorMessage(
-              'The student selected from the QR Scanner could not be found. Please search for the student manually.'
-            );
-          }
-        }
-
-        // ======================================
-        // DEFAULT OFFICER
-        //
-        // If only one officer/admin is available,
-        // automatically select that account.
-        // ======================================
-
-        if (
-          loadedOfficers.length ===
-          1
-        ) {
-          setSelectedOfficerId(
-            loadedOfficers[0].id
-          );
-        }
-      } catch (error) {
-        console.error(
-          'Load Add Fine options error:',
-          error
-        );
-
-        setErrorMessage(
-          'Could not load the Add Fine form. Please check the SmartFine server.'
-        );
-      } finally {
-        setLoading(
-          false
+      if (!violationsResponse.ok || !violationsData.success) {
+        throw new Error(
+          violationsData.message || "Failed to load violation types.",
         );
       }
-    };
+
+      if (!officersResponse.ok || !officersData.success) {
+        throw new Error(officersData.message || "Failed to load officers.");
+      }
+
+      const loadedStudents: StudentOption[] = studentsData.students || [];
+
+      const loadedViolations: ViolationOption[] =
+        violationsData.violations || [];
+
+      const loadedOfficers: OfficerOption[] = officersData.officers || [];
+
+      setStudents(loadedStudents);
+
+      setViolations(loadedViolations);
+
+      setOfficers(loadedOfficers);
+
+      if (scannedStudentDatabaseId !== null) {
+        const scannedStudent = loadedStudents.find(
+          (student) => Number(student.id) === scannedStudentDatabaseId,
+        );
+
+        if (scannedStudent) {
+          setSelectedStudentId(scannedStudent.id);
+
+          setStudentSearch(scannedStudent.full_name);
+
+          setStudentSuggestionsOpen(false);
+        } else {
+          setSelectedStudentId(null);
+
+          setStudentSearch("");
+
+          setErrorMessage(
+            "The student selected from the QR Scanner could not be found. Please search for the student manually.",
+          );
+        }
+      }
+
+      if (loadedOfficers.length === 1) {
+        setSelectedOfficerId(loadedOfficers[0].id);
+      }
+    } catch (error) {
+      console.error("Load Add Fine options error:", error);
+
+      setErrorMessage(
+        "Could not load the Add Fine form. Please check the SmartFine server.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ==========================================
   // SELECTED STUDENT
   // ==========================================
 
-  const selectedStudent =
-    useMemo(() => {
-      return (
-        students.find(
-          (
-            student
-          ) =>
-            student.id ===
-            selectedStudentId
-        ) ||
-        null
-      );
-    }, [
-      students,
-      selectedStudentId,
-    ]);
+  const selectedStudent = useMemo(() => {
+    return students.find((student) => student.id === selectedStudentId) || null;
+  }, [students, selectedStudentId]);
 
   // ==========================================
-  // FILTERED STUDENT SUGGESTIONS
+  // FILTERED STUDENTS
   // ==========================================
 
-  const filteredStudents =
-    useMemo(() => {
-      const search =
-        studentSearch
-          .trim()
+  const filteredStudents = useMemo(() => {
+    const search = studentSearch.trim().toLowerCase();
+
+    if (!search) {
+      return [];
+    }
+
+    return students
+      .filter((student) => {
+        const searchable = [
+          student.full_name,
+          student.student_id,
+          student.username,
+          student.grade_level,
+          student.section,
+        ]
+          .filter(Boolean)
+          .join(" ")
           .toLowerCase();
 
-      if (
-        !search
-      ) {
-        return [];
-      }
-
-      return students
-        .filter(
-          (
-            student
-          ) => {
-            const searchable =
-              [
-                student.full_name,
-
-                student.student_id,
-
-                student.username,
-
-                student.grade_level,
-
-                student.section,
-              ]
-                .filter(
-                  Boolean
-                )
-                .join(
-                  ' '
-                )
-                .toLowerCase();
-
-            return searchable.includes(
-              search
-            );
-          }
-        )
-        .slice(
-          0,
-          6
-        );
-    }, [
-      students,
-      studentSearch,
-    ]);
+        return searchable.includes(search);
+      })
+      .slice(0, 6);
+  }, [students, studentSearch]);
 
   // ==========================================
   // SELECTED VIOLATION
   // ==========================================
 
-  const selectedViolation =
-    useMemo(() => {
-      return (
-        violations.find(
-          (
-            violation
-          ) =>
-            violation.id ===
-            selectedViolationId
-        ) ||
-        null
-      );
-    }, [
-      violations,
-      selectedViolationId,
-    ]);
+  const selectedViolation = useMemo(() => {
+    return (
+      violations.find((violation) => violation.id === selectedViolationId) ||
+      null
+    );
+  }, [violations, selectedViolationId]);
 
   // ==========================================
   // SELECTED OFFICER
   // ==========================================
 
-  const selectedOfficer =
-    useMemo(() => {
-      return (
-        officers.find(
-          (
-            officer
-          ) =>
-            officer.id ===
-            selectedOfficerId
-        ) ||
-        null
-      );
-    }, [
-      officers,
-      selectedOfficerId,
-    ]);
+  const selectedOfficer = useMemo(() => {
+    return officers.find((officer) => officer.id === selectedOfficerId) || null;
+  }, [officers, selectedOfficerId]);
 
   // ==========================================
   // CLEAR ERROR
   // ==========================================
 
-  const clearError =
-    () => {
-      if (
-        errorMessage
-      ) {
-        setErrorMessage(
-          ''
-        );
-      }
-    };
+  const clearError = () => {
+    if (errorMessage) {
+      setErrorMessage("");
+    }
+  };
 
   // ==========================================
   // STUDENT SEARCH CHANGE
   // ==========================================
 
-  const handleStudentSearchChange =
-    (
-      text: string
-    ) => {
-      setStudentSearch(
-        text
-      );
+  const handleStudentSearchChange = (text: string) => {
+    setStudentSearch(text);
 
-      // If the administrator edits the
-      // preselected student's name/search box,
-      // clear the current student selection.
+    setSelectedStudentId(null);
 
-      setSelectedStudentId(
-        null
-      );
+    setStudentSuggestionsOpen(text.trim().length > 0);
 
-      setStudentSuggestionsOpen(
-        text.trim().length >
-          0
-      );
+    setViolationMenuOpen(false);
 
-      setViolationMenuOpen(
-        false
-      );
+    setOfficerMenuOpen(false);
 
-      setOfficerMenuOpen(
-        false
-      );
-
-      clearError();
-    };
+    clearError();
+  };
 
   // ==========================================
   // SELECT STUDENT
   // ==========================================
 
-  const selectStudent =
-    (
-      student:
-        StudentOption
-    ) => {
-      setSelectedStudentId(
-        student.id
-      );
+  const selectStudent = (student: StudentOption) => {
+    setSelectedStudentId(student.id);
 
-      setStudentSearch(
-        student.full_name
-      );
+    setStudentSearch(student.full_name);
 
-      setStudentSuggestionsOpen(
-        false
-      );
+    setStudentSuggestionsOpen(false);
 
-      clearError();
-    };
+    clearError();
+  };
 
   // ==========================================
   // VIOLATION MENU
   // ==========================================
 
-  const toggleViolationMenu =
-    () => {
-      setViolationMenuOpen(
-        !violationMenuOpen
-      );
+  const toggleViolationMenu = () => {
+    setViolationMenuOpen(!violationMenuOpen);
 
-      setOfficerMenuOpen(
-        false
-      );
+    setOfficerMenuOpen(false);
 
-      setStudentSuggestionsOpen(
-        false
-      );
-    };
+    setStudentSuggestionsOpen(false);
+  };
 
   // ==========================================
   // OFFICER MENU
   // ==========================================
 
-  const toggleOfficerMenu =
-    () => {
-      setOfficerMenuOpen(
-        !officerMenuOpen
-      );
+  const toggleOfficerMenu = () => {
+    setOfficerMenuOpen(!officerMenuOpen);
 
-      setViolationMenuOpen(
-        false
-      );
+    setViolationMenuOpen(false);
 
-      setStudentSuggestionsOpen(
-        false
-      );
-    };
+    setStudentSuggestionsOpen(false);
+  };
 
   // ==========================================
   // SAVE FINE
   // ==========================================
 
-  const handleSave =
-    async () => {
-      setErrorMessage(
-        ''
-      );
+  const handleSave = async () => {
+    setErrorMessage("");
 
-      // ======================================
-      // STUDENT
-      // ======================================
+    if (selectedStudentId === null) {
+      setErrorMessage("Please search for and select a student.");
 
-      if (
-        selectedStudentId ===
-        null
-      ) {
-        setErrorMessage(
-          'Please search for and select a student.'
-        );
+      return;
+    }
 
-        return;
-      }
+    if (selectedViolationId === null) {
+      setErrorMessage("Please select a violation type.");
 
-      // ======================================
-      // VIOLATION
-      // ======================================
+      return;
+    }
 
-      if (
-        selectedViolationId ===
-        null
-      ) {
-        setErrorMessage(
-          'Please select a violation type.'
-        );
+    if (selectedOfficerId === null) {
+      setErrorMessage("Please select an assigned officer.");
 
-        return;
-      }
+      return;
+    }
 
-      // ======================================
-      // OFFICER
-      // ======================================
+    if (!isValidDate(issuedAt)) {
+      setErrorMessage("Please enter the violation date using YYYY-MM-DD.");
 
-      if (
-        selectedOfficerId ===
-        null
-      ) {
-        setErrorMessage(
-          'Please select an assigned officer.'
-        );
+      return;
+    }
 
-        return;
-      }
+    try {
+      setSaving(true);
 
-      // ======================================
-      // DATE
-      // ======================================
+      const response = await fetch(`${API_BASE}/api/fines`, {
+        method: "POST",
 
-      if (
-        !isValidDate(
-          issuedAt
-        )
-      ) {
-        setErrorMessage(
-          'Please enter the violation date using YYYY-MM-DD.'
-        );
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          studentId: selectedStudentId,
+
+          violationTypeId: selectedViolationId,
+
+          recordedBy: selectedOfficerId,
+
+          remarks: remarks.trim(),
+
+          issuedAt: issuedAt.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setErrorMessage(data.message || "Failed to record fine.");
 
         return;
       }
 
-      // ======================================
-      // SAVE
-      // ======================================
+      showSuccess(data.fine?.fineReference);
+    } catch (error) {
+      console.error("Create fine error:", error);
 
-      try {
-        setSaving(
-          true
-        );
-
-        const response =
-          await fetch(
-            `${API_BASE}/api/fines`,
-            {
-              method:
-                'POST',
-
-              headers: {
-                'Content-Type':
-                  'application/json',
-              },
-
-              body:
-                JSON.stringify({
-                  studentId:
-                    selectedStudentId,
-
-                  violationTypeId:
-                    selectedViolationId,
-
-                  recordedBy:
-                    selectedOfficerId,
-
-                  remarks:
-                    remarks.trim(),
-
-                  issuedAt:
-                    issuedAt.trim(),
-                }),
-            }
-          );
-
-        const data =
-          await response.json();
-
-        console.log(
-          'Create fine response:',
-          data
-        );
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          setErrorMessage(
-            data.message ||
-              'Failed to record fine.'
-          );
-
-          return;
-        }
-
-        showSuccess(
-          data.fine
-            ?.fineReference
-        );
-      } catch (error) {
-        console.error(
-          'Create fine error:',
-          error
-        );
-
-        setErrorMessage(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setSaving(
-          false
-        );
-      }
-    };
+      setErrorMessage("Could not connect to the SmartFine server.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // ==========================================
   // SUCCESS
   // ==========================================
 
-  const showSuccess =
-    (
-      fineReference:
-        | string
-        | undefined
-    ) => {
-      const message =
-        fineReference
-          ? `Fine ${fineReference} recorded successfully.`
-          : 'Fine recorded successfully.';
+  const showSuccess = (fineReference: string | undefined) => {
+    const message = fineReference
+      ? `Fine ${fineReference} recorded successfully.`
+      : "Fine recorded successfully.";
 
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        window.alert(
-          message
-        );
+    if (Platform.OS === "web") {
+      window.alert(message);
 
-        router.replace(
-          '/admin/fines' as any
-        );
+      router.replace("/admin/fines" as any);
 
-        return;
-      }
+      return;
+    }
 
-      Alert.alert(
-        'Fine Recorded',
+    Alert.alert(
+      "Fine Recorded",
 
-        message,
+      message,
 
-        [
-          {
-            text:
-              'OK',
+      [
+        {
+          text: "OK",
 
-            onPress: () =>
-              router.replace(
-                '/admin/fines' as any
-              ),
-          },
-        ]
-      );
-    };
+          onPress: () => router.replace("/admin/fines" as any),
+        },
+      ],
+    );
+  };
 
   // ==========================================
-  // CANCEL
+  // CANCEL / BACK
   // ==========================================
 
-  const handleCancel =
-    () => {
-      router.replace(
-        '/admin/fines' as any
-      );
-    };
+  const handleCancel = () => {
+    router.replace("/admin/fines" as any);
+  };
 
   // ==========================================
   // LOGOUT
   // ==========================================
 
-  const performLogout =
-    async () => {
-      await logout();
+  const performLogout = async () => {
+    await logout();
 
-      router.replace(
-        '/login' as any
-      );
-    };
+    router.replace("/login" as any);
+  };
 
-  const handleLogout =
-    () => {
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            'Are you sure you want to log out?'
-          );
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to log out?");
 
-        if (
-          confirmed
-        ) {
-          performLogout();
-        }
-
-        return;
+      if (confirmed) {
+        performLogout();
       }
 
-      Alert.alert(
-        'Log Out',
+      return;
+    }
 
-        'Are you sure you want to log out?',
+    Alert.alert(
+      "Log Out",
 
-        [
-          {
-            text:
-              'Cancel',
+      "Are you sure you want to log out?",
 
-            style:
-              'cancel',
-          },
+      [
+        {
+          text: "Cancel",
 
-          {
-            text:
-              'Log Out',
+          style: "cancel",
+        },
 
-            style:
-              'destructive',
+        {
+          text: "Log Out",
 
-            onPress:
-              performLogout,
-          },
-        ]
-      );
-    };
+          style: "destructive",
+
+          onPress: performLogout,
+        },
+      ],
+    );
+  };
 
   // ==========================================
   // LOADING
   // ==========================================
 
-  if (
-    loading
-  ) {
+  if (loading) {
     return (
-      <View
-        style={
-          styles.loadingScreen
-        }
-      >
-        <ActivityIndicator
-          size="large"
-          color="#173A73"
-        />
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color="#173A73" />
 
-        <Text
-          style={
-            styles.loadingText
-          }
-        >
-          Loading Add Fine form...
-        </Text>
+        <Text style={styles.loadingText}>Loading Add Fine form...</Text>
       </View>
     );
   }
@@ -1119,879 +633,429 @@ export default function AddFine() {
   // ==========================================
 
   return (
-    <View
-      style={
-        styles.screen
-      }
-    >
-      {/* ======================================
-          SIDEBAR
-      ====================================== */}
+    <View style={styles.screen}>
+      {/* SIDEBAR */}
 
       {isTablet && (
-        <View
-          style={
-            styles.sidebar
-          }
-        >
-          <View
-            style={
-              styles.logoArea
-            }
-          >
+        <View style={styles.sidebar}>
+          <View style={styles.logoArea}>
             <Image
-              source={require('../../../../assets/branding/smartfineNoBG.png')}
-              style={
-                styles.smartFineLogo
-              }
+              source={require("../../../../assets/branding/smartfineNoBG.png")}
+              style={styles.smartFineLogo}
               resizeMode="contain"
             />
           </View>
 
-          <View
-            style={
-              styles.navigation
-            }
-          >
-            {navItems.map(
-              (
-                item
-              ) => {
-                const active =
-                  item.label ===
-                  'Fines';
+          <View style={styles.navigation}>
+            {navItems.map((item) => {
+              const active = item.label === "Fines";
 
-                return (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
-                    style={[
-                      styles.navItem,
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => router.push(item.route as any)}
+                >
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-                      active &&
-                        styles.navItemActive,
-                    ]}
-                    onPress={() =>
-                      router.push(
-                        item.route as any
-                      )
-                    }
-                  >
-                    <View
-                      style={
-                        styles.navIconContainer
-                      }
-                    >
-                      <Image
-                        source={item.icon}
-                        style={styles.navImageIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-
-                    <Text
-                      style={
-                        styles.navText
-                      }
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-            )}
+                  <Text style={styles.navText}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          <TouchableOpacity
-            style={
-              styles.logoutButton
-            }
-            onPress={
-              handleLogout
-            }
-          >
-            <Text
-              style={
-                styles.logoutText
-              }
-            >
-              Log Out
-            </Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* ======================================
-          MAIN
-      ====================================== */}
+      {/* MAIN */}
 
-      <View
-        style={
-          styles.main
-        }
-      >
+      <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
-          showsVerticalScrollIndicator={
-            false
-          }
+          contentContainerStyle={[
+            styles.scrollContent,
+
+            isCompact && styles.scrollContentCompact,
+          ]}
+          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* ==================================
-              MOBILE NAV
+              BACK / PAGE TITLE
           ================================== */}
+
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleCancel}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Fines"
+          >
+            <Image
+              source={require("../../../../assets/icons/back_icon.png")}
+              style={styles.backIconImage}
+              resizeMode="contain"
+            />
+
+            <Text
+              style={[styles.backText, isCompact && styles.backTextCompact]}
+              numberOfLines={1}
+            >
+              Add New Fine
+            </Text>
+          </TouchableOpacity>
+
+          {/* MOBILE NAV */}
 
           {!isTablet && (
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
             >
-              {navItems.map(
-                (
-                  item
-                ) => {
-                  const active =
-                    item.label ===
-                    'Fines';
+              {navItems.map((item) => {
+                const active = item.label === "Fines";
 
-                  return (
-                    <TouchableOpacity
-                      key={
-                        item.label
-                      }
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={[
+                      styles.mobileNavItem,
+
+                      active && styles.mobileNavItemActive,
+                    ]}
+                    onPress={() => router.push(item.route as any)}
+                  >
+                    <Text
                       style={[
-                        styles.mobileNavItem,
+                        styles.mobileNavText,
 
-                        active &&
-                          styles.mobileNavItemActive,
+                        active && styles.mobileNavTextActive,
                       ]}
-                      onPress={() =>
-                        router.push(
-                          item.route as any
-                        )
-                      }
                     >
-                      <Text
-                        style={[
-                          styles.mobileNavText,
-
-                          active &&
-                            styles.mobileNavTextActive,
-                        ]}
-                      >
-                        {
-                          item.label
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
-          {/* ==================================
-              HEADER
-          ================================== */}
+          {/* FORM CARD */}
 
-          <View
-            style={
-              styles.header
-            }
-          >
-            <Text
-              style={
-                styles.pageTitle
-              }
-            >
-              Add New Fine
-            </Text>
-          </View>
+          <View style={styles.formCard}>
+            <Text style={styles.cardTitle}>Record New Fine</Text>
 
-          {/* ==================================
-              FORM CARD
-          ================================== */}
-
-          <View
-            style={
-              styles.formCard
-            }
-          >
-            <Text
-              style={
-                styles.cardTitle
-              }
-            >
-              Record New Fine
-            </Text>
-
-            {/* ==================================
-                QR PRESELECTED STUDENT NOTICE
-            ================================== */}
-
-            {scannedStudentDatabaseId !==
-              null &&
-              selectedStudent && (
-                <View
-                  style={{
-                    backgroundColor:
-                      '#EAF7EC',
-
-                    borderWidth:
-                      1,
-
-                    borderColor:
-                      '#A5DDAE',
-
-                    borderRadius:
-                      9,
-
-                    paddingHorizontal:
-                      15,
-
-                    paddingVertical:
-                      12,
-
-                    marginBottom:
-                      18,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color:
-                        '#2E7D32',
-
-                      fontSize:
-                        12,
-
-                      fontWeight:
-                        '800',
-
-                      marginBottom:
-                        3,
-                    }}
-                  >
-                    Student Selected from QR Scanner
-                  </Text>
-
-                  <Text
-                    style={{
-                      color:
-                        '#4C6850',
-
-                      fontSize:
-                        11,
-                    }}
-                  >
-                    {selectedStudent.full_name}
-                    {' • '}
-                    {selectedStudent.student_id}
-                  </Text>
-                </View>
-              )}
-
-            {/* ==================================
-                ROW 1
-            ================================== */}
-
-            <View
-              style={[
-                styles.formRow,
-                styles.formRowTop,
-              ]}
-            >
-              {/* STUDENT SEARCH */}
-
+            {scannedStudentDatabaseId !== null && selectedStudent && (
               <View
-                style={
-                  styles.fieldGroup
-                }
+                style={{
+                  backgroundColor: "#EAF7EC",
+
+                  borderWidth: 1,
+
+                  borderColor: "#A5DDAE",
+
+                  borderRadius: 9,
+
+                  paddingHorizontal: 15,
+
+                  paddingVertical: 12,
+
+                  marginBottom: 18,
+                }}
               >
                 <Text
-                  style={
-                    styles.label
-                  }
+                  style={{
+                    color: "#2E7D32",
+
+                    fontSize: 12,
+
+                    fontWeight: "800",
+
+                    marginBottom: 3,
+                  }}
                 >
-                  Student Name
+                  Student Selected from QR Scanner
                 </Text>
 
-                <View
-                  style={
-                    styles.searchField
-                  }
+                <Text
+                  style={{
+                    color: "#4C6850",
+
+                    fontSize: 11,
+                  }}
                 >
+                  {selectedStudent.full_name}
+                  {" • "}
+                  {selectedStudent.student_id}
+                </Text>
+              </View>
+            )}
+
+            {/* ROW 1 */}
+
+            <View style={[styles.formRow, styles.formRowTop]}>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Student Name</Text>
+
+                <View style={styles.searchField}>
                   <TextInput
-                    style={
-                      styles.searchInput
-                    }
-                    value={
-                      studentSearch
-                    }
+                    style={styles.searchInput}
+                    value={studentSearch}
                     onFocus={() => {
-                      if (
-                        studentSearch
-                          .trim()
-                          .length >
-                        0
-                      ) {
-                        setStudentSuggestionsOpen(
-                          true
-                        );
+                      if (studentSearch.trim().length > 0) {
+                        setStudentSuggestionsOpen(true);
                       }
                     }}
-                    onChangeText={
-                      handleStudentSearchChange
-                    }
+                    onChangeText={handleStudentSearchChange}
                     placeholder="Type student name or ID"
                     placeholderTextColor="#8C939F"
-                    editable={
-                      !saving
-                    }
+                    editable={!saving}
                   />
                 </View>
 
                 {studentSuggestionsOpen && (
-                  <View
-                    style={
-                      styles.suggestionMenu
-                    }
-                  >
+                  <View style={styles.suggestionMenu}>
                     <ScrollView
-                      style={
-                        styles.suggestionScroll
-                      }
+                      style={styles.suggestionScroll}
                       nestedScrollEnabled
                       keyboardShouldPersistTaps="handled"
                     >
-                      {filteredStudents.length ===
-                      0 ? (
-                        <View
-                          style={
-                            styles.emptyOption
-                          }
-                        >
-                          <Text
-                            style={
-                              styles.emptyOptionText
-                            }
-                          >
+                      {filteredStudents.length === 0 ? (
+                        <View style={styles.emptyOption}>
+                          <Text style={styles.emptyOptionText}>
                             No matching active students found.
                           </Text>
                         </View>
                       ) : (
-                        filteredStudents.map(
-                          (
-                            student
-                          ) => (
-                            <TouchableOpacity
-                              key={
-                                student.id
-                              }
-                              style={
-                                styles.suggestionItem
-                              }
-                              onPress={() =>
-                                selectStudent(
-                                  student
-                                )
-                              }
-                            >
-                              <Text
-                                style={
-                                  styles.suggestionTitle
-                                }
-                              >
-                                {
-                                  student.full_name
-                                }
-                              </Text>
+                        filteredStudents.map((student) => (
+                          <TouchableOpacity
+                            key={student.id}
+                            style={styles.suggestionItem}
+                            onPress={() => selectStudent(student)}
+                          >
+                            <Text style={styles.suggestionTitle}>
+                              {student.full_name}
+                            </Text>
 
-                              <Text
-                                style={
-                                  styles.suggestionSubtitle
-                                }
-                              >
-                                {
-                                  student.student_id
-                                }
+                            <Text style={styles.suggestionSubtitle}>
+                              {student.student_id}
 
-                                {student.grade_level
-                                  ? ` • ${student.grade_level}`
-                                  : ''}
+                              {student.grade_level
+                                ? ` • ${student.grade_level}`
+                                : ""}
 
-                                {student.section
-                                  ? ` - ${student.section}`
-                                  : ''}
-                              </Text>
-                            </TouchableOpacity>
-                          )
-                        )
+                              {student.section ? ` - ${student.section}` : ""}
+                            </Text>
+                          </TouchableOpacity>
+                        ))
                       )}
                     </ScrollView>
                   </View>
                 )}
               </View>
 
-              {/* DATE */}
-
-              <View
-                style={
-                  styles.fieldGroup
-                }
-              >
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Date of Violation
-                </Text>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Date of Violation</Text>
 
                 <TextInput
-                  style={
-                    styles.input
-                  }
-                  value={
-                    issuedAt
-                  }
-                  onChangeText={(
-                    text
-                  ) => {
-                    setIssuedAt(
-                      text
-                    );
+                  style={styles.input}
+                  value={issuedAt}
+                  onChangeText={(text) => {
+                    setIssuedAt(text);
 
                     clearError();
                   }}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor="#8C939F"
-                  editable={
-                    !saving
-                  }
+                  editable={!saving}
                 />
               </View>
             </View>
 
-            {/* ==================================
-                ROW 2
-            ================================== */}
+            {/* ROW 2 */}
 
-            <View
-              style={[
-                styles.formRow,
-                styles.formRowMiddle,
-              ]}
-            >
-              {/* VIOLATION TYPE */}
-
-              <View
-                style={
-                  styles.fieldGroup
-                }
-              >
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Violation Type
-                </Text>
+            <View style={[styles.formRow, styles.formRowMiddle]}>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Violation Type</Text>
 
                 <TouchableOpacity
-                  style={
-                    styles.selectButton
-                  }
-                  onPress={
-                    toggleViolationMenu
-                  }
-                  disabled={
-                    saving
-                  }
+                  style={styles.selectButton}
+                  onPress={toggleViolationMenu}
+                  disabled={saving}
                 >
                   <Text
                     style={[
                       styles.selectText,
 
-                      !selectedViolation &&
-                        styles.placeholderText,
+                      !selectedViolation && styles.placeholderText,
                     ]}
-                    numberOfLines={
-                      1
-                    }
+                    numberOfLines={1}
                   >
                     {selectedViolation
                       ? selectedViolation.violation_name
-                      : 'Select violation type'}
+                      : "Select violation type"}
                   </Text>
 
-                  <Text
-                    style={
-                      styles.selectArrow
-                    }
-                  >
-                    ▼
-                  </Text>
+                  <Text style={styles.selectArrow}>▼</Text>
                 </TouchableOpacity>
 
                 {violationMenuOpen && (
-                  <View
-                    style={
-                      styles.dropdownMenu
-                    }
-                  >
+                  <View style={styles.dropdownMenu}>
                     <ScrollView
-                      style={
-                        styles.dropdownScroll
-                      }
+                      style={styles.dropdownScroll}
                       nestedScrollEnabled
                     >
-                      {violations.map(
-                        (
-                          violation
-                        ) => (
-                          <TouchableOpacity
-                            key={
-                              violation.id
-                            }
-                            style={
-                              styles.dropdownItem
-                            }
-                            onPress={() => {
-                              setSelectedViolationId(
-                                violation.id
-                              );
+                      {violations.map((violation) => (
+                        <TouchableOpacity
+                          key={violation.id}
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            setSelectedViolationId(violation.id);
 
-                              setViolationMenuOpen(
-                                false
-                              );
+                            setViolationMenuOpen(false);
 
-                              clearError();
-                            }}
-                          >
-                            <Text
-                              style={
-                                styles.dropdownTitle
-                              }
-                            >
-                              {
-                                violation.violation_name
-                              }
-                            </Text>
+                            clearError();
+                          }}
+                        >
+                          <Text style={styles.dropdownTitle}>
+                            {violation.violation_name}
+                          </Text>
 
-                            <Text
-                              style={
-                                styles.dropdownSubtitle
-                              }
-                            >
-                              {formatMoney(
-                                violation.amount
-                              )}
-                            </Text>
-                          </TouchableOpacity>
-                        )
-                      )}
+                          <Text style={styles.dropdownSubtitle}>
+                            {formatMoney(violation.amount)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </ScrollView>
                   </View>
                 )}
               </View>
 
-              {/* OFFICER */}
-
-              <View
-                style={
-                  styles.fieldGroup
-                }
-              >
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Assigned Officer
-                </Text>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Assigned Officer</Text>
 
                 <TouchableOpacity
-                  style={
-                    styles.selectButton
-                  }
-                  onPress={
-                    toggleOfficerMenu
-                  }
-                  disabled={
-                    saving
-                  }
+                  style={styles.selectButton}
+                  onPress={toggleOfficerMenu}
+                  disabled={saving}
                 >
                   <Text
                     style={[
                       styles.selectText,
 
-                      !selectedOfficer &&
-                        styles.placeholderText,
+                      !selectedOfficer && styles.placeholderText,
                     ]}
-                    numberOfLines={
-                      1
-                    }
+                    numberOfLines={1}
                   >
                     {selectedOfficer
                       ? selectedOfficer.full_name
-                      : 'Select officer'}
+                      : "Select officer"}
                   </Text>
 
-                  <Text
-                    style={
-                      styles.selectArrow
-                    }
-                  >
-                    ▼
-                  </Text>
+                  <Text style={styles.selectArrow}>▼</Text>
                 </TouchableOpacity>
 
                 {officerMenuOpen && (
-                  <View
-                    style={
-                      styles.dropdownMenu
-                    }
-                  >
+                  <View style={styles.dropdownMenu}>
                     <ScrollView
-                      style={
-                        styles.dropdownScroll
-                      }
+                      style={styles.dropdownScroll}
                       nestedScrollEnabled
                     >
-                      {officers.map(
-                        (
-                          officer
-                        ) => (
-                          <TouchableOpacity
-                            key={
-                              officer.id
-                            }
-                            style={
-                              styles.dropdownItem
-                            }
-                            onPress={() => {
-                              setSelectedOfficerId(
-                                officer.id
-                              );
+                      {officers.map((officer) => (
+                        <TouchableOpacity
+                          key={officer.id}
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            setSelectedOfficerId(officer.id);
 
-                              setOfficerMenuOpen(
-                                false
-                              );
+                            setOfficerMenuOpen(false);
 
-                              clearError();
-                            }}
-                          >
-                            <Text
-                              style={
-                                styles.dropdownTitle
-                              }
-                            >
-                              {
-                                officer.full_name
-                              }
-                            </Text>
+                            clearError();
+                          }}
+                        >
+                          <Text style={styles.dropdownTitle}>
+                            {officer.full_name}
+                          </Text>
 
-                            <Text
-                              style={
-                                styles.dropdownSubtitle
-                              }
-                            >
-                              {
-                                formatRole(
-                                  officer.role
-                                )
-                              }
-                            </Text>
-                          </TouchableOpacity>
-                        )
-                      )}
+                          <Text style={styles.dropdownSubtitle}>
+                            {formatRole(officer.role)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </ScrollView>
                   </View>
                 )}
               </View>
             </View>
 
-            {/* ==================================
-                ROW 3
-            ================================== */}
+            {/* ROW 3 */}
 
-            <View
-              style={[
-                styles.formRow,
-                styles.formRowBottom,
-              ]}
-            >
-              {/* AMOUNT */}
+            <View style={[styles.formRow, styles.formRowBottom]}>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Amount</Text>
 
-              <View
-                style={
-                  styles.fieldGroup
-                }
-              >
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Amount
-                </Text>
-
-                <View
-                  style={
-                    styles.amountBox
-                  }
-                >
-                  <Text
-                    style={
-                      styles.amountText
-                    }
-                  >
+                <View style={styles.amountBox}>
+                  <Text style={styles.amountText}>
                     {selectedViolation
-                      ? formatMoney(
-                          selectedViolation.amount
-                        )
-                      : '₱0.00'}
+                      ? formatMoney(selectedViolation.amount)
+                      : "₱0.00"}
                   </Text>
                 </View>
               </View>
 
-              {/* NOTES */}
-
-              <View
-                style={
-                  styles.fieldGroup
-                }
-              >
-                <Text
-                  style={
-                    styles.label
-                  }
-                >
-                  Notes / Description
-                </Text>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Notes / Description</Text>
 
                 <TextInput
-                  style={
-                    styles.input
-                  }
-                  value={
-                    remarks
-                  }
-                  onChangeText={(
-                    text
-                  ) => {
-                    setRemarks(
-                      text
-                    );
+                  style={styles.input}
+                  value={remarks}
+                  onChangeText={(text) => {
+                    setRemarks(text);
 
                     clearError();
                   }}
                   placeholder="Enter minor details"
                   placeholderTextColor="#8C939F"
-                  editable={
-                    !saving
-                  }
+                  editable={!saving}
                 />
               </View>
             </View>
 
-            {/* ==================================
-                ERROR
-            ================================== */}
+            {errorMessage !== "" && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorTitle}>Unable to Save Fine</Text>
 
-            {errorMessage !==
-              '' && (
-              <View
-                style={
-                  styles.errorBox
-                }
-              >
-                <Text
-                  style={
-                    styles.errorTitle
-                  }
-                >
-                  Unable to Save Fine
-                </Text>
-
-                <Text
-                  style={
-                    styles.errorText
-                  }
-                >
-                  {
-                    errorMessage
-                  }
-                </Text>
+                <Text style={styles.errorText}>{errorMessage}</Text>
               </View>
             )}
 
-            {/* ==================================
-                BUTTONS
-            ================================== */}
-
-            <View
-              style={
-                styles.actionRow
-              }
-            >
+            <View style={styles.actionRow}>
               <TouchableOpacity
-                style={
-                  styles.cancelButton
-                }
-                onPress={
-                  handleCancel
-                }
-                disabled={
-                  saving
-                }
+                style={styles.cancelButton}
+                onPress={handleCancel}
+                disabled={saving}
               >
-                <Text
-                  style={
-                    styles.cancelButtonText
-                  }
-                >
-                  Cancel
-                </Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.saveButton,
-
-                  saving &&
-                    styles.buttonDisabled,
-                ]}
-                onPress={
-                  handleSave
-                }
-                disabled={
-                  saving
-                }
+                style={[styles.saveButton, saving && styles.buttonDisabled]}
+                onPress={handleSave}
+                disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#FFFFFF"
-                  />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text
-                    style={
-                      styles.saveButtonText
-                    }
-                  >
-                    Save Fine
-                  </Text>
+                  <Text style={styles.saveButtonText}>Save Fine</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -2007,28 +1071,13 @@ export default function AddFine() {
 // ==========================================
 
 function getTodayDate() {
-  const now =
-    new Date();
+  const now = new Date();
 
-  const year =
-    now.getFullYear();
+  const year = now.getFullYear();
 
-  const month =
-    String(
-      now.getMonth() +
-        1
-    ).padStart(
-      2,
-      '0'
-    );
+  const month = String(now.getMonth() + 1).padStart(2, "0");
 
-  const day =
-    String(
-      now.getDate()
-    ).padStart(
-      2,
-      '0'
-    );
+  const day = String(now.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -2037,46 +1086,21 @@ function getTodayDate() {
 // DATE VALIDATION
 // ==========================================
 
-function isValidDate(
-  value: string
-) {
-  const datePattern =
-    /^\d{4}-\d{2}-\d{2}$/;
+function isValidDate(value: string) {
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
-  if (
-    !datePattern.test(
-      value.trim()
-    )
-  ) {
+  if (!datePattern.test(value.trim())) {
     return false;
   }
 
-  const [
-    year,
-    month,
-    day,
-  ] =
-    value
-      .trim()
-      .split('-')
-      .map(
-        Number
-      );
+  const [year, month, day] = value.trim().split("-").map(Number);
 
-  const date =
-    new Date(
-      year,
-      month - 1,
-      day
-    );
+  const date = new Date(year, month - 1, day);
 
   return (
-    date.getFullYear() ===
-      year &&
-    date.getMonth() ===
-      month - 1 &&
-    date.getDate() ===
-      day
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
   );
 }
 
@@ -2084,45 +1108,27 @@ function isValidDate(
 // MONEY
 // ==========================================
 
-function formatMoney(
-  amount: number
-) {
-  return `₱${Number(
-    amount ||
-      0
-  ).toLocaleString(
-    'en-PH',
-    {
-      minimumFractionDigits:
-        2,
+function formatMoney(amount: number) {
+  return `₱${Number(amount || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
 
-      maximumFractionDigits:
-        2,
-    }
-  )}`;
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 // ==========================================
 // ROLE
 // ==========================================
 
-function formatRole(
-  role: string
-) {
-  switch (
-    String(
-      role ||
-        ''
-    ).toUpperCase()
-  ) {
-    case 'FINES_OFFICER':
-      return 'Fines Officer';
+function formatRole(role: string) {
+  switch (String(role || "").toUpperCase()) {
+    case "FINES_OFFICER":
+      return "Fines Officer";
 
-    case 'ADMIN':
-      return 'Administrator';
+    case "ADMIN":
+      return "Administrator";
 
     default:
       return role;
   }
 }
-

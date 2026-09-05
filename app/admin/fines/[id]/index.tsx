@@ -1,41 +1,28 @@
-import {
-  useEffect,
-  useState,
-} from 'react';
+import { useEffect, useState } from "react";
 
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   useWindowDimensions,
-  Image,
-  Alert,
-  Platform,
-  Modal,
-} from 'react-native';
+  View,
+} from "react-native";
 
-import {
-  useLocalSearchParams,
-  useRouter,
-} from 'expo-router';
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-import AsyncStorage from
-  '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import {
-  useAuth,
-} from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
-import {
-  API_BASE,
-} from '@/constants/api';
+import { API_BASE } from "@/constants/api";
 
-import {
-  styles,
-} from './fine-profile.styles';
+import { styles } from "./fine-profile.styles";
 
 // ==========================================
 // TYPES
@@ -48,87 +35,53 @@ type Fine = {
 
   student_id: number;
 
-  student_number:
-    | string
-    | null;
+  student_number: string | null;
 
-  student_username:
-    | string
-    | null;
+  student_username: string | null;
 
-  student_first_name:
-    | string
-    | null;
+  student_first_name: string | null;
 
-  student_middle_name:
-    | string
-    | null;
+  student_middle_name: string | null;
 
-  student_last_name:
-    | string
-    | null;
+  student_last_name: string | null;
 
   student_name: string;
 
-  grade_level:
-    | string
-    | null;
+  grade_level: string | null;
 
-  section:
-    | string
-    | null;
+  section: string | null;
 
   violation_type_id: number;
 
-  violation_code:
-    | string
-    | null;
+  violation_code: string | null;
 
   violation_name: string;
 
-  violation_description:
-    | string
-    | null;
+  violation_description: string | null;
 
   amount_centavos: number;
 
   amount: number;
 
-  remarks:
-    | string
-    | null;
+  remarks: string | null;
 
-  officer_id:
-    | number
-    | null;
+  officer_id: number | null;
 
   officer_name: string;
 
   issued_at: string;
 
-  paid_at:
-    | string
-    | null;
+  paid_at: string | null;
 
-  cancelled_at:
-    | string
-    | null;
+  cancelled_at: string | null;
 
-  cancelled_by:
-    | number
-    | null;
+  cancelled_by: number | null;
 
-  cancellation_reason:
-    | string
-    | null;
+  cancellation_reason: string | null;
 
-  created_at:
-    | string
-    | null;
+  created_at: string | null;
 
-  updated_at:
-    | string
-    | null;
+  updated_at: string | null;
 
   status: string;
 };
@@ -136,7 +89,7 @@ type Fine = {
 type NavItem = {
   label: string;
   route: string;
-  icon?: any;
+  icon: any;
 };
 
 // ==========================================
@@ -144,81 +97,51 @@ type NavItem = {
 // ==========================================
 
 export default function FineDetailedView() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const params =
-    useLocalSearchParams();
+  const params = useLocalSearchParams();
 
-  const { logout } =
-    useAuth();
+  const { logout } = useAuth();
 
-  const { width } =
-    useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const isTablet =
-    width >= 768;
+  const isTablet = width >= 768;
+
+  const isCompact = width < 600;
 
   // ==========================================
   // ROUTE ID
   // ==========================================
 
-  const rawId =
-    params.id;
+  const rawId = params.id;
 
-  const fineId =
-    Array.isArray(rawId)
-      ? rawId[0]
-      : rawId;
+  const fineId = Array.isArray(rawId) ? rawId[0] : rawId;
 
   // ==========================================
   // FINE DATA
   // ==========================================
 
-  const [
-    fine,
-    setFine,
-  ] = useState<Fine | null>(
-    null
-  );
+  const [fine, setFine] = useState<Fine | null>(null);
 
   // ==========================================
   // PAGE STATE
   // ==========================================
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    actionLoading,
-    setActionLoading,
-  ] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
   // ==========================================
   // CANCEL FINE MODAL
   // ==========================================
 
-  const [
-    cancelModalVisible,
-    setCancelModalVisible,
-  ] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
 
-  const [
-    cancellationReason,
-    setCancellationReason,
-  ] = useState('');
+  const [cancellationReason, setCancellationReason] = useState("");
 
-  const [
-    cancelError,
-    setCancelError,
-  ] = useState('');
+  const [cancelError, setCancelError] = useState("");
 
   // ==========================================
   // NAVIGATION
@@ -226,73 +149,59 @@ export default function FineDetailedView() {
 
   const navItems: NavItem[] = [
     {
-      label:
-        'Dashboard',
+      label: "Dashboard",
 
-      route:
-        '/admin/dashboard',
+      route: "/admin/dashboard",
 
-      icon: require('../../../../assets/icons/dashboard.png'),
+      icon: require("../../../../assets/icons/dashboard.png"),
     },
 
     {
-      label:
-        'Students',
+      label: "Students",
 
-      route:
-        '/admin/students',
+      route: "/admin/students",
 
-      icon: require('../../../../assets/icons/students.png'),
+      icon: require("../../../../assets/icons/students.png"),
     },
 
     {
-      label:
-        'Fines',
+      label: "Fines",
 
-      route:
-        '/admin/fines',
+      route: "/admin/fines",
 
-      icon: require('../../../../assets/icons/fines.png'),
+      icon: require("../../../../assets/icons/fines.png"),
     },
 
     {
-      label:
-        'QR Scanner',
+      label: "QR Scanner",
 
-      route:
-        '/admin/qr-scanner',
+      route: "/admin/qr-scanner",
 
-      icon: require('../../../../assets/icons/qr-codeWhite.png'),
+      icon: require("../../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
-      label:
-        'Reports',
+      label: "Reports",
 
-      route:
-        '/admin/reports',
+      route: "/admin/reports",
 
-      icon: require('../../../../assets/icons/reports.png'),
+      icon: require("../../../../assets/icons/reports.png"),
     },
 
     {
-      label:
-        'Settings',
+      label: "Settings",
 
-      route:
-        '/admin/settings',
+      route: "/admin/settings",
 
-      icon: require('../../../../assets/icons/settings.png'),
+      icon: require("../../../../assets/icons/settings.png"),
     },
 
     {
-      label:
-        'Officers',
+      label: "Officers",
 
-      route:
-        '/admin/officers',
+      route: "/admin/officers",
 
-      icon: require('../../../../assets/icons/officers.png'),
+      icon: require("../../../../assets/icons/officers.png"),
     },
   ];
 
@@ -300,578 +209,319 @@ export default function FineDetailedView() {
   // LOAD FINE
   // ==========================================
 
-  const loadFine =
-    async () => {
-      if (!fineId) {
+  const loadFine = async () => {
+    if (!fineId) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      setErrorMessage("");
+
+      const response = await fetch(`${API_BASE}/api/fines/${fineId}`);
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.fine) {
+        setErrorMessage(data.message || "Failed to load fine information.");
+
         return;
       }
 
-      try {
-        setLoading(true);
+      setFine(data.fine);
+    } catch (error) {
+      console.error("Load fine details error:", error);
 
-        setErrorMessage('');
-
-        const response =
-          await fetch(
-            `${API_BASE}/api/fines/${fineId}`
-          );
-
-        const data =
-          await response.json();
-
-        console.log(
-          'Fine details response:',
-          data
-        );
-
-        if (
-          !response.ok ||
-          !data.success ||
-          !data.fine
-        ) {
-          setErrorMessage(
-            data.message ||
-              'Failed to load fine information.'
-          );
-
-          return;
-        }
-
-        setFine(
-          data.fine
-        );
-      } catch (error) {
-        console.error(
-          'Load fine details error:',
-          error
-        );
-
-        setErrorMessage(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-  // ==========================================
-  // LOAD ON OPEN
-  // ==========================================
+      setErrorMessage("Could not connect to the SmartFine server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadFine();
   }, [fineId]);
 
   // ==========================================
-  // BACK TO FINES DIRECTORY
+  // BACK
   // ==========================================
 
-  const handleBack =
-    () => {
-      router.replace(
-        '/admin/fines' as any
-      );
-    };
+  const handleBack = () => {
+    router.replace("/admin/fines" as any);
+  };
 
   // ==========================================
   // EDIT FINE
   // ==========================================
 
-  const handleEdit =
-    () => {
-      if (!fineId) {
-        return;
-      }
+  const handleEdit = () => {
+    if (!fineId) {
+      return;
+    }
 
-      router.push(
-        `/admin/fines/${fineId}/edit` as any
-      );
-    };
+    router.push(`/admin/fines/${fineId}/edit` as any);
+  };
 
   // ==========================================
-  // OPEN CANCEL FINE MODAL
+  // CANCEL FINE
   // ==========================================
 
-  const handleCancelFine =
-    () => {
-      if (!fine) {
+  const handleCancelFine = () => {
+    if (!fine) {
+      return;
+    }
+
+    const status = String(fine.status || "").toUpperCase();
+
+    if (status !== "UNPAID") {
+      return;
+    }
+
+    setCancellationReason("");
+
+    setCancelError("");
+
+    setCancelModalVisible(true);
+  };
+
+  const closeCancelModal = () => {
+    if (actionLoading) {
+      return;
+    }
+
+    setCancelModalVisible(false);
+
+    setCancellationReason("");
+
+    setCancelError("");
+  };
+
+  const performCancelFine = async () => {
+    if (!fineId || !fine) {
+      return;
+    }
+
+    const reason = cancellationReason.trim();
+
+    if (reason.length < 3) {
+      setCancelError("Please enter a cancellation reason.");
+
+      return;
+    }
+
+    if (reason.length > 500) {
+      setCancelError("Cancellation reason must not exceed 500 characters.");
+
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+
+      setCancelError("");
+
+      setErrorMessage("");
+
+      const storedUserId = await AsyncStorage.getItem("userId");
+
+      const parsedUserId = Number(storedUserId);
+
+      const cancelledBy =
+        Number.isInteger(parsedUserId) && parsedUserId > 0
+          ? parsedUserId
+          : null;
+
+      const response = await fetch(`${API_BASE}/api/fines/${fineId}/cancel`, {
+        method: "PATCH",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          cancellationReason: reason,
+
+          cancelledBy,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setCancelError(data.message || "Failed to cancel fine.");
+
         return;
       }
 
-      const status =
-        String(
-          fine.status || ''
-        ).toUpperCase();
+      setCancelModalVisible(false);
 
-      // Only unpaid fines
-      // can be cancelled.
+      setCancellationReason("");
 
-      if (
-        status !==
-        'UNPAID'
-      ) {
-        return;
+      setCancelError("");
+
+      if (Platform.OS === "web") {
+        window.alert(`${fine.fine_reference} has been cancelled successfully.`);
+      } else {
+        Alert.alert(
+          "Fine Cancelled",
+
+          `${fine.fine_reference} has been cancelled successfully.`,
+        );
       }
 
-      setCancellationReason(
-        ''
-      );
+      await loadFine();
+    } catch (error) {
+      console.error("Cancel fine error:", error);
 
-      setCancelError(
-        ''
-      );
-
-      setCancelModalVisible(
-        true
-      );
-    };
+      setCancelError("Could not connect to the SmartFine server.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // ==========================================
-  // CLOSE CANCEL MODAL
+  // MARK PAID
   // ==========================================
 
-  const closeCancelModal =
-    () => {
-      if (
-        actionLoading
-      ) {
-        return;
-      }
-
-      setCancelModalVisible(
-        false
-      );
-
-      setCancellationReason(
-        ''
-      );
-
-      setCancelError(
-        ''
-      );
-    };
-
-  // ==========================================
-  // PERFORM CANCEL FINE
-  // ==========================================
-
-  const performCancelFine =
-    async () => {
-      if (
-        !fineId ||
-        !fine
-      ) {
-        return;
-      }
-
-      const reason =
-        cancellationReason
-          .trim();
-
-      // ======================================
-      // VALIDATE REASON
-      // ======================================
-
-      if (
-        reason.length < 3
-      ) {
-        setCancelError(
-          'Please enter a cancellation reason.'
-        );
-
-        return;
-      }
-
-      if (
-        reason.length > 500
-      ) {
-        setCancelError(
-          'Cancellation reason must not exceed 500 characters.'
-        );
-
-        return;
-      }
-
-      try {
-        setActionLoading(
-          true
-        );
-
-        setCancelError(
-          ''
-        );
-
-        setErrorMessage(
-          ''
-        );
-
-        // ======================================
-        // GET LOGGED-IN USER ID
-        // ======================================
-
-        const storedUserId =
-          await AsyncStorage.getItem(
-            'userId'
-          );
-
-        const parsedUserId =
-          Number(
-            storedUserId
-          );
-
-        const cancelledBy =
-          Number.isInteger(
-            parsedUserId
-          ) &&
-          parsedUserId > 0
-            ? parsedUserId
-            : null;
-
-        // ======================================
-        // SEND CANCEL REQUEST
-        // ======================================
-
-        const response =
-          await fetch(
-            `${API_BASE}/api/fines/${fineId}/cancel`,
-            {
-              method:
-                'PATCH',
-
-              headers: {
-                'Content-Type':
-                  'application/json',
-              },
-
-              body:
-                JSON.stringify({
-                  cancellationReason:
-                    reason,
-
-                  cancelledBy,
-                }),
-            }
-          );
-
-        const data =
-          await response.json();
-
-        console.log(
-          'Cancel fine response:',
-          data
-        );
-
-        // ======================================
-        // BACKEND ERROR
-        // ======================================
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          setCancelError(
-            data.message ||
-              'Failed to cancel fine.'
-          );
-
-          return;
-        }
-
-        // ======================================
-        // CLOSE MODAL
-        // ======================================
-
-        setCancelModalVisible(
-          false
-        );
-
-        setCancellationReason(
-          ''
-        );
-
-        setCancelError(
-          ''
-        );
-
-        // ======================================
-        // SUCCESS
-        // ======================================
-
-        if (
-          Platform.OS ===
-          'web'
-        ) {
-          window.alert(
-            `${fine.fine_reference} has been cancelled successfully.`
-          );
-        } else {
-          Alert.alert(
-            'Fine Cancelled',
-
-            `${fine.fine_reference} has been cancelled successfully.`
-          );
-        }
-
-        // ======================================
-        // RELOAD FINE
-        // ======================================
-
-        await loadFine();
-      } catch (error) {
-        console.error(
-          'Cancel fine error:',
-          error
-        );
-
-        setCancelError(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setActionLoading(
-          false
-        );
-      }
-    };
-
-  // ==========================================
-  // MARK FINE AS PAID
-  // ==========================================
-
-  const performMarkPaid =
-    async () => {
-      if (!fineId) {
-        return;
-      }
-
-      try {
-        setActionLoading(
-          true
-        );
-
-        setErrorMessage('');
-
-        const response =
-          await fetch(
-            `${API_BASE}/api/fines/${fineId}/mark-paid`,
-            {
-              method:
-                'PATCH',
-
-              headers: {
-                'Content-Type':
-                  'application/json',
-              },
-
-              body:
-                JSON.stringify({}),
-            }
-          );
-
-        const data =
-          await response.json();
-
-        console.log(
-          'Mark paid response:',
-          data
-        );
-
-        // ======================================
-        // BACKEND ERROR
-        // ======================================
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          setErrorMessage(
-            data.message ||
-              'Failed to mark fine as paid.'
-          );
-
-          return;
-        }
-
-        // ======================================
-        // SUCCESS
-        // ======================================
-
-        if (
-          Platform.OS ===
-          'web'
-        ) {
-          window.alert(
-            'Fine marked as paid successfully.'
-          );
-        } else {
-          Alert.alert(
-            'Fine Updated',
-
-            'Fine marked as paid successfully.'
-          );
-        }
-
-        // ======================================
-        // RELOAD
-        // ======================================
-
-        await loadFine();
-      } catch (error) {
-        console.error(
-          'Mark fine paid error:',
-          error
-        );
-
-        setErrorMessage(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setActionLoading(
-          false
-        );
-      }
-    };
-
-  // ==========================================
-  // MARK PAID CONFIRMATION
-  // ==========================================
-
-  const handleMarkPaid =
-    () => {
-      if (!fine) {
-        return;
-      }
-
-      if (
-        String(
-          fine.status
-        ).toUpperCase() !==
-        'UNPAID'
-      ) {
-        return;
-      }
-
-      // ======================================
-      // WEB
-      // ======================================
-
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            `Mark ${fine.fine_reference} as paid?`
-          );
-
-        if (confirmed) {
-          performMarkPaid();
-        }
-
-        return;
-      }
-
-      // ======================================
-      // MOBILE
-      // ======================================
-
-      Alert.alert(
-        'Mark as Paid',
-
-        `Mark ${fine.fine_reference} as paid?`,
-
-        [
-          {
-            text:
-              'Cancel',
-
-            style:
-              'cancel',
+  const performMarkPaid = async () => {
+    if (!fineId) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+
+      setErrorMessage("");
+
+      const response = await fetch(
+        `${API_BASE}/api/fines/${fineId}/mark-paid`,
+        {
+          method: "PATCH",
+
+          headers: {
+            "Content-Type": "application/json",
           },
 
-          {
-            text:
-              'Mark as Paid',
-
-            onPress:
-              performMarkPaid,
-          },
-        ]
+          body: JSON.stringify({}),
+        },
       );
-    };
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setErrorMessage(data.message || "Failed to mark fine as paid.");
+
+        return;
+      }
+
+      if (Platform.OS === "web") {
+        window.alert("Fine marked as paid successfully.");
+      } else {
+        Alert.alert(
+          "Fine Updated",
+
+          "Fine marked as paid successfully.",
+        );
+      }
+
+      await loadFine();
+    } catch (error) {
+      console.error("Mark fine paid error:", error);
+
+      setErrorMessage("Could not connect to the SmartFine server.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMarkPaid = () => {
+    if (!fine) {
+      return;
+    }
+
+    if (String(fine.status).toUpperCase() !== "UNPAID") {
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(`Mark ${fine.fine_reference} as paid?`);
+
+      if (confirmed) {
+        performMarkPaid();
+      }
+
+      return;
+    }
+
+    Alert.alert(
+      "Mark as Paid",
+
+      `Mark ${fine.fine_reference} as paid?`,
+
+      [
+        {
+          text: "Cancel",
+
+          style: "cancel",
+        },
+
+        {
+          text: "Mark as Paid",
+
+          onPress: performMarkPaid,
+        },
+      ],
+    );
+  };
 
   // ==========================================
   // LOGOUT
   // ==========================================
 
-  const performLogout =
-    async () => {
-      try {
-        await logout();
+  const performLogout = async () => {
+    try {
+      await logout();
 
-        router.replace(
-          '/login'
-        );
-      } catch (error) {
-        console.error(
-          'Logout error:',
-          error
-        );
-      }
-    };
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
-  const handleLogout =
-    () => {
-      // ======================================
-      // WEB
-      // ======================================
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to log out?");
 
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            'Are you sure you want to log out?'
-          );
-
-        if (confirmed) {
-          performLogout();
-        }
-
-        return;
+      if (confirmed) {
+        performLogout();
       }
 
-      // ======================================
-      // MOBILE
-      // ======================================
+      return;
+    }
 
-      Alert.alert(
-        'Log Out',
+    Alert.alert(
+      "Log Out",
 
-        'Are you sure you want to log out?',
+      "Are you sure you want to log out?",
 
-        [
-          {
-            text:
-              'Cancel',
+      [
+        {
+          text: "Cancel",
 
-            style:
-              'cancel',
-          },
+          style: "cancel",
+        },
 
-          {
-            text:
-              'Log Out',
+        {
+          text: "Log Out",
 
-            style:
-              'destructive',
+          style: "destructive",
 
-            onPress:
-              performLogout,
-          },
-        ]
-      );
-    };
+          onPress: performLogout,
+        },
+      ],
+    );
+  };
 
   // ==========================================
   // LOADING
@@ -879,23 +529,10 @@ export default function FineDetailedView() {
 
   if (loading) {
     return (
-      <View
-        style={
-          styles.loadingScreen
-        }
-      >
-        <ActivityIndicator
-          size="large"
-          color="#173A73"
-        />
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color="#173A73" />
 
-        <Text
-          style={
-            styles.loadingText
-          }
-        >
-          Loading fine information...
-        </Text>
+        <Text style={styles.loadingText}>Loading fine information...</Text>
       </View>
     );
   }
@@ -904,66 +541,21 @@ export default function FineDetailedView() {
   // ERROR
   // ==========================================
 
-  if (
-    errorMessage &&
-    !fine
-  ) {
+  if (errorMessage && !fine) {
     return (
-      <View
-        style={
-          styles.loadingScreen
-        }
-      >
-        <Text
-          style={
-            styles.errorStateText
-          }
-        >
-          {
-            errorMessage
-          }
-        </Text>
+      <View style={styles.loadingScreen}>
+        <Text style={styles.errorStateText}>{errorMessage}</Text>
 
-        <TouchableOpacity
-          style={
-            styles.retryButton
-          }
-          onPress={
-            loadFine
-          }
-        >
-          <Text
-            style={
-              styles.retryButtonText
-            }
-          >
-            Try Again
-          </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadFine}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={
-            styles.backErrorButton
-          }
-          onPress={
-            handleBack
-          }
-        >
-          <Text
-            style={
-              styles.backErrorText
-            }
-          >
-            Back to Fines
-          </Text>
+        <TouchableOpacity style={styles.backErrorButton} onPress={handleBack}>
+          <Text style={styles.backErrorText}>Back to Fines</Text>
         </TouchableOpacity>
       </View>
     );
   }
-
-  // ==========================================
-  // NO FINE
-  // ==========================================
 
   if (!fine) {
     return null;
@@ -973,445 +565,222 @@ export default function FineDetailedView() {
   // STATUS
   // ==========================================
 
-  const normalizedStatus =
-    String(
-      fine.status || ''
-    ).toUpperCase();
+  const normalizedStatus = String(fine.status || "").toUpperCase();
 
-  const isUnpaid =
-    normalizedStatus ===
-    'UNPAID';
+  const isUnpaid = normalizedStatus === "UNPAID";
 
-  const isPaid =
-    normalizedStatus ===
-    'PAID';
+  const isPaid = normalizedStatus === "PAID";
 
-  const isCancelled =
-    normalizedStatus ===
-    'CANCELLED';
+  const isCancelled = normalizedStatus === "CANCELLED";
 
   // ==========================================
   // UI
   // ==========================================
 
   return (
-    <View
-      style={
-        styles.screen
-      }
-    >
-      {/* ======================================
-          SIDEBAR
-      ====================================== */}
+    <View style={styles.screen}>
+      {/* SIDEBAR */}
 
       {isTablet && (
-        <View
-          style={
-            styles.sidebar
-          }
-        >
-          {/* LOGO */}
-
-          <View
-            style={
-              styles.logoArea
-            }
-          >
+        <View style={styles.sidebar}>
+          <View style={styles.logoArea}>
             <Image
-              source={require('../../../../assets/branding/smartfineNoBG.png')}
-              style={
-                styles.smartFineLogo
-              }
+              source={require("../../../../assets/branding/smartfineNoBG.png")}
+              style={styles.smartFineLogo}
               resizeMode="contain"
             />
           </View>
 
-          {/* NAVIGATION */}
+          <View style={styles.navigation}>
+            {navItems.map((item) => {
+              const active = item.label === "Fines";
 
-          <View
-            style={
-              styles.navigation
-            }
-          >
-            {navItems.map(
-              (item) => {
-                const active =
-                  item.label ===
-                  'Fines';
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => router.push(item.route as any)}
+                >
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-                return (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
-                    style={[
-                      styles.navItem,
-
-                      active &&
-                        styles.navItemActive,
-                    ]}
-                    onPress={() =>
-                      router.push(
-                        item.route as any
-                      )
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.navIcon
-                      }
-                    >
-                      {getMenuSymbol(
-                        item.label
-                      )}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.navText
-                      }
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-            )}
+                  <Text style={styles.navText}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* LOGOUT */}
-
-          <TouchableOpacity
-            style={
-              styles.logoutButton
-            }
-            onPress={
-              handleLogout
-            }
-          >
-            <Text
-              style={
-                styles.logoutText
-              }
-            >
-              Log Out
-            </Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* ======================================
-          MAIN CONTENT
-      ====================================== */}
+      {/* MAIN */}
 
-      <View
-        style={
-          styles.main
-        }
-      >
+      <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
-          showsVerticalScrollIndicator={
-            false
-          }
+          contentContainerStyle={[
+            styles.scrollContent,
+
+            isCompact && styles.scrollContentCompact,
+          ]}
+          showsVerticalScrollIndicator={false}
         >
           {/* ==================================
-              MOBILE NAV
+              BACK / PAGE TITLE
           ================================== */}
+
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Fines"
+          >
+            <Image
+              source={require("../../../../assets/icons/back_icon.png")}
+              style={styles.backIconImage}
+              resizeMode="contain"
+            />
+
+            <Text
+              style={[styles.backText, isCompact && styles.backTextCompact]}
+              numberOfLines={1}
+            >
+              Fine Detailed View
+            </Text>
+          </TouchableOpacity>
+
+          {/* MOBILE NAV */}
 
           {!isTablet && (
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
             >
-              {navItems.map(
-                (item) => {
-                  const active =
-                    item.label ===
-                    'Fines';
+              {navItems.map((item) => {
+                const active = item.label === "Fines";
 
-                  return (
-                    <TouchableOpacity
-                      key={
-                        item.label
-                      }
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={[
+                      styles.mobileNavItem,
+
+                      active && styles.mobileNavItemActive,
+                    ]}
+                    onPress={() => router.push(item.route as any)}
+                  >
+                    <Text
                       style={[
-                        styles.mobileNavItem,
+                        styles.mobileNavText,
 
-                        active &&
-                          styles.mobileNavItemActive,
+                        active && styles.mobileNavTextActive,
                       ]}
-                      onPress={() =>
-                        router.push(
-                          item.route as any
-                        )
-                      }
                     >
-                      <Text
-                        style={[
-                          styles.mobileNavText,
-
-                          active &&
-                            styles.mobileNavTextActive,
-                        ]}
-                      >
-                        {
-                          item.label
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
-          {/* ==================================
-              PAGE HEADER
-          ================================== */}
+          {/* DETAILS CARD */}
 
-          <View
-            style={
-              styles.pageHeader
-            }
-          >
-            <TouchableOpacity
-              style={
-                styles.backButton
-              }
-              onPress={
-                handleBack
-              }
-              activeOpacity={
-                0.7
-              }
-              hitSlop={{
-                top: 12,
-                bottom: 12,
-                left: 12,
-                right: 12,
-              }}
-            >
-              <Text
-                style={
-                  styles.backArrow
-                }
-              >
-                ‹
+          <View style={styles.detailsCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>
+                Fine Information #{fine.fine_reference}
               </Text>
-            </TouchableOpacity>
-
-            <Text
-              style={
-                styles.pageTitle
-              }
-            >
-              Fine Detailed View
-            </Text>
-          </View>
-
-          {/* ==================================
-              DETAILS CARD
-          ================================== */}
-
-          <View
-            style={
-              styles.detailsCard
-            }
-          >
-            {/* ==================================
-                CARD HEADER
-            ================================== */}
-
-            <View
-              style={
-                styles.cardHeader
-              }
-            >
-              <Text
-                style={
-                  styles.cardTitle
-                }
-              >
-                Fine Information #
-                {
-                  fine.fine_reference
-                }
-              </Text>
-
-              {/* STATUS */}
 
               <View
                 style={[
                   styles.statusBadge,
 
-                  isPaid &&
-                    styles.statusBadgePaid,
+                  isPaid && styles.statusBadgePaid,
 
-                  isUnpaid &&
-                    styles.statusBadgeUnpaid,
+                  isUnpaid && styles.statusBadgeUnpaid,
 
-                  isCancelled &&
-                    styles.statusBadgeCancelled,
+                  isCancelled && styles.statusBadgeCancelled,
                 ]}
               >
                 <Text
                   style={[
                     styles.statusText,
 
-                    isPaid &&
-                      styles.statusTextPaid,
+                    isPaid && styles.statusTextPaid,
 
-                    isUnpaid &&
-                      styles.statusTextUnpaid,
+                    isUnpaid && styles.statusTextUnpaid,
 
-                    isCancelled &&
-                      styles.statusTextCancelled,
+                    isCancelled && styles.statusTextCancelled,
                   ]}
                 >
-                  {formatStatus(
-                    fine.status
-                  )}
+                  {formatStatus(fine.status)}
                 </Text>
               </View>
             </View>
 
-            {/* DIVIDER */}
+            <View style={styles.divider} />
 
-            <View
-              style={
-                styles.divider
-              }
-            />
-
-            {/* ==================================
-                INFORMATION
-            ================================== */}
-
-            <View
-              style={
-                styles.informationArea
-              }
-            >
-              {/* STUDENT */}
-
+            <View style={styles.informationArea}>
               <InfoRow
                 label="Student"
-                value={`${fine.student_name} (${fine.student_number || 'No Student ID'})`}
+                value={`${fine.student_name} (${fine.student_number || "No Student ID"})`}
               />
 
-              {/* GRADE / SECTION */}
-
-              {(fine.grade_level ||
-                fine.section) && (
+              {(fine.grade_level || fine.section) && (
                 <InfoRow
                   label="Grade / Section"
-                  value={[
-                    fine.grade_level,
-                    fine.section,
-                  ]
+                  value={[fine.grade_level, fine.section]
                     .filter(Boolean)
-                    .join(' - ')}
+                    .join(" - ")}
                 />
               )}
 
-              {/* VIOLATION */}
-
-              <InfoRow
-                label="Violation Type"
-                value={
-                  fine.violation_name
-                }
-              />
-
-              {/* AMOUNT */}
+              <InfoRow label="Violation Type" value={fine.violation_name} />
 
               <InfoRow
                 label="Amount"
-                value={
-                  formatMoney(
-                    fine.amount
-                  )
-                }
+                value={formatMoney(fine.amount)}
                 emphasized
               />
 
-              {/* DATE */}
-
-              <InfoRow
-                label="Date Issued"
-                value={
-                  formatDate(
-                    fine.issued_at
-                  )
-                }
-              />
-
-              {/* OFFICER */}
+              <InfoRow label="Date Issued" value={formatDate(fine.issued_at)} />
 
               <InfoRow
                 label="Issued By"
-                value={
-                  fine.officer_name ||
-                  'Unknown'
-                }
+                value={fine.officer_name || "Unknown"}
               />
-
-              {/* NOTES */}
 
               <InfoRow
                 label="Notes / Description"
-                value={
-                  fine.remarks ||
-                  'No notes provided.'
-                }
+                value={fine.remarks || "No notes provided."}
               />
 
-              {/* ==================================
-                  PAID INFORMATION
-              ================================== */}
-
-              {isPaid &&
-                fine.paid_at && (
-                  <InfoRow
-                    label="Date Paid"
-                    value={
-                      formatDate(
-                        fine.paid_at
-                      )
-                    }
-                  />
-                )}
-
-              {/* ==================================
-                  CANCELLED INFORMATION
-              ================================== */}
+              {isPaid && fine.paid_at && (
+                <InfoRow label="Date Paid" value={formatDate(fine.paid_at)} />
+              )}
 
               {isCancelled && (
                 <>
                   <InfoRow
                     label="Date Cancelled"
-                    value={
-                      formatDate(
-                        fine.cancelled_at
-                      )
-                    }
+                    value={formatDate(fine.cancelled_at)}
                   />
 
                   <InfoRow
                     label="Cancellation Reason"
                     value={
                       fine.cancellation_reason ||
-                      'No cancellation reason provided.'
+                      "No cancellation reason provided."
                     }
                   />
                 </>
@@ -1419,357 +788,134 @@ export default function FineDetailedView() {
             </View>
           </View>
 
-          {/* ==================================
-              ACTION ERROR
-          ================================== */}
+          {/* ACTION ERROR */}
 
-          {errorMessage !==
-            '' && (
-            <View
-              style={
-                styles.actionError
-              }
-            >
-              <Text
-                style={
-                  styles.actionErrorText
-                }
-              >
-                {
-                  errorMessage
-                }
-              </Text>
+          {errorMessage !== "" && (
+            <View style={styles.actionError}>
+              <Text style={styles.actionErrorText}>{errorMessage}</Text>
             </View>
           )}
 
-          {/* ==================================
-              ACTION BUTTONS
-          ================================== */}
+          {/* ACTIONS */}
 
-          <View
-            style={
-              styles.actionRow
-            }
-          >
-            {/* ==================================
-                CANCEL FINE
-            ================================== */}
-
+          <View style={styles.actionRow}>
             <TouchableOpacity
               style={[
                 styles.cancelFineButton,
 
-                !isUnpaid &&
-                  styles.disabledButton,
+                !isUnpaid && styles.disabledButton,
               ]}
-              onPress={
-                handleCancelFine
-              }
-              disabled={
-                !isUnpaid ||
-                actionLoading
-              }
+              onPress={handleCancelFine}
+              disabled={!isUnpaid || actionLoading}
             >
-              <Text
-                style={
-                  styles.cancelFineText
-                }
-              >
-                Cancel Fine
-              </Text>
+              <Text style={styles.cancelFineText}>Cancel Fine</Text>
             </TouchableOpacity>
 
-            {/* ==================================
-                EDIT FINE
-            ================================== */}
-
             <TouchableOpacity
-              style={[
-                styles.editButton,
-
-                !isUnpaid &&
-                  styles.disabledButton,
-              ]}
-              onPress={
-                handleEdit
-              }
-              disabled={
-                !isUnpaid ||
-                actionLoading
-              }
+              style={[styles.editButton, !isUnpaid && styles.disabledButton]}
+              onPress={handleEdit}
+              disabled={!isUnpaid || actionLoading}
             >
-              <Text
-                style={
-                  styles.editButtonText
-                }
-              >
-                Edit Fine
-              </Text>
+              <Text style={styles.editButtonText}>Edit Fine</Text>
             </TouchableOpacity>
 
-            {/* ==================================
-                MARK AS PAID
-            ================================== */}
-
             <TouchableOpacity
-              style={[
-                styles.paidButton,
-
-                !isUnpaid &&
-                  styles.disabledButton,
-              ]}
-              onPress={
-                handleMarkPaid
-              }
-              disabled={
-                !isUnpaid ||
-                actionLoading
-              }
+              style={[styles.paidButton, !isUnpaid && styles.disabledButton]}
+              onPress={handleMarkPaid}
+              disabled={!isUnpaid || actionLoading}
             >
-              {actionLoading &&
-              !cancelModalVisible ? (
-                <ActivityIndicator
-                  size="small"
-                  color="#FFFFFF"
-                />
+              {actionLoading && !cancelModalVisible ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text
-                  style={
-                    styles.paidButtonText
-                  }
-                >
-                  Mark as Paid
-                </Text>
+                <Text style={styles.paidButtonText}>Mark as Paid</Text>
               )}
             </TouchableOpacity>
           </View>
 
-          {/* ==================================
-              COMPLETED STATUS MESSAGE
-          ================================== */}
-
           {!isUnpaid && (
-            <Text
-              style={
-                styles.completedHint
-              }
-            >
+            <Text style={styles.completedHint}>
               {isPaid
-                ? 'This fine has already been paid.'
-                : 'This fine has been cancelled.'}
+                ? "This fine has already been paid."
+                : "This fine has been cancelled."}
             </Text>
           )}
         </ScrollView>
       </View>
 
-      {/* ======================================
-          CANCEL FINE MODAL
-      ====================================== */}
+      {/* CANCEL MODAL */}
 
       <Modal
-        visible={
-          cancelModalVisible
-        }
+        visible={cancelModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={
-          closeCancelModal
-        }
+        onRequestClose={closeCancelModal}
       >
-        <View
-          style={
-            styles.modalOverlay
-          }
-        >
-          <View
-            style={
-              styles.cancelModalCard
-            }
-          >
-            {/* ==================================
-                TITLE
-            ================================== */}
+        <View style={styles.modalOverlay}>
+          <View style={styles.cancelModalCard}>
+            <Text style={styles.cancelModalTitle}>Cancel Fine?</Text>
 
-            <Text
-              style={
-                styles.cancelModalTitle
-              }
-            >
-              Cancel Fine?
-            </Text>
-
-            {/* ==================================
-                MESSAGE
-            ================================== */}
-
-            <Text
-              style={
-                styles.cancelModalMessage
-              }
-            >
-              You are about to cancel{' '}
-
-              <Text
-                style={
-                  styles.cancelModalFineReference
-                }
-              >
-                {
-                  fine.fine_reference
-                }
+            <Text style={styles.cancelModalMessage}>
+              You are about to cancel{" "}
+              <Text style={styles.cancelModalFineReference}>
+                {fine.fine_reference}
               </Text>
-
-              . This will keep the fine record in SmartFine but mark it as cancelled.
+              . This will keep the fine record in SmartFine but mark it as
+              cancelled.
             </Text>
 
-            {/* ==================================
-                REASON LABEL
-            ================================== */}
-
-            <Text
-              style={
-                styles.cancelReasonLabel
-              }
-            >
-              Cancellation Reason *
-            </Text>
-
-            {/* ==================================
-                REASON INPUT
-            ================================== */}
+            <Text style={styles.cancelReasonLabel}>Cancellation Reason *</Text>
 
             <TextInput
-              style={
-                styles.cancelReasonInput
-              }
-              value={
-                cancellationReason
-              }
-              onChangeText={(
-                text
-              ) => {
-                setCancellationReason(
-                  text
-                );
+              style={styles.cancelReasonInput}
+              value={cancellationReason}
+              onChangeText={(text) => {
+                setCancellationReason(text);
 
-                if (
-                  cancelError
-                ) {
-                  setCancelError(
-                    ''
-                  );
+                if (cancelError) {
+                  setCancelError("");
                 }
               }}
               placeholder="Enter the reason for cancelling this fine"
               placeholderTextColor="#8C939F"
               multiline
-              maxLength={
-                500
-              }
+              maxLength={500}
               textAlignVertical="top"
-              editable={
-                !actionLoading
-              }
+              editable={!actionLoading}
             />
 
-            {/* ==================================
-                CHARACTER COUNT
-            ================================== */}
-
-            <Text
-              style={
-                styles.cancelReasonCounter
-              }
-            >
-              {
-                cancellationReason.length
-              }
+            <Text style={styles.cancelReasonCounter}>
+              {cancellationReason.length}
               /500
             </Text>
 
-            {/* ==================================
-                CANCEL ERROR
-            ================================== */}
-
-            {cancelError !==
-              '' && (
-              <View
-                style={
-                  styles.cancelModalError
-                }
-              >
-                <Text
-                  style={
-                    styles.cancelModalErrorText
-                  }
-                >
-                  {
-                    cancelError
-                  }
-                </Text>
+            {cancelError !== "" && (
+              <View style={styles.cancelModalError}>
+                <Text style={styles.cancelModalErrorText}>{cancelError}</Text>
               </View>
             )}
 
-            {/* ==================================
-                MODAL ACTIONS
-            ================================== */}
-
-            <View
-              style={
-                styles.cancelModalActions
-              }
-            >
-              {/* GO BACK */}
-
+            <View style={styles.cancelModalActions}>
               <TouchableOpacity
-                style={
-                  styles.cancelModalBackButton
-                }
-                onPress={
-                  closeCancelModal
-                }
-                disabled={
-                  actionLoading
-                }
+                style={styles.cancelModalBackButton}
+                onPress={closeCancelModal}
+                disabled={actionLoading}
               >
-                <Text
-                  style={
-                    styles.cancelModalBackText
-                  }
-                >
-                  Go Back
-                </Text>
+                <Text style={styles.cancelModalBackText}>Go Back</Text>
               </TouchableOpacity>
-
-              {/* CONFIRM CANCEL */}
 
               <TouchableOpacity
                 style={[
                   styles.cancelModalConfirmButton,
 
-                  actionLoading &&
-                    styles.cancelModalButtonDisabled,
+                  actionLoading && styles.cancelModalButtonDisabled,
                 ]}
-                onPress={
-                  performCancelFine
-                }
-                disabled={
-                  actionLoading
-                }
+                onPress={performCancelFine}
+                disabled={actionLoading}
               >
                 {actionLoading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#FFFFFF"
-                  />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text
-                    style={
-                      styles.cancelModalConfirmText
-                    }
-                  >
-                    Cancel Fine
-                  </Text>
+                  <Text style={styles.cancelModalConfirmText}>Cancel Fine</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1794,26 +940,11 @@ function InfoRow({
   emphasized?: boolean;
 }) {
   return (
-    <View
-      style={
-        styles.infoRow
-      }
-    >
-      <Text
-        style={
-          styles.infoLabel
-        }
-      >
-        {label}
-      </Text>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
 
       <Text
-        style={[
-          styles.infoValue,
-
-          emphasized &&
-            styles.infoValueEmphasized,
-        ]}
+        style={[styles.infoValue, emphasized && styles.infoValueEmphasized]}
       >
         {value}
       </Text>
@@ -1825,129 +956,56 @@ function InfoRow({
 // FORMAT MONEY
 // ==========================================
 
-function formatMoney(
-  amount: number
-) {
-  return `₱${Number(
-    amount || 0
-  ).toLocaleString(
-    'en-PH',
-    {
-      minimumFractionDigits:
-        2,
+function formatMoney(amount: number) {
+  return `₱${Number(amount || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
 
-      maximumFractionDigits:
-        2,
-    }
-  )}`;
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 // ==========================================
 // FORMAT DATE
 // ==========================================
 
-function formatDate(
-  value:
-    | string
-    | null
-    | undefined
-) {
+function formatDate(value: string | null | undefined) {
   if (!value) {
-    return '—';
+    return "—";
   }
 
-  const normalized =
-    value.includes('T')
-      ? value
-      : value.replace(
-          ' ',
-          'T'
-        );
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
 
-  const date =
-    new Date(
-      normalized
-    );
+  const date = new Date(normalized);
 
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return date.toLocaleDateString(
-    'en-US',
-    {
-      month:
-        'long',
+  return date.toLocaleDateString("en-US", {
+    month: "long",
 
-      day:
-        'numeric',
+    day: "numeric",
 
-      year:
-        'numeric',
-    }
-  );
+    year: "numeric",
+  });
 }
 
 // ==========================================
 // FORMAT STATUS
 // ==========================================
 
-function formatStatus(
-  status: string
-) {
-  switch (
-    String(
-      status || ''
-    ).toUpperCase()
-  ) {
-    case 'PAID':
-      return 'Paid';
+function formatStatus(status: string) {
+  switch (String(status || "").toUpperCase()) {
+    case "PAID":
+      return "Paid";
 
-    case 'CANCELLED':
-      return 'Cancelled';
+    case "CANCELLED":
+      return "Cancelled";
 
-    case 'UNPAID':
-      return 'Unpaid';
+    case "UNPAID":
+      return "Unpaid";
 
     default:
       return status;
-  }
-}
-
-// ==========================================
-// SIDEBAR SYMBOLS
-// ==========================================
-
-function getMenuSymbol(
-  label: string
-) {
-  switch (label) {
-    case 'Dashboard':
-      return '⌂';
-
-    case 'Students':
-      return '◎';
-
-    case 'Fines':
-      return '▤';
-
-    case 'QR Scanner':
-      return '▦';
-
-    case 'Reports':
-      return '▧';
-
-    case 'Settings':
-      return '⚙';
-
-    case 'Officers':
-      return '●';
-
-    default:
-      return '•';
   }
 }

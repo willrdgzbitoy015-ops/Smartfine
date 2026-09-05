@@ -1,40 +1,28 @@
-import {
-  useEffect,
-  useState,
-} from 'react';
+import { useEffect, useState } from "react";
 
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
-  useWindowDimensions,
-  Image,
   Alert,
-  Platform,
+  Image,
   Modal,
+  Platform,
   Pressable,
-} from 'react-native';
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-import {
-  useLocalSearchParams,
-  useRouter,
-} from 'expo-router';
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-import QRCode from 'react-native-qrcode-svg';
+import QRCode from "react-native-qrcode-svg";
 
-import {
-  useAuth,
-} from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
-import {
-  API_BASE,
-} from '@/constants/api';
+import { API_BASE } from "@/constants/api";
 
-import {
-  styles,
-} from './student-profile.styles';
+import { styles } from "./student-profile.styles";
 
 // ==========================================
 // TYPES
@@ -49,35 +37,23 @@ type Student = {
 
   first_name: string;
 
-  middle_name:
-    | string
-    | null;
+  middle_name: string | null;
 
   last_name: string;
 
   full_name: string;
 
-  email:
-    | string
-    | null;
+  email: string | null;
 
-  contact_number:
-    | string
-    | null;
+  contact_number: string | null;
 
-  grade_level:
-    | string
-    | null;
+  grade_level: string | null;
 
-  section:
-    | string
-    | null;
+  section: string | null;
 
   account_status: string;
 
-  profile_picture_uri:
-    | string
-    | null;
+  profile_picture_uri: string | null;
 };
 
 type Fine = {
@@ -104,8 +80,7 @@ type StudentProfileResponse = {
   totals: {
     totalFines: number;
 
-    outstandingBalance:
-      number;
+    outstandingBalance: number;
 
     totalPaid: number;
   };
@@ -118,68 +93,39 @@ type StudentProfileResponse = {
 // ==========================================
 
 export default function StudentProfile() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const params =
-    useLocalSearchParams();
+  const params = useLocalSearchParams();
 
-  const { logout } =
-    useAuth();
+  const { logout } = useAuth();
 
-  const { width } =
-    useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const isTablet =
-    width >= 768;
+  const isTablet = width >= 768;
+
+  const isCompact = width < 600;
 
   // ==========================================
   // STUDENT DATABASE ID
   // ==========================================
 
-  const rawId =
-    params.id;
+  const rawId = params.id;
 
-  const studentId =
-    Array.isArray(rawId)
-      ? rawId[0]
-      : rawId;
+  const studentId = Array.isArray(rawId) ? rawId[0] : rawId;
 
   // ==========================================
   // STATE
   // ==========================================
 
-  const [
-    data,
-    setData,
-  ] =
-    useState<StudentProfileResponse | null>(
-      null
-    );
+  const [data, setData] = useState<StudentProfileResponse | null>(null);
 
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    error,
-    setError,
-  ] =
-    useState('');
+  const [error, setError] = useState("");
 
-  const [
-    profileImageFailed,
-    setProfileImageFailed,
-  ] =
-    useState(false);
+  const [profileImageFailed, setProfileImageFailed] = useState(false);
 
-  const [
-    qrVisible,
-    setQrVisible,
-  ] =
-    useState(false);
+  const [qrVisible, setQrVisible] = useState(false);
 
   // ==========================================
   // NAVIGATION
@@ -187,80 +133,59 @@ export default function StudentProfile() {
 
   const navItems = [
     {
-      label:
-        'Dashboard',
+      label: "Dashboard",
 
-      route:
-        '/admin/dashboard',
+      route: "/admin/dashboard",
 
-      icon:
-        require('../../../../assets/icons/dashboard.png'),
+      icon: require("../../../../assets/icons/dashboard.png"),
     },
 
     {
-      label:
-        'Students',
+      label: "Students",
 
-      route:
-        '/admin/students',
+      route: "/admin/students",
 
-      icon:
-        require('../../../../assets/icons/students.png'),
+      icon: require("../../../../assets/icons/students.png"),
     },
 
     {
-      label:
-        'Fines',
+      label: "Fines",
 
-      route:
-        '/admin/fines',
+      route: "/admin/fines",
 
-      icon:
-        require('../../../../assets/icons/fines.png'),
+      icon: require("../../../../assets/icons/fines.png"),
     },
 
     {
-      label:
-        'QR Scanner',
+      label: "QR Scanner",
 
-      route:
-        '/admin/qr-scanner',
+      route: "/admin/qr-scanner",
 
-      icon:
-        require('../../../../assets/icons/qr-codeWhite.png'),
+      icon: require("../../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
-      label:
-        'Reports',
+      label: "Reports",
 
-      route:
-        '/admin/reports',
+      route: "/admin/reports",
 
-      icon:
-        require('../../../../assets/icons/reports.png'),
+      icon: require("../../../../assets/icons/reports.png"),
     },
 
     {
-      label:
-        'Settings',
+      label: "Settings",
 
-      route:
-        '/admin/settings',
+      route: "/admin/settings",
 
-      icon:
-        require('../../../../assets/icons/settings.png'),
+      icon: require("../../../../assets/icons/settings.png"),
     },
 
     {
-      label:
-        'Officers',
+      label: "Officers",
 
-      route:
-        '/admin/officers',
+      route: "/admin/officers",
 
-      icon:
-        require('../../../../assets/icons/officers.png'),
+      icon: require("../../../../assets/icons/officers.png"),
     },
   ];
 
@@ -269,1216 +194,698 @@ export default function StudentProfile() {
   // ==========================================
 
   useEffect(() => {
-    if (
-      !studentId
-    ) {
+    if (!studentId) {
       return;
     }
 
     loadStudent();
-  }, [
-    studentId,
-  ]);
+  }, [studentId]);
 
-  const loadStudent =
-    async () => {
-      try {
-        setLoading(
-          true
-        );
+  const loadStudent = async () => {
+    try {
+      setLoading(true);
 
-        setError('');
+      setError("");
 
-        setProfileImageFailed(
-          false
-        );
+      setProfileImageFailed(false);
 
-        const response =
-          await fetch(
-            `${API_BASE}/api/students/${studentId}`
-          );
+      const response = await fetch(`${API_BASE}/api/students/${studentId}`);
 
-        const result =
-          await response.json();
+      const result = await response.json();
 
-        console.log(
-          'Student profile response:',
-          result
-        );
+      console.log("Student profile response:", result);
 
-        if (
-          !response.ok ||
-          !result.success
-        ) {
-          setError(
-            result.message ||
-              'Failed to load student.'
-          );
+      if (!response.ok || !result.success) {
+        setError(result.message || "Failed to load student.");
 
-          return;
-        }
-
-        setData(
-          result
-        );
-      } catch (error) {
-        console.error(
-          'Student profile connection error:',
-          error
-        );
-
-        setError(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setLoading(
-          false
-        );
+        return;
       }
-    };
+
+      setData(result);
+    } catch (error) {
+      console.error("Student profile connection error:", error);
+
+      setError("Could not connect to the SmartFine server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ==========================================
   // PROFILE IMAGE URL
   // ==========================================
 
-  const getProfilePictureUrl =
-    (
-      uri:
-        | string
-        | null
-        | undefined
-    ) => {
-      if (
-        !uri
-      ) {
-        return null;
-      }
+  const getProfilePictureUrl = (uri: string | null | undefined) => {
+    if (!uri) {
+      return null;
+    }
 
-      if (
-        uri.startsWith(
-          'http://'
-        ) ||
-        uri.startsWith(
-          'https://'
-        )
-      ) {
-        return uri;
-      }
+    if (uri.startsWith("http://") || uri.startsWith("https://")) {
+      return uri;
+    }
 
-      return `${API_BASE}${uri}`;
-    };
+    return `${API_BASE}${uri}`;
+  };
+
+  // ==========================================
+  // BACK
+  // ==========================================
+
+  const handleBack = () => {
+    router.replace("/admin/students" as any);
+  };
 
   // ==========================================
   // EDIT
   // ==========================================
 
-  const handleEdit =
-    () => {
-      if (
-        !studentId
-      ) {
-        return;
-      }
+  const handleEdit = () => {
+    if (!studentId) {
+      return;
+    }
 
-      router.push(
-        `/admin/students/${studentId}/edit` as any
-      );
-    };
+    router.push(`/admin/students/${studentId}/edit` as any);
+  };
 
   // ==========================================
   // QR CODE
   // ==========================================
 
-  const handleQRCode =
-    () => {
-      if (
-        !data?.student
-      ) {
-        return;
-      }
+  const handleQRCode = () => {
+    if (!data?.student) {
+      return;
+    }
 
-      setQrVisible(
-        true
-      );
-    };
+    setQrVisible(true);
+  };
 
-  const handleCloseQRCode =
-    () => {
-      setQrVisible(
-        false
-      );
-    };
+  const handleCloseQRCode = () => {
+    setQrVisible(false);
+  };
 
   // ==========================================
   // OPEN FINE
   // ==========================================
 
-  const handleFinePress =
-    (
-      fineId: number
-    ) => {
-      router.push(
-        `/admin/fines/${fineId}` as any
-      );
-    };
+  const handleFinePress = (fineId: number) => {
+    router.push(`/admin/fines/${fineId}` as any);
+  };
 
   // ==========================================
   // LOGOUT
   // ==========================================
 
-  const performLogout =
-    async () => {
-      try {
-        await logout();
+  const performLogout = async () => {
+    try {
+      await logout();
 
-        router.replace(
-          '/login' as any
-        );
-      } catch (error) {
-        console.error(
-          'Logout error:',
-          error
-        );
-      }
-    };
+      router.replace("/login" as any);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
-  const handleLogout =
-    () => {
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            'Are you sure you want to log out?'
-          );
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to log out?");
 
-        if (
-          confirmed
-        ) {
-          performLogout();
-        }
-
-        return;
+      if (confirmed) {
+        performLogout();
       }
 
-      Alert.alert(
-        'Log Out',
+      return;
+    }
 
-        'Are you sure you want to log out?',
+    Alert.alert(
+      "Log Out",
 
-        [
-          {
-            text:
-              'Cancel',
+      "Are you sure you want to log out?",
 
-            style:
-              'cancel',
-          },
+      [
+        {
+          text: "Cancel",
 
-          {
-            text:
-              'Log Out',
+          style: "cancel",
+        },
 
-            style:
-              'destructive',
+        {
+          text: "Log Out",
 
-            onPress:
-              performLogout,
-          },
-        ]
-      );
-    };
+          style: "destructive",
+
+          onPress: performLogout,
+        },
+      ],
+    );
+  };
 
   // ==========================================
   // CONTENT
   // ==========================================
 
-  const renderContent =
-    () => {
-      // ======================================
-      // LOADING
-      // ======================================
+  const renderContent = () => {
+    // ======================================
+    // LOADING
+    // ======================================
 
-      if (
-        loading
-      ) {
-        return (
-          <View
-            style={
-              styles.centerState
-            }
-          >
-            <ActivityIndicator
-              size="large"
-              color="#173A73"
-            />
-
-            <Text
-              style={
-                styles.stateText
-              }
-            >
-              Loading student profile...
-            </Text>
-          </View>
-        );
-      }
-
-      // ======================================
-      // ERROR
-      // ======================================
-
-      if (
-        error ||
-        !data
-      ) {
-        return (
-          <View
-            style={
-              styles.centerState
-            }
-          >
-            <Text
-              style={
-                styles.errorText
-              }
-            >
-              {error ||
-                'Student not found.'}
-            </Text>
-
-            <TouchableOpacity
-              style={
-                styles.retryButton
-              }
-              onPress={
-                loadStudent
-              }
-            >
-              <Text
-                style={
-                  styles.retryText
-                }
-              >
-                Try Again
-              </Text>
-            </TouchableOpacity>
-          </View>
-        );
-      }
-
-      const {
-        student,
-        totals,
-        fines,
-      } =
-        data;
-
-      // ======================================
-      // INITIALS
-      // ======================================
-
-      const initials =
-        `${
-          student
-            .first_name?.[0] ||
-          ''
-        }${
-          student
-            .last_name?.[0] ||
-          ''
-        }`.toUpperCase();
-
-      // ======================================
-      // PROFILE PHOTO
-      // ======================================
-
-      const profilePictureUrl =
-        getProfilePictureUrl(
-          student.profile_picture_uri
-        );
-
-      const showPicture =
-        Boolean(
-          profilePictureUrl
-        ) &&
-        !profileImageFailed;
-
-      // ======================================
-      // GRADE / SECTION
-      // ======================================
-
-      const gradeSection =
-        [
-          student.grade_level,
-          student.section,
-        ]
-          .filter(
-            Boolean
-          )
-          .join(
-            ' - '
-          ) ||
-        'Not assigned';
-
-      // ======================================
-      // QR VALUE
-      // ======================================
-
-      const qrValue =
-        `SMARTFINE_STUDENT:${student.student_id}`;
-
+    if (loading) {
       return (
-        <>
-          {/* ==================================
-              PROFILE CARD
-          ================================== */}
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color="#173A73" />
+
+          <Text style={styles.stateText}>Loading student profile...</Text>
+        </View>
+      );
+    }
+
+    // ======================================
+    // ERROR
+    // ======================================
+
+    if (error || !data) {
+      return (
+        <View style={styles.centerState}>
+          <Text style={styles.errorText}>{error || "Student not found."}</Text>
+
+          <TouchableOpacity style={styles.retryButton} onPress={loadStudent}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const { student, totals, fines } = data;
+
+    // ======================================
+    // INITIALS
+    // ======================================
+
+    const initials = `${student.first_name?.[0] || ""}${
+      student.last_name?.[0] || ""
+    }`.toUpperCase();
+
+    // ======================================
+    // PROFILE PHOTO
+    // ======================================
+
+    const profilePictureUrl = getProfilePictureUrl(student.profile_picture_uri);
+
+    const showPicture = Boolean(profilePictureUrl) && !profileImageFailed;
+
+    // ======================================
+    // GRADE / SECTION
+    // ======================================
+
+    const gradeSection =
+      [student.grade_level, student.section].filter(Boolean).join(" - ") ||
+      "Not assigned";
+
+    // ======================================
+    // QR VALUE
+    // ======================================
+
+    const qrValue = `SMARTFINE_STUDENT:${student.student_id}`;
+
+    return (
+      <>
+        {/* ==================================
+            PROFILE CARD
+        ================================== */}
+
+        <View
+          style={[styles.profileCard, isCompact && styles.profileCardCompact]}
+        >
+          {/* LEFT */}
 
           <View
-            style={
-              styles.profileCard
-            }
+            style={[styles.profileLeft, isCompact && styles.profileLeftCompact]}
           >
-            {/* LEFT */}
+            {/* PHOTO */}
 
-            <View
-              style={
-                styles.profileLeft
-              }
-            >
-              {/* PHOTO */}
-
-              {showPicture ? (
-                <Image
-                  source={{
-                    uri:
-                      profilePictureUrl!,
-                  }}
-                  style={
-                    styles.avatarImage
-                  }
-                  resizeMode="cover"
-                  onError={() => {
-                    setProfileImageFailed(
-                      true
-                    );
-                  }}
-                />
-              ) : (
-                <View
-                  style={
-                    styles.avatar
-                  }
-                >
-                  <Text
-                    style={
-                      styles.avatarText
-                    }
-                  >
-                    {initials ||
-                      'ST'}
-                  </Text>
-                </View>
-              )}
-
-              {/* DETAILS */}
-
-              <View
-                style={
-                  styles.studentInfo
-                }
-              >
+            {showPicture ? (
+              <Image
+                source={{
+                  uri: profilePictureUrl!,
+                }}
+                style={[styles.avatarImage, isCompact && styles.avatarCompact]}
+                resizeMode="cover"
+                onError={() => {
+                  setProfileImageFailed(true);
+                }}
+              />
+            ) : (
+              <View style={[styles.avatar, isCompact && styles.avatarCompact]}>
                 <Text
-                  style={
-                    styles.studentName
-                  }
-                >
-                  {
-                    student.full_name
-                  }
-                </Text>
+                  style={[
+                    styles.avatarText,
 
-                <Text
-                  style={
-                    styles.studentMeta
-                  }
+                    isCompact && styles.avatarTextCompact,
+                  ]}
                 >
-                  {
-                    gradeSection
-                  }
-                </Text>
-
-                <Text
-                  style={
-                    styles.studentMeta
-                  }
-                >
-                  Student ID:{' '}
-                  {
-                    student.student_id
-                  }
-                </Text>
-
-                <Text
-                  style={
-                    styles.studentMeta
-                  }
-                >
-                  Email:{' '}
-                  {student.email ||
-                    'Not provided'}
+                  {initials || "ST"}
                 </Text>
               </View>
-            </View>
+            )}
 
-            {/* ACTIONS */}
+            {/* DETAILS */}
 
-            <View
-              style={
-                styles.profileActions
-              }
-            >
-              {/* QR */}
-
-              <TouchableOpacity
-                style={
-                  styles.outlineButton
-                }
-                onPress={
-                  handleQRCode
-                }
-              >
-                <Text
-                  style={
-                    styles.qrIcon
-                  }
-                >
-                  ▦
-                </Text>
-
-                <Text
-                  style={
-                    styles.outlineButtonText
-                  }
-                >
-                  View QR Code
-                </Text>
-              </TouchableOpacity>
-
-              {/* EDIT */}
-
-              <TouchableOpacity
-                style={
-                  styles.outlineButton
-                }
-                onPress={
-                  handleEdit
-                }
-              >
-                <Text
-                  style={
-                    styles.editIcon
-                  }
-                >
-                  ✎
-                </Text>
-
-                <Text
-                  style={
-                    styles.outlineButtonText
-                  }
-                >
-                  Edit Information
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* ==================================
-              SUMMARY
-          ================================== */}
-
-          <View
-            style={
-              styles.summaryRow
-            }
-          >
-            <View
-              style={
-                styles.summaryCard
-              }
-            >
+            <View style={styles.studentInfo}>
               <Text
-                style={
-                  styles.summaryLabel
-                }
+                style={[
+                  styles.studentName,
+
+                  isCompact && styles.studentNameCompact,
+                ]}
               >
-                Outstanding Balance
+                {student.full_name}
               </Text>
 
-              <Text
-                style={
-                  styles.outstandingValue
-                }
-              >
-                ₱
-                {Number(
-                  totals.outstandingBalance ||
-                    0
-                ).toFixed(
-                  2
-                )}
-              </Text>
-            </View>
+              <Text style={styles.studentMeta}>{gradeSection}</Text>
 
-            <View
-              style={
-                styles.summaryCard
-              }
-            >
-              <Text
-                style={
-                  styles.summaryLabel
-                }
-              >
-                Total Paid
+              <Text style={styles.studentMeta}>
+                Student ID: {student.student_id}
               </Text>
 
-              <Text
-                style={
-                  styles.paidValue
-                }
-              >
-                ₱
-                {Number(
-                  totals.totalPaid ||
-                    0
-                ).toFixed(
-                  2
-                )}
+              <Text style={styles.studentMeta}>
+                Email: {student.email || "Not provided"}
               </Text>
             </View>
           </View>
 
           {/* ==================================
-              HISTORY
+              PROFILE ACTIONS
           ================================== */}
 
           <View
-            style={
-              styles.historyCard
-            }
+            style={[
+              styles.profileActions,
+
+              isCompact && styles.profileActionsCompact,
+            ]}
           >
-            <View
-              style={
-                styles.historyTitleBar
-              }
-            >
-              <Text
-                style={
-                  styles.historyTitle
-                }
-              >
-                Recent Violations & Fines History
-              </Text>
-            </View>
+            {/* QR */}
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-            >
-              <View
-                style={
-                  styles.historyTable
-                }
-              >
-                {/* HEADER */}
+            <TouchableOpacity
+              style={[
+                styles.outlineButton,
 
-                <View
-                  style={
-                    styles.historyHeader
-                  }
+                isCompact && styles.outlineButtonCompact,
+              ]}
+              onPress={handleQRCode}
+              activeOpacity={0.75}
+            >
+              <Image
+                source={require("../../../../assets/icons/qr-code.png")}
+                style={styles.actionButtonIcon}
+                resizeMode="contain"
+              />
+
+              <Text style={styles.outlineButtonText}>View QR Code</Text>
+            </TouchableOpacity>
+
+            {/* EDIT */}
+
+            <TouchableOpacity
+              style={[
+                styles.outlineButton,
+
+                isCompact && styles.outlineButtonCompact,
+              ]}
+              onPress={handleEdit}
+              activeOpacity={0.75}
+            >
+              <Image
+                source={require("../../../../assets/icons/edit-image.png")}
+                style={styles.actionButtonIcon}
+                resizeMode="contain"
+              />
+
+              <Text style={styles.outlineButtonText}>Edit Information</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ==================================
+            SUMMARY
+        ================================== */}
+
+        <View style={styles.summaryRow}>
+          <View
+            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
+          >
+            <Text style={styles.summaryLabel}>Outstanding Balance</Text>
+
+            <Text style={styles.outstandingValue}>
+              ₱{Number(totals.outstandingBalance || 0).toFixed(2)}
+            </Text>
+          </View>
+
+          <View
+            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
+          >
+            <Text style={styles.summaryLabel}>Total Paid</Text>
+
+            <Text style={styles.paidValue}>
+              ₱{Number(totals.totalPaid || 0).toFixed(2)}
+            </Text>
+          </View>
+        </View>
+
+        {/* ==================================
+            HISTORY
+        ================================== */}
+
+        <View style={styles.historyCard}>
+          <View style={styles.historyTitleBar}>
+            <Text style={styles.historyTitle}>
+              Recent Violations & Fines History
+            </Text>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.historyTable}>
+              {/* HEADER */}
+
+              <View style={styles.historyHeader}>
+                <Text
+                  style={[styles.historyHeaderText, styles.violationColumn]}
                 >
-                  <Text
-                    style={[
-                      styles.historyHeaderText,
-                      styles.violationColumn,
-                    ]}
-                  >
-                    Violation Type
-                  </Text>
+                  Violation Type
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.historyHeaderText,
-                      styles.dateColumn,
-                    ]}
-                  >
-                    Date
-                  </Text>
+                <Text style={[styles.historyHeaderText, styles.dateColumn]}>
+                  Date
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.historyHeaderText,
-                      styles.amountColumn,
-                    ]}
-                  >
-                    Amount
-                  </Text>
+                <Text style={[styles.historyHeaderText, styles.amountColumn]}>
+                  Amount
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.historyHeaderText,
-                      styles.fineStatusColumn,
-                    ]}
-                  >
-                    Status
-                  </Text>
+                <Text
+                  style={[styles.historyHeaderText, styles.fineStatusColumn]}
+                >
+                  Status
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.historyHeaderText,
-                      styles.officerColumn,
-                    ]}
-                  >
-                    Officer
+                <Text style={[styles.historyHeaderText, styles.officerColumn]}>
+                  Officer
+                </Text>
+              </View>
+
+              {/* NO FINES */}
+
+              {fines.length === 0 ? (
+                <View style={styles.emptyHistory}>
+                  <Text style={styles.emptyHistoryText}>
+                    No fines recorded for this student.
                   </Text>
                 </View>
+              ) : (
+                fines.map((fine) => {
+                  const status = String(fine.status || "").toUpperCase();
 
-                {/* NO FINES */}
+                  const isPaid = status === "PAID";
 
-                {fines.length ===
-                0 ? (
-                  <View
-                    style={
-                      styles.emptyHistory
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.emptyHistoryText
-                      }
+                  const isCancelled = status === "CANCELLED";
+
+                  return (
+                    <TouchableOpacity
+                      key={fine.id}
+                      style={styles.historyRow}
+                      activeOpacity={0.7}
+                      onPress={() => handleFinePress(fine.id)}
                     >
-                      No fines recorded for this student.
-                    </Text>
-                  </View>
-                ) : (
-                  // ROWS
+                      <Text
+                        style={[
+                          styles.historyCell,
+                          styles.violationColumn,
+                          styles.violationText,
+                        ]}
+                      >
+                        {fine.violation_name}
+                      </Text>
 
-                  fines.map(
-                    (
-                      fine
-                    ) => {
-                      const status =
-                        String(
-                          fine.status ||
-                            ''
-                        ).toUpperCase();
+                      <Text style={[styles.historyCell, styles.dateColumn]}>
+                        {formatDate(fine.issued_at)}
+                      </Text>
 
-                      const isPaid =
-                        status ===
-                        'PAID';
+                      <Text
+                        style={[
+                          styles.historyCell,
+                          styles.amountColumn,
+                          styles.amountText,
+                        ]}
+                      >
+                        ₱{Number(fine.amount || 0).toFixed(2)}
+                      </Text>
 
-                      const isCancelled =
-                        status ===
-                        'CANCELLED';
+                      <View style={styles.fineStatusColumn}>
+                        <View
+                          style={[
+                            styles.statusBadge,
 
-                      return (
-                        <TouchableOpacity
-                          key={
-                            fine.id
-                          }
-                          style={
-                            styles.historyRow
-                          }
-                          activeOpacity={
-                            0.7
-                          }
-                          onPress={() =>
-                            handleFinePress(
-                              fine.id
-                            )
-                          }
+                            isPaid ? styles.paidBadge : styles.unpaidBadge,
+
+                            isCancelled && styles.cancelledBadge,
+                          ]}
                         >
                           <Text
                             style={[
-                              styles.historyCell,
-                              styles.violationColumn,
-                              styles.violationText,
+                              styles.statusBadgeText,
+
+                              isPaid
+                                ? styles.paidBadgeText
+                                : styles.unpaidBadgeText,
+
+                              isCancelled && styles.cancelledBadgeText,
                             ]}
                           >
-                            {
-                              fine.violation_name
-                            }
+                            {formatFineStatus(status)}
                           </Text>
+                        </View>
+                      </View>
 
-                          <Text
-                            style={[
-                              styles.historyCell,
-                              styles.dateColumn,
-                            ]}
-                          >
-                            {formatDate(
-                              fine.issued_at
-                            )}
-                          </Text>
+                      <Text style={[styles.historyCell, styles.officerColumn]}>
+                        {fine.officer_name || "Unknown"}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          </ScrollView>
+        </View>
 
-                          <Text
-                            style={[
-                              styles.historyCell,
-                              styles.amountColumn,
-                              styles.amountText,
-                            ]}
-                          >
-                            ₱
-                            {Number(
-                              fine.amount ||
-                                0
-                            ).toFixed(
-                              2
-                            )}
-                          </Text>
+        {/* ==================================
+            QR MODAL
+        ================================== */}
 
-                          <View
-                            style={
-                              styles.fineStatusColumn
-                            }
-                          >
-                            <View
-                              style={[
-                                styles.statusBadge,
+        <Modal
+          visible={qrVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleCloseQRCode}
+        >
+          <View style={styles.modalOverlay}>
+            <Pressable
+              style={styles.modalBackdrop}
+              onPress={handleCloseQRCode}
+            />
 
-                                isPaid
-                                  ? styles.paidBadge
-                                  : styles.unpaidBadge,
+            <View style={[styles.qrModal, isCompact && styles.qrModalCompact]}>
+              {/* MODAL HEADER */}
 
-                                isCancelled &&
-                                  styles.cancelledBadge,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.statusBadgeText,
-
-                                  isPaid
-                                    ? styles.paidBadgeText
-                                    : styles.unpaidBadgeText,
-
-                                  isCancelled &&
-                                    styles.cancelledBadgeText,
-                                ]}
-                              >
-                                {formatFineStatus(
-                                  status
-                                )}
-                              </Text>
-                            </View>
-                          </View>
-
-                          <Text
-                            style={[
-                              styles.historyCell,
-                              styles.officerColumn,
-                            ]}
-                          >
-                            {fine.officer_name ||
-                              'Unknown'}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    }
-                  )
-                )}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* ==================================
-              QR MODAL
-          ================================== */}
-
-          <Modal
-            visible={
-              qrVisible
-            }
-            transparent
-            animationType="fade"
-            onRequestClose={
-              handleCloseQRCode
-            }
-          >
-            <View
-              style={
-                styles.modalOverlay
-              }
-            >
-              <Pressable
-                style={
-                  styles.modalBackdrop
-                }
-                onPress={
-                  handleCloseQRCode
-                }
-              />
-
-              <View
-                style={
-                  styles.qrModal
-                }
-              >
-                {/* MODAL HEADER */}
-
+              <View style={styles.qrModalHeader}>
                 <View
-                  style={
-                    styles.qrModalHeader
-                  }
+                  style={{
+                    flex: 1,
+                  }}
                 >
-                  <View>
-                    <Text
-                      style={
-                        styles.qrModalTitle
-                      }
-                    >
-                      Student QR Code
-                    </Text>
+                  <Text style={styles.qrModalTitle}>Student QR Code</Text>
 
-                    <Text
-                      style={
-                        styles.qrModalSubtitle
-                      }
-                    >
-                      Scan this code to identify the student in SmartFine
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={
-                      styles.closeIconButton
-                    }
-                    onPress={
-                      handleCloseQRCode
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.closeIconText
-                      }
-                    >
-                      ×
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* QR */}
-
-                <View
-                  style={
-                    styles.qrContainer
-                  }
-                >
-                  <View
-                    style={
-                      styles.qrWhiteBox
-                    }
-                  >
-                    <QRCode
-                      value={
-                        qrValue
-                      }
-                      size={
-                        220
-                      }
-                      backgroundColor="#FFFFFF"
-                      color="#000000"
-                      quietZone={
-                        8
-                      }
-                    />
-                  </View>
-                </View>
-
-                {/* STUDENT */}
-
-                <Text
-                  style={
-                    styles.qrStudentName
-                  }
-                >
-                  {
-                    student.full_name
-                  }
-                </Text>
-
-                <Text
-                  style={
-                    styles.qrStudentId
-                  }
-                >
-                  Student ID:{' '}
-                  {
-                    student.student_id
-                  }
-                </Text>
-
-                <Text
-                  style={
-                    styles.qrGradeSection
-                  }
-                >
-                  {
-                    gradeSection
-                  }
-                </Text>
-
-                {/* SECURITY NOTE */}
-
-                <View
-                  style={
-                    styles.qrNoteBox
-                  }
-                >
-                  <Text
-                    style={
-                      styles.qrNoteTitle
-                    }
-                  >
-                    SmartFine Student QR
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.qrNoteText
-                    }
-                  >
-                   
+                  <Text style={styles.qrModalSubtitle}>
+                    Scan this code to identify the student in SmartFine
                   </Text>
                 </View>
-
-                {/* CLOSE */}
 
                 <TouchableOpacity
-                  style={
-                    styles.qrCloseButton
-                  }
-                  onPress={
-                    handleCloseQRCode
-                  }
+                  style={styles.closeIconButton}
+                  onPress={handleCloseQRCode}
                 >
-                  <Text
-                    style={
-                      styles.qrCloseButtonText
-                    }
-                  >
-                    Close
-                  </Text>
+                  <Text style={styles.closeIconText}>×</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* QR */}
+
+              <View style={styles.qrContainer}>
+                <View style={styles.qrWhiteBox}>
+                  <QRCode
+                    value={qrValue}
+                    size={isCompact ? 180 : 220}
+                    backgroundColor="#FFFFFF"
+                    color="#000000"
+                    quietZone={8}
+                  />
+                </View>
+              </View>
+
+              {/* STUDENT */}
+
+              <Text style={styles.qrStudentName}>{student.full_name}</Text>
+
+              <Text style={styles.qrStudentId}>
+                Student ID: {student.student_id}
+              </Text>
+
+              <Text style={styles.qrGradeSection}>{gradeSection}</Text>
+
+              {/* SECURITY NOTE */}
+
+              <View style={styles.qrNoteBox}>
+                <Text style={styles.qrNoteTitle}>SmartFine Student QR</Text>
+
+                <Text style={styles.qrNoteText}></Text>
+              </View>
+
+              {/* CLOSE */}
+
+              <TouchableOpacity
+                style={styles.qrCloseButton}
+                onPress={handleCloseQRCode}
+              >
+                <Text style={styles.qrCloseButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
-          </Modal>
-        </>
-      );
-    };
+          </View>
+        </Modal>
+      </>
+    );
+  };
 
   // ==========================================
   // UI
   // ==========================================
 
   return (
-    <View
-      style={
-        styles.screen
-      }
-    >
-      {/* SIDEBAR */}
+    <View style={styles.screen}>
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
 
       {isTablet && (
-        <View
-          style={
-            styles.sidebar
-          }
-        >
-          <View
-            style={
-              styles.logoArea
-            }
-          >
+        <View style={styles.sidebar}>
+          <View style={styles.logoArea}>
             <Image
-              source={require('../../../../assets/branding/smartfineNoBG.png')}
-              style={
-                styles.smartFineLogo
-              }
+              source={require("../../../../assets/branding/smartfineNoBG.png")}
+              style={styles.smartFineLogo}
               resizeMode="contain"
             />
           </View>
 
-          <View
-            style={
-              styles.navigation
-            }
-          >
-            {navItems.map(
-              (
-                item
-              ) => {
-                const active =
-                  item.label ===
-                  'Students';
+          <View style={styles.navigation}>
+            {navItems.map((item) => {
+              const active = item.label === "Students";
 
-                return (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
-                    style={[
-                      styles.navItem,
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => router.push(item.route as any)}
+                >
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-                      active &&
-                        styles.navItemActive,
-                    ]}
-                    onPress={() =>
-                      router.push(
-                        item.route as any
-                      )
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.navIcon
-                      }
-                    >
-                      {getMenuSymbol(
-                        item.label
-                      )}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.navText
-                      }
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-            )}
+                  <Text style={styles.navText}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          <TouchableOpacity
-            style={
-              styles.logoutButton
-            }
-            onPress={
-              handleLogout
-            }
-          >
-            <Text
-              style={
-                styles.logoutText
-              }
-            >
-              Log Out
-            </Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* MAIN */}
+      {/* ======================================
+          MAIN
+      ====================================== */}
 
-      <View
-        style={
-          styles.main
-        }
-      >
+      <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
-          showsVerticalScrollIndicator={
-            false
-          }
+          contentContainerStyle={[
+            styles.scrollContent,
+
+            isCompact && styles.scrollContentCompact,
+          ]}
+          showsVerticalScrollIndicator={false}
         >
-          {/* BACK */}
+          {/* ==================================
+              PAGE HEADER / BACK
+          ================================== */}
 
           <TouchableOpacity
-            style={
-              styles.backButton
-            }
-            onPress={() =>
-              router.push(
-                '/admin/students' as any
-              )
-            }
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Students Directory"
           >
+            <Image
+              source={require("../../../../assets/icons/back_icon.png")}
+              style={styles.backIconImage}
+              resizeMode="contain"
+            />
+
             <Text
-              style={
-                styles.backText
-              }
+              style={[styles.backText, isCompact && styles.backTextCompact]}
+              numberOfLines={1}
             >
-              ‹ Students Directory
+              Student Profile
             </Text>
           </TouchableOpacity>
 
-          {/* MOBILE NAV */}
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
 
           {!isTablet && (
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
             >
-              {navItems.map(
-                (
-                  item
-                ) => (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
+              {navItems.map((item) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[
+                    styles.mobileNavItem,
+
+                    item.label === "Students" && styles.mobileNavItemActive,
+                  ]}
+                  onPress={() => router.push(item.route as any)}
+                >
+                  <Text
                     style={[
-                      styles.mobileNavItem,
+                      styles.mobileNavText,
 
-                      item.label ===
-                        'Students' &&
-                        styles.mobileNavItemActive,
+                      item.label === "Students" && styles.mobileNavTextActive,
                     ]}
-                    onPress={() =>
-                      router.push(
-                        item.route as any
-                      )
-                    }
                   >
-                    <Text
-                      style={[
-                        styles.mobileNavText,
-
-                        item.label ===
-                          'Students' &&
-                          styles.mobileNavTextActive,
-                      ]}
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                )
-              )}
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           )}
 
-          {
-            renderContent()
-          }
+          {renderContent()}
         </ScrollView>
       </View>
     </View>
@@ -1489,29 +896,22 @@ export default function StudentProfile() {
 // FINE STATUS
 // ==========================================
 
-function formatFineStatus(
-  status: string
-) {
-  switch (
-    String(
-      status ||
-        ''
-    ).toUpperCase()
-  ) {
-    case 'PAID':
-      return 'Paid';
+function formatFineStatus(status: string) {
+  switch (String(status || "").toUpperCase()) {
+    case "PAID":
+      return "Paid";
 
-    case 'CANCELLED':
-      return 'Cancelled';
+    case "CANCELLED":
+      return "Cancelled";
 
-    case 'WAIVED':
-      return 'Waived';
+    case "WAIVED":
+      return "Waived";
 
-    case 'PENDING':
-      return 'Pending';
+    case "PENDING":
+      return "Pending";
 
     default:
-      return 'Unpaid';
+      return "Unpaid";
   }
 }
 
@@ -1519,94 +919,30 @@ function formatFineStatus(
 // DATE
 // ==========================================
 
-function formatDate(
-  value: string
-) {
-  if (
-    !value
-  ) {
-    return '—';
+function formatDate(value: string) {
+  if (!value) {
+    return "—";
   }
 
-  const normalized =
-    value.includes(
-      'T'
-    )
-      ? value
-      : value.replace(
-          ' ',
-          'T'
-        );
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
 
-  const date =
-    new Date(
-      normalized
-    );
+  const date = new Date(normalized);
 
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return date.toLocaleString(
-    'en-US',
-    {
-      month:
-        'short',
+  return date.toLocaleString("en-US", {
+    month: "short",
 
-      day:
-        'numeric',
+    day: "numeric",
 
-      year:
-        'numeric',
+    year: "numeric",
 
-      hour:
-        'numeric',
+    hour: "numeric",
 
-      minute:
-        '2-digit',
+    minute: "2-digit",
 
-      hour12:
-        true,
-    }
-  );
-}
-
-// ==========================================
-// SIDEBAR ICONS
-// ==========================================
-
-function getMenuSymbol(
-  label: string
-) {
-  switch (
-    label
-  ) {
-    case 'Dashboard':
-      return '⌂';
-
-    case 'Students':
-      return '◎';
-
-    case 'Fines':
-      return '▤';
-
-    case 'QR Scanner':
-      return '▦';
-
-    case 'Reports':
-      return '▧';
-
-    case 'Settings':
-      return '⚙';
-
-    case 'Officers':
-      return '●';
-
-    default:
-      return '•';
-  }
+    hour12: true,
+  });
 }

@@ -1,791 +1,721 @@
-import {
-  StyleSheet,
-} from 'react-native';
+import { StyleSheet } from "react-native";
 
 const COLORS = {
-  navy:
-    '#173A73',
+  navy: "#173A73",
 
-  green:
-    '#45B94F',
+  green: "#45B94F",
 
-  lightGreen:
-    '#56C85C',
+  lightGreen: "#56C85C",
 
-  red:
-    '#FF2424',
+  red: "#FF2424",
 
-  background:
-    '#E8E8E8',
+  background: "#E8E8E8",
 
-  white:
-    '#FFFFFF',
+  white: "#FFFFFF",
 
-  text:
-    '#123266',
+  text: "#123266",
 
-  muted:
-    '#8C939F',
+  muted: "#8C939F",
 };
 
-export const styles =
-  StyleSheet.create({
-    screen: {
-      flex: 1,
+export const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
 
-      flexDirection:
-        'row',
+    flexDirection: "row",
 
-      backgroundColor:
-        COLORS.background,
-    },
+    backgroundColor: COLORS.background,
+  },
 
-    // ==========================================
-    // LOADING
-    // ==========================================
+  // ==========================================
+  // LOADING
+  // ==========================================
 
-    loadingScreen: {
-      flex: 1,
+  loadingScreen: {
+    flex: 1,
 
-      alignItems:
-        'center',
+    alignItems: "center",
 
-      justifyContent:
-        'center',
+    justifyContent: "center",
 
-      backgroundColor:
-        COLORS.background,
-    },
+    backgroundColor: COLORS.background,
+  },
 
-    loadingText: {
-      color:
-        COLORS.text,
+  loadingText: {
+    color: COLORS.text,
 
-      fontSize: 13,
+    fontSize: 13,
 
-      marginTop: 12,
-    },
+    marginTop: 12,
+  },
 
-    // ==========================================
-    // SIDEBAR
-    // ==========================================
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
 
-    sidebar: {
-      width: 220,
+  sidebar: {
+    width: 220,
 
-      minHeight:
-        '100%',
+    minHeight: "100%",
 
-      backgroundColor:
-        COLORS.navy,
+    backgroundColor: COLORS.navy,
 
-      paddingHorizontal:
-        28,
+    paddingHorizontal: 28,
 
-      paddingTop:
-        30,
+    paddingTop: 30,
 
-      paddingBottom:
-        25,
-    },
+    paddingBottom: 25,
+  },
 
-    logoArea: {
-      alignItems:
-        'center',
+  logoArea: {
+    alignItems: "center",
 
-      justifyContent:
-        'center',
+    justifyContent: "center",
 
-      marginBottom:
-        35,
-    },
+    marginBottom: 35,
+  },
 
-    smartFineLogo: {
-      width: 150,
+  smartFineLogo: {
+    width: 150,
 
-      height: 90,
-    },
+    height: 90,
+  },
 
-    navigation: {
-      gap: 10,
-    },
+  navigation: {
+    gap: 10,
+  },
 
-    navItem: {
-      height: 42,
+  navItem: {
+    height: 42,
 
-      flexDirection:
-        'row',
+    flexDirection: "row",
 
-      alignItems:
-        'center',
+    alignItems: "center",
 
-      paddingHorizontal:
-        12,
+    paddingHorizontal: 12,
 
-      borderRadius:
-        24,
-    },
+    borderRadius: 24,
+  },
 
-    navItemActive: {
-      backgroundColor:
-        COLORS.lightGreen,
-    },
+  navItemActive: {
+    backgroundColor: COLORS.lightGreen,
+  },
 
-    navIcon: {
-      width: 28,
+  navIcon: {
+    width: 28,
 
-      color:
-        COLORS.white,
+    color: COLORS.white,
 
-      fontSize: 21,
+    fontSize: 21,
 
-      fontWeight:
-        '700',
+    fontWeight: "700",
 
-      textAlign:
-        'center',
+    textAlign: "center",
 
-      marginRight: 10,
-    },
+    marginRight: 10,
+  },
 
-    navIconContainer: {
-      width: 28,
-      height: 28,
-      marginRight: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+  navIconContainer: {
+    width: 28,
 
-    navImageIcon: {
-      width: 20,
-      height: 20,
-    },
+    height: 28,
 
-    navText: {
-      color:
-        COLORS.white,
+    marginRight: 10,
 
-      fontSize: 14,
+    alignItems: "center",
 
-      fontWeight:
-        '600',
-    },
+    justifyContent: "center",
+  },
 
-    logoutButton: {
-      marginTop:
-        'auto',
+  navImageIcon: {
+    width: 20,
 
-      borderWidth: 1,
+    height: 20,
+  },
 
-      borderColor:
-        'rgba(255,255,255,0.5)',
+  navText: {
+    color: COLORS.white,
 
-      borderRadius: 8,
+    fontSize: 14,
 
-      paddingVertical: 10,
+    fontWeight: "600",
+  },
 
-      alignItems:
-        'center',
-    },
+  logoutButton: {
+    marginTop: "auto",
 
-    logoutText: {
-      color:
-        COLORS.white,
+    borderWidth: 1,
 
-      fontWeight:
-        '600',
-    },
+    borderColor: "rgba(255,255,255,0.5)",
 
-    // ==========================================
-    // MAIN
-    // ==========================================
+    borderRadius: 8,
 
-    main: {
-      flex: 1,
-    },
+    paddingVertical: 10,
 
-    scrollContent: {
-      flexGrow: 1,
+    alignItems: "center",
+  },
 
-      paddingHorizontal:
-        38,
+  logoutText: {
+    color: COLORS.white,
 
-      paddingTop:
-        30,
+    fontWeight: "600",
+  },
 
-      paddingBottom:
-        35,
-    },
+  // ==========================================
+  // MAIN
+  // ==========================================
 
-    // ==========================================
-    // BACK
-    // ==========================================
+  main: {
+    flex: 1,
 
-    backButton: {
-      alignSelf:
-        'flex-start',
+    minWidth: 0,
+  },
 
-      marginBottom: 20,
-    },
+  scrollContent: {
+    flexGrow: 1,
 
-    backText: {
-      color:
-        COLORS.text,
+    width: "100%",
 
-      fontSize: 14,
+    paddingHorizontal: 38,
 
-      fontWeight:
-        '700',
-    },
+    paddingTop: 30,
 
-    // ==========================================
-    // HEADER
-    // ==========================================
+    paddingBottom: 35,
+  },
 
-    header: {
-      width:
-        '100%',
+  // ==========================================
+  // RESPONSIVE BACK BUTTON
+  // ==========================================
 
-      maxWidth:
-        1000,
+  backButton: {
+    alignSelf: "flex-start",
 
-      alignSelf:
-        'center',
+    flexDirection: "row",
 
-      marginBottom:
-        25,
-    },
+    alignItems: "center",
 
-    pageTitle: {
-      color:
-        COLORS.text,
+    maxWidth: "100%",
 
-      fontSize: 27,
+    minHeight: 44,
 
-      fontWeight:
-        '800',
-    },
+    paddingVertical: 6,
 
-    subtitle: {
-      color:
-        '#666666',
+    paddingRight: 12,
 
-      fontSize: 12,
+    marginBottom: 20,
+  },
 
-      marginTop: 5,
-    },
+  backIconContainer: {
+    width: 30,
 
-    // ==========================================
-    // MOBILE NAV
-    // ==========================================
+    height: 30,
 
-    mobileNav: {
-      gap: 8,
+    alignItems: "center",
 
-      paddingBottom:
-        22,
-    },
+    justifyContent: "center",
 
-    mobileNavItem: {
-      backgroundColor:
-        COLORS.white,
+    marginRight: 8,
 
-      borderRadius: 18,
+    flexShrink: 0,
+  },
 
-      paddingHorizontal:
-        16,
+  backIconImage: {
+    width: 20,
 
-      paddingVertical: 8,
-    },
+    height: 20,
 
-    mobileNavItemActive: {
-      backgroundColor:
-        COLORS.green,
-    },
-
-    mobileNavText: {
-      color:
-        COLORS.navy,
-
-      fontSize: 12,
-
-      fontWeight:
-        '600',
-    },
-
-    mobileNavTextActive: {
-      color:
-        COLORS.white,
-    },
-
-    // ==========================================
-    // FORM
-    // ==========================================
-
-    formContainer: {
-      width:
-        '100%',
-
-      maxWidth:
-        1000,
-
-      alignSelf:
-        'center',
-
-      flexDirection:
-        'row',
-
-      flexWrap:
-        'wrap',
-
-      alignItems:
-        'flex-start',
-
-      gap: 18,
-    },
-
-    formCard: {
-      flexGrow: 1,
-
-      flexBasis: 410,
-
-      backgroundColor:
-        COLORS.white,
-
-      borderRadius: 18,
-
-      paddingHorizontal: 28,
-
-      paddingTop: 24,
-
-      paddingBottom: 28,
-
-      shadowColor:
-        '#000000',
-
-      shadowOffset: {
-        width: 0,
-        height: 2,
+    transform: [
+      {
+        rotate: "180deg",
       },
+    ],
+  },
 
-      shadowOpacity:
-        0.06,
+  backText: {
+    color: COLORS.text,
 
-      shadowRadius: 5,
+    fontSize: 18,
 
-      elevation: 2,
+    fontWeight: "800",
+
+    flexShrink: 1,
+  },
+
+  // ==========================================
+  // HEADER
+  // ==========================================
+
+  header: {
+    width: "100%",
+
+    maxWidth: 1000,
+
+    alignSelf: "center",
+
+    marginBottom: 25,
+  },
+
+  pageTitle: {
+    color: COLORS.text,
+
+    fontSize: 27,
+
+    fontWeight: "800",
+  },
+
+  subtitle: {
+    color: "#666666",
+
+    fontSize: 12,
+
+    marginTop: 5,
+  },
+
+  // ==========================================
+  // MOBILE NAV
+  // ==========================================
+
+  mobileNav: {
+    gap: 8,
+
+    paddingBottom: 22,
+  },
+
+  mobileNavItem: {
+    backgroundColor: COLORS.white,
+
+    borderRadius: 18,
+
+    paddingHorizontal: 16,
+
+    paddingVertical: 8,
+  },
+
+  mobileNavItemActive: {
+    backgroundColor: COLORS.green,
+  },
+
+  mobileNavText: {
+    color: COLORS.navy,
+
+    fontSize: 12,
+
+    fontWeight: "600",
+  },
+
+  mobileNavTextActive: {
+    color: COLORS.white,
+  },
+
+  // ==========================================
+  // FORM
+  // ==========================================
+
+  formContainer: {
+    width: "100%",
+
+    maxWidth: 1000,
+
+    alignSelf: "center",
+
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    alignItems: "flex-start",
+
+    gap: 18,
+  },
+
+  formCard: {
+    flexGrow: 1,
+
+    flexShrink: 1,
+
+    flexBasis: 410,
+
+    minWidth: 0,
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 18,
+
+    paddingHorizontal: 28,
+
+    paddingTop: 24,
+
+    paddingBottom: 28,
+
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+
+      height: 2,
     },
 
-    cardTitle: {
-      color:
-        COLORS.text,
+    shadowOpacity: 0.06,
 
-      fontSize: 20,
+    shadowRadius: 5,
 
-      fontWeight:
-        '800',
+    elevation: 2,
+  },
 
-      marginBottom: 12,
-    },
+  cardTitle: {
+    color: COLORS.text,
 
-    label: {
-      color:
-        '#222222',
+    fontSize: 20,
 
-      fontSize: 13,
+    fontWeight: "800",
 
-      fontWeight:
-        '500',
+    marginBottom: 12,
+  },
 
-      marginTop: 12,
+  label: {
+    color: "#222222",
 
-      marginBottom: 7,
-    },
+    fontSize: 13,
 
-    input: {
-      width:
-        '100%',
+    fontWeight: "500",
 
-      height: 46,
+    marginTop: 12,
 
-      backgroundColor:
-        COLORS.white,
+    marginBottom: 7,
+  },
 
-      borderWidth: 1,
+  input: {
+    width: "100%",
 
-      borderColor:
-        '#505050',
+    height: 46,
 
-      borderRadius: 8,
+    backgroundColor: COLORS.white,
 
-      paddingHorizontal: 14,
+    borderWidth: 1,
 
-      color:
-        '#222222',
+    borderColor: "#505050",
 
-      fontSize: 13,
+    borderRadius: 8,
 
-      outlineStyle:
-        'none',
-    } as any,
+    paddingHorizontal: 14,
 
-    twoColumnRow: {
-      width:
-        '100%',
+    color: "#222222",
 
-      flexDirection:
-        'row',
+    fontSize: 13,
 
-      flexWrap:
-        'wrap',
+    outlineStyle: "none",
+  } as any,
 
-      gap: 12,
-    },
+  twoColumnRow: {
+    width: "100%",
 
-    flexField: {
-      flexGrow: 1,
+    flexDirection: "row",
 
-      flexBasis: 160,
-    },
+    flexWrap: "wrap",
 
-    // ==========================================
-    // STUDENT ID
-    // ==========================================
+    gap: 12,
+  },
 
-    readOnlyBox: {
-      width:
-        '100%',
+  flexField: {
+    flexGrow: 1,
 
-      height: 46,
+    flexShrink: 1,
 
-      borderWidth: 1,
+    flexBasis: 160,
 
-      borderColor:
-        '#B2B5BA',
+    minWidth: 0,
+  },
 
-      borderRadius: 8,
+  // ==========================================
+  // STUDENT ID
+  // ==========================================
 
-      backgroundColor:
-        '#F2F3F5',
+  readOnlyBox: {
+    width: "100%",
 
-      justifyContent:
-        'center',
+    height: 46,
 
-      paddingHorizontal: 14,
-    },
+    borderWidth: 1,
 
-    readOnlyText: {
-      color:
-        COLORS.text,
+    borderColor: "#B2B5BA",
 
-      fontSize: 14,
+    borderRadius: 8,
 
-      fontWeight:
-        '700',
-    },
+    backgroundColor: "#F2F3F5",
 
-    note: {
-      color:
-        COLORS.muted,
+    justifyContent: "center",
 
-      fontSize: 10,
+    paddingHorizontal: 14,
+  },
 
-      lineHeight: 15,
+  readOnlyText: {
+    color: COLORS.text,
 
-      marginTop: 6,
-    },
+    fontSize: 14,
 
-    // ==========================================
-    // STATUS
-    // ==========================================
+    fontWeight: "700",
+  },
 
-    statusCard: {
-      width:
-        '100%',
+  note: {
+    color: COLORS.muted,
 
-      minHeight: 82,
+    fontSize: 10,
 
-      borderWidth: 1,
+    lineHeight: 15,
 
-      borderColor:
-        '#505050',
+    marginTop: 6,
+  },
 
-      borderRadius: 8,
+  // ==========================================
+  // STATUS
+  // ==========================================
 
-      paddingHorizontal: 18,
+  statusCard: {
+    width: "100%",
 
-      marginTop: 25,
+    minHeight: 82,
 
-      flexDirection:
-        'row',
+    borderWidth: 1,
 
-      alignItems:
-        'center',
+    borderColor: "#505050",
 
-      justifyContent:
-        'space-between',
-    },
+    borderRadius: 8,
 
-    statusLabel: {
-      color:
-        '#222222',
+    paddingHorizontal: 18,
 
-      fontSize: 14,
+    marginTop: 25,
 
-      fontWeight:
-        '500',
+    flexDirection: "row",
 
-      marginBottom: 6,
-    },
+    alignItems: "center",
 
-    statusValue: {
-      fontSize: 13,
+    justifyContent: "space-between",
+  },
 
-      fontWeight:
-        '800',
-    },
+  statusLabel: {
+    color: "#222222",
 
-    statusActive: {
-      color:
-        COLORS.green,
-    },
+    fontSize: 14,
 
-    statusInactive: {
-      color:
-        COLORS.red,
-    },
+    fontWeight: "500",
 
-    switchTrack: {
-      width: 48,
+    marginBottom: 6,
+  },
 
-      height: 26,
+  statusValue: {
+    fontSize: 13,
 
-      borderRadius: 13,
+    fontWeight: "800",
+  },
 
-      backgroundColor:
-        '#B8BDC5',
+  statusActive: {
+    color: COLORS.green,
+  },
 
-      padding: 3,
+  statusInactive: {
+    color: COLORS.red,
+  },
 
-      justifyContent:
-        'center',
-    },
+  switchTrack: {
+    width: 48,
 
-    switchTrackActive: {
-      backgroundColor:
-        '#00CC58',
-    },
+    height: 26,
 
-    switchThumb: {
-      width: 20,
+    borderRadius: 13,
 
-      height: 20,
+    backgroundColor: "#B8BDC5",
 
-      borderRadius: 10,
+    padding: 3,
 
-      backgroundColor:
-        COLORS.white,
+    justifyContent: "center",
 
-      alignSelf:
-        'flex-start',
-    },
+    flexShrink: 0,
+  },
 
-    switchThumbActive: {
-      alignSelf:
-        'flex-end',
-    },
+  switchTrackActive: {
+    backgroundColor: "#00CC58",
+  },
 
-    statusExplanation: {
-      color:
-        COLORS.muted,
+  switchThumb: {
+    width: 20,
 
-      fontSize: 10,
+    height: 20,
 
-      lineHeight: 16,
+    borderRadius: 10,
 
-      marginTop: 12,
-    },
+    backgroundColor: COLORS.white,
 
-    // ==========================================
-    // SECURITY
-    // ==========================================
+    alignSelf: "flex-start",
+  },
 
-    securityBox: {
-      backgroundColor:
-        '#F4F6F9',
+  switchThumbActive: {
+    alignSelf: "flex-end",
+  },
 
-      borderRadius: 10,
+  statusExplanation: {
+    color: COLORS.muted,
 
-      padding: 16,
+    fontSize: 10,
 
-      marginTop: 25,
-    },
+    lineHeight: 16,
 
-    securityTitle: {
-      color:
-        COLORS.text,
+    marginTop: 12,
+  },
 
-      fontSize: 14,
+  // ==========================================
+  // SECURITY
+  // ==========================================
 
-      fontWeight:
-        '700',
+  securityBox: {
+    backgroundColor: "#F4F6F9",
 
-      marginBottom: 5,
-    },
+    borderRadius: 10,
 
-    securityText: {
-      color:
-        '#666666',
+    padding: 16,
 
-      fontSize: 11,
+    marginTop: 25,
+  },
 
-      lineHeight: 17,
-    },
+  securityTitle: {
+    color: COLORS.text,
 
-    // ==========================================
-    // ERROR
-    // ==========================================
+    fontSize: 14,
 
-    errorBox: {
-      width:
-        '100%',
+    fontWeight: "700",
 
-      maxWidth:
-        1000,
+    marginBottom: 5,
+  },
 
-      alignSelf:
-        'center',
+  securityText: {
+    color: "#666666",
 
-      backgroundColor:
-        '#FFEAEA',
+    fontSize: 11,
 
-      borderWidth: 1,
+    lineHeight: 17,
+  },
 
-      borderColor:
-        '#FFB5B5',
+  // ==========================================
+  // ERROR
+  // ==========================================
 
-      borderRadius: 9,
+  errorBox: {
+    width: "100%",
 
-      paddingHorizontal: 16,
+    maxWidth: 1000,
 
-      paddingVertical: 13,
+    alignSelf: "center",
 
-      marginTop: 18,
-    },
+    backgroundColor: "#FFEAEA",
 
-    errorTitle: {
-      color:
-        '#D32F2F',
+    borderWidth: 1,
 
-      fontSize: 12,
+    borderColor: "#FFB5B5",
 
-      fontWeight:
-        '800',
+    borderRadius: 9,
 
-      marginBottom: 3,
-    },
+    paddingHorizontal: 16,
 
-    errorText: {
-      color:
-        '#B42318',
+    paddingVertical: 13,
 
-      fontSize: 11,
+    marginTop: 18,
+  },
 
-      lineHeight: 16,
-    },
+  errorTitle: {
+    color: "#D32F2F",
 
-    // ==========================================
-    // ACTION BUTTONS
-    // ==========================================
+    fontSize: 12,
 
-    actionRow: {
-      width:
-        '100%',
+    fontWeight: "800",
 
-      maxWidth:
-        650,
+    marginBottom: 3,
+  },
 
-      alignSelf:
-        'center',
+  errorText: {
+    color: "#B42318",
 
-      flexDirection:
-        'row',
+    fontSize: 11,
 
-      flexWrap:
-        'wrap',
+    lineHeight: 16,
+  },
 
-      gap: 20,
+  // ==========================================
+  // ACTION BUTTONS
+  // ==========================================
 
-      marginTop: 30,
+  actionRow: {
+    width: "100%",
 
-      justifyContent:
-        'center',
-    },
+    maxWidth: 650,
 
-    cancelButton: {
-      flexGrow: 1,
+    alignSelf: "center",
 
-      flexBasis: 220,
+    flexDirection: "row",
 
-      minHeight: 46,
+    flexWrap: "wrap",
 
-      borderWidth: 1,
+    gap: 20,
 
-      borderColor:
-        COLORS.navy,
+    marginTop: 30,
 
-      borderRadius: 8,
+    justifyContent: "center",
+  },
 
-      backgroundColor:
-        COLORS.white,
+  cancelButton: {
+    flexGrow: 1,
 
-      alignItems:
-        'center',
+    flexShrink: 1,
 
-      justifyContent:
-        'center',
-    },
+    flexBasis: 220,
 
-    cancelButtonText: {
-      color:
-        '#222222',
+    minHeight: 46,
 
-      fontSize: 13,
+    borderWidth: 1,
 
-      fontWeight:
-        '700',
-    },
+    borderColor: COLORS.navy,
 
-    saveButton: {
-      flexGrow: 1,
+    borderRadius: 8,
 
-      flexBasis: 220,
+    backgroundColor: COLORS.white,
 
-      minHeight: 46,
+    alignItems: "center",
 
-      backgroundColor:
-        COLORS.green,
+    justifyContent: "center",
+  },
 
-      borderRadius: 8,
+  cancelButtonText: {
+    color: "#222222",
 
-      alignItems:
-        'center',
+    fontSize: 13,
 
-      justifyContent:
-        'center',
-    },
+    fontWeight: "700",
+  },
 
-    saveButtonText: {
-      color:
-        COLORS.white,
+  saveButton: {
+    flexGrow: 1,
 
-      fontSize: 13,
+    flexShrink: 1,
 
-      fontWeight:
-        '700',
-    },
+    flexBasis: 220,
 
-    buttonDisabled: {
-      opacity: 0.6,
-    },
-  });
+    minHeight: 46,
+
+    backgroundColor: COLORS.green,
+
+    borderRadius: 8,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  saveButtonText: {
+    color: COLORS.white,
+
+    fontSize: 13,
+
+    fontWeight: "700",
+  },
+
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+});
