@@ -745,3 +745,11 @@ export const styles = StyleSheet.create({
     opacity: 0.55,
   },
 });
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function AddFineStylesRoute() {
+  return null;
+}

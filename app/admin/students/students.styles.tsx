@@ -1,800 +1,782 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from "react-native";
 
 const COLORS = {
-  navy: '#173A73',
+  navy: "#173A73",
 
-  navyDark: '#0C2F64',
+  navyDark: "#0C2F64",
 
-  green: '#45B94F',
+  green: "#45B94F",
 
-  lightGreen: '#56C85C',
+  lightGreen: "#56C85C",
 
-  red: '#FF2424',
+  red: "#FF2424",
 
-  background: '#E8E8E8',
+  background: "#E8E8E8",
 
-  white: '#FFFFFF',
+  white: "#FFFFFF",
 
-  text: '#123266',
+  text: "#123266",
 
-  muted: '#8C939F',
+  muted: "#8C939F",
 
-  lightBorder: '#DADDE2',
+  lightBorder: "#DADDE2",
 };
 
-export const styles =
-  StyleSheet.create({
-    // ==========================================
-    // SCREEN
-    // ==========================================
+export const styles = StyleSheet.create({
+  // ==========================================
+  // SCREEN
+  // ==========================================
 
-    screen: {
-      flex: 1,
+  screen: {
+    flex: 1,
 
-      backgroundColor:
-        COLORS.background,
+    backgroundColor: COLORS.background,
 
-      flexDirection: 'row',
-    },
+    flexDirection: "row",
+  },
 
-    // ==========================================
-    // SIDEBAR
-    // ==========================================
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
 
-    sidebar: {
-      width: 220,
+  sidebar: {
+    width: 220,
 
-      minHeight: '100%',
+    minHeight: "100%",
 
-      backgroundColor:
-        COLORS.navy,
+    backgroundColor: COLORS.navy,
 
-      paddingHorizontal: 28,
+    paddingHorizontal: 28,
 
-      paddingTop: 30,
+    paddingTop: 30,
 
-      paddingBottom: 25,
-    },
+    paddingBottom: 25,
+  },
 
-    logoArea: {
-      alignItems: 'center',
+  logoArea: {
+    alignItems: "center",
 
-      justifyContent: 'center',
+    justifyContent: "center",
 
-      marginBottom: 35,
-    },
+    marginBottom: 35,
+  },
 
-    smartFineLogo: {
-      width: 150,
+  smartFineLogo: {
+    width: 150,
 
-      height: 90,
-    },
+    height: 90,
+  },
 
-    navigation: {
-      gap: 10,
-    },
+  navigation: {
+    gap: 10,
+  },
 
-    navItem: {
-      height: 42,
+  navItem: {
+    height: 42,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      paddingHorizontal: 12,
+    paddingHorizontal: 12,
 
-      borderRadius: 24,
-    },
+    borderRadius: 24,
+  },
 
-    navItemActive: {
-      backgroundColor:
-        COLORS.lightGreen,
-    },
+  navItemActive: {
+    backgroundColor: COLORS.lightGreen,
+  },
 
-    navIcon: {
-      width: 28,
+  navIcon: {
+    width: 28,
 
-      color: COLORS.white,
+    color: COLORS.white,
 
-      fontSize: 21,
+    fontSize: 21,
 
-      fontWeight: '700',
+    fontWeight: "700",
 
-      textAlign: 'center',
+    textAlign: "center",
 
-      marginRight: 10,
-    },
+    marginRight: 10,
+  },
 
-    navIconContainer: {
-      width: 28,
-      height: 28,
-      marginRight: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+  navIconContainer: {
+    width: 28,
+    height: 28,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-    navImageIcon: {
-      width: 20,
-      height: 20,
-    },
+  navImageIcon: {
+    width: 20,
+    height: 20,
+  },
 
-    navText: {
-      color: COLORS.white,
+  navText: {
+    color: COLORS.white,
 
-      fontSize: 14,
+    fontSize: 14,
 
-      fontWeight: '600',
-    },
+    fontWeight: "600",
+  },
 
-    logoutButton: {
-      marginTop: 'auto',
+  logoutButton: {
+    marginTop: "auto",
 
-      borderWidth: 1,
+    borderWidth: 1,
 
-      borderColor:
-        'rgba(255,255,255,0.5)',
+    borderColor: "rgba(255,255,255,0.5)",
 
-      borderRadius: 8,
+    borderRadius: 8,
 
-      paddingVertical: 10,
+    paddingVertical: 10,
 
-      alignItems: 'center',
-    },
+    alignItems: "center",
+  },
 
-    logoutText: {
-      color: COLORS.white,
+  logoutText: {
+    color: COLORS.white,
 
-      fontWeight: '600',
-    },
+    fontWeight: "600",
+  },
 
-    // ==========================================
-    // MAIN
-    // ==========================================
+  // ==========================================
+  // MAIN
+  // ==========================================
 
-    main: {
-      flex: 1,
-    },
+  main: {
+    flex: 1,
+  },
 
-    scrollContent: {
-      flexGrow: 1,
+  scrollContent: {
+    flexGrow: 1,
 
-      paddingHorizontal: 38,
+    paddingHorizontal: 38,
 
-      paddingVertical: 35,
-    },
+    paddingVertical: 35,
+  },
 
-    // ==========================================
-    // HEADER
-    // ==========================================
+  // ==========================================
+  // HEADER
+  // ==========================================
 
-    header: {
-      marginBottom: 35,
-    },
+  header: {
+    marginBottom: 35,
+  },
 
-    pageTitle: {
-      fontSize: 27,
+  pageTitle: {
+    fontSize: 27,
 
-      fontWeight: '800',
+    fontWeight: "800",
 
-      color: COLORS.text,
-    },
+    color: COLORS.text,
+  },
 
-    // ==========================================
-    // MOBILE NAV
-    // ==========================================
+  // ==========================================
+  // MOBILE NAV
+  // ==========================================
 
-    mobileNav: {
-      gap: 8,
+  mobileNav: {
+    gap: 8,
 
-      paddingBottom: 25,
-    },
+    paddingBottom: 25,
+  },
 
-    mobileNavItem: {
-      backgroundColor:
-        COLORS.white,
+  mobileNavItem: {
+    backgroundColor: COLORS.white,
 
-      borderRadius: 18,
+    borderRadius: 18,
 
-      paddingHorizontal: 16,
+    paddingHorizontal: 16,
 
-      paddingVertical: 8,
-    },
+    paddingVertical: 8,
+  },
 
-    mobileNavItemActive: {
-      backgroundColor:
-        COLORS.green,
-    },
+  mobileNavItemActive: {
+    backgroundColor: COLORS.green,
+  },
 
-    mobileNavText: {
-      color: COLORS.navy,
+  mobileNavText: {
+    color: COLORS.navy,
 
-      fontSize: 12,
+    fontSize: 12,
 
-      fontWeight: '600',
-    },
+    fontWeight: "600",
+  },
 
-    mobileNavTextActive: {
-      color: COLORS.white,
-    },
+  mobileNavTextActive: {
+    color: COLORS.white,
+  },
 
-    // ==========================================
-    // TOOLBAR
-    // ==========================================
+  // ==========================================
+  // TOOLBAR
+  // ==========================================
 
-    toolbar: {
-      width: '100%',
+  toolbar: {
+    width: "100%",
 
-      maxWidth: 1050,
+    maxWidth: 1050,
 
-      alignSelf: 'center',
+    alignSelf: "center",
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      flexWrap: 'wrap',
+    flexWrap: "wrap",
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      gap: 14,
+    gap: 14,
 
-      marginBottom: 35,
+    marginBottom: 35,
 
-      zIndex: 100,
-    },
+    zIndex: 100,
+  },
 
-    // ==========================================
-    // SEARCH
-    // ==========================================
+  // ==========================================
+  // SEARCH
+  // ==========================================
 
-    searchContainer: {
-      flexGrow: 1,
+  searchContainer: {
+    flexGrow: 1,
 
-      flexBasis: 300,
+    flexBasis: 300,
 
-      maxWidth: 420,
+    maxWidth: 420,
 
-      minHeight: 48,
+    minHeight: 48,
 
-      backgroundColor:
-        COLORS.white,
+    backgroundColor: COLORS.white,
 
-      borderWidth: 1,
+    borderWidth: 1,
 
-      borderColor:
-        COLORS.navy,
+    borderColor: COLORS.navy,
 
-      borderRadius: 12,
+    borderRadius: 12,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      paddingHorizontal: 14,
-    },
+    paddingHorizontal: 14,
+  },
 
-    searchIcon: {
-      color: '#222222',
+  searchIcon: {
+    color: "#222222",
 
-      fontSize: 27,
+    fontSize: 27,
 
-      marginRight: 10,
+    marginRight: 10,
 
-      marginTop: -4,
-    },
+    marginTop: -4,
+  },
 
-    searchInput: {
-      flex: 1,
+  searchInput: {
+    flex: 1,
 
-      fontSize: 14,
+    fontSize: 14,
 
-      color: '#333333',
+    color: "#333333",
 
-      outlineStyle: 'none',
-    } as any,
+    outlineStyle: "none",
+  } as any,
 
-    // ==========================================
-    // FILTERS
-    // ==========================================
+  // ==========================================
+  // FILTERS
+  // ==========================================
 
-    filtersContainer: {
-      flexDirection: 'row',
+  filtersContainer: {
+    flexDirection: "row",
 
-      gap: 12,
+    gap: 12,
 
-      zIndex: 200,
-    },
+    zIndex: 200,
+  },
 
-    filterWrapper: {
-      position: 'relative',
+  filterWrapper: {
+    position: "relative",
 
-      zIndex: 300,
-    },
+    zIndex: 300,
+  },
 
-    filterButton: {
-      minWidth: 125,
+  filterButton: {
+    minWidth: 125,
 
-      height: 46,
+    height: 46,
 
-      paddingHorizontal: 14,
+    paddingHorizontal: 14,
 
-      backgroundColor:
-        COLORS.white,
+    backgroundColor: COLORS.white,
 
-      borderWidth: 1,
+    borderWidth: 1,
 
-      borderColor:
-        COLORS.navy,
+    borderColor: COLORS.navy,
 
-      borderRadius: 11,
+    borderRadius: 11,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent:
-        'space-between',
-    },
+    justifyContent: "space-between",
+  },
 
-    filterText: {
-      color: '#333333',
+  filterText: {
+    color: "#333333",
 
-      fontSize: 13,
+    fontSize: 13,
 
-      fontWeight: '600',
+    fontWeight: "600",
 
-      marginRight: 12,
-    },
+    marginRight: 12,
+  },
 
-    filterArrow: {
-      color: '#111111',
+  filterArrow: {
+    color: "#111111",
 
-      fontSize: 10,
-    },
+    fontSize: 10,
+  },
 
-    filterMenu: {
-      position: 'absolute',
+  filterMenu: {
+    position: "absolute",
 
-      top: 50,
+    top: 50,
 
-      left: 0,
+    left: 0,
 
-      minWidth: 150,
+    minWidth: 150,
 
-      backgroundColor:
-        COLORS.white,
+    backgroundColor: COLORS.white,
 
-      borderWidth: 1,
+    borderWidth: 1,
 
-      borderColor:
-        '#C5CAD2',
+    borderColor: "#C5CAD2",
 
-      borderRadius: 8,
+    borderRadius: 8,
 
-      overflow: 'hidden',
+    overflow: "hidden",
 
-      zIndex: 1000,
+    zIndex: 1000,
 
-      elevation: 10,
-    },
+    elevation: 10,
+  },
 
-    filterOption: {
-      paddingHorizontal: 14,
+  filterOption: {
+    paddingHorizontal: 14,
 
-      paddingVertical: 12,
+    paddingVertical: 12,
 
-      borderBottomWidth: 1,
+    borderBottomWidth: 1,
 
-      borderBottomColor:
-        '#EEEEEE',
-    },
+    borderBottomColor: "#EEEEEE",
+  },
 
-    filterOptionText: {
-      color: '#333333',
+  filterOptionText: {
+    color: "#333333",
 
-      fontSize: 12,
-    },
+    fontSize: 12,
+  },
 
-    // ==========================================
-    // ADD BUTTON
-    // ==========================================
+  // ==========================================
+  // ADD BUTTON
+  // ==========================================
 
-    addButton: {
-      minHeight: 46,
+  addButton: {
+    minHeight: 46,
 
-      backgroundColor:
-        COLORS.green,
+    backgroundColor: COLORS.green,
 
-      borderRadius: 8,
+    borderRadius: 8,
 
-      paddingHorizontal: 22,
+    paddingHorizontal: 22,
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent: 'center',
+    justifyContent: "center",
 
-      marginLeft: 'auto',
-    },
+    marginLeft: "auto",
+  },
 
-    addButtonText: {
-      color: COLORS.white,
+  addButtonText: {
+    color: COLORS.white,
 
-      fontSize: 13,
+    fontSize: 13,
 
-      fontWeight: '700',
-    },
+    fontWeight: "700",
+  },
 
-    // ==========================================
-    // TABLE CARD
-    // ==========================================
+  // ==========================================
+  // TABLE CARD
+  // ==========================================
 
-    tableCard: {
-      width: '100%',
+  tableCard: {
+    width: "100%",
 
-      maxWidth: 1050,
+    maxWidth: 1050,
 
-      minHeight: 470,
+    minHeight: 470,
 
-      alignSelf: 'center',
+    alignSelf: "center",
 
-      backgroundColor:
-        COLORS.white,
+    backgroundColor: COLORS.white,
 
-      borderRadius: 14,
+    borderRadius: 14,
 
-      overflow: 'visible',
-    },
+    overflow: "visible",
+  },
 
-    table: {
-      minWidth: 1000,
+  table: {
+    minWidth: 1000,
 
-      width: '100%',
-    },
+    width: "100%",
+  },
 
-    // ==========================================
-    // TABLE HEADER
-    // ==========================================
+  // ==========================================
+  // TABLE HEADER
+  // ==========================================
 
-    tableHeader: {
-      minHeight: 55,
+  tableHeader: {
+    minHeight: 55,
 
-      backgroundColor:
-        COLORS.navy,
+    backgroundColor: COLORS.navy,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      paddingHorizontal: 10,
+    paddingHorizontal: 10,
 
-      borderTopLeftRadius: 14,
+    borderTopLeftRadius: 14,
 
-      borderTopRightRadius: 14,
-    },
+    borderTopRightRadius: 14,
+  },
 
-    headerCell: {
-      color: COLORS.white,
+  headerCell: {
+    color: COLORS.white,
 
-      fontSize: 13,
+    fontSize: 13,
 
-      fontWeight: '700',
+    fontWeight: "700",
 
-      paddingHorizontal: 8,
-    },
+    paddingHorizontal: 8,
+  },
 
-    // ==========================================
-    // COLUMN WIDTHS
-    // ==========================================
+  // ==========================================
+  // COLUMN WIDTHS
+  // ==========================================
 
-    selectColumn: {
-      width: 42,
+  selectColumn: {
+    width: 42,
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent: 'center',
-    },
+    justifyContent: "center",
+  },
 
-    studentIdColumn: {
-      width: 120,
-    },
+  studentIdColumn: {
+    width: 120,
+  },
 
-    nameColumn: {
-      width: 200,
-    },
+  nameColumn: {
+    width: 200,
+  },
 
-    gradeSectionColumn: {
-      width: 180,
-    },
+  gradeSectionColumn: {
+    width: 180,
+  },
 
-    totalColumn: {
-      width: 120,
-    },
+  totalColumn: {
+    width: 120,
+  },
 
-    balanceColumn: {
-      width: 190,
-    },
+  balanceColumn: {
+    width: 190,
+  },
 
-    statusColumn: {
-      width: 105,
+  statusColumn: {
+    width: 105,
 
-      textAlign: 'center',
-    },
+    textAlign: "center",
+  },
 
-    // ==========================================
-    // STUDENT ROW
-    // ==========================================
+  // ==========================================
+  // STUDENT ROW
+  // ==========================================
 
-    studentRow: {
-      minHeight: 62,
+  studentRow: {
+    minHeight: 62,
 
-      marginHorizontal: 10,
+    marginHorizontal: 10,
 
-      marginTop: 10,
+    marginTop: 10,
 
-      backgroundColor:
-        COLORS.white,
+    backgroundColor: COLORS.white,
 
-      borderWidth: 1,
+    borderWidth: 1,
 
-      borderColor: '#444444',
+    borderColor: "#444444",
 
-      borderRadius: 10,
+    borderRadius: 10,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      overflow: 'hidden',
-    },
+    overflow: "hidden",
+  },
 
-    studentRowSelected: {
-      borderColor:
-        COLORS.red,
+  studentRowSelected: {
+    borderColor: COLORS.red,
 
-      borderWidth: 2,
+    borderWidth: 2,
 
-      backgroundColor:
-        '#FFF8F8',
-    },
+    backgroundColor: "#FFF8F8",
+  },
 
-    rowMain: {
-      flex: 1,
+  rowMain: {
+    flex: 1,
 
-      minHeight: 60,
+    minHeight: 60,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      alignItems: 'center',
-    },
+    alignItems: "center",
+  },
 
-    bodyCell: {
-      color: '#444444',
+  bodyCell: {
+    color: "#444444",
 
-      fontSize: 13,
+    fontSize: 13,
 
-      paddingHorizontal: 8,
-    },
+    paddingHorizontal: 8,
+  },
 
-    studentName: {
-      color: '#333333',
+  studentName: {
+    color: "#333333",
 
-      fontWeight: '600',
-    },
+    fontWeight: "600",
+  },
 
-    // ==========================================
-    // DELETE SELECTOR
-    // ==========================================
+  // ==========================================
+  // DELETE SELECTOR
+  // ==========================================
 
-    selectCircle: {
-      width: 21,
+  selectCircle: {
+    width: 21,
 
-      height: 21,
+    height: 21,
 
-      borderRadius: 11,
+    borderRadius: 11,
 
-      borderWidth: 2,
+    borderWidth: 2,
 
-      borderColor:
-        COLORS.red,
+    borderColor: COLORS.red,
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent: 'center',
-    },
+    justifyContent: "center",
+  },
 
-    selectCircleSelected: {
-      backgroundColor:
-        COLORS.red,
-    },
+  selectCircleSelected: {
+    backgroundColor: COLORS.red,
+  },
 
-    selectCheck: {
-      color: COLORS.white,
+  selectCheck: {
+    color: COLORS.white,
 
-      fontSize: 12,
+    fontSize: 12,
 
-      fontWeight: '800',
-    },
+    fontWeight: "800",
+  },
 
-    // ==========================================
-    // MONEY
-    // ==========================================
+  // ==========================================
+  // MONEY
+  // ==========================================
 
-    balanceDanger: {
-      color: COLORS.red,
+  balanceDanger: {
+    color: COLORS.red,
 
-      fontWeight: '700',
-    },
+    fontWeight: "700",
+  },
 
-    balanceZero: {
-      color: '#666666',
-    },
+  balanceZero: {
+    color: "#666666",
+  },
 
-    // ==========================================
-    // STATUS
-    // ==========================================
+  // ==========================================
+  // STATUS
+  // ==========================================
 
-    statusActive: {
-      color: COLORS.green,
+  statusActive: {
+    color: COLORS.green,
 
-      fontWeight: '700',
-    },
+    fontWeight: "700",
+  },
 
-    statusInactive: {
-      color: COLORS.red,
+  statusInactive: {
+    color: COLORS.red,
 
-      fontWeight: '700',
-    },
+    fontWeight: "700",
+  },
 
-    statusOther: {
-      color: '#666666',
+  statusOther: {
+    color: "#666666",
 
-      fontWeight: '700',
-    },
+    fontWeight: "700",
+  },
 
-    // ==========================================
-    // FOOTER
-    // ==========================================
+  // ==========================================
+  // FOOTER
+  // ==========================================
 
-    tableFooter: {
-      marginTop: 'auto',
+  tableFooter: {
+    marginTop: "auto",
 
-      minHeight: 95,
+    minHeight: 95,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      flexWrap: 'wrap',
+    flexWrap: "wrap",
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent:
-        'space-between',
+    justifyContent: "space-between",
 
-      gap: 15,
+    gap: 15,
 
-      paddingHorizontal: 24,
+    paddingHorizontal: 24,
 
-      paddingTop: 25,
+    paddingTop: 25,
 
-      paddingBottom: 15,
-    },
+    paddingBottom: 15,
+  },
 
-    totalStudentsText: {
-      color: '#666666',
+  totalStudentsText: {
+    color: "#666666",
 
-      fontSize: 13,
+    fontSize: 13,
 
-      fontWeight: '500',
-    },
+    fontWeight: "500",
+  },
 
-    selectedStudentText: {
-      color: COLORS.red,
+  selectedStudentText: {
+    color: COLORS.red,
 
-      fontSize: 11,
+    fontSize: 11,
 
-      marginTop: 5,
+    marginTop: 5,
 
-      fontWeight: '600',
-    },
+    fontWeight: "600",
+  },
 
-    deleteButton: {
-      minWidth: 180,
+  deleteButton: {
+    minWidth: 180,
 
-      minHeight: 45,
+    minHeight: 45,
 
-      backgroundColor:
-        COLORS.red,
+    backgroundColor: COLORS.red,
 
-      borderRadius: 8,
+    borderRadius: 8,
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent: 'center',
+    justifyContent: "center",
 
-      paddingHorizontal: 20,
-    },
+    paddingHorizontal: 20,
+  },
 
-    deleteButtonDisabled: {
-      opacity: 0.45,
-    },
+  deleteButtonDisabled: {
+    opacity: 0.45,
+  },
 
-    deleteButtonText: {
-      color: COLORS.white,
+  deleteButtonText: {
+    color: COLORS.white,
 
-      fontSize: 12,
+    fontSize: 12,
 
-      fontWeight: '700',
-    },
+    fontWeight: "700",
+  },
 
-    deleteHint: {
-      color: COLORS.muted,
+  deleteHint: {
+    color: COLORS.muted,
 
-      fontSize: 10,
+    fontSize: 10,
 
-      textAlign: 'right',
+    textAlign: "right",
 
-      paddingRight: 24,
+    paddingRight: 24,
 
-      paddingBottom: 18,
-    },
+    paddingBottom: 18,
+  },
 
-    // ==========================================
-    // STATES
-    // ==========================================
+  // ==========================================
+  // STATES
+  // ==========================================
 
-    centerState: {
-      minHeight: 400,
+  centerState: {
+    minHeight: 400,
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent: 'center',
+    justifyContent: "center",
 
-      padding: 30,
-    },
+    padding: 30,
+  },
 
-    stateText: {
-      color: COLORS.muted,
+  stateText: {
+    color: COLORS.muted,
 
-      marginTop: 14,
+    marginTop: 14,
 
-      fontSize: 13,
-    },
+    fontSize: 13,
+  },
 
-    errorText: {
-      color: COLORS.red,
+  errorText: {
+    color: COLORS.red,
 
-      fontSize: 13,
+    fontSize: 13,
 
-      textAlign: 'center',
+    textAlign: "center",
 
-      marginBottom: 18,
-    },
+    marginBottom: 18,
+  },
 
-    retryButton: {
-      backgroundColor:
-        COLORS.navy,
+  retryButton: {
+    backgroundColor: COLORS.navy,
 
-      paddingHorizontal: 20,
+    paddingHorizontal: 20,
 
-      paddingVertical: 10,
+    paddingVertical: 10,
 
-      borderRadius: 7,
-    },
+    borderRadius: 7,
+  },
 
-    retryText: {
-      color: COLORS.white,
+  retryText: {
+    color: COLORS.white,
 
-      fontWeight: '700',
-    },
+    fontWeight: "700",
+  },
 
-    emptyRow: {
-      minHeight: 220,
+  emptyRow: {
+    minHeight: 220,
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent: 'center',
-    },
+    justifyContent: "center",
+  },
 
-    emptyText: {
-      color: COLORS.muted,
+  emptyText: {
+    color: COLORS.muted,
 
-      fontSize: 14,
-    },
-  });
+    fontSize: 14,
+  },
+});
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function StudentsStylesRoute() {
+  return null;
+}

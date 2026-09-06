@@ -719,3 +719,11 @@ export const styles = StyleSheet.create({
     opacity: 0.6,
   },
 });
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function EditStudentStylesRoute() {
+  return null;
+}

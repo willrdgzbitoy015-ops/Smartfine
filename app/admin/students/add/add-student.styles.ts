@@ -1,714 +1,697 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from "react-native";
 
 const COLORS = {
-  navy: '#173A73',
+  navy: "#173A73",
 
-  navyDark: '#0C2F64',
+  navyDark: "#0C2F64",
 
-  green: '#45B94F',
+  green: "#45B94F",
 
-  lightGreen: '#56C85C',
+  lightGreen: "#56C85C",
 
-  red: '#FF2424',
+  red: "#FF2424",
 
-  background: '#E8E8E8',
+  background: "#E8E8E8",
 
-  white: '#FFFFFF',
+  white: "#FFFFFF",
 
-  text: '#123266',
+  text: "#123266",
 
-  muted: '#8C939F',
+  muted: "#8C939F",
 };
 
-export const styles =
-  StyleSheet.create({
-    // ==========================================
-    // SCREEN
-    // ==========================================
+export const styles = StyleSheet.create({
+  // ==========================================
+  // SCREEN
+  // ==========================================
 
-    screen: {
-      flex: 1,
+  screen: {
+    flex: 1,
 
-      flexDirection: 'row',
+    flexDirection: "row",
 
-      backgroundColor:
-        COLORS.background,
+    backgroundColor: COLORS.background,
+  },
+
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
+
+  sidebar: {
+    width: 220,
+
+    minHeight: "100%",
+
+    backgroundColor: COLORS.navy,
+
+    paddingHorizontal: 28,
+
+    paddingTop: 30,
+
+    paddingBottom: 25,
+  },
+
+  logoArea: {
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    marginBottom: 35,
+  },
+
+  smartFineLogo: {
+    width: 150,
+
+    height: 90,
+  },
+
+  navigation: {
+    gap: 10,
+  },
+
+  navItem: {
+    height: 42,
+
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    paddingHorizontal: 12,
+
+    borderRadius: 24,
+  },
+
+  navItemActive: {
+    backgroundColor: COLORS.lightGreen,
+  },
+
+  navIcon: {
+    width: 28,
+
+    color: COLORS.white,
+
+    fontSize: 21,
+
+    fontWeight: "700",
+
+    textAlign: "center",
+
+    marginRight: 10,
+  },
+
+  navIconContainer: {
+    width: 28,
+    height: 28,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  navImageIcon: {
+    width: 20,
+    height: 20,
+  },
+
+  navText: {
+    color: COLORS.white,
+
+    fontSize: 14,
+
+    fontWeight: "600",
+  },
+
+  logoutButton: {
+    marginTop: "auto",
+
+    borderWidth: 1,
+
+    borderColor: "rgba(255,255,255,0.5)",
+
+    borderRadius: 8,
+
+    paddingVertical: 10,
+
+    alignItems: "center",
+  },
+
+  logoutText: {
+    color: COLORS.white,
+
+    fontWeight: "600",
+  },
+
+  // ==========================================
+  // MAIN
+  // ==========================================
+
+  main: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+
+    paddingHorizontal: 38,
+
+    paddingTop: 34,
+
+    paddingBottom: 35,
+  },
+
+  // ==========================================
+  // HEADER
+  // ==========================================
+
+  header: {
+    width: "100%",
+
+    maxWidth: 1000,
+
+    alignSelf: "center",
+
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    alignItems: "center",
+
+    justifyContent: "space-between",
+
+    gap: 20,
+
+    marginBottom: 28,
+  },
+
+  pageTitle: {
+    color: COLORS.text,
+
+    fontSize: 27,
+
+    fontWeight: "800",
+  },
+
+  subtitle: {
+    color: "#666666",
+
+    fontSize: 12,
+
+    marginTop: 5,
+  },
+
+  uploadButton: {
+    minHeight: 44,
+
+    backgroundColor: COLORS.green,
+
+    borderRadius: 8,
+
+    paddingHorizontal: 22,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    opacity: 0.6,
+  },
+
+  uploadButtonText: {
+    color: COLORS.white,
+
+    fontSize: 12,
+
+    fontWeight: "700",
+  },
+
+  // ==========================================
+  // MOBILE NAVIGATION
+  // ==========================================
+
+  mobileNav: {
+    gap: 8,
+
+    paddingBottom: 25,
+  },
+
+  mobileNavItem: {
+    backgroundColor: COLORS.white,
+
+    borderRadius: 18,
+
+    paddingHorizontal: 16,
+
+    paddingVertical: 8,
+  },
+
+  mobileNavItemActive: {
+    backgroundColor: COLORS.green,
+  },
+
+  mobileNavText: {
+    color: COLORS.navy,
+
+    fontSize: 12,
+
+    fontWeight: "600",
+  },
+
+  mobileNavTextActive: {
+    color: COLORS.white,
+  },
+
+  // ==========================================
+  // FORM
+  // ==========================================
+
+  formContainer: {
+    width: "100%",
+
+    maxWidth: 1000,
+
+    alignSelf: "center",
+
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    alignItems: "flex-start",
+
+    gap: 18,
+  },
+
+  formCard: {
+    flexGrow: 1,
+
+    flexBasis: 410,
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 18,
+
+    paddingHorizontal: 28,
+
+    paddingTop: 24,
+
+    paddingBottom: 28,
+
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+      height: 2,
     },
 
-    // ==========================================
-    // SIDEBAR
-    // ==========================================
+    shadowOpacity: 0.06,
 
-    sidebar: {
-      width: 220,
+    shadowRadius: 5,
 
-      minHeight: '100%',
+    elevation: 2,
+  },
 
-      backgroundColor:
-        COLORS.navy,
+  cardTitle: {
+    color: COLORS.text,
 
-      paddingHorizontal: 28,
+    fontSize: 20,
 
-      paddingTop: 30,
+    fontWeight: "800",
 
-      paddingBottom: 25,
-    },
+    marginBottom: 12,
+  },
 
-    logoArea: {
-      alignItems: 'center',
+  // ==========================================
+  // INPUTS
+  // ==========================================
 
-      justifyContent: 'center',
+  label: {
+    color: "#222222",
 
-      marginBottom: 35,
-    },
+    fontSize: 13,
 
-    smartFineLogo: {
-      width: 150,
+    fontWeight: "500",
 
-      height: 90,
-    },
+    marginTop: 12,
 
-    navigation: {
-      gap: 10,
-    },
+    marginBottom: 7,
+  },
 
-    navItem: {
-      height: 42,
+  input: {
+    width: "100%",
 
-      flexDirection: 'row',
+    height: 46,
 
-      alignItems: 'center',
+    backgroundColor: COLORS.white,
 
-      paddingHorizontal: 12,
+    borderWidth: 1,
 
-      borderRadius: 24,
-    },
+    borderColor: "#505050",
 
-    navItemActive: {
-      backgroundColor:
-        COLORS.lightGreen,
-    },
+    borderRadius: 8,
 
-    navIcon: {
-      width: 28,
+    paddingHorizontal: 14,
 
-      color: COLORS.white,
+    color: "#222222",
 
-      fontSize: 21,
+    fontSize: 13,
 
-      fontWeight: '700',
+    outlineStyle: "none",
+  } as any,
 
-      textAlign: 'center',
+  twoColumnRow: {
+    width: "100%",
 
-      marginRight: 10,
-    },
+    flexDirection: "row",
 
-    navIconContainer: {
-      width: 28,
-      height: 28,
-      marginRight: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    flexWrap: "wrap",
 
-    navImageIcon: {
-      width: 20,
-      height: 20,
-    },
+    gap: 12,
+  },
 
-    navText: {
-      color: COLORS.white,
+  flexField: {
+    flexGrow: 1,
 
-      fontSize: 14,
+    flexBasis: 160,
+  },
 
-      fontWeight: '600',
-    },
+  // ==========================================
+  // USERNAME
+  // ==========================================
 
-    logoutButton: {
-      marginTop: 'auto',
+  readOnlyBox: {
+    width: "100%",
 
-      borderWidth: 1,
+    height: 46,
 
-      borderColor:
-        'rgba(255,255,255,0.5)',
+    borderWidth: 1,
 
-      borderRadius: 8,
+    borderColor: "#B2B5BA",
 
-      paddingVertical: 10,
+    borderRadius: 8,
 
-      alignItems: 'center',
-    },
+    backgroundColor: "#F2F3F5",
 
-    logoutText: {
-      color: COLORS.white,
+    justifyContent: "center",
 
-      fontWeight: '600',
-    },
+    paddingHorizontal: 14,
+  },
 
-    // ==========================================
-    // MAIN
-    // ==========================================
+  readOnlyText: {
+    color: "#333333",
 
-    main: {
-      flex: 1,
-    },
+    fontSize: 13,
 
-    scrollContent: {
-      flexGrow: 1,
+    fontWeight: "600",
+  },
 
-      paddingHorizontal: 38,
+  readOnlyPlaceholder: {
+    color: "#8C939F",
 
-      paddingTop: 34,
+    fontSize: 13,
+  },
 
-      paddingBottom: 35,
-    },
+  usernameNote: {
+    color: COLORS.muted,
 
-    // ==========================================
-    // HEADER
-    // ==========================================
+    fontSize: 10,
 
-    header: {
-      width: '100%',
+    marginTop: 6,
+  },
 
-      maxWidth: 1000,
+  // ==========================================
+  // PASSWORD
+  // ==========================================
 
-      alignSelf: 'center',
+  passwordContainer: {
+    width: "100%",
 
-      flexDirection: 'row',
+    height: 46,
 
-      flexWrap: 'wrap',
+    backgroundColor: COLORS.white,
 
-      alignItems: 'center',
+    borderWidth: 1,
 
-      justifyContent:
-        'space-between',
+    borderColor: "#505050",
 
-      gap: 20,
+    borderRadius: 8,
 
-      marginBottom: 28,
-    },
+    flexDirection: "row",
 
-    pageTitle: {
-      color: COLORS.text,
+    alignItems: "center",
 
-      fontSize: 27,
+    overflow: "hidden",
+  },
 
-      fontWeight: '800',
-    },
+  passwordInput: {
+    flex: 1,
 
-    subtitle: {
-      color: '#666666',
+    height: "100%",
 
-      fontSize: 12,
+    paddingHorizontal: 14,
 
-      marginTop: 5,
-    },
+    color: "#222222",
 
-    uploadButton: {
-      minHeight: 44,
+    fontSize: 13,
 
-      backgroundColor:
-        COLORS.green,
+    outlineStyle: "none",
+  } as any,
 
-      borderRadius: 8,
+  passwordToggle: {
+    height: "100%",
 
-      paddingHorizontal: 22,
+    paddingHorizontal: 14,
 
-      alignItems: 'center',
+    alignItems: "center",
 
-      justifyContent: 'center',
+    justifyContent: "center",
+  },
 
-      opacity: 0.6,
-    },
+  passwordToggleText: {
+    color: COLORS.navy,
 
-    uploadButtonText: {
-      color: COLORS.white,
+    fontSize: 11,
 
-      fontSize: 12,
+    fontWeight: "700",
+  },
 
-      fontWeight: '700',
-    },
+  // ==========================================
+  // ACCOUNT STATUS
+  // ==========================================
 
-    // ==========================================
-    // MOBILE NAVIGATION
-    // ==========================================
+  statusCard: {
+    width: "100%",
 
-    mobileNav: {
-      gap: 8,
+    minHeight: 80,
 
-      paddingBottom: 25,
-    },
+    borderWidth: 1,
 
-    mobileNavItem: {
-      backgroundColor:
-        COLORS.white,
+    borderColor: "#505050",
 
-      borderRadius: 18,
+    borderRadius: 8,
 
-      paddingHorizontal: 16,
+    paddingHorizontal: 18,
 
-      paddingVertical: 8,
-    },
+    marginTop: 25,
 
-    mobileNavItemActive: {
-      backgroundColor:
-        COLORS.green,
-    },
+    flexDirection: "row",
 
-    mobileNavText: {
-      color: COLORS.navy,
+    alignItems: "center",
 
-      fontSize: 12,
+    justifyContent: "space-between",
+  },
 
-      fontWeight: '600',
-    },
+  statusLabel: {
+    color: "#222222",
 
-    mobileNavTextActive: {
-      color: COLORS.white,
-    },
+    fontSize: 14,
 
-    // ==========================================
-    // FORM
-    // ==========================================
+    fontWeight: "500",
 
-    formContainer: {
-      width: '100%',
+    marginBottom: 6,
+  },
 
-      maxWidth: 1000,
+  statusValue: {
+    fontSize: 13,
 
-      alignSelf: 'center',
+    fontWeight: "800",
+  },
 
-      flexDirection: 'row',
+  statusActive: {
+    color: COLORS.green,
+  },
 
-      flexWrap: 'wrap',
+  statusInactive: {
+    color: COLORS.red,
+  },
 
-      alignItems: 'flex-start',
+  switchTrack: {
+    width: 48,
 
-      gap: 18,
-    },
+    height: 26,
 
-    formCard: {
-      flexGrow: 1,
+    borderRadius: 13,
 
-      flexBasis: 410,
+    backgroundColor: "#B8BDC5",
 
-      backgroundColor:
-        COLORS.white,
+    padding: 3,
 
-      borderRadius: 18,
+    justifyContent: "center",
+  },
 
-      paddingHorizontal: 28,
+  switchTrackActive: {
+    backgroundColor: "#00CC58",
+  },
 
-      paddingTop: 24,
+  switchThumb: {
+    width: 20,
 
-      paddingBottom: 28,
+    height: 20,
 
-      shadowColor: '#000000',
+    borderRadius: 10,
 
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
+    backgroundColor: COLORS.white,
 
-      shadowOpacity: 0.06,
+    alignSelf: "flex-start",
+  },
 
-      shadowRadius: 5,
+  switchThumbActive: {
+    alignSelf: "flex-end",
+  },
 
-      elevation: 2,
-    },
+  statusNote: {
+    color: COLORS.muted,
 
-    cardTitle: {
-      color: COLORS.text,
+    fontSize: 10,
 
-      fontSize: 20,
+    lineHeight: 16,
 
-      fontWeight: '800',
+    marginTop: 12,
+  },
 
-      marginBottom: 12,
-    },
+  // ==========================================
+  // ERROR
+  // ==========================================
 
-    // ==========================================
-    // INPUTS
-    // ==========================================
+  errorBox: {
+    width: "100%",
 
-    label: {
-      color: '#222222',
+    maxWidth: 1000,
 
-      fontSize: 13,
+    alignSelf: "center",
 
-      fontWeight: '500',
+    marginTop: 18,
 
-      marginTop: 12,
+    backgroundColor: "#FFEAEA",
 
-      marginBottom: 7,
-    },
+    borderWidth: 1,
 
-    input: {
-      width: '100%',
+    borderColor: "#FFB5B5",
 
-      height: 46,
+    borderRadius: 9,
 
-      backgroundColor:
-        COLORS.white,
+    paddingHorizontal: 16,
 
-      borderWidth: 1,
+    paddingVertical: 13,
+  },
 
-      borderColor: '#505050',
+  errorTitle: {
+    color: "#D32F2F",
 
-      borderRadius: 8,
+    fontSize: 12,
 
-      paddingHorizontal: 14,
+    fontWeight: "800",
 
-      color: '#222222',
+    marginBottom: 3,
+  },
 
-      fontSize: 13,
+  errorText: {
+    color: "#B42318",
 
-      outlineStyle: 'none',
-    } as any,
+    fontSize: 11,
 
-    twoColumnRow: {
-      width: '100%',
+    lineHeight: 16,
+  },
 
-      flexDirection: 'row',
+  // ==========================================
+  // ACTION BUTTONS
+  // ==========================================
 
-      flexWrap: 'wrap',
+  actionRow: {
+    width: "100%",
 
-      gap: 12,
-    },
+    maxWidth: 650,
 
-    flexField: {
-      flexGrow: 1,
+    alignSelf: "center",
 
-      flexBasis: 160,
-    },
+    flexDirection: "row",
 
-    // ==========================================
-    // USERNAME
-    // ==========================================
+    flexWrap: "wrap",
 
-    readOnlyBox: {
-      width: '100%',
+    gap: 20,
 
-      height: 46,
+    marginTop: 30,
 
-      borderWidth: 1,
+    justifyContent: "center",
+  },
 
-      borderColor: '#B2B5BA',
+  cancelButton: {
+    flexGrow: 1,
 
-      borderRadius: 8,
+    flexBasis: 220,
 
-      backgroundColor:
-        '#F2F3F5',
+    minHeight: 46,
 
-      justifyContent: 'center',
+    borderWidth: 1,
 
-      paddingHorizontal: 14,
-    },
+    borderColor: COLORS.navy,
 
-    readOnlyText: {
-      color: '#333333',
+    borderRadius: 8,
 
-      fontSize: 13,
+    backgroundColor: COLORS.white,
 
-      fontWeight: '600',
-    },
+    alignItems: "center",
 
-    readOnlyPlaceholder: {
-      color: '#8C939F',
+    justifyContent: "center",
+  },
 
-      fontSize: 13,
-    },
+  cancelButtonText: {
+    color: "#222222",
 
-    usernameNote: {
-      color: COLORS.muted,
+    fontSize: 13,
 
-      fontSize: 10,
+    fontWeight: "700",
+  },
 
-      marginTop: 6,
-    },
+  createButton: {
+    flexGrow: 1,
 
-    // ==========================================
-    // PASSWORD
-    // ==========================================
+    flexBasis: 220,
 
-    passwordContainer: {
-      width: '100%',
+    minHeight: 46,
 
-      height: 46,
+    backgroundColor: COLORS.green,
 
-      backgroundColor:
-        COLORS.white,
+    borderRadius: 8,
 
-      borderWidth: 1,
+    alignItems: "center",
 
-      borderColor: '#505050',
+    justifyContent: "center",
+  },
 
-      borderRadius: 8,
+  createButtonDisabled: {
+    opacity: 0.6,
+  },
 
-      flexDirection: 'row',
+  createButtonText: {
+    color: COLORS.white,
 
-      alignItems: 'center',
+    fontSize: 13,
 
-      overflow: 'hidden',
-    },
+    fontWeight: "700",
+  },
+});
 
-    passwordInput: {
-      flex: 1,
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
 
-      height: '100%',
-
-      paddingHorizontal: 14,
-
-      color: '#222222',
-
-      fontSize: 13,
-
-      outlineStyle: 'none',
-    } as any,
-
-    passwordToggle: {
-      height: '100%',
-
-      paddingHorizontal: 14,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-    },
-
-    passwordToggleText: {
-      color: COLORS.navy,
-
-      fontSize: 11,
-
-      fontWeight: '700',
-    },
-
-    // ==========================================
-    // ACCOUNT STATUS
-    // ==========================================
-
-    statusCard: {
-      width: '100%',
-
-      minHeight: 80,
-
-      borderWidth: 1,
-
-      borderColor: '#505050',
-
-      borderRadius: 8,
-
-      paddingHorizontal: 18,
-
-      marginTop: 25,
-
-      flexDirection: 'row',
-
-      alignItems: 'center',
-
-      justifyContent:
-        'space-between',
-    },
-
-    statusLabel: {
-      color: '#222222',
-
-      fontSize: 14,
-
-      fontWeight: '500',
-
-      marginBottom: 6,
-    },
-
-    statusValue: {
-      fontSize: 13,
-
-      fontWeight: '800',
-    },
-
-    statusActive: {
-      color: COLORS.green,
-    },
-
-    statusInactive: {
-      color: COLORS.red,
-    },
-
-    switchTrack: {
-      width: 48,
-
-      height: 26,
-
-      borderRadius: 13,
-
-      backgroundColor:
-        '#B8BDC5',
-
-      padding: 3,
-
-      justifyContent: 'center',
-    },
-
-    switchTrackActive: {
-      backgroundColor:
-        '#00CC58',
-    },
-
-    switchThumb: {
-      width: 20,
-
-      height: 20,
-
-      borderRadius: 10,
-
-      backgroundColor:
-        COLORS.white,
-
-      alignSelf:
-        'flex-start',
-    },
-
-    switchThumbActive: {
-      alignSelf:
-        'flex-end',
-    },
-
-    statusNote: {
-      color: COLORS.muted,
-
-      fontSize: 10,
-
-      lineHeight: 16,
-
-      marginTop: 12,
-    },
-
-    // ==========================================
-    // ERROR
-    // ==========================================
-
-    errorBox: {
-      width: '100%',
-
-      maxWidth: 1000,
-
-      alignSelf: 'center',
-
-      marginTop: 18,
-
-      backgroundColor:
-        '#FFEAEA',
-
-      borderWidth: 1,
-
-      borderColor:
-        '#FFB5B5',
-
-      borderRadius: 9,
-
-      paddingHorizontal: 16,
-
-      paddingVertical: 13,
-    },
-
-    errorTitle: {
-      color: '#D32F2F',
-
-      fontSize: 12,
-
-      fontWeight: '800',
-
-      marginBottom: 3,
-    },
-
-    errorText: {
-      color: '#B42318',
-
-      fontSize: 11,
-
-      lineHeight: 16,
-    },
-
-    // ==========================================
-    // ACTION BUTTONS
-    // ==========================================
-
-    actionRow: {
-      width: '100%',
-
-      maxWidth: 650,
-
-      alignSelf: 'center',
-
-      flexDirection: 'row',
-
-      flexWrap: 'wrap',
-
-      gap: 20,
-
-      marginTop: 30,
-
-      justifyContent:
-        'center',
-    },
-
-    cancelButton: {
-      flexGrow: 1,
-
-      flexBasis: 220,
-
-      minHeight: 46,
-
-      borderWidth: 1,
-
-      borderColor:
-        COLORS.navy,
-
-      borderRadius: 8,
-
-      backgroundColor:
-        COLORS.white,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-    },
-
-    cancelButtonText: {
-      color: '#222222',
-
-      fontSize: 13,
-
-      fontWeight: '700',
-    },
-
-    createButton: {
-      flexGrow: 1,
-
-      flexBasis: 220,
-
-      minHeight: 46,
-
-      backgroundColor:
-        COLORS.green,
-
-      borderRadius: 8,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-    },
-
-    createButtonDisabled: {
-      opacity: 0.6,
-    },
-
-    createButtonText: {
-      color: COLORS.white,
-
-      fontSize: 13,
-
-      fontWeight: '700',
-    },
-  });
+export default function AddStudentStylesRoute() {
+  return null;
+}

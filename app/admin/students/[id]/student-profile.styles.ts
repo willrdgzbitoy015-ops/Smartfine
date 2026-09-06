@@ -816,7 +816,15 @@ export const styles = StyleSheet.create({
   },
 
   modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+
+    top: 0,
+
+    left: 0,
+
+    right: 0,
+
+    bottom: 0,
   },
 
   qrModal: {
@@ -1003,3 +1011,11 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function StudentProfileStylesRoute() {
+  return null;
+}

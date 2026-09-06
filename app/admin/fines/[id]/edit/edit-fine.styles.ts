@@ -1,961 +1,778 @@
-import {
-  StyleSheet,
-} from 'react-native';
+import { StyleSheet } from "react-native";
 
 const COLORS = {
-  navy:
-    '#173A73',
+  navy: "#173A73",
 
-  green:
-    '#45B94F',
+  green: "#45B94F",
 
-  lightGreen:
-    '#56C85C',
+  lightGreen: "#56C85C",
 
-  red:
-    '#FF2424',
+  red: "#FF2424",
 
-  background:
-    '#E8E8E8',
+  background: "#E8E8E8",
 
-  white:
-    '#FFFFFF',
+  white: "#FFFFFF",
 
-  text:
-    '#123266',
+  text: "#123266",
 
-  muted:
-    '#8C939F',
+  muted: "#8C939F",
 };
 
-export const styles =
-  StyleSheet.create({
-    // ==========================================
-    // SCREEN
-    // ==========================================
-
-    screen: {
-      flex: 1,
-
-      flexDirection:
-        'row',
-
-      backgroundColor:
-        COLORS.background,
-    },
+export const styles = StyleSheet.create({
+  // ==========================================
+  // SCREEN
+  // ==========================================
 
-    // ==========================================
-    // LOADING
-    // ==========================================
+  screen: {
+    flex: 1,
 
-    loadingScreen: {
-      flex: 1,
+    flexDirection: "row",
 
-      alignItems:
-        'center',
+    backgroundColor: COLORS.background,
+  },
 
-      justifyContent:
-        'center',
+  // ==========================================
+  // LOADING
+  // ==========================================
 
-      backgroundColor:
-        COLORS.background,
-    },
+  loadingScreen: {
+    flex: 1,
 
-    loadingText: {
-      marginTop: 14,
+    alignItems: "center",
 
-      color:
-        COLORS.muted,
+    justifyContent: "center",
 
-      fontSize: 13,
-    },
+    backgroundColor: COLORS.background,
+  },
 
-    // ==========================================
-    // SIDEBAR
-    // ==========================================
+  loadingText: {
+    marginTop: 14,
 
-    sidebar: {
-      width: 220,
+    color: COLORS.muted,
 
-      minHeight:
-        '100%',
+    fontSize: 13,
+  },
 
-      backgroundColor:
-        COLORS.navy,
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
 
-      paddingHorizontal:
-        28,
+  sidebar: {
+    width: 220,
 
-      paddingTop: 30,
+    minHeight: "100%",
 
-      paddingBottom:
-        25,
-    },
+    backgroundColor: COLORS.navy,
 
-    logoArea: {
-      alignItems:
-        'center',
+    paddingHorizontal: 28,
 
-      justifyContent:
-        'center',
+    paddingTop: 30,
 
-      marginBottom:
-        35,
-    },
+    paddingBottom: 25,
+  },
 
-    smartFineLogo: {
-      width: 150,
+  logoArea: {
+    alignItems: "center",
 
-      height: 90,
-    },
+    justifyContent: "center",
 
-    navigation: {
-      gap: 10,
-    },
+    marginBottom: 35,
+  },
 
-    navItem: {
-      height: 42,
+  smartFineLogo: {
+    width: 150,
 
-      flexDirection:
-        'row',
+    height: 90,
+  },
 
-      alignItems:
-        'center',
+  navigation: {
+    gap: 10,
+  },
 
-      paddingHorizontal:
-        12,
+  navItem: {
+    height: 42,
 
-      borderRadius:
-        24,
-    },
+    flexDirection: "row",
 
-    navItemActive: {
-      backgroundColor:
-        COLORS.lightGreen,
-    },
+    alignItems: "center",
 
-    navIcon: {
-      width: 28,
+    paddingHorizontal: 12,
 
-      color:
-        COLORS.white,
+    borderRadius: 24,
+  },
 
-      fontSize: 21,
+  navItemActive: {
+    backgroundColor: COLORS.lightGreen,
+  },
 
-      fontWeight:
-        '700',
+  navIcon: {
+    width: 28,
 
-      textAlign:
-        'center',
+    color: COLORS.white,
 
-      marginRight: 10,
-    },
+    fontSize: 21,
 
-    navIconContainer: {
-      width: 28,
-      height: 28,
-      marginRight: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    fontWeight: "700",
 
-    navImageIcon: {
-      width: 20,
-      height: 20,
-    },
+    textAlign: "center",
 
-    navText: {
-      color:
-        COLORS.white,
+    marginRight: 10,
+  },
 
-      fontSize: 14,
+  navIconContainer: {
+    width: 28,
+    height: 28,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-      fontWeight:
-        '600',
-    },
+  navImageIcon: {
+    width: 20,
+    height: 20,
+  },
 
-    logoutButton: {
-      marginTop:
-        'auto',
+  navText: {
+    color: COLORS.white,
 
-      borderWidth: 1,
+    fontSize: 14,
 
-      borderColor:
-        'rgba(255,255,255,0.5)',
+    fontWeight: "600",
+  },
 
-      borderRadius: 8,
+  logoutButton: {
+    marginTop: "auto",
 
-      paddingVertical:
-        10,
+    borderWidth: 1,
 
-      alignItems:
-        'center',
-    },
+    borderColor: "rgba(255,255,255,0.5)",
 
-    logoutText: {
-      color:
-        COLORS.white,
+    borderRadius: 8,
 
-      fontWeight:
-        '600',
-    },
+    paddingVertical: 10,
 
-    // ==========================================
-    // MAIN
-    // ==========================================
+    alignItems: "center",
+  },
 
-    main: {
-      flex: 1,
-    },
+  logoutText: {
+    color: COLORS.white,
 
-    scrollContent: {
-      flexGrow: 1,
+    fontWeight: "600",
+  },
 
-      paddingHorizontal:
-        38,
+  // ==========================================
+  // MAIN
+  // ==========================================
 
-      paddingVertical:
-        35,
-    },
+  main: {
+    flex: 1,
+  },
 
-    // ==========================================
-    // MOBILE NAV
-    // ==========================================
+  scrollContent: {
+    flexGrow: 1,
 
-    mobileNav: {
-      gap: 8,
+    paddingHorizontal: 38,
 
-      paddingBottom:
-        25,
-    },
+    paddingVertical: 35,
+  },
 
-    mobileNavItem: {
-      backgroundColor:
-        COLORS.white,
+  // ==========================================
+  // MOBILE NAV
+  // ==========================================
 
-      borderRadius:
-        18,
+  mobileNav: {
+    gap: 8,
 
-      paddingHorizontal:
-        16,
+    paddingBottom: 25,
+  },
 
-      paddingVertical:
-        8,
-    },
+  mobileNavItem: {
+    backgroundColor: COLORS.white,
 
-    mobileNavItemActive: {
-      backgroundColor:
-        COLORS.green,
-    },
+    borderRadius: 18,
 
-    mobileNavText: {
-      color:
-        COLORS.navy,
+    paddingHorizontal: 16,
 
-      fontSize: 12,
+    paddingVertical: 8,
+  },
 
-      fontWeight:
-        '600',
-    },
+  mobileNavItemActive: {
+    backgroundColor: COLORS.green,
+  },
 
-    mobileNavTextActive: {
-      color:
-        COLORS.white,
-    },
+  mobileNavText: {
+    color: COLORS.navy,
 
-    // ==========================================
-    // HEADER
-    // ==========================================
+    fontSize: 12,
 
-    pageHeader: {
-      width:
-        '100%',
+    fontWeight: "600",
+  },
 
-      maxWidth:
-        1000,
+  mobileNavTextActive: {
+    color: COLORS.white,
+  },
 
-      alignSelf:
-        'center',
+  // ==========================================
+  // HEADER
+  // ==========================================
 
-      flexDirection:
-        'row',
+  pageHeader: {
+    width: "100%",
 
-      alignItems:
-        'center',
+    maxWidth: 1000,
 
-      marginBottom:
-        35,
-    },
+    alignSelf: "center",
 
-    backButton: {
-      width: 52,
+    flexDirection: "row",
 
-      height: 52,
+    alignItems: "center",
 
-      borderRadius:
-        12,
+    marginBottom: 35,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  backButton: {
+    width: 52,
 
-      borderWidth: 1,
+    height: 52,
 
-      borderColor:
-        '#DADDE2',
+    borderRadius: 12,
 
-      alignItems:
-        'center',
+    backgroundColor: COLORS.white,
 
-      justifyContent:
-        'center',
+    borderWidth: 1,
 
-      marginRight:
-        14,
-    },
+    borderColor: "#DADDE2",
 
-    backArrow: {
-      color:
-        '#111111',
+    alignItems: "center",
 
-      fontSize: 42,
+    justifyContent: "center",
 
-      lineHeight: 44,
+    marginRight: 14,
+  },
 
-      fontWeight:
-        '500',
+  backArrow: {
+    color: "#111111",
 
-      marginTop: -3,
-    },
+    fontSize: 42,
 
-    pageTitle: {
-      color:
-        COLORS.text,
+    lineHeight: 44,
 
-      fontSize: 27,
+    fontWeight: "500",
 
-      fontWeight:
-        '800',
-    },
+    marginTop: -3,
+  },
 
-    pageSubtitle: {
-      color:
-        '#6F7682',
+  pageTitle: {
+    color: COLORS.text,
 
-      fontSize: 12,
+    fontSize: 27,
 
-      marginTop: 3,
-    },
+    fontWeight: "800",
+  },
 
-    // ==========================================
-    // FORM CARD
-    // ==========================================
+  pageSubtitle: {
+    color: "#6F7682",
 
-    formCard: {
-      width:
-        '100%',
+    fontSize: 12,
 
-      maxWidth:
-        1000,
+    marginTop: 3,
+  },
 
-      minHeight:
-        500,
+  // ==========================================
+  // FORM CARD
+  // ==========================================
 
-      alignSelf:
-        'center',
+  formCard: {
+    width: "100%",
 
-      backgroundColor:
-        COLORS.white,
+    maxWidth: 1000,
 
-      borderRadius:
-        16,
+    minHeight: 500,
 
-      paddingHorizontal:
-        30,
+    alignSelf: "center",
 
-      paddingTop:
-        25,
+    backgroundColor: COLORS.white,
 
-      paddingBottom:
-        30,
+    borderRadius: 16,
 
-      overflow:
-        'visible',
-    },
+    paddingHorizontal: 30,
 
-    // ==========================================
-    // CARD HEADER
-    // ==========================================
+    paddingTop: 25,
 
-    cardHeader: {
-      flexDirection:
-        'row',
+    paddingBottom: 30,
 
-      alignItems:
-        'center',
+    overflow: "visible",
+  },
 
-      justifyContent:
-        'space-between',
+  // ==========================================
+  // CARD HEADER
+  // ==========================================
 
-      gap: 15,
+  cardHeader: {
+    flexDirection: "row",
 
-      marginBottom:
-        28,
-    },
+    alignItems: "center",
 
-    cardTitle: {
-      color:
-        COLORS.text,
+    justifyContent: "space-between",
 
-      fontSize: 20,
+    gap: 15,
 
-      fontWeight:
-        '800',
-    },
+    marginBottom: 28,
+  },
 
-    fineReference: {
-      color:
-        '#6E7580',
+  cardTitle: {
+    color: COLORS.text,
 
-      fontSize: 12,
+    fontSize: 20,
 
-      fontWeight:
-        '600',
+    fontWeight: "800",
+  },
 
-      marginTop: 4,
-    },
+  fineReference: {
+    color: "#6E7580",
 
-    // ==========================================
-    // STATUS
-    // ==========================================
+    fontSize: 12,
 
-    statusBadge: {
-      paddingHorizontal:
-        14,
+    fontWeight: "600",
 
-      paddingVertical:
-        6,
+    marginTop: 4,
+  },
 
-      borderRadius:
-        20,
-    },
+  // ==========================================
+  // STATUS
+  // ==========================================
 
-    statusBadgeUnpaid: {
-      backgroundColor:
-        '#FFEAEA',
-    },
+  statusBadge: {
+    paddingHorizontal: 14,
 
-    statusBadgeLocked: {
-      backgroundColor:
-        '#ECEFF4',
-    },
+    paddingVertical: 6,
 
-    statusText: {
-      fontSize: 11,
+    borderRadius: 20,
+  },
 
-      fontWeight:
-        '800',
-    },
+  statusBadgeUnpaid: {
+    backgroundColor: "#FFEAEA",
+  },
 
-    statusTextUnpaid: {
-      color:
-        '#D32F2F',
-    },
+  statusBadgeLocked: {
+    backgroundColor: "#ECEFF4",
+  },
 
-    statusTextLocked: {
-      color:
-        '#606775',
-    },
+  statusText: {
+    fontSize: 11,
 
-    // ==========================================
-    // LOCKED MESSAGE
-    // ==========================================
+    fontWeight: "800",
+  },
 
-    lockedBox: {
-      backgroundColor:
-        '#F3F4F6',
+  statusTextUnpaid: {
+    color: "#D32F2F",
+  },
 
-      borderWidth: 1,
+  statusTextLocked: {
+    color: "#606775",
+  },
 
-      borderColor:
-        '#DADDE2',
+  // ==========================================
+  // LOCKED MESSAGE
+  // ==========================================
 
-      borderRadius:
-        8,
+  lockedBox: {
+    backgroundColor: "#F3F4F6",
 
-      padding:
-        14,
+    borderWidth: 1,
 
-      marginBottom:
-        22,
-    },
+    borderColor: "#DADDE2",
 
-    lockedTitle: {
-      color:
-        COLORS.navy,
+    borderRadius: 8,
 
-      fontSize: 12,
+    padding: 14,
 
-      fontWeight:
-        '800',
-    },
+    marginBottom: 22,
+  },
 
-    lockedText: {
-      color:
-        '#6E7580',
+  lockedTitle: {
+    color: COLORS.navy,
 
-      fontSize: 11,
+    fontSize: 12,
 
-      marginTop: 3,
-    },
+    fontWeight: "800",
+  },
 
-    // ==========================================
-    // FORM ROW
-    // ==========================================
+  lockedText: {
+    color: "#6E7580",
 
-    formRow: {
-      flexDirection:
-        'row',
+    fontSize: 11,
 
-      flexWrap:
-        'wrap',
+    marginTop: 3,
+  },
 
-      gap: 45,
+  // ==========================================
+  // FORM ROW
+  // ==========================================
 
-      marginBottom:
-        22,
+  formRow: {
+    flexDirection: "row",
 
-      position:
-        'relative',
-    },
+    flexWrap: "wrap",
 
-    formRowTop: {
-      zIndex: 500,
-    },
+    gap: 45,
 
-    formRowMiddle: {
-      zIndex: 400,
-    },
+    marginBottom: 22,
 
-    formRowBottom: {
-      zIndex: 300,
-    },
+    position: "relative",
+  },
 
-    fieldGroup: {
-      flex: 1,
+  formRowTop: {
+    zIndex: 500,
+  },
 
-      minWidth: 300,
+  formRowMiddle: {
+    zIndex: 400,
+  },
 
-      position:
-        'relative',
-    },
+  formRowBottom: {
+    zIndex: 300,
+  },
 
-    // ==========================================
-    // LABEL
-    // ==========================================
+  fieldGroup: {
+    flex: 1,
 
-    label: {
-      color:
-        '#222222',
+    minWidth: 300,
 
-      fontSize: 13,
+    position: "relative",
+  },
 
-      fontWeight:
-        '500',
+  // ==========================================
+  // LABEL
+  // ==========================================
 
-      marginBottom: 8,
-    },
+  label: {
+    color: "#222222",
 
-    // ==========================================
-    // INPUT
-    // ==========================================
+    fontSize: 13,
 
-    input: {
-      width:
-        '100%',
+    fontWeight: "500",
 
-      height: 46,
+    marginBottom: 8,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  // ==========================================
+  // INPUT
+  // ==========================================
 
-      borderWidth: 1,
+  input: {
+    width: "100%",
 
-      borderColor:
-        '#333333',
+    height: 46,
 
-      borderRadius: 7,
+    backgroundColor: COLORS.white,
 
-      paddingHorizontal:
-        15,
+    borderWidth: 1,
 
-      color:
-        '#222222',
+    borderColor: "#333333",
 
-      fontSize: 13,
+    borderRadius: 7,
 
-      outlineStyle:
-        'none',
-    } as any,
+    paddingHorizontal: 15,
 
-    helperText: {
-      color:
-        COLORS.muted,
+    color: "#222222",
 
-      fontSize: 10,
+    fontSize: 13,
 
-      marginTop: 6,
-    },
+    outlineStyle: "none",
+  } as any,
 
-    // ==========================================
-    // SELECT
-    // ==========================================
+  helperText: {
+    color: COLORS.muted,
 
-    selectButton: {
-      width:
-        '100%',
+    fontSize: 10,
 
-      height: 46,
+    marginTop: 6,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  // ==========================================
+  // SELECT
+  // ==========================================
 
-      borderWidth: 1,
+  selectButton: {
+    width: "100%",
 
-      borderColor:
-        '#333333',
+    height: 46,
 
-      borderRadius: 7,
+    backgroundColor: COLORS.white,
 
-      paddingHorizontal:
-        14,
+    borderWidth: 1,
 
-      flexDirection:
-        'row',
+    borderColor: "#333333",
 
-      alignItems:
-        'center',
+    borderRadius: 7,
 
-      justifyContent:
-        'space-between',
+    paddingHorizontal: 14,
 
-      gap: 10,
-    },
+    flexDirection: "row",
 
-    selectText: {
-      flex: 1,
+    alignItems: "center",
 
-      color:
-        '#222222',
+    justifyContent: "space-between",
 
-      fontSize: 13,
+    gap: 10,
+  },
 
-      fontWeight:
-        '500',
-    },
+  selectText: {
+    flex: 1,
 
-    selectArrow: {
-      color:
-        '#111111',
+    color: "#222222",
 
-      fontSize: 11,
+    fontSize: 13,
 
-      fontWeight:
-        '800',
-    },
+    fontWeight: "500",
+  },
 
-    // ==========================================
-    // DROPDOWN
-    // ==========================================
+  selectArrow: {
+    color: "#111111",
 
-    dropdownMenu: {
-      position:
-        'absolute',
+    fontSize: 11,
 
-      top: 72,
+    fontWeight: "800",
+  },
 
-      left: 0,
+  // ==========================================
+  // DROPDOWN
+  // ==========================================
 
-      right: 0,
+  dropdownMenu: {
+    position: "absolute",
 
-      maxHeight:
-        260,
+    top: 72,
 
-      backgroundColor:
-        COLORS.white,
+    left: 0,
 
-      borderWidth:
-        1.5,
+    right: 0,
 
-      borderColor:
-        COLORS.navy,
+    maxHeight: 260,
 
-      borderRadius:
-        8,
+    backgroundColor: COLORS.white,
 
-      overflow:
-        'hidden',
+    borderWidth: 1.5,
 
-      zIndex:
-        9999,
+    borderColor: COLORS.navy,
 
-      elevation:
-        30,
+    borderRadius: 8,
 
-      shadowColor:
-        '#000000',
+    overflow: "hidden",
 
-      shadowOpacity:
-        0.2,
+    zIndex: 9999,
 
-      shadowRadius:
-        10,
+    elevation: 30,
 
-      shadowOffset: {
-        width: 0,
+    shadowColor: "#000000",
 
-        height: 5,
-      },
-    },
+    shadowOpacity: 0.2,
 
-    dropdownScroll: {
-      maxHeight:
-        260,
+    shadowRadius: 10,
+
+    shadowOffset: {
+      width: 0,
+
+      height: 5,
     },
+  },
 
-    dropdownItem: {
-      minHeight:
-        58,
+  dropdownScroll: {
+    maxHeight: 260,
+  },
 
-      backgroundColor:
-        COLORS.white,
+  dropdownItem: {
+    minHeight: 58,
 
-      justifyContent:
-        'center',
+    backgroundColor: COLORS.white,
 
-      paddingHorizontal:
-        15,
+    justifyContent: "center",
 
-      paddingVertical:
-        10,
+    paddingHorizontal: 15,
 
-      borderBottomWidth:
-        1,
+    paddingVertical: 10,
 
-      borderBottomColor:
-        '#E0E2E5',
-    },
+    borderBottomWidth: 1,
 
-    dropdownTitle: {
-      color:
-        COLORS.text,
+    borderBottomColor: "#E0E2E5",
+  },
 
-      fontSize: 13,
+  dropdownTitle: {
+    color: COLORS.text,
 
-      fontWeight:
-        '700',
-    },
+    fontSize: 13,
 
-    dropdownSubtitle: {
-      color:
-        '#737B88',
+    fontWeight: "700",
+  },
 
-      fontSize: 10,
+  dropdownSubtitle: {
+    color: "#737B88",
 
-      marginTop: 4,
-    },
+    fontSize: 10,
 
-    emptyOption: {
-      minHeight:
-        60,
+    marginTop: 4,
+  },
 
-      justifyContent:
-        'center',
+  emptyOption: {
+    minHeight: 60,
 
-      paddingHorizontal:
-        15,
+    justifyContent: "center",
 
-      backgroundColor:
-        COLORS.white,
-    },
+    paddingHorizontal: 15,
 
-    emptyOptionText: {
-      color:
-        COLORS.muted,
+    backgroundColor: COLORS.white,
+  },
 
-      fontSize: 11,
+  emptyOptionText: {
+    color: COLORS.muted,
 
-      textAlign:
-        'center',
-    },
+    fontSize: 11,
 
-    // ==========================================
-    // AMOUNT
-    // ==========================================
+    textAlign: "center",
+  },
 
-    amountBox: {
-      width:
-        '100%',
+  // ==========================================
+  // AMOUNT
+  // ==========================================
 
-      height: 46,
+  amountBox: {
+    width: "100%",
 
-      borderWidth: 1,
+    height: 46,
 
-      borderColor:
-        '#333333',
+    borderWidth: 1,
 
-      borderRadius:
-        7,
+    borderColor: "#333333",
 
-      backgroundColor:
-        '#F4F6F9',
+    borderRadius: 7,
 
-      alignItems:
-        'center',
+    backgroundColor: "#F4F6F9",
 
-      justifyContent:
-        'center',
-    },
+    alignItems: "center",
 
-    amountText: {
-      color:
-        COLORS.navy,
+    justifyContent: "center",
+  },
 
-      fontSize: 13,
+  amountText: {
+    color: COLORS.navy,
 
-      fontWeight:
-        '800',
-    },
+    fontSize: 13,
 
-    // ==========================================
-    // ERROR
-    // ==========================================
+    fontWeight: "800",
+  },
 
-    errorBox: {
-      width:
-        '100%',
+  // ==========================================
+  // ERROR
+  // ==========================================
 
-      backgroundColor:
-        '#FFEAEA',
+  errorBox: {
+    width: "100%",
 
-      borderWidth: 1,
+    backgroundColor: "#FFEAEA",
 
-      borderColor:
-        '#FF8B8B',
+    borderWidth: 1,
 
-      borderRadius:
-        8,
+    borderColor: "#FF8B8B",
 
-      paddingHorizontal:
-        15,
+    borderRadius: 8,
 
-      paddingVertical:
-        11,
+    paddingHorizontal: 15,
 
-      marginBottom:
-        18,
-    },
+    paddingVertical: 11,
 
-    errorTitle: {
-      color:
-        COLORS.red,
+    marginBottom: 18,
+  },
 
-      fontSize: 12,
+  errorTitle: {
+    color: COLORS.red,
 
-      fontWeight:
-        '800',
+    fontSize: 12,
 
-      marginBottom: 3,
-    },
+    fontWeight: "800",
 
-    errorText: {
-      color:
-        '#D32F2F',
+    marginBottom: 3,
+  },
 
-      fontSize: 11,
-    },
+  errorText: {
+    color: "#D32F2F",
 
-    // ==========================================
-    // ACTION BUTTONS
-    // ==========================================
+    fontSize: 11,
+  },
 
-    actionRow: {
-      flexDirection:
-        'row',
+  // ==========================================
+  // ACTION BUTTONS
+  // ==========================================
 
-      flexWrap:
-        'wrap',
+  actionRow: {
+    flexDirection: "row",
 
-      justifyContent:
-        'center',
+    flexWrap: "wrap",
 
-      gap: 22,
+    justifyContent: "center",
 
-      marginTop: 45,
-    },
+    gap: 22,
 
-    cancelButton: {
-      width: 230,
+    marginTop: 45,
+  },
 
-      height: 45,
+  cancelButton: {
+    width: 230,
 
-      backgroundColor:
-        '#E0E0E0',
+    height: 45,
 
-      borderWidth: 1,
+    backgroundColor: "#E0E0E0",
 
-      borderColor:
-        COLORS.navy,
+    borderWidth: 1,
 
-      borderRadius:
-        8,
+    borderColor: COLORS.navy,
 
-      alignItems:
-        'center',
+    borderRadius: 8,
 
-      justifyContent:
-        'center',
-    },
+    alignItems: "center",
 
-    cancelButtonText: {
-      color:
-        '#111111',
+    justifyContent: "center",
+  },
 
-      fontSize: 13,
+  cancelButtonText: {
+    color: "#111111",
 
-      fontWeight:
-        '700',
-    },
+    fontSize: 13,
 
-    saveButton: {
-      width: 230,
+    fontWeight: "700",
+  },
 
-      height: 45,
+  saveButton: {
+    width: 230,
 
-      backgroundColor:
-        COLORS.green,
+    height: 45,
 
-      borderRadius:
-        8,
+    backgroundColor: COLORS.green,
 
-      alignItems:
-        'center',
+    borderRadius: 8,
 
-      justifyContent:
-        'center',
-    },
+    alignItems: "center",
 
-    saveButtonText: {
-      color:
-        COLORS.white,
+    justifyContent: "center",
+  },
 
-      fontSize: 13,
+  saveButtonText: {
+    color: COLORS.white,
 
-      fontWeight:
-        '800',
-    },
+    fontSize: 13,
 
-    disabledButton: {
-      opacity:
-        0.45,
-    },
-  });
+    fontWeight: "800",
+  },
+
+  disabledButton: {
+    opacity: 0.45,
+  },
+});
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function EditFineStylesRoute() {
+  return null;
+}

@@ -703,3 +703,11 @@ export const styles = StyleSheet.create({
     marginTop: 12,
   },
 });
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function EditOfficerStylesRoute() {
+  return null;
+}

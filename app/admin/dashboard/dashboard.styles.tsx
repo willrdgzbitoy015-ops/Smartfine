@@ -496,3 +496,11 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function DashboardStylesRoute() {
+  return null;
+}
