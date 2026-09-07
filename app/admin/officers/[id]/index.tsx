@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
-  Alert,
   Image,
-  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -17,6 +15,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+
+import DeleteModal from "@/components/deletationmodal";
+import LogoutModal from "@/components/logout-modal";
+import SuccessModal from "@/components/success-modal";
+import WarningModal from "@/components/warningmodal";
 
 import { styles } from "./officer-profile.styles";
 
@@ -124,7 +127,7 @@ export default function OfficerProfile() {
   const officerId = Array.isArray(rawId) ? rawId[0] : rawId;
 
   // ==========================================
-  // STATE
+  // PROFILE STATE
   // ==========================================
 
   const [data, setData] = useState<OfficerProfileResponse | null>(null);
@@ -136,6 +139,40 @@ export default function OfficerProfile() {
   const [error, setError] = useState("");
 
   const [profileImageFailed, setProfileImageFailed] = useState(false);
+
+  // ==========================================
+  // DELETE MODAL
+  // ==========================================
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // ==========================================
+  // SUCCESS MODAL
+  // ==========================================
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [successTitle, setSuccessTitle] = useState("");
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   // ==========================================
   // NAVIGATION
@@ -218,6 +255,18 @@ export default function OfficerProfile() {
     }
 
     return `${API_BASE}${normalizedUri}`;
+  };
+
+  // ==========================================
+  // SHOW WARNING
+  // ==========================================
+
+  const showWarning = (title: string, message: string) => {
+    setWarningTitle(title);
+
+    setWarningMessage(message);
+
+    setShowWarningModal(true);
   };
 
   // ==========================================
@@ -306,60 +355,48 @@ export default function OfficerProfile() {
 
       console.log("Delete officer response:", result);
 
+      // ======================================
+      // FAILED
+      // ======================================
+
       if (!response.ok || !result.success) {
-        const message = result.message || "Could not delete officer.";
+        setShowDeleteModal(false);
 
-        if (Platform.OS === "web") {
-          window.alert(message);
-
-          return;
-        }
-
-        Alert.alert("Unable to Delete Officer", message);
+        showWarning(
+          "Unable to Delete Officer",
+          result.message || "Could not delete officer.",
+        );
 
         return;
       }
 
-      if (Platform.OS === "web") {
-        window.alert("Officer deleted successfully.");
+      // ======================================
+      // SUCCESS
+      // ======================================
 
-        router.replace("/admin/officers" as any);
+      setShowDeleteModal(false);
 
-        return;
-      }
+      setSuccessTitle("Officer Deleted");
 
-      Alert.alert(
-        "Officer Deleted",
+      setSuccessMessage("Officer deleted successfully.");
 
-        "Officer deleted successfully.",
-
-        [
-          {
-            text: "OK",
-
-            onPress: () => router.replace("/admin/officers" as any),
-          },
-        ],
-      );
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Delete officer error:", error);
 
-      const message = "Could not connect to the SmartFine server.";
+      setShowDeleteModal(false);
 
-      if (Platform.OS === "web") {
-        window.alert(message);
-
-        return;
-      }
-
-      Alert.alert("Unable to Delete Officer", message);
+      showWarning(
+        "Unable to Delete Officer",
+        "Could not connect to the SmartFine server.",
+      );
     } finally {
       setDeleting(false);
     }
   };
 
   // ==========================================
-  // CONFIRM DELETE
+  // DELETE BUTTON
   // ==========================================
 
   const handleDeleteOfficer = () => {
@@ -371,71 +408,59 @@ export default function OfficerProfile() {
 
     const status = String(officer.account_status || "").toUpperCase();
 
+    // ======================================
+    // ACTIVE OFFICER
+    // ======================================
+
     if (status === "ACTIVE") {
-      const message =
-        "Active officers cannot be deleted. Edit the officer and set the account status to Inactive first.";
-
-      if (Platform.OS === "web") {
-        window.alert(message);
-
-        return;
-      }
-
-      Alert.alert("Officer is Active", message);
+      showWarning(
+        "Officer is Active",
+        "Active officers cannot be deleted. Edit the officer and set the account status to Inactive first.",
+      );
 
       return;
     }
+
+    // ======================================
+    // HAS FINE HISTORY
+    // ======================================
 
     if (Number(data.stats?.totalFines || 0) > 0) {
-      const message =
-        "This officer cannot be permanently deleted because the account already has recorded fines. Keep the officer inactive to preserve SmartFine history.";
-
-      if (Platform.OS === "web") {
-        window.alert(message);
-
-        return;
-      }
-
-      Alert.alert("Officer Has Fine Records", message);
+      showWarning(
+        "Officer Has Fine Records",
+        "This officer cannot be permanently deleted because the account already has recorded fines. Keep the officer inactive to preserve SmartFine history.",
+      );
 
       return;
     }
 
-    const message =
-      `Permanently delete ${officer.full_name} (${officer.employee_number})?\n\n` +
-      "This action cannot be undone.";
+    // ======================================
+    // CONFIRM DELETE
+    // ======================================
 
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(message);
+    setShowDeleteModal(true);
+  };
 
-      if (confirmed) {
-        performDeleteOfficer();
-      }
+  // ==========================================
+  // CANCEL DELETE
+  // ==========================================
 
+  const handleCancelDelete = () => {
+    if (deleting) {
       return;
     }
 
-    Alert.alert(
-      "Delete Officer",
+    setShowDeleteModal(false);
+  };
 
-      message,
+  // ==========================================
+  // DELETE SUCCESS CLOSE
+  // ==========================================
 
-      [
-        {
-          text: "Cancel",
+  const handleDeleteSuccessClose = () => {
+    setShowSuccessModal(false);
 
-          style: "cancel",
-        },
-
-        {
-          text: "Delete",
-
-          style: "destructive",
-
-          onPress: performDeleteOfficer,
-        },
-      ],
-    );
+    router.replace("/admin/officers" as any);
   };
 
   // ==========================================
@@ -455,51 +480,47 @@ export default function OfficerProfile() {
   };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT
+  // ==========================================
+
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
+
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
+
+    setShowLogoutModal(false);
+  };
+
+  // ==========================================
+  // PERFORM LOGOUT
   // ==========================================
 
   const performLogout = async () => {
     try {
+      setLogoutLoading(true);
+
       await logout();
+
+      setShowLogoutModal(false);
 
       router.replace("/login" as any);
     } catch (error) {
       console.error("Logout error:", error);
+
+      setShowLogoutModal(false);
+
+      showWarning("Logout Error", "Could not log out. Please try again.");
+    } finally {
+      setLogoutLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm("Are you sure you want to log out?");
-
-      if (confirmed) {
-        performLogout();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Log Out",
-
-      "Are you sure you want to log out?",
-
-      [
-        {
-          text: "Cancel",
-
-          style: "cancel",
-        },
-
-        {
-          text: "Log Out",
-
-          style: "destructive",
-
-          onPress: performLogout,
-        },
-      ],
-    );
   };
 
   // ==========================================
@@ -507,6 +528,10 @@ export default function OfficerProfile() {
   // ==========================================
 
   const renderContent = () => {
+    // ======================================
+    // LOADING
+    // ======================================
+
     if (loading) {
       return (
         <View style={styles.centerState}>
@@ -516,6 +541,10 @@ export default function OfficerProfile() {
         </View>
       );
     }
+
+    // ======================================
+    // ERROR
+    // ======================================
 
     if (error || !data) {
       return (
@@ -547,8 +576,8 @@ export default function OfficerProfile() {
     return (
       <>
         {/* ==================================
-              PROFILE CARD
-          ================================== */}
+            PROFILE CARD
+        ================================== */}
 
         <View
           style={[styles.profileCard, isCompact && styles.profileCardCompact]}
@@ -667,8 +696,8 @@ export default function OfficerProfile() {
           <View style={styles.divider} />
 
           {/* ==================================
-                OFFICER DETAILS
-            ================================== */}
+              OFFICER DETAILS
+          ================================== */}
 
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
@@ -720,8 +749,8 @@ export default function OfficerProfile() {
         </View>
 
         {/* ==================================
-              SUMMARY
-          ================================== */}
+            SUMMARY
+        ================================== */}
 
         <View style={styles.summaryRow}>
           <View
@@ -742,8 +771,8 @@ export default function OfficerProfile() {
         </View>
 
         {/* ==================================
-              RECENT FINES
-          ================================== */}
+            RECENT FINES
+        ================================== */}
 
         <View style={styles.historyCard}>
           <View style={styles.historyHeaderBar}>
@@ -800,7 +829,9 @@ export default function OfficerProfile() {
                       <Text
                         style={[
                           styles.bodyCell,
+
                           styles.referenceColumn,
+
                           styles.referenceText,
                         ]}
                       >
@@ -828,7 +859,9 @@ export default function OfficerProfile() {
                       <Text
                         style={[
                           styles.bodyCell,
+
                           styles.amountColumn,
+
                           styles.amountText,
                         ]}
                       >
@@ -894,6 +927,7 @@ export default function OfficerProfile() {
                   key={item.label}
                   style={[styles.navItem, active && styles.navItemActive]}
                   onPress={() => handleNavigation(item)}
+                  activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
                     <Image
@@ -909,7 +943,11 @@ export default function OfficerProfile() {
             })}
           </View>
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
@@ -1000,6 +1038,60 @@ export default function OfficerProfile() {
           {renderContent()}
         </ScrollView>
       </View>
+
+      {/* ======================================
+          DELETE MODAL
+      ====================================== */}
+
+      <DeleteModal
+        visible={showDeleteModal}
+        loading={deleting}
+        title="Delete Officer?"
+        message={
+          data?.officer
+            ? `Permanently delete ${data.officer.full_name} (${data.officer.employee_number})? This action cannot be undone.`
+            : "Permanently delete this officer? This action cannot be undone."
+        }
+        onCancel={handleCancelDelete}
+        onConfirm={performDeleteOfficer}
+      />
+
+      {/* ======================================
+          SUCCESS MODAL
+      ====================================== */}
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title={successTitle}
+        message={successMessage}
+        buttonText="OK"
+        onClose={handleDeleteSuccessClose}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowWarningModal(false);
+        }}
+      />
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
     </View>
   );
 }

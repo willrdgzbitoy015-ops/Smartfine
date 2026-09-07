@@ -1,181 +1,131 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const multer = require('multer');
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const multer = require("multer");
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 const router = express.Router();
 
-const db = require('../database/database');
+const db = require("../database/database");
 
-console.log('students.js loaded');
+console.log("students.js loaded");
+
+// ==========================================
+// ARCHIVED STUDENT MARKER
+// ==========================================
+//
+// We keep archived students in the users
+// table so old fines/payments still have a
+// valid student_id reference.
+//
+// Archived students are hidden from the
+// Students Directory and cannot be edited
+// through normal student routes.
+// ==========================================
+
+const ARCHIVED_USERNAME_PREFIX = "__archived_student_";
+
+function isArchivedUsername(username) {
+  return String(username || "").startsWith(ARCHIVED_USERNAME_PREFIX);
+}
 
 // ==========================================
 // PROFILE PICTURE UPLOAD DIRECTORY
 // ==========================================
 
-const studentProfileUploadDirectory =
-  path.join(
-    __dirname,
-    '..',
-    'uploads',
-    'student-profiles'
-  );
+const studentProfileUploadDirectory = path.join(
+  __dirname,
+  "..",
+  "uploads",
+  "student-profiles",
+);
 
 // ==========================================
 // CREATE DIRECTORY IF IT DOES NOT EXIST
 // ==========================================
 
-if (
-  !fs.existsSync(
-    studentProfileUploadDirectory
-  )
-) {
-  fs.mkdirSync(
-    studentProfileUploadDirectory,
-    {
-      recursive: true,
-    }
-  );
+if (!fs.existsSync(studentProfileUploadDirectory)) {
+  fs.mkdirSync(studentProfileUploadDirectory, {
+    recursive: true,
+  });
 }
 
 // ==========================================
 // MULTER STORAGE
 // ==========================================
 
-const profilePictureStorage =
-  multer.diskStorage({
-    destination: (
-      req,
-      file,
-      callback
-    ) => {
-      callback(
-        null,
-        studentProfileUploadDirectory
-      );
-    },
+const profilePictureStorage = multer.diskStorage({
+  destination: (req, file, callback) => {
+    callback(null, studentProfileUploadDirectory);
+  },
 
-    filename: (
-      req,
-      file,
-      callback
-    ) => {
-      const studentId =
-        String(
-          req.params.id ||
-            'student'
-        );
+  filename: (req, file, callback) => {
+    const studentId = String(req.params.id || "student");
 
-      const extension =
-        getImageExtension(
-          file
-        );
+    const extension = getImageExtension(file);
 
-      const filename =
-        `student-${studentId}-${Date.now()}${extension}`;
+    const filename = `student-${studentId}-${Date.now()}${extension}`;
 
-      callback(
-        null,
-        filename
-      );
-    },
-  });
+    callback(null, filename);
+  },
+});
 
 // ==========================================
 // IMAGE FILTER
 // ==========================================
 
-function profilePictureFilter(
-  req,
-  file,
-  callback
-) {
-  const allowedTypes = [
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/webp',
-  ];
+function profilePictureFilter(req, file, callback) {
+  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
-  if (
-    allowedTypes.includes(
-      file.mimetype
-    )
-  ) {
-    callback(
-      null,
-      true
-    );
+  if (allowedTypes.includes(file.mimetype)) {
+    callback(null, true);
 
     return;
   }
 
-  callback(
-    new Error(
-      'Only JPG, JPEG, PNG, and WEBP images are allowed.'
-    )
-  );
+  callback(new Error("Only JPG, JPEG, PNG, and WEBP images are allowed."));
 }
 
 // ==========================================
 // PROFILE PICTURE UPLOAD
 // ==========================================
 
-const uploadProfilePicture =
-  multer({
-    storage:
-      profilePictureStorage,
+const uploadProfilePicture = multer({
+  storage: profilePictureStorage,
 
-    fileFilter:
-      profilePictureFilter,
+  fileFilter: profilePictureFilter,
 
-    limits: {
-      fileSize:
-        5 * 1024 * 1024,
-    },
-  });
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
 
 // ==========================================
 // GET IMAGE EXTENSION
 // ==========================================
 
-function getImageExtension(
-  file
-) {
-  const originalExtension =
-    path
-      .extname(
-        file.originalname ||
-          ''
-      )
-      .toLowerCase();
+function getImageExtension(file) {
+  const originalExtension = path.extname(file.originalname || "").toLowerCase();
 
   if (
-    originalExtension ===
-      '.jpg' ||
-    originalExtension ===
-      '.jpeg' ||
-    originalExtension ===
-      '.png' ||
-    originalExtension ===
-      '.webp'
+    originalExtension === ".jpg" ||
+    originalExtension === ".jpeg" ||
+    originalExtension === ".png" ||
+    originalExtension === ".webp"
   ) {
     return originalExtension;
   }
 
-  switch (
-    file.mimetype
-  ) {
-    case 'image/png':
-      return '.png';
+  switch (file.mimetype) {
+    case "image/png":
+      return ".png";
 
-    case 'image/webp':
-      return '.webp';
+    case "image/webp":
+      return ".webp";
 
     default:
-      return '.jpg';
+      return ".jpg";
   }
 }
 
@@ -183,41 +133,21 @@ function getImageExtension(
 // DELETE PROFILE PICTURE FILE
 // ==========================================
 
-function deleteProfilePictureFile(
-  profilePictureUri
-) {
+function deleteProfilePictureFile(profilePictureUri) {
   try {
-    if (
-      !profilePictureUri
-    ) {
+    if (!profilePictureUri) {
       return;
     }
 
-    const filename =
-      path.basename(
-        profilePictureUri
-      );
+    const filename = path.basename(profilePictureUri);
 
-    const absolutePath =
-      path.join(
-        studentProfileUploadDirectory,
-        filename
-      );
+    const absolutePath = path.join(studentProfileUploadDirectory, filename);
 
-    if (
-      fs.existsSync(
-        absolutePath
-      )
-    ) {
-      fs.unlinkSync(
-        absolutePath
-      );
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
     }
   } catch (error) {
-    console.error(
-      'Delete profile picture file error:',
-      error
-    );
+    console.error("Delete profile picture file error:", error);
   }
 }
 
@@ -226,55 +156,39 @@ function deleteProfilePictureFile(
 // ==========================================
 
 function generateNextStudentId() {
-  const currentYear =
-    new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
 
-  const latestStudent =
-    db.prepare(`
-      SELECT
-        student_number
+  const latestStudent = db
+    .prepare(
+      `
+        SELECT
+          student_number
 
-      FROM users
+        FROM users
 
-      WHERE
-        role = 'STUDENT'
-        AND student_number LIKE ?
+        WHERE
+          role = 'STUDENT'
+          AND student_number LIKE ?
 
-      ORDER BY
-        student_number DESC
+        ORDER BY
+          student_number DESC
 
-      LIMIT 1
-    `).get(
-      `${currentYear}-%`
-    );
+        LIMIT 1
+      `,
+    )
+    .get(`${currentYear}-%`);
 
-  if (
-    !latestStudent ||
-    !latestStudent.student_number
-  ) {
+  if (!latestStudent || !latestStudent.student_number) {
     return `${currentYear}-0001`;
   }
 
-  const parts =
-    String(
-      latestStudent.student_number
-    ).split('-');
+  const parts = String(latestStudent.student_number).split("-");
 
-  const lastNumber =
-    Number(
-      parts[1]
-    ) || 0;
+  const lastNumber = Number(parts[1]) || 0;
 
-  const nextNumber =
-    lastNumber + 1;
+  const nextNumber = lastNumber + 1;
 
-  const formattedNumber =
-    String(
-      nextNumber
-    ).padStart(
-      4,
-      '0'
-    );
+  const formattedNumber = String(nextNumber).padStart(4, "0");
 
   return `${currentYear}-${formattedNumber}`;
 }
@@ -283,66 +197,30 @@ function generateNextStudentId() {
 // GENERATE SUGGESTED USERNAME
 // ==========================================
 
-function generateSuggestedUsername(
-  firstName,
-  lastName
-) {
-  const cleanFirstName =
-    String(
-      firstName ||
-        ''
-    )
-      .trim()
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9]/g,
-        ''
-      );
+function generateSuggestedUsername(firstName, lastName) {
+  const cleanFirstName = String(firstName || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 
-  const cleanLastName =
-    String(
-      lastName ||
-        ''
-    )
-      .trim()
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9]/g,
-        ''
-      );
+  const cleanLastName = String(lastName || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 
-  if (
-    !cleanFirstName ||
-    !cleanLastName
-  ) {
-    return '';
+  if (!cleanFirstName || !cleanLastName) {
+    return "";
   }
 
-  return (
-    cleanFirstName.charAt(
-      0
-    ) +
-    cleanLastName
-  );
+  return cleanFirstName.charAt(0) + cleanLastName;
 }
 
 // ==========================================
 // FORMAT FULL NAME
 // ==========================================
 
-function formatName(
-  firstName,
-  middleName,
-  lastName
-) {
-  return [
-    firstName,
-    middleName,
-    lastName,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
+function formatName(firstName, middleName, lastName) {
+  return [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
 }
 
 // ==========================================
@@ -351,41 +229,27 @@ function formatName(
 // GET /api/students/next-id
 // ==========================================
 
-router.get(
-  '/next-id',
-  (
-    req,
-    res
-  ) => {
-    try {
-      const studentId =
-        generateNextStudentId();
+router.get("/next-id", (req, res) => {
+  try {
+    const studentId = generateNextStudentId();
 
-      return res.json({
-        success: true,
+    return res.json({
+      success: true,
 
-        studentId,
-      });
-    } catch (error) {
-      console.error(
-        'Generate Student ID error:',
-        error
-      );
+      studentId,
+    });
+  } catch (error) {
+    console.error("Generate Student ID error:", error);
 
-      return res
-        .status(500)
-        .json({
-          success: false,
+    return res.status(500).json({
+      success: false,
 
-          message:
-            'Failed to generate Student ID.',
+      message: "Failed to generate Student ID.",
 
-          error:
-            error.message,
-        });
-    }
+      error: error.message,
+    });
   }
-);
+});
 
 // ==========================================
 // GET ALL STUDENTS
@@ -393,171 +257,165 @@ router.get(
 // GET /api/students
 // ==========================================
 
-router.get(
-  '/',
-  (
-    req,
-    res
-  ) => {
-    try {
-      const students =
-        db.prepare(`
-          SELECT
-            u.id,
+router.get("/", (req, res) => {
+  try {
+    const students = db
+      .prepare(
+        `
+            SELECT
+              u.id,
 
-            COALESCE(
-              u.student_number,
-              u.username
-            ) AS student_id,
-
-            u.username,
-
-            u.first_name,
-            u.middle_name,
-            u.last_name,
-
-            TRIM(
-              u.first_name || ' ' ||
               COALESCE(
-                u.middle_name || ' ',
-                ''
-              ) ||
-              u.last_name
-            ) AS full_name,
+                u.student_number,
+                u.username
+              ) AS student_id,
 
-            u.email,
-            u.contact_number,
+              u.username,
 
-            u.grade_level,
-            u.section,
+              u.first_name,
+              u.middle_name,
+              u.last_name,
 
-            u.account_status,
+              TRIM(
+                u.first_name || ' ' ||
+                COALESCE(
+                  u.middle_name || ' ',
+                  ''
+                ) ||
+                u.last_name
+              ) AS full_name,
 
-            u.profile_picture_uri,
+              u.email,
+              u.contact_number,
 
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN
-                    f.id IS NOT NULL
+              u.grade_level,
+              u.section,
 
-                    AND
-                    f.cancelled_at
-                      IS NULL
+              u.account_status,
 
-                    AND
-                    UPPER(
-                      COALESCE(
-                        f.fine_status,
-                        'UNPAID'
+              u.profile_picture_uri,
+
+              COALESCE(
+                SUM(
+                  CASE
+                    WHEN
+                      f.id IS NOT NULL
+
+                      AND
+                      f.cancelled_at
+                        IS NULL
+
+                      AND
+                      UPPER(
+                        COALESCE(
+                          f.fine_status,
+                          'UNPAID'
+                        )
+                      ) !=
+                        'CANCELLED'
+
+                    THEN
+                      f.amount_centavos
+
+                    ELSE
+                      0
+                  END
+                ),
+                0
+              ) / 100.0
+                AS total_fines,
+
+              COALESCE(
+                SUM(
+                  CASE
+                    WHEN
+                      f.id IS NOT NULL
+
+                      AND
+                      f.cancelled_at
+                        IS NULL
+
+                      AND
+                      f.paid_at
+                        IS NULL
+
+                      AND
+                      UPPER(
+                        COALESCE(
+                          f.fine_status,
+                          'UNPAID'
+                        )
                       )
-                    ) !=
-                      'CANCELLED'
+                        NOT IN (
+                          'PAID',
+                          'CANCELLED',
+                          'WAIVED'
+                        )
 
-                  THEN
-                    f.amount_centavos
+                    THEN
+                      f.amount_centavos
 
-                  ELSE
-                    0
-                END
-              ),
-              0
-            ) / 100.0
-              AS total_fines,
+                    ELSE
+                      0
+                  END
+                ),
+                0
+              ) / 100.0
+                AS outstanding_balance
 
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN
-                    f.id IS NOT NULL
+            FROM users u
 
-                    AND
-                    f.cancelled_at
-                      IS NULL
+            LEFT JOIN fines f
+              ON
+                f.student_id =
+                u.id
 
-                    AND
-                    f.paid_at
-                      IS NULL
+            WHERE
+              u.role =
+                'STUDENT'
 
-                    AND
-                    UPPER(
-                      COALESCE(
-                        f.fine_status,
-                        'UNPAID'
-                      )
-                    )
-                      NOT IN (
-                        'PAID',
-                        'CANCELLED',
-                        'WAIVED'
-                      )
+              AND
+              u.username NOT LIKE
+                '__archived_student_%'
 
-                  THEN
-                    f.amount_centavos
+            GROUP BY
+              u.id,
+              u.student_number,
+              u.username,
+              u.first_name,
+              u.middle_name,
+              u.last_name,
+              u.email,
+              u.contact_number,
+              u.grade_level,
+              u.section,
+              u.account_status,
+              u.profile_picture_uri
 
-                  ELSE
-                    0
-                END
-              ),
-              0
-            ) / 100.0
-              AS outstanding_balance
+            ORDER BY
+              u.last_name ASC,
+              u.first_name ASC
+          `,
+      )
+      .all();
 
-          FROM users u
+    return res.json({
+      success: true,
 
-          LEFT JOIN fines f
-            ON
-              f.student_id =
-              u.id
+      students,
+    });
+  } catch (error) {
+    console.error("Load students error:", error);
 
-          WHERE
-            u.role =
-              'STUDENT'
+    return res.status(500).json({
+      success: false,
 
-          GROUP BY
-            u.id,
-            u.student_number,
-            u.username,
-            u.first_name,
-            u.middle_name,
-            u.last_name,
-            u.email,
-            u.contact_number,
-            u.grade_level,
-            u.section,
-            u.account_status,
-            u.profile_picture_uri
+      message: "Failed to load students.",
 
-          ORDER BY
-            u.last_name ASC,
-            u.first_name ASC
-        `).all();
-
-      return res.json({
-        success: true,
-
-        students,
-      });
-    } catch (error) {
-      console.error(
-        'Load students error:',
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          message:
-            'Failed to load students.',
-
-          error:
-            error.message,
-        });
-    }
+      error: error.message,
+    });
   }
-);
+});
 
 // ==========================================
 // CREATE STUDENT
@@ -565,758 +423,556 @@ router.get(
 // POST /api/students
 // ==========================================
 
-router.post(
-  '/',
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const {
-        username,
-
-        firstName,
-        middleName,
-        lastName,
-
-        email,
-        contactNumber,
-
-        gradeLevel,
-        section,
-
-        password,
-
-        accountStatus,
-      } =
-        req.body;
-
-      // ======================================
-      // REQUIRED FIELDS
-      // ======================================
-
-      if (
-        !firstName ||
-        !lastName ||
-        !email ||
-        !contactNumber ||
-        !gradeLevel ||
-        !section ||
-        !password
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'MISSING_FIELDS',
-
-            message:
-              'Please complete all required student information.',
-          });
-      }
-
-      // ======================================
-      // NORMALIZE
-      // ======================================
-
-      const normalizedFirstName =
-        String(
-          firstName
-        ).trim();
-
-      const normalizedMiddleName =
-        middleName
-          ? String(
-              middleName
-            ).trim()
-          : null;
-
-      const normalizedLastName =
-        String(
-          lastName
-        ).trim();
-
-      const normalizedEmail =
-        String(
-          email
-        )
-          .trim()
-          .toLowerCase();
-
-      const normalizedContactNumber =
-        String(
-          contactNumber
-        ).trim();
-
-      const normalizedGradeLevel =
-        String(
-          gradeLevel
-        ).trim();
-
-      const normalizedSection =
-        String(
-          section
-        ).trim();
-
-      const normalizedStatus =
-        String(
-          accountStatus ||
-            'ACTIVE'
-        ).toUpperCase();
-
-      const passwordValue =
-        String(
-          password
-        );
-
-      // ======================================
-      // USERNAME
-      // ======================================
-
-      const suggestedUsername =
-        generateSuggestedUsername(
-          normalizedFirstName,
-          normalizedLastName
-        );
-
-      const normalizedUsername =
-        String(
-          username ||
-            suggestedUsername
-        )
-          .trim()
-          .toLowerCase();
-
-      if (
-        !normalizedUsername
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'USERNAME_REQUIRED',
-
-            message:
-              'Username is required.',
-          });
-      }
-
-      const usernamePattern =
-        /^[a-z0-9]+$/;
-
-      if (
-        !usernamePattern.test(
-          normalizedUsername
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_USERNAME',
-
-            message:
-              'Username may contain letters and numbers only.',
-          });
-      }
-
-      if (
-        normalizedUsername.length <
-        3
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_USERNAME',
-
-            message:
-              'Username must contain at least 3 characters.',
-          });
-      }
-
-      // ======================================
-      // DUPLICATE USERNAME
-      // ======================================
-
-      const existingUsername =
-        db.prepare(`
-          SELECT
-            id
-
-          FROM users
-
-          WHERE
-            LOWER(username)
-              =
-            LOWER(?)
-        `).get(
-          normalizedUsername
-        );
-
-      if (
-        existingUsername
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-
-            code:
-              'USERNAME_EXISTS',
-
-            message:
-              'This username is already being used. Please choose another username.',
-          });
-      }
-
-      // ======================================
-      // EMAIL
-      // ======================================
-
-      const emailPattern =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-      if (
-        !emailPattern.test(
-          normalizedEmail
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_EMAIL',
-
-            message:
-              'Please enter a valid email address.',
-          });
-      }
-
-      const existingEmail =
-        db.prepare(`
-          SELECT
-            id
-
-          FROM users
-
-          WHERE
-            LOWER(email)
-              =
-            LOWER(?)
-        `).get(
-          normalizedEmail
-        );
-
-      if (
-        existingEmail
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-
-            code:
-              'EMAIL_EXISTS',
-
-            message:
-              'This email address is already being used.',
-          });
-      }
-
-      // ======================================
-      // CONTACT NUMBER
-      // ======================================
-
-      if (
-        !/^[0-9]+$/.test(
-          normalizedContactNumber
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_CONTACT_NUMBER',
-
-            message:
-              'Contact Number must contain numbers only.',
-          });
-      }
-
-      if (
-        normalizedContactNumber.length <
-          10 ||
-        normalizedContactNumber.length >
-          15
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_CONTACT_NUMBER',
-
-            message:
-              'Contact Number must contain 10 to 15 digits.',
-          });
-      }
-
-      // ======================================
-      // PASSWORD
-      // ======================================
-
-      if (
-        passwordValue.length <
-        8
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'WEAK_PASSWORD',
-
-            message:
-              'Password must contain at least 8 characters.',
-          });
-      }
-
-      const hasLetter =
-        /[A-Za-z]/.test(
-          passwordValue
-        );
-
-      const hasNumber =
-        /[0-9]/.test(
-          passwordValue
-        );
-
-      const hasSpecialCharacter =
-        /[^A-Za-z0-9\s]/.test(
-          passwordValue
-        );
-
-      if (
-        !hasLetter
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'PASSWORD_LETTER_REQUIRED',
-
-            message:
-              'Password must contain at least one letter.',
-          });
-      }
-
-      if (
-        !hasNumber
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'PASSWORD_NUMBER_REQUIRED',
-
-            message:
-              'Password must contain at least one number.',
-          });
-      }
-
-      if (
-        !hasSpecialCharacter
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'PASSWORD_SPECIAL_CHARACTER_REQUIRED',
-
-            message:
-              'Password must contain at least one special character such as !, @, #, $, %, or &.',
-          });
-      }
-
-      // ======================================
-      // ACCOUNT STATUS
-      // ======================================
-
-      if (
-        normalizedStatus !==
-          'ACTIVE' &&
-        normalizedStatus !==
-          'INACTIVE'
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_ACCOUNT_STATUS',
-
-            message:
-              'Account status must be ACTIVE or INACTIVE.',
-          });
-      }
-
-      // ======================================
-      // GENERATE STUDENT ID
-      // ======================================
-
-      const generatedStudentId =
-        generateNextStudentId();
-
-      const existingStudentNumber =
-        db.prepare(`
-          SELECT
-            id
-
-          FROM users
-
-          WHERE
-            student_number = ?
-        `).get(
-          generatedStudentId
-        );
-
-      if (
-        existingStudentNumber
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-
-            code:
-              'STUDENT_ID_EXISTS',
-
-            message:
-              'The generated Student ID already exists. Please try again.',
-          });
-      }
-
-      // ======================================
-      // HASH PASSWORD
-      // ======================================
-
-      const passwordHash =
-        await bcrypt.hash(
-          passwordValue,
-          10
-        );
-
-      // ======================================
-      // CREATE STUDENT
-      // ======================================
-
-      const result =
-        db.prepare(`
-          INSERT INTO users (
-            student_number,
-            username,
-
-            first_name,
-            middle_name,
-            last_name,
-
-            email,
-            contact_number,
-
-            password_hash,
-
-            role,
-
-            account_status,
-
-            grade_level,
-            section,
-
-            profile_picture_uri
-          )
-
-          VALUES (
-            ?,
-            ?,
-
-            ?,
-            ?,
-            ?,
-
-            ?,
-            ?,
-
-            ?,
-
-            'STUDENT',
-
-            ?,
-
-            ?,
-            ?,
-
-            NULL
-          )
-        `).run(
-          generatedStudentId,
-          normalizedUsername,
+router.post("/", async (req, res) => {
+  try {
+    const {
+      username,
 
+      firstName,
+      middleName,
+      lastName,
+
+      email,
+      contactNumber,
+
+      gradeLevel,
+      section,
+
+      password,
+
+      accountStatus,
+    } = req.body;
+
+    // ======================================
+    // REQUIRED FIELDS
+    // ======================================
+
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !contactNumber ||
+      !gradeLevel ||
+      !section ||
+      !password
+    ) {
+      return res.status(400).json({
+        success: false,
+
+        code: "MISSING_FIELDS",
+
+        message: "Please complete all required student information.",
+      });
+    }
+
+    // ======================================
+    // NORMALIZE
+    // ======================================
+
+    const normalizedFirstName = String(firstName).trim();
+
+    const normalizedMiddleName = middleName ? String(middleName).trim() : null;
+
+    const normalizedLastName = String(lastName).trim();
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const normalizedContactNumber = String(contactNumber).trim();
+
+    const normalizedGradeLevel = String(gradeLevel).trim();
+
+    const normalizedSection = String(section).trim();
+
+    const normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
+
+    const passwordValue = String(password);
+
+    // ======================================
+    // USERNAME
+    // ======================================
+
+    const suggestedUsername = generateSuggestedUsername(
+      normalizedFirstName,
+      normalizedLastName,
+    );
+
+    const normalizedUsername = String(username || suggestedUsername)
+      .trim()
+      .toLowerCase();
+
+    if (!normalizedUsername) {
+      return res.status(400).json({
+        success: false,
+
+        code: "USERNAME_REQUIRED",
+
+        message: "Username is required.",
+      });
+    }
+
+    const usernamePattern = /^[a-z0-9]+$/;
+
+    if (!usernamePattern.test(normalizedUsername)) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_USERNAME",
+
+        message: "Username may contain letters and numbers only.",
+      });
+    }
+
+    if (normalizedUsername.length < 3) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_USERNAME",
+
+        message: "Username must contain at least 3 characters.",
+      });
+    }
+
+    // ======================================
+    // DUPLICATE USERNAME
+    // ======================================
+
+    const existingUsername = db
+      .prepare(
+        `
+            SELECT
+              id
+
+            FROM users
+
+            WHERE
+              LOWER(username)
+                =
+              LOWER(?)
+          `,
+      )
+      .get(normalizedUsername);
+
+    if (existingUsername) {
+      return res.status(409).json({
+        success: false,
+
+        code: "USERNAME_EXISTS",
+
+        message:
+          "This username is already being used. Please choose another username.",
+      });
+    }
+
+    // ======================================
+    // EMAIL
+    // ======================================
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_EMAIL",
+
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    const existingEmail = db
+      .prepare(
+        `
+            SELECT
+              id
+
+            FROM users
+
+            WHERE
+              LOWER(email)
+                =
+              LOWER(?)
+          `,
+      )
+      .get(normalizedEmail);
+
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+
+        code: "EMAIL_EXISTS",
+
+        message: "This email address is already being used.",
+      });
+    }
+
+    // ======================================
+    // CONTACT NUMBER
+    // ======================================
+
+    if (!/^[0-9]+$/.test(normalizedContactNumber)) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_CONTACT_NUMBER",
+
+        message: "Contact Number must contain numbers only.",
+      });
+    }
+
+    if (
+      normalizedContactNumber.length < 10 ||
+      normalizedContactNumber.length > 15
+    ) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_CONTACT_NUMBER",
+
+        message: "Contact Number must contain 10 to 15 digits.",
+      });
+    }
+
+    // ======================================
+    // PASSWORD
+    // ======================================
+
+    if (passwordValue.length < 8) {
+      return res.status(400).json({
+        success: false,
+
+        code: "WEAK_PASSWORD",
+
+        message: "Password must contain at least 8 characters.",
+      });
+    }
+
+    const hasLetter = /[A-Za-z]/.test(passwordValue);
+
+    const hasNumber = /[0-9]/.test(passwordValue);
+
+    const hasSpecialCharacter = /[^A-Za-z0-9\s]/.test(passwordValue);
+
+    if (!hasLetter) {
+      return res.status(400).json({
+        success: false,
+
+        code: "PASSWORD_LETTER_REQUIRED",
+
+        message: "Password must contain at least one letter.",
+      });
+    }
+
+    if (!hasNumber) {
+      return res.status(400).json({
+        success: false,
+
+        code: "PASSWORD_NUMBER_REQUIRED",
+
+        message: "Password must contain at least one number.",
+      });
+    }
+
+    if (!hasSpecialCharacter) {
+      return res.status(400).json({
+        success: false,
+
+        code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
+
+        message:
+          "Password must contain at least one special character such as !, @, #, $, %, or &.",
+      });
+    }
+
+    // ======================================
+    // ACCOUNT STATUS
+    // ======================================
+
+    if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_ACCOUNT_STATUS",
+
+        message: "Account status must be ACTIVE or INACTIVE.",
+      });
+    }
+
+    // ======================================
+    // GENERATE STUDENT ID
+    // ======================================
+
+    const generatedStudentId = generateNextStudentId();
+
+    const existingStudentNumber = db
+      .prepare(
+        `
+            SELECT
+              id
+
+            FROM users
+
+            WHERE
+              student_number = ?
+          `,
+      )
+      .get(generatedStudentId);
+
+    if (existingStudentNumber) {
+      return res.status(409).json({
+        success: false,
+
+        code: "STUDENT_ID_EXISTS",
+
+        message: "The generated Student ID already exists. Please try again.",
+      });
+    }
+
+    // ======================================
+    // HASH PASSWORD
+    // ======================================
+
+    const passwordHash = await bcrypt.hash(passwordValue, 10);
+
+    // ======================================
+    // CREATE STUDENT
+    // ======================================
+
+    const result = db
+      .prepare(
+        `
+            INSERT INTO users (
+              student_number,
+              username,
+
+              first_name,
+              middle_name,
+              last_name,
+
+              email,
+              contact_number,
+
+              password_hash,
+
+              role,
+
+              account_status,
+
+              grade_level,
+              section,
+
+              profile_picture_uri
+            )
+
+            VALUES (
+              ?,
+              ?,
+
+              ?,
+              ?,
+              ?,
+
+              ?,
+              ?,
+
+              ?,
+
+              'STUDENT',
+
+              ?,
+
+              ?,
+              ?,
+
+              NULL
+            )
+          `,
+      )
+      .run(
+        generatedStudentId,
+        normalizedUsername,
+
+        normalizedFirstName,
+        normalizedMiddleName,
+        normalizedLastName,
+
+        normalizedEmail,
+        normalizedContactNumber,
+
+        passwordHash,
+
+        normalizedStatus,
+
+        normalizedGradeLevel,
+        normalizedSection,
+      );
+
+    const createdStudentId = Number(result.lastInsertRowid);
+
+    // ======================================
+    // SUCCESS
+    // ======================================
+
+    return res.status(201).json({
+      success: true,
+
+      message: "Student account created successfully.",
+
+      student: {
+        id: createdStudentId,
+
+        studentId: generatedStudentId,
+
+        username: normalizedUsername,
+
+        firstName: normalizedFirstName,
+
+        middleName: normalizedMiddleName,
+
+        lastName: normalizedLastName,
+
+        fullName: formatName(
           normalizedFirstName,
           normalizedMiddleName,
           normalizedLastName,
+        ),
 
-          normalizedEmail,
-          normalizedContactNumber,
+        email: normalizedEmail,
 
-          passwordHash,
+        contactNumber: normalizedContactNumber,
 
-          normalizedStatus,
+        gradeLevel: normalizedGradeLevel,
 
-          normalizedGradeLevel,
-          normalizedSection
-        );
+        section: normalizedSection,
 
-      const createdStudentId =
-        Number(
-          result.lastInsertRowid
-        );
+        accountStatus: normalizedStatus,
 
-      // ======================================
-      // SUCCESS
-      // ======================================
+        profilePictureUri: null,
 
-      return res
-        .status(201)
-        .json({
-          success: true,
+        role: "STUDENT",
+      },
+    });
+  } catch (error) {
+    console.error("Create student error:", error);
 
-          message:
-            'Student account created successfully.',
+    return res.status(500).json({
+      success: false,
 
-          student: {
-            id:
-              createdStudentId,
+      code: "CREATE_STUDENT_ERROR",
 
-            studentId:
-              generatedStudentId,
+      message: "Failed to create student account.",
 
-            username:
-              normalizedUsername,
-
-            firstName:
-              normalizedFirstName,
-
-            middleName:
-              normalizedMiddleName,
-
-            lastName:
-              normalizedLastName,
-
-            fullName:
-              formatName(
-                normalizedFirstName,
-                normalizedMiddleName,
-                normalizedLastName
-              ),
-
-            email:
-              normalizedEmail,
-
-            contactNumber:
-              normalizedContactNumber,
-
-            gradeLevel:
-              normalizedGradeLevel,
-
-            section:
-              normalizedSection,
-
-            accountStatus:
-              normalizedStatus,
-
-            profilePictureUri:
-              null,
-
-            role:
-              'STUDENT',
-          },
-        });
-    } catch (error) {
-      console.error(
-        'Create student error:',
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          code:
-            'CREATE_STUDENT_ERROR',
-
-          message:
-            'Failed to create student account.',
-
-          error:
-            error.message,
-        });
-    }
+      error: error.message,
+    });
   }
-);
+});
 
 // ==========================================
 // UPLOAD / CHANGE PROFILE PICTURE
 //
 // POST /api/students/:id/profile-picture
-//
-// FORM-DATA FIELD:
-// profilePicture
 // ==========================================
 
-router.post(
-  '/:id/profile-picture',
-  (
-    req,
-    res
-  ) => {
-    uploadProfilePicture.single(
-      'profilePicture'
-    )(
-      req,
-      res,
-      (
-        uploadError
-      ) => {
-        if (
-          uploadError
-        ) {
-          console.error(
-            'Profile picture upload error:',
-            uploadError
-          );
+router.post("/:id/profile-picture", (req, res) => {
+  uploadProfilePicture.single("profilePicture")(req, res, (uploadError) => {
+    if (uploadError) {
+      console.error("Profile picture upload error:", uploadError);
 
-          let message =
-            uploadError.message ||
-            'Failed to upload profile picture.';
+      let message = uploadError.message || "Failed to upload profile picture.";
 
-          if (
-            uploadError.code ===
-            'LIMIT_FILE_SIZE'
-          ) {
-            message =
-              'Profile picture must not exceed 5 MB.';
-          }
+      if (uploadError.code === "LIMIT_FILE_SIZE") {
+        message = "Profile picture must not exceed 5 MB.";
+      }
 
-          return res
-            .status(400)
-            .json({
-              success: false,
+      return res.status(400).json({
+        success: false,
 
-              code:
-                'PROFILE_PICTURE_UPLOAD_ERROR',
+        code: "PROFILE_PICTURE_UPLOAD_ERROR",
 
-              message,
-            });
+        message,
+      });
+    }
+
+    try {
+      const studentId = Number(req.params.id);
+
+      if (!Number.isInteger(studentId) || studentId <= 0) {
+        if (req.file) {
+          deleteProfilePictureFile(req.file.path);
         }
 
-        try {
-          const studentId =
-            Number(
-              req.params.id
-            );
+        return res.status(400).json({
+          success: false,
 
-          // ====================================
-          // VALIDATE ID
-          // ====================================
+          code: "INVALID_STUDENT_ID",
 
-          if (
-            !Number.isInteger(
-              studentId
-            ) ||
-            studentId <= 0
-          ) {
-            if (
-              req.file
-            ) {
-              deleteProfilePictureFile(
-                req.file.path
-              );
-            }
+          message: "Invalid student ID.",
+        });
+      }
 
-            return res
-              .status(400)
-              .json({
-                success: false,
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
 
-                code:
-                  'INVALID_STUDENT_ID',
+          code: "PROFILE_PICTURE_REQUIRED",
 
-                message:
-                  'Invalid student ID.',
-              });
-          }
+          message: "Please select a profile picture.",
+        });
+      }
 
-          // ====================================
-          // FILE REQUIRED
-          // ====================================
+      const student = db
+        .prepare(
+          `
+                SELECT
+                  id,
 
-          if (
-            !req.file
-          ) {
-            return res
-              .status(400)
-              .json({
-                success: false,
+                  student_number,
+                  username,
 
-                code:
-                  'PROFILE_PICTURE_REQUIRED',
+                  first_name,
+                  middle_name,
+                  last_name,
 
-                message:
-                  'Please select a profile picture.',
-              });
-          }
+                  profile_picture_uri
 
-          // ====================================
-          // FIND STUDENT
-          // ====================================
+                FROM users
 
-          const student =
-            db.prepare(`
-              SELECT
-                id,
+                WHERE
+                  id = ?
 
-                student_number,
+                  AND
+                  role =
+                    'STUDENT'
 
-                first_name,
-                middle_name,
-                last_name,
+                  AND
+                  username NOT LIKE
+                    '__archived_student_%'
+              `,
+        )
+        .get(studentId);
 
-                profile_picture_uri
+      if (!student) {
+        deleteProfilePictureFile(req.file.path);
 
-              FROM users
+        return res.status(404).json({
+          success: false,
+
+          code: "STUDENT_NOT_FOUND",
+
+          message: "Student not found.",
+        });
+      }
+
+      const profilePictureUri = `/uploads/student-profiles/${req.file.filename}`;
+
+      db.prepare(
+        `
+              UPDATE users
+
+              SET
+                profile_picture_uri = ?,
+
+                updated_at =
+                  CURRENT_TIMESTAMP
 
               WHERE
                 id = ?
@@ -1324,135 +980,53 @@ router.post(
                 AND
                 role =
                   'STUDENT'
-            `).get(
-              studentId
-            );
+            `,
+      ).run(profilePictureUri, studentId);
 
-          if (
-            !student
-          ) {
-            deleteProfilePictureFile(
-              req.file.path
-            );
-
-            return res
-              .status(404)
-              .json({
-                success: false,
-
-                code:
-                  'STUDENT_NOT_FOUND',
-
-                message:
-                  'Student not found.',
-              });
-          }
-
-          // ====================================
-          // NEW PUBLIC URI
-          // ====================================
-
-          const profilePictureUri =
-            `/uploads/student-profiles/${req.file.filename}`;
-
-          // ====================================
-          // SAVE URI
-          // ====================================
-
-          db.prepare(`
-            UPDATE users
-
-            SET
-              profile_picture_uri = ?,
-
-              updated_at =
-                CURRENT_TIMESTAMP
-
-            WHERE
-              id = ?
-
-              AND
-              role =
-                'STUDENT'
-          `).run(
-            profilePictureUri,
-            studentId
-          );
-
-          // ====================================
-          // DELETE OLD FILE
-          // ====================================
-
-          if (
-            student.profile_picture_uri
-          ) {
-            deleteProfilePictureFile(
-              student.profile_picture_uri
-            );
-          }
-
-          // ====================================
-          // SUCCESS
-          // ====================================
-
-          return res.json({
-            success: true,
-
-            message:
-              'Profile picture updated successfully.',
-
-            profilePictureUri,
-
-            student: {
-              id:
-                student.id,
-
-              studentId:
-                student.student_number,
-
-              fullName:
-                formatName(
-                  student.first_name,
-                  student.middle_name,
-                  student.last_name
-                ),
-
-              profilePictureUri,
-            },
-          });
-        } catch (error) {
-          console.error(
-            'Save profile picture error:',
-            error
-          );
-
-          if (
-            req.file
-          ) {
-            deleteProfilePictureFile(
-              req.file.path
-            );
-          }
-
-          return res
-            .status(500)
-            .json({
-              success: false,
-
-              code:
-                'SAVE_PROFILE_PICTURE_ERROR',
-
-              message:
-                'Failed to save student profile picture.',
-
-              error:
-                error.message,
-            });
-        }
+      if (student.profile_picture_uri) {
+        deleteProfilePictureFile(student.profile_picture_uri);
       }
-    );
-  }
-);
+
+      return res.json({
+        success: true,
+
+        message: "Profile picture updated successfully.",
+
+        profilePictureUri,
+
+        student: {
+          id: student.id,
+
+          studentId: student.student_number,
+
+          fullName: formatName(
+            student.first_name,
+            student.middle_name,
+            student.last_name,
+          ),
+
+          profilePictureUri,
+        },
+      });
+    } catch (error) {
+      console.error("Save profile picture error:", error);
+
+      if (req.file) {
+        deleteProfilePictureFile(req.file.path);
+      }
+
+      return res.status(500).json({
+        success: false,
+
+        code: "SAVE_PROFILE_PICTURE_ERROR",
+
+        message: "Failed to save student profile picture.",
+
+        error: error.message,
+      });
+    }
+  });
+});
 
 // ==========================================
 // REMOVE PROFILE PICTURE
@@ -1460,965 +1034,71 @@ router.post(
 // DELETE /api/students/:id/profile-picture
 // ==========================================
 
-router.delete(
-  '/:id/profile-picture',
-  (
-    req,
-    res
-  ) => {
-    try {
-      const studentId =
-        Number(
-          req.params.id
-        );
+router.delete("/:id/profile-picture", (req, res) => {
+  try {
+    const studentId = Number(req.params.id);
 
-      // ======================================
-      // VALIDATE
-      // ======================================
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return res.status(400).json({
+        success: false,
 
-      if (
-        !Number.isInteger(
-          studentId
-        ) ||
-        studentId <= 0
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
+        code: "INVALID_STUDENT_ID",
 
-            code:
-              'INVALID_STUDENT_ID',
+        message: "Invalid student ID.",
+      });
+    }
 
-            message:
-              'Invalid student ID.',
-          });
-      }
+    const student = db
+      .prepare(
+        `
+            SELECT
+              id,
+              username,
+              profile_picture_uri
 
-      // ======================================
-      // FIND STUDENT
-      // ======================================
+            FROM users
 
-      const student =
-        db.prepare(`
-          SELECT
-            id,
+            WHERE
+              id = ?
 
-            profile_picture_uri
+              AND
+              role =
+                'STUDENT'
 
-          FROM users
+              AND
+              username NOT LIKE
+                '__archived_student_%'
+          `,
+      )
+      .get(studentId);
 
-          WHERE
-            id = ?
+    if (!student) {
+      return res.status(404).json({
+        success: false,
 
-            AND
-            role =
-              'STUDENT'
-        `).get(
-          studentId
-        );
+        code: "STUDENT_NOT_FOUND",
 
-      if (
-        !student
-      ) {
-        return res
-          .status(404)
-          .json({
-            success: false,
+        message: "Student not found.",
+      });
+    }
 
-            code:
-              'STUDENT_NOT_FOUND',
-
-            message:
-              'Student not found.',
-          });
-      }
-
-      // ======================================
-      // NOTHING TO REMOVE
-      // ======================================
-
-      if (
-        !student.profile_picture_uri
-      ) {
-        return res.json({
-          success: true,
-
-          message:
-            'Student does not have a profile picture.',
-
-          profilePictureUri:
-            null,
-        });
-      }
-
-      // ======================================
-      // REMOVE FROM DATABASE
-      // ======================================
-
-      db.prepare(`
-        UPDATE users
-
-        SET
-          profile_picture_uri =
-            NULL,
-
-          updated_at =
-            CURRENT_TIMESTAMP
-
-        WHERE
-          id = ?
-
-          AND
-          role =
-            'STUDENT'
-      `).run(
-        studentId
-      );
-
-      // ======================================
-      // REMOVE FILE
-      // ======================================
-
-      deleteProfilePictureFile(
-        student.profile_picture_uri
-      );
-
+    if (!student.profile_picture_uri) {
       return res.json({
         success: true,
 
-        message:
-          'Profile picture removed successfully.',
+        message: "Student does not have a profile picture.",
 
-        profilePictureUri:
-          null,
+        profilePictureUri: null,
       });
-    } catch (error) {
-      console.error(
-        'Remove profile picture error:',
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          code:
-            'REMOVE_PROFILE_PICTURE_ERROR',
-
-          message:
-            'Failed to remove student profile picture.',
-
-          error:
-            error.message,
-        });
     }
-  }
-);
 
-// ==========================================
-// GET SINGLE STUDENT PROFILE
-//
-// GET /api/students/:id
-// ==========================================
-
-router.get(
-  '/:id',
-  (
-    req,
-    res
-  ) => {
-    try {
-      const studentId =
-        Number(
-          req.params.id
-        );
-
-      // ======================================
-      // VALIDATE
-      // ======================================
-
-      if (
-        !Number.isInteger(
-          studentId
-        ) ||
-        studentId <= 0
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            message:
-              'Invalid student ID.',
-          });
-      }
-
-      // ======================================
-      // STUDENT
-      // ======================================
-
-      const student =
-        db.prepare(`
-          SELECT
-            id,
-
-            COALESCE(
-              student_number,
-              username
-            ) AS student_id,
-
-            username,
-
-            first_name,
-            middle_name,
-            last_name,
-
-            TRIM(
-              first_name || ' ' ||
-              COALESCE(
-                middle_name || ' ',
-                ''
-              ) ||
-              last_name
-            ) AS full_name,
-
-            email,
-            contact_number,
-
-            grade_level,
-            section,
-
-            account_status,
-
-            profile_picture_uri
-
-          FROM users
-
-          WHERE
-            id = ?
-
-            AND
-            role =
-              'STUDENT'
-        `).get(
-          studentId
-        );
-
-      if (
-        !student
-      ) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-
-            message:
-              'Student not found.',
-          });
-      }
-
-      // ======================================
-      // FINANCIAL TOTALS
-      // ======================================
-
-      const totals =
-        db.prepare(`
-          SELECT
-
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN
-                    cancelled_at
-                      IS NULL
-
-                    AND
-                    UPPER(
-                      COALESCE(
-                        fine_status,
-                        'UNPAID'
-                      )
-                    ) !=
-                      'CANCELLED'
-
-                  THEN
-                    amount_centavos
-
-                  ELSE
-                    0
-                END
-              ),
-              0
-            ) / 100.0
-              AS total_fines,
-
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN
-                    cancelled_at
-                      IS NULL
-
-                    AND
-                    paid_at
-                      IS NULL
-
-                    AND
-                    UPPER(
-                      COALESCE(
-                        fine_status,
-                        'UNPAID'
-                      )
-                    )
-                      NOT IN (
-                        'PAID',
-                        'CANCELLED',
-                        'WAIVED'
-                      )
-
-                  THEN
-                    amount_centavos
-
-                  ELSE
-                    0
-                END
-              ),
-              0
-            ) / 100.0
-              AS outstanding_balance,
-
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN
-                    cancelled_at
-                      IS NULL
-
-                    AND
-                    (
-                      paid_at
-                        IS NOT NULL
-
-                      OR
-
-                      UPPER(
-                        COALESCE(
-                          fine_status,
-                          ''
-                        )
-                      ) =
-                        'PAID'
-                    )
-
-                  THEN
-                    amount_centavos
-
-                  ELSE
-                    0
-                END
-              ),
-              0
-            ) / 100.0
-              AS total_paid
-
-          FROM fines
-
-          WHERE
-            student_id = ?
-        `).get(
-          studentId
-        );
-
-      // ======================================
-      // FINES HISTORY
-      // ======================================
-
-      const fines =
-        db.prepare(`
-          SELECT
-            f.id,
-
-            f.fine_reference,
-
-            vt.violation_name,
-
-            f.amount_centavos
-              / 100.0
-              AS amount,
-
-            f.remarks,
-
-            f.issued_at,
-
-            f.paid_at,
-
-            f.cancelled_at,
-
-            f.cancellation_reason,
-
-            CASE
-
-              WHEN
-                f.cancelled_at
-                  IS NOT NULL
-
-                OR
-
-                UPPER(
-                  COALESCE(
-                    f.fine_status,
-                    ''
-                  )
-                ) =
-                  'CANCELLED'
-
-              THEN
-                'CANCELLED'
-
-              WHEN
-                f.paid_at
-                  IS NOT NULL
-
-                OR
-
-                UPPER(
-                  COALESCE(
-                    f.fine_status,
-                    ''
-                  )
-                ) =
-                  'PAID'
-
-              THEN
-                'PAID'
-
-              WHEN
-                UPPER(
-                  COALESCE(
-                    f.fine_status,
-                    ''
-                  )
-                ) =
-                  'WAIVED'
-
-              THEN
-                'WAIVED'
-
-              WHEN
-                UPPER(
-                  COALESCE(
-                    f.fine_status,
-                    ''
-                  )
-                ) =
-                  'PENDING'
-
-              THEN
-                'PENDING'
-
-              ELSE
-                'UNPAID'
-
-            END AS status,
-
-            CASE
-              WHEN
-                officer.id
-                  IS NOT NULL
-
-              THEN
-                TRIM(
-                  officer.first_name
-                  || ' ' ||
-                  officer.last_name
-                )
-
-              ELSE
-                'Unknown'
-
-            END AS officer_name
-
-          FROM fines f
-
-          JOIN violation_types vt
-            ON
-              vt.id =
-              f.violation_type_id
-
-          LEFT JOIN users officer
-            ON
-              officer.id =
-              f.recorded_by
-
-          WHERE
-            f.student_id = ?
-
-          ORDER BY
-            f.issued_at DESC,
-            f.id DESC
-
-          LIMIT 50
-        `).all(
-          studentId
-        );
-
-      // ======================================
-      // RESPONSE
-      // ======================================
-
-      return res.json({
-        success: true,
-
-        student,
-
-        totals: {
-          totalFines:
-            Number(
-              totals.total_fines ||
-                0
-            ),
-
-          outstandingBalance:
-            Number(
-              totals.outstanding_balance ||
-                0
-            ),
-
-          totalPaid:
-            Number(
-              totals.total_paid ||
-                0
-            ),
-        },
-
-        fines,
-      });
-    } catch (error) {
-      console.error(
-        'Student profile error:',
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          message:
-            'Failed to load student profile.',
-
-          error:
-            error.message,
-        });
-    }
-  }
-);
-
-// ==========================================
-// UPDATE STUDENT
-//
-// PUT /api/students/:id
-// ==========================================
-
-router.put(
-  '/:id',
-  (
-    req,
-    res
-  ) => {
-    try {
-      const studentId =
-        Number(
-          req.params.id
-        );
-
-      if (
-        !Number.isInteger(
-          studentId
-        ) ||
-        studentId <= 0
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_STUDENT_ID',
-
-            message:
-              'Invalid student ID.',
-          });
-      }
-
-      // ======================================
-      // EXISTING STUDENT
-      // ======================================
-
-      const existingStudent =
-        db.prepare(`
-          SELECT
-            id,
-
-            student_number,
-            username,
-
-            account_status,
-
-            profile_picture_uri
-
-          FROM users
-
-          WHERE
-            id = ?
-
-            AND
-            role =
-              'STUDENT'
-        `).get(
-          studentId
-        );
-
-      if (
-        !existingStudent
-      ) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-
-            code:
-              'STUDENT_NOT_FOUND',
-
-            message:
-              'Student not found.',
-          });
-      }
-
-      // ======================================
-      // REQUEST
-      // ======================================
-
-      const {
-        username,
-
-        firstName,
-        middleName,
-        lastName,
-
-        email,
-        contactNumber,
-
-        gradeLevel,
-        section,
-
-        accountStatus,
-      } =
-        req.body;
-
-      if (
-        !username ||
-        !firstName ||
-        !lastName ||
-        !email ||
-        !contactNumber ||
-        !gradeLevel ||
-        !section
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'MISSING_FIELDS',
-
-            message:
-              'Please complete all required student information.',
-          });
-      }
-
-      // ======================================
-      // NORMALIZE
-      // ======================================
-
-      const normalizedUsername =
-        String(
-          username
-        )
-          .trim()
-          .toLowerCase();
-
-      const normalizedFirstName =
-        String(
-          firstName
-        ).trim();
-
-      const normalizedMiddleName =
-        middleName
-          ? String(
-              middleName
-            ).trim()
-          : null;
-
-      const normalizedLastName =
-        String(
-          lastName
-        ).trim();
-
-      const normalizedEmail =
-        String(
-          email
-        )
-          .trim()
-          .toLowerCase();
-
-      const normalizedContactNumber =
-        String(
-          contactNumber
-        ).trim();
-
-      const normalizedGradeLevel =
-        String(
-          gradeLevel
-        ).trim();
-
-      const normalizedSection =
-        String(
-          section
-        ).trim();
-
-      const normalizedStatus =
-        String(
-          accountStatus ||
-            'ACTIVE'
-        ).toUpperCase();
-
-      // ======================================
-      // USERNAME
-      // ======================================
-
-      const usernamePattern =
-        /^[a-z0-9]+$/;
-
-      if (
-        !usernamePattern.test(
-          normalizedUsername
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_USERNAME',
-
-            message:
-              'Username may contain letters and numbers only.',
-          });
-      }
-
-      if (
-        normalizedUsername.length <
-        3
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_USERNAME',
-
-            message:
-              'Username must contain at least 3 characters.',
-          });
-      }
-
-      const duplicateUsername =
-        db.prepare(`
-          SELECT
-            id
-
-          FROM users
-
-          WHERE
-            LOWER(username)
-              =
-            LOWER(?)
-
-            AND
-            id != ?
-        `).get(
-          normalizedUsername,
-          studentId
-        );
-
-      if (
-        duplicateUsername
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-
-            code:
-              'USERNAME_EXISTS',
-
-            message:
-              'This username is already being used by another account.',
-          });
-      }
-
-      // ======================================
-      // EMAIL
-      // ======================================
-
-      const emailPattern =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-      if (
-        !emailPattern.test(
-          normalizedEmail
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_EMAIL',
-
-            message:
-              'Please enter a valid email address.',
-          });
-      }
-
-      const duplicateEmail =
-        db.prepare(`
-          SELECT
-            id
-
-          FROM users
-
-          WHERE
-            LOWER(email)
-              =
-            LOWER(?)
-
-            AND
-            id != ?
-        `).get(
-          normalizedEmail,
-          studentId
-        );
-
-      if (
-        duplicateEmail
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-
-            code:
-              'EMAIL_EXISTS',
-
-            message:
-              'This email address is already being used by another account.',
-          });
-      }
-
-      // ======================================
-      // CONTACT NUMBER
-      // ======================================
-
-      if (
-        !/^[0-9]+$/.test(
-          normalizedContactNumber
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_CONTACT_NUMBER',
-
-            message:
-              'Contact Number must contain numbers only.',
-          });
-      }
-
-      if (
-        normalizedContactNumber.length <
-          10 ||
-        normalizedContactNumber.length >
-          15
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_CONTACT_NUMBER',
-
-            message:
-              'Contact Number must contain 10 to 15 digits.',
-          });
-      }
-
-      // ======================================
-      // STATUS
-      // ======================================
-
-      if (
-        normalizedStatus !==
-          'ACTIVE' &&
-        normalizedStatus !==
-          'INACTIVE'
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            code:
-              'INVALID_ACCOUNT_STATUS',
-
-            message:
-              'Account status must be ACTIVE or INACTIVE.',
-          });
-      }
-
-      // ======================================
-      // UPDATE
-      // ======================================
-
-      const result =
-        db.prepare(`
+    db.prepare(
+      `
           UPDATE users
 
           SET
-            username = ?,
-
-            first_name = ?,
-            middle_name = ?,
-            last_name = ?,
-
-            email = ?,
-            contact_number = ?,
-
-            grade_level = ?,
-            section = ?,
-
-            account_status = ?,
+            profile_picture_uri =
+              NULL,
 
             updated_at =
               CURRENT_TIMESTAMP
@@ -2429,410 +1109,1120 @@ router.put(
             AND
             role =
               'STUDENT'
-        `).run(
-          normalizedUsername,
+        `,
+    ).run(studentId);
 
+    deleteProfilePictureFile(student.profile_picture_uri);
+
+    return res.json({
+      success: true,
+
+      message: "Profile picture removed successfully.",
+
+      profilePictureUri: null,
+    });
+  } catch (error) {
+    console.error("Remove profile picture error:", error);
+
+    return res.status(500).json({
+      success: false,
+
+      code: "REMOVE_PROFILE_PICTURE_ERROR",
+
+      message: "Failed to remove student profile picture.",
+
+      error: error.message,
+    });
+  }
+});
+
+// ==========================================
+// GET SINGLE STUDENT PROFILE
+//
+// GET /api/students/:id
+// ==========================================
+
+router.get("/:id", (req, res) => {
+  try {
+    const studentId = Number(req.params.id);
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return res.status(400).json({
+        success: false,
+
+        message: "Invalid student ID.",
+      });
+    }
+
+    const student = db
+      .prepare(
+        `
+            SELECT
+              id,
+
+              COALESCE(
+                student_number,
+                username
+              ) AS student_id,
+
+              username,
+
+              first_name,
+              middle_name,
+              last_name,
+
+              TRIM(
+                first_name || ' ' ||
+                COALESCE(
+                  middle_name || ' ',
+                  ''
+                ) ||
+                last_name
+              ) AS full_name,
+
+              email,
+              contact_number,
+
+              grade_level,
+              section,
+
+              account_status,
+
+              profile_picture_uri
+
+            FROM users
+
+            WHERE
+              id = ?
+
+              AND
+              role =
+                'STUDENT'
+
+              AND
+              username NOT LIKE
+                '__archived_student_%'
+          `,
+      )
+      .get(studentId);
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+
+        message: "Student not found.",
+      });
+    }
+
+    const totals = db
+      .prepare(
+        `
+            SELECT
+
+              COALESCE(
+                SUM(
+                  CASE
+                    WHEN
+                      cancelled_at
+                        IS NULL
+
+                      AND
+                      UPPER(
+                        COALESCE(
+                          fine_status,
+                          'UNPAID'
+                        )
+                      ) !=
+                        'CANCELLED'
+
+                    THEN
+                      amount_centavos
+
+                    ELSE
+                      0
+                  END
+                ),
+                0
+              ) / 100.0
+                AS total_fines,
+
+              COALESCE(
+                SUM(
+                  CASE
+                    WHEN
+                      cancelled_at
+                        IS NULL
+
+                      AND
+                      paid_at
+                        IS NULL
+
+                      AND
+                      UPPER(
+                        COALESCE(
+                          fine_status,
+                          'UNPAID'
+                        )
+                      )
+                        NOT IN (
+                          'PAID',
+                          'CANCELLED',
+                          'WAIVED'
+                        )
+
+                    THEN
+                      amount_centavos
+
+                    ELSE
+                      0
+                  END
+                ),
+                0
+              ) / 100.0
+                AS outstanding_balance,
+
+              COALESCE(
+                SUM(
+                  CASE
+                    WHEN
+                      cancelled_at
+                        IS NULL
+
+                      AND
+                      (
+                        paid_at
+                          IS NOT NULL
+
+                        OR
+
+                        UPPER(
+                          COALESCE(
+                            fine_status,
+                            ''
+                          )
+                        ) =
+                          'PAID'
+                      )
+
+                    THEN
+                      amount_centavos
+
+                    ELSE
+                      0
+                  END
+                ),
+                0
+              ) / 100.0
+                AS total_paid
+
+            FROM fines
+
+            WHERE
+              student_id = ?
+          `,
+      )
+      .get(studentId);
+
+    const fines = db
+      .prepare(
+        `
+            SELECT
+              f.id,
+
+              f.fine_reference,
+
+              vt.violation_name,
+
+              f.amount_centavos
+                / 100.0
+                AS amount,
+
+              f.remarks,
+
+              f.issued_at,
+
+              f.created_at,
+
+              f.paid_at,
+
+              f.cancelled_at,
+
+              f.cancellation_reason,
+
+              CASE
+
+                WHEN
+                  f.cancelled_at
+                    IS NOT NULL
+
+                  OR
+
+                  UPPER(
+                    COALESCE(
+                      f.fine_status,
+                      ''
+                    )
+                  ) =
+                    'CANCELLED'
+
+                THEN
+                  'CANCELLED'
+
+                WHEN
+                  f.paid_at
+                    IS NOT NULL
+
+                  OR
+
+                  UPPER(
+                    COALESCE(
+                      f.fine_status,
+                      ''
+                    )
+                  ) =
+                    'PAID'
+
+                THEN
+                  'PAID'
+
+                WHEN
+                  UPPER(
+                    COALESCE(
+                      f.fine_status,
+                      ''
+                    )
+                  ) =
+                    'WAIVED'
+
+                THEN
+                  'WAIVED'
+
+                WHEN
+                  UPPER(
+                    COALESCE(
+                      f.fine_status,
+                      ''
+                    )
+                  ) =
+                    'PENDING'
+
+                THEN
+                  'PENDING'
+
+                ELSE
+                  'UNPAID'
+
+              END AS status,
+
+              CASE
+                WHEN
+                  officer.id
+                    IS NOT NULL
+
+                THEN
+                  TRIM(
+                    officer.first_name
+                    || ' ' ||
+                    officer.last_name
+                  )
+
+                ELSE
+                  'Unknown'
+
+              END AS officer_name
+
+            FROM fines f
+
+            JOIN violation_types vt
+              ON
+                vt.id =
+                f.violation_type_id
+
+            LEFT JOIN users officer
+              ON
+                officer.id =
+                f.recorded_by
+
+            WHERE
+              f.student_id = ?
+
+            ORDER BY
+              f.created_at DESC,
+              f.id DESC
+
+            LIMIT 50
+          `,
+      )
+      .all(studentId);
+
+    return res.json({
+      success: true,
+
+      student,
+
+      totals: {
+        totalFines: Number(totals.total_fines || 0),
+
+        outstandingBalance: Number(totals.outstanding_balance || 0),
+
+        totalPaid: Number(totals.total_paid || 0),
+      },
+
+      fines,
+    });
+  } catch (error) {
+    console.error("Student profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+
+      message: "Failed to load student profile.",
+
+      error: error.message,
+    });
+  }
+});
+
+// ==========================================
+// UPDATE STUDENT
+//
+// PUT /api/students/:id
+// ==========================================
+
+router.put("/:id", (req, res) => {
+  try {
+    const studentId = Number(req.params.id);
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_STUDENT_ID",
+
+        message: "Invalid student ID.",
+      });
+    }
+
+    const existingStudent = db
+      .prepare(
+        `
+            SELECT
+              id,
+
+              student_number,
+              username,
+
+              account_status,
+
+              profile_picture_uri
+
+            FROM users
+
+            WHERE
+              id = ?
+
+              AND
+              role =
+                'STUDENT'
+
+              AND
+              username NOT LIKE
+                '__archived_student_%'
+          `,
+      )
+      .get(studentId);
+
+    if (!existingStudent) {
+      return res.status(404).json({
+        success: false,
+
+        code: "STUDENT_NOT_FOUND",
+
+        message: "Student not found.",
+      });
+    }
+
+    const {
+      username,
+
+      firstName,
+      middleName,
+      lastName,
+
+      email,
+      contactNumber,
+
+      gradeLevel,
+      section,
+
+      accountStatus,
+    } = req.body;
+
+    if (
+      !username ||
+      !firstName ||
+      !lastName ||
+      !email ||
+      !contactNumber ||
+      !gradeLevel ||
+      !section
+    ) {
+      return res.status(400).json({
+        success: false,
+
+        code: "MISSING_FIELDS",
+
+        message: "Please complete all required student information.",
+      });
+    }
+
+    const normalizedUsername = String(username).trim().toLowerCase();
+
+    const normalizedFirstName = String(firstName).trim();
+
+    const normalizedMiddleName = middleName ? String(middleName).trim() : null;
+
+    const normalizedLastName = String(lastName).trim();
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const normalizedContactNumber = String(contactNumber).trim();
+
+    const normalizedGradeLevel = String(gradeLevel).trim();
+
+    const normalizedSection = String(section).trim();
+
+    const normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
+
+    const usernamePattern = /^[a-z0-9]+$/;
+
+    if (!usernamePattern.test(normalizedUsername)) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_USERNAME",
+
+        message: "Username may contain letters and numbers only.",
+      });
+    }
+
+    if (normalizedUsername.length < 3) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_USERNAME",
+
+        message: "Username must contain at least 3 characters.",
+      });
+    }
+
+    const duplicateUsername = db
+      .prepare(
+        `
+            SELECT
+              id
+
+            FROM users
+
+            WHERE
+              LOWER(username)
+                =
+              LOWER(?)
+
+              AND
+              id != ?
+          `,
+      )
+      .get(normalizedUsername, studentId);
+
+    if (duplicateUsername) {
+      return res.status(409).json({
+        success: false,
+
+        code: "USERNAME_EXISTS",
+
+        message: "This username is already being used by another account.",
+      });
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_EMAIL",
+
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    const duplicateEmail = db
+      .prepare(
+        `
+            SELECT
+              id
+
+            FROM users
+
+            WHERE
+              LOWER(email)
+                =
+              LOWER(?)
+
+              AND
+              id != ?
+          `,
+      )
+      .get(normalizedEmail, studentId);
+
+    if (duplicateEmail) {
+      return res.status(409).json({
+        success: false,
+
+        code: "EMAIL_EXISTS",
+
+        message: "This email address is already being used by another account.",
+      });
+    }
+
+    if (!/^[0-9]+$/.test(normalizedContactNumber)) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_CONTACT_NUMBER",
+
+        message: "Contact Number must contain numbers only.",
+      });
+    }
+
+    if (
+      normalizedContactNumber.length < 10 ||
+      normalizedContactNumber.length > 15
+    ) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_CONTACT_NUMBER",
+
+        message: "Contact Number must contain 10 to 15 digits.",
+      });
+    }
+
+    if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_ACCOUNT_STATUS",
+
+        message: "Account status must be ACTIVE or INACTIVE.",
+      });
+    }
+
+    const result = db
+      .prepare(
+        `
+            UPDATE users
+
+            SET
+              username = ?,
+
+              first_name = ?,
+              middle_name = ?,
+              last_name = ?,
+
+              email = ?,
+              contact_number = ?,
+
+              grade_level = ?,
+              section = ?,
+
+              account_status = ?,
+
+              updated_at =
+                CURRENT_TIMESTAMP
+
+            WHERE
+              id = ?
+
+              AND
+              role =
+                'STUDENT'
+          `,
+      )
+      .run(
+        normalizedUsername,
+
+        normalizedFirstName,
+        normalizedMiddleName,
+        normalizedLastName,
+
+        normalizedEmail,
+        normalizedContactNumber,
+
+        normalizedGradeLevel,
+        normalizedSection,
+
+        normalizedStatus,
+
+        studentId,
+      );
+
+    if (Number(result.changes) === 0) {
+      return res.status(404).json({
+        success: false,
+
+        code: "STUDENT_NOT_UPDATED",
+
+        message: "Student information could not be updated.",
+      });
+    }
+
+    return res.json({
+      success: true,
+
+      message: "Student information updated successfully.",
+
+      student: {
+        id: existingStudent.id,
+
+        studentId: existingStudent.student_number,
+
+        username: normalizedUsername,
+
+        firstName: normalizedFirstName,
+
+        middleName: normalizedMiddleName,
+
+        lastName: normalizedLastName,
+
+        fullName: formatName(
           normalizedFirstName,
           normalizedMiddleName,
           normalizedLastName,
+        ),
 
-          normalizedEmail,
-          normalizedContactNumber,
+        email: normalizedEmail,
 
-          normalizedGradeLevel,
-          normalizedSection,
+        contactNumber: normalizedContactNumber,
 
-          normalizedStatus,
+        gradeLevel: normalizedGradeLevel,
 
-          studentId
-        );
+        section: normalizedSection,
 
-      if (
-        Number(
-          result.changes
-        ) === 0
-      ) {
-        return res
-          .status(404)
-          .json({
-            success: false,
+        accountStatus: normalizedStatus,
 
-            code:
-              'STUDENT_NOT_UPDATED',
+        profilePictureUri: existingStudent.profile_picture_uri,
+      },
+    });
+  } catch (error) {
+    console.error("Update student error:", error);
 
-            message:
-              'Student information could not be updated.',
-          });
-      }
+    return res.status(500).json({
+      success: false,
 
-      // ======================================
-      // SUCCESS
-      // ======================================
+      code: "UPDATE_STUDENT_ERROR",
 
-      return res.json({
-        success: true,
+      message: "Failed to update student information.",
 
-        message:
-          'Student information updated successfully.',
-
-        student: {
-          id:
-            existingStudent.id,
-
-          studentId:
-            existingStudent.student_number,
-
-          username:
-            normalizedUsername,
-
-          firstName:
-            normalizedFirstName,
-
-          middleName:
-            normalizedMiddleName,
-
-          lastName:
-            normalizedLastName,
-
-          fullName:
-            formatName(
-              normalizedFirstName,
-              normalizedMiddleName,
-              normalizedLastName
-            ),
-
-          email:
-            normalizedEmail,
-
-          contactNumber:
-            normalizedContactNumber,
-
-          gradeLevel:
-            normalizedGradeLevel,
-
-          section:
-            normalizedSection,
-
-          accountStatus:
-            normalizedStatus,
-
-          profilePictureUri:
-            existingStudent.profile_picture_uri,
-        },
-      });
-    } catch (error) {
-      console.error(
-        'Update student error:',
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          code:
-            'UPDATE_STUDENT_ERROR',
-
-          message:
-            'Failed to update student information.',
-
-          error:
-            error.message,
-        });
-    }
+      error: error.message,
+    });
   }
-);
+});
 
 // ==========================================
-// DELETE INACTIVE STUDENT
+// DELETE / ARCHIVE INACTIVE STUDENT
 //
 // DELETE /api/students/:id
+//
+// RULES:
+//
+// ACTIVE
+// -> cannot delete
+//
+// INACTIVE + unpaid/pending fine
+// -> cannot delete
+//
+// INACTIVE + ₱0 outstanding + history
+// -> archive student
+// -> preserve fines/payments
+//
+// INACTIVE + no history
+// -> permanently delete
 // ==========================================
 
-router.delete(
-  '/:id',
-  (
-    req,
-    res
-  ) => {
-    try {
-      const studentId =
-        Number(
-          req.params.id
-        );
+router.delete("/:id", (req, res) => {
+  try {
+    const studentId = Number(req.params.id);
 
-      if (
-        !Number.isInteger(
-          studentId
-        ) ||
-        studentId <= 0
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
+    // ======================================
+    // VALIDATE ID
+    // ======================================
 
-            code:
-              'INVALID_STUDENT_ID',
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return res.status(400).json({
+        success: false,
 
-            message:
-              'Invalid student ID.',
-          });
+        code: "INVALID_STUDENT_ID",
+
+        message: "Invalid student ID.",
+      });
+    }
+
+    // ======================================
+    // FIND STUDENT
+    // ======================================
+
+    const student = db
+      .prepare(
+        `
+            SELECT
+              id,
+
+              student_number,
+              username,
+
+              first_name,
+              middle_name,
+              last_name,
+
+              email,
+
+              account_status,
+
+              profile_picture_uri
+
+            FROM users
+
+            WHERE
+              id = ?
+
+              AND
+              role =
+                'STUDENT'
+
+              AND
+              username NOT LIKE
+                '__archived_student_%'
+          `,
+      )
+      .get(studentId);
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+
+        code: "STUDENT_NOT_FOUND",
+
+        message: "Student not found.",
+      });
+    }
+
+    // ======================================
+    // STUDENT MUST BE INACTIVE
+    // ======================================
+
+    const accountStatus = String(student.account_status || "").toUpperCase();
+
+    const canDelete =
+      accountStatus === "INACTIVE" || accountStatus === "DEACTIVATED";
+
+    if (!canDelete) {
+      return res.status(409).json({
+        success: false,
+
+        code: "STUDENT_ACTIVE",
+
+        message:
+          "Active students cannot be deleted. Set the student account to Inactive first.",
+      });
+    }
+
+    // ======================================
+    // CHECK UNPAID / PENDING FINES
+    // ======================================
+
+    const outstandingFineResult = db
+      .prepare(
+        `
+            SELECT
+              COUNT(*) AS total,
+
+              COALESCE(
+                SUM(
+                  amount_centavos
+                ),
+                0
+              ) AS total_centavos
+
+            FROM fines
+
+            WHERE
+              student_id = ?
+
+              AND
+              cancelled_at IS NULL
+
+              AND
+              paid_at IS NULL
+
+              AND
+              UPPER(
+                COALESCE(
+                  fine_status,
+                  'UNPAID'
+                )
+              )
+              NOT IN (
+                'PAID',
+                'CANCELLED',
+                'WAIVED'
+              )
+          `,
+      )
+      .get(studentId);
+
+    const outstandingFineCount = Number(outstandingFineResult?.total || 0);
+
+    const outstandingBalance =
+      Number(outstandingFineResult?.total_centavos || 0) / 100;
+
+    // ======================================
+    // BLOCK DELETE IF BALANCE REMAINS
+    // ======================================
+
+    if (outstandingFineCount > 0 || outstandingBalance > 0) {
+      return res.status(409).json({
+        success: false,
+
+        code: "STUDENT_HAS_OUTSTANDING_FINES",
+
+        message: `This student cannot be deleted because there are still unpaid or pending fines. Outstanding balance: ₱${outstandingBalance.toFixed(
+          2,
+        )}.`,
+
+        outstanding: {
+          fines: outstandingFineCount,
+
+          balance: outstandingBalance,
+        },
+      });
+    }
+
+    // ======================================
+    // COUNT ALL FINE HISTORY
+    // ======================================
+
+    const fineResult = db
+      .prepare(
+        `
+            SELECT
+              COUNT(*) AS total
+
+            FROM fines
+
+            WHERE
+              student_id = ?
+          `,
+      )
+      .get(studentId);
+
+    const fineCount = Number(fineResult?.total || 0);
+
+    // ======================================
+    // COUNT ALL PAYMENT HISTORY
+    // ======================================
+
+    const paymentResult = db
+      .prepare(
+        `
+            SELECT
+              COUNT(*) AS total
+
+            FROM payments
+
+            WHERE
+              student_id = ?
+          `,
+      )
+      .get(studentId);
+
+    const paymentCount = Number(paymentResult?.total || 0);
+
+    // ======================================
+    // HAS HISTORICAL RECORDS
+    //
+    // Archive instead of physically
+    // deleting the user row.
+    // ======================================
+
+    if (fineCount > 0 || paymentCount > 0) {
+      const archiveTimestamp = Date.now();
+
+      const archivedUsername = `${ARCHIVED_USERNAME_PREFIX}${student.id}_${archiveTimestamp}`;
+
+      const archivedEmail = `archived-student-${student.id}-${archiveTimestamp}@smartfine.local`;
+
+      const archiveResult = db
+        .prepare(
+          `
+              UPDATE users
+
+              SET
+                username = ?,
+
+                email = ?,
+
+                account_status =
+                  'INACTIVE',
+
+                profile_picture_uri =
+                  NULL,
+
+                updated_at =
+                  CURRENT_TIMESTAMP
+
+              WHERE
+                id = ?
+
+                AND
+                role =
+                  'STUDENT'
+            `,
+        )
+        .run(archivedUsername, archivedEmail, studentId);
+
+      if (Number(archiveResult.changes) === 0) {
+        return res.status(500).json({
+          success: false,
+
+          code: "STUDENT_ARCHIVE_FAILED",
+
+          message: "The student account could not be removed.",
+        });
       }
 
-      // ======================================
-      // STUDENT
-      // ======================================
+      // ====================================
+      // REMOVE PROFILE PICTURE FILE
+      // ====================================
 
-      const student =
-        db.prepare(`
-          SELECT
-            id,
-
-            student_number,
-            username,
-
-            first_name,
-            middle_name,
-            last_name,
-
-            account_status,
-
-            profile_picture_uri
-
-          FROM users
-
-          WHERE
-            id = ?
-
-            AND
-            role =
-              'STUDENT'
-        `).get(
-          studentId
-        );
-
-      if (
-        !student
-      ) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-
-            code:
-              'STUDENT_NOT_FOUND',
-
-            message:
-              'Student not found.',
-          });
+      if (student.profile_picture_uri) {
+        deleteProfilePictureFile(student.profile_picture_uri);
       }
 
-      // ======================================
-      // STATUS
-      // ======================================
-
-      const accountStatus =
-        String(
-          student.account_status ||
-            ''
-        ).toUpperCase();
-
-      const canDelete =
-        accountStatus ===
-          'INACTIVE' ||
-        accountStatus ===
-          'DEACTIVATED';
-
-      if (
-        !canDelete
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-
-            code:
-              'STUDENT_ACTIVE',
-
-            message:
-              'Active students cannot be deleted. Set the student account to Inactive first.',
-          });
-      }
-
-      // ======================================
-      // FINES
-      // ======================================
-
-      const fineResult =
-        db.prepare(`
-          SELECT
-            COUNT(*) AS total
-
-          FROM fines
-
-          WHERE
-            student_id = ?
-        `).get(
-          studentId
-        );
-
-      const fineCount =
-        Number(
-          fineResult.total
-        ) || 0;
-
-      // ======================================
-      // PAYMENTS
-      // ======================================
-
-      const paymentResult =
-        db.prepare(`
-          SELECT
-            COUNT(*) AS total
-
-          FROM payments
-
-          WHERE
-            student_id = ?
-        `).get(
-          studentId
-        );
-
-      const paymentCount =
-        Number(
-          paymentResult.total
-        ) || 0;
-
-      // ======================================
-      // PRESERVE HISTORY
-      // ======================================
-
-      if (
-        fineCount > 0 ||
-        paymentCount > 0
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-
-            code:
-              'STUDENT_HAS_RECORDS',
-
-            message:
-              'This student cannot be permanently deleted because the account already has fine or payment records. Keep the account inactive to preserve SmartFine history.',
-
-            records: {
-              fines:
-                fineCount,
-
-              payments:
-                paymentCount,
-            },
-          });
-      }
-
-      // ======================================
-      // DELETE STUDENT
-      // ======================================
-
-      const result =
-        db.prepare(`
-          DELETE FROM users
-
-          WHERE
-            id = ?
-
-            AND
-            role =
-              'STUDENT'
-        `).run(
-          studentId
-        );
-
-      if (
-        Number(
-          result.changes
-        ) === 0
-      ) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-
-            code:
-              'STUDENT_NOT_FOUND',
-
-            message:
-              'Student could not be found or deleted.',
-          });
-      }
-
-      // ======================================
-      // DELETE PROFILE PICTURE FILE
-      // ======================================
-
-      if (
-        student.profile_picture_uri
-      ) {
-        deleteProfilePictureFile(
-          student.profile_picture_uri
-        );
-      }
-
-      // ======================================
-      // SUCCESS
-      // ======================================
+      // ====================================
+      // ARCHIVE SUCCESS
+      // ====================================
 
       return res.json({
         success: true,
 
+        code: "STUDENT_ARCHIVED",
+
+        archived: true,
+
         message:
-          'Student deleted successfully.',
+          "Student removed successfully. Historical fine and payment records were preserved.",
 
         deletedStudent: {
-          id:
-            student.id,
+          id: student.id,
 
-          studentId:
-            student.student_number ||
-            student.username,
+          studentId: student.student_number || student.username,
 
-          username:
-            student.username,
+          name: formatName(
+            student.first_name,
+            student.middle_name,
+            student.last_name,
+          ),
+        },
 
-          name:
-            formatName(
-              student.first_name,
-              student.middle_name,
-              student.last_name
-            ),
+        preservedRecords: {
+          fines: fineCount,
+
+          payments: paymentCount,
         },
       });
-    } catch (error) {
-      console.error(
-        'Delete student error:',
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          success: false,
-
-          code:
-            'DELETE_STUDENT_ERROR',
-
-          message:
-            'Failed to delete student.',
-
-          error:
-            error.message,
-        });
     }
+
+    // ======================================
+    // NO FINES OR PAYMENTS
+    //
+    // SAFE TO HARD DELETE
+    // ======================================
+
+    const deleteResult = db
+      .prepare(
+        `
+            DELETE FROM users
+
+            WHERE
+              id = ?
+
+              AND
+              role =
+                'STUDENT'
+          `,
+      )
+      .run(studentId);
+
+    if (Number(deleteResult.changes) === 0) {
+      return res.status(404).json({
+        success: false,
+
+        code: "STUDENT_NOT_FOUND",
+
+        message: "Student could not be found or deleted.",
+      });
+    }
+
+    // ======================================
+    // REMOVE PROFILE PICTURE FILE
+    // ======================================
+
+    if (student.profile_picture_uri) {
+      deleteProfilePictureFile(student.profile_picture_uri);
+    }
+
+    // ======================================
+    // HARD DELETE SUCCESS
+    // ======================================
+
+    return res.json({
+      success: true,
+
+      code: "STUDENT_DELETED",
+
+      archived: false,
+
+      message: "Student deleted successfully.",
+
+      deletedStudent: {
+        id: student.id,
+
+        studentId: student.student_number || student.username,
+
+        username: student.username,
+
+        name: formatName(
+          student.first_name,
+          student.middle_name,
+          student.last_name,
+        ),
+      },
+    });
+  } catch (error) {
+    console.error("Delete student error:", error);
+
+    return res.status(500).json({
+      success: false,
+
+      code: "DELETE_STUDENT_ERROR",
+
+      message: "Failed to delete student.",
+
+      error: error.message,
+    });
   }
-);
+});
 
 module.exports = router;

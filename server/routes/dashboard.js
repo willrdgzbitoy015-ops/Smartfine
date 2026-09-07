@@ -1,4 +1,5 @@
 const express = require("express");
+
 const router = express.Router();
 
 const db = require("../database/database");
@@ -11,33 +12,212 @@ console.log("dashboard.js loaded");
 
 router.get("/stats", (req, res) => {
   try {
-    const totalStudents = db
+    // ======================================
+    // TOTAL ACTIVE / VISIBLE STUDENTS
+    //
+    // Archived students remain in users
+    // for historical fine/payment records,
+    // but should not count on Dashboard.
+    // ======================================
+
+    const totalStudentsResult = db
       .prepare(
         `
-      SELECT COUNT(*) AS total
-      FROM users
-      WHERE role = 'STUDENT'
-    `,
+          SELECT
+            COUNT(*) AS total
+
+          FROM users
+
+          WHERE
+            role = 'STUDENT'
+
+            AND
+            username NOT LIKE
+              '__archived_student_%'
+        `,
       )
       .get();
 
-    res.json({
+    // ======================================
+    // UNPAID FINES
+    //
+    // Includes normal unpaid/pending fines.
+    //
+    // Excludes:
+    // - PAID
+    // - CANCELLED
+    // - WAIVED
+    // ======================================
+
+    const unpaidFinesResult = db
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS total
+
+          FROM fines
+
+          WHERE
+            cancelled_at IS NULL
+
+            AND
+            paid_at IS NULL
+
+            AND
+            UPPER(
+              COALESCE(
+                fine_status,
+                'UNPAID'
+              )
+            )
+            NOT IN (
+              'PAID',
+              'CANCELLED',
+              'WAIVED'
+            )
+        `,
+      )
+      .get();
+
+    // ======================================
+    // PAID FINES
+    //
+    // A fine is considered paid when:
+    // - paid_at exists
+    // OR
+    // - fine_status = PAID
+    //
+    // Cancelled fines are never counted.
+    // ======================================
+
+    const paidFinesResult = db
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS total
+
+          FROM fines
+
+          WHERE
+            cancelled_at IS NULL
+
+            AND
+            UPPER(
+              COALESCE(
+                fine_status,
+                ''
+              )
+            ) != 'CANCELLED'
+
+            AND
+            (
+              paid_at IS NOT NULL
+
+              OR
+
+              UPPER(
+                COALESCE(
+                  fine_status,
+                  ''
+                )
+              ) = 'PAID'
+            )
+        `,
+      )
+      .get();
+
+    // ======================================
+    // TODAY'S COLLECTION
+    //
+    // Current SmartFine payment workflow
+    // marks a fine paid using fines.paid_at.
+    //
+    // SQLite CURRENT_TIMESTAMP is UTC.
+    // +8 hours converts it to Philippine time.
+    //
+    // Only fines actually paid today are
+    // included in Today's Collection.
+    // ======================================
+
+    const todayCollectionResult = db
+      .prepare(
+        `
+          SELECT
+            COALESCE(
+              SUM(
+                amount_centavos
+              ),
+              0
+            ) / 100.0
+              AS total
+
+          FROM fines
+
+          WHERE
+            cancelled_at IS NULL
+
+            AND
+            paid_at IS NOT NULL
+
+            AND
+            UPPER(
+              COALESCE(
+                fine_status,
+                'PAID'
+              )
+            ) != 'CANCELLED'
+
+            AND
+            DATE(
+              DATETIME(
+                paid_at,
+                '+8 hours'
+              )
+            )
+            =
+            DATE(
+              DATETIME(
+                'now',
+                '+8 hours'
+              )
+            )
+        `,
+      )
+      .get();
+
+    // ======================================
+    // NORMALIZE VALUES
+    // ======================================
+
+    const totalStudents = Number(totalStudentsResult?.total || 0);
+
+    const unpaidFines = Number(unpaidFinesResult?.total || 0);
+
+    const paidFines = Number(paidFinesResult?.total || 0);
+
+    const todayCollection = Number(todayCollectionResult?.total || 0);
+
+    // ======================================
+    // RESPONSE
+    // ======================================
+
+    return res.json({
       success: true,
 
       stats: {
-        totalStudents: totalStudents.total,
+        totalStudents,
 
-        unpaidFines: 0,
+        unpaidFines,
 
-        todayCollection: 0,
+        todayCollection,
 
-        paidFines: 0,
+        paidFines,
       },
     });
   } catch (error) {
     console.error("Dashboard stats error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
 
       message: "Failed to load dashboard statistics.",
@@ -86,7 +266,9 @@ router.get("/recent-activities", (req, res) => {
               AS activity_type,
 
             CASE
-              WHEN officer.id IS NOT NULL
+              WHEN
+                officer.id IS NOT NULL
+
               THEN
                 'By ' ||
                 TRIM(
@@ -97,24 +279,37 @@ router.get("/recent-activities", (req, res) => {
 
               ELSE
                 'Fine recorded'
+
             END
               AS details
 
           FROM fines f
 
           JOIN users u
-            ON u.id = f.student_id
+            ON
+              u.id =
+              f.student_id
 
           JOIN violation_types vt
-            ON vt.id =
-               f.violation_type_id
+            ON
+              vt.id =
+              f.violation_type_id
 
           LEFT JOIN users officer
-            ON officer.id =
-               f.recorded_by
+            ON
+              officer.id =
+              f.recorded_by
 
           WHERE
             f.cancelled_at IS NULL
+
+            AND
+            UPPER(
+              COALESCE(
+                f.fine_status,
+                'UNPAID'
+              )
+            ) != 'CANCELLED'
 
           ORDER BY
             f.created_at DESC,
@@ -127,6 +322,10 @@ router.get("/recent-activities", (req, res) => {
 
     // ======================================
     // RECENT PAYMENTS
+    //
+    // payments.student_id refers to
+    // students.id, while students.user_id
+    // refers to users.id.
     // ======================================
 
     const paymentActivities = db
@@ -162,8 +361,7 @@ router.get("/recent-activities", (req, res) => {
 
             CASE
               WHEN
-                p.payment_method
-                IS NOT NULL
+                p.payment_method IS NOT NULL
 
               THEN
                 'Payment via ' ||
@@ -171,18 +369,28 @@ router.get("/recent-activities", (req, res) => {
 
               ELSE
                 'Payment processed'
+
             END
               AS details
 
           FROM payments p
 
+          JOIN students s
+            ON
+              s.id =
+              p.student_id
+
           JOIN users u
-            ON u.id =
-               p.student_id
+            ON
+              u.id =
+              s.user_id
 
           WHERE
             UPPER(
-              p.payment_status
+              COALESCE(
+                p.payment_status,
+                ''
+              )
             ) = 'PAID'
 
           ORDER BY
@@ -213,14 +421,15 @@ router.get("/recent-activities", (req, res) => {
     // RESPONSE
     // ======================================
 
-    res.json({
+    return res.json({
       success: true,
+
       activities,
     });
   } catch (error) {
     console.error("Recent activities error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
 
       message: "Failed to load recent activities.",
@@ -240,6 +449,15 @@ function parseDatabaseDate(value) {
   }
 
   let normalized = String(value).trim();
+
+  // ========================================
+  // SQLITE CURRENT_TIMESTAMP
+  //
+  // Example:
+  // 2026-09-07 12:35:20
+  //
+  // SQLite stores CURRENT_TIMESTAMP as UTC.
+  // ========================================
 
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
     normalized = normalized.replace(" ", "T") + "Z";

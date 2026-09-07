@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -21,6 +19,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+
+import LogoutModal from "@/components/logout-modal";
+import SuccessModal from "@/components/success-modal";
+import WarningModal from "@/components/warningmodal";
 
 import { styles } from "./fine-profile.styles";
 
@@ -88,7 +90,9 @@ type Fine = {
 
 type NavItem = {
   label: string;
+
   route: string;
+
   icon: any;
 };
 
@@ -132,6 +136,40 @@ export default function FineDetailedView() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  // ==========================================
+  // SUCCESS MODAL
+  // ==========================================
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [successTitle, setSuccessTitle] = useState("");
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
+
+  // ==========================================
+  // MARK PAID MODAL
+  // ==========================================
+
+  const [markPaidModalVisible, setMarkPaidModalVisible] = useState(false);
 
   // ==========================================
   // CANCEL FINE MODAL
@@ -285,6 +323,10 @@ export default function FineDetailedView() {
     setCancelModalVisible(true);
   };
 
+  // ==========================================
+  // CLOSE CANCEL FINE MODAL
+  // ==========================================
+
   const closeCancelModal = () => {
     if (actionLoading) {
       return;
@@ -296,6 +338,10 @@ export default function FineDetailedView() {
 
     setCancelError("");
   };
+
+  // ==========================================
+  // PERFORM CANCEL FINE
+  // ==========================================
 
   const performCancelFine = async () => {
     if (!fineId || !fine) {
@@ -354,23 +400,33 @@ export default function FineDetailedView() {
         return;
       }
 
+      // ======================================
+      // CLOSE CANCELLATION FORM
+      // ======================================
+
       setCancelModalVisible(false);
 
       setCancellationReason("");
 
       setCancelError("");
 
-      if (Platform.OS === "web") {
-        window.alert(`${fine.fine_reference} has been cancelled successfully.`);
-      } else {
-        Alert.alert(
-          "Fine Cancelled",
-
-          `${fine.fine_reference} has been cancelled successfully.`,
-        );
-      }
+      // ======================================
+      // REFRESH FINE
+      // ======================================
 
       await loadFine();
+
+      // ======================================
+      // SUCCESS MODAL
+      // ======================================
+
+      setSuccessTitle("Fine Cancelled");
+
+      setSuccessMessage(
+        `${fine.fine_reference} has been cancelled successfully.`,
+      );
+
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Cancel fine error:", error);
 
@@ -381,11 +437,39 @@ export default function FineDetailedView() {
   };
 
   // ==========================================
-  // MARK PAID
+  // OPEN MARK AS PAID MODAL
+  // ==========================================
+
+  const handleMarkPaid = () => {
+    if (!fine) {
+      return;
+    }
+
+    if (String(fine.status).toUpperCase() !== "UNPAID") {
+      return;
+    }
+
+    setMarkPaidModalVisible(true);
+  };
+
+  // ==========================================
+  // CLOSE MARK AS PAID MODAL
+  // ==========================================
+
+  const closeMarkPaidModal = () => {
+    if (actionLoading) {
+      return;
+    }
+
+    setMarkPaidModalVisible(false);
+  };
+
+  // ==========================================
+  // PERFORM MARK PAID
   // ==========================================
 
   const performMarkPaid = async () => {
-    if (!fineId) {
+    if (!fineId || !fine) {
       return;
     }
 
@@ -409,118 +493,106 @@ export default function FineDetailedView() {
 
       const data = await response.json();
 
+      // ======================================
+      // FAILED
+      // ======================================
+
       if (!response.ok || !data.success) {
-        setErrorMessage(data.message || "Failed to mark fine as paid.");
+        setMarkPaidModalVisible(false);
+
+        setWarningTitle("Mark as Paid");
+
+        setWarningMessage(data.message || "Failed to mark fine as paid.");
+
+        setShowWarningModal(true);
 
         return;
       }
 
-      if (Platform.OS === "web") {
-        window.alert("Fine marked as paid successfully.");
-      } else {
-        Alert.alert(
-          "Fine Updated",
+      // ======================================
+      // CLOSE CONFIRMATION
+      // ======================================
 
-          "Fine marked as paid successfully.",
-        );
-      }
+      setMarkPaidModalVisible(false);
+
+      // ======================================
+      // REFRESH FINE
+      // ======================================
 
       await loadFine();
+
+      // ======================================
+      // SUCCESS
+      // ======================================
+
+      setSuccessTitle("Fine Paid");
+
+      setSuccessMessage(
+        `${fine.fine_reference} has been marked as paid successfully.`,
+      );
+
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Mark fine paid error:", error);
 
-      setErrorMessage("Could not connect to the SmartFine server.");
+      setMarkPaidModalVisible(false);
+
+      setWarningTitle("Connection Error");
+
+      setWarningMessage("Could not connect to the SmartFine server.");
+
+      setShowWarningModal(true);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleMarkPaid = () => {
-    if (!fine) {
-      return;
-    }
+  // ==========================================
+  // OPEN LOGOUT
+  // ==========================================
 
-    if (String(fine.status).toUpperCase() !== "UNPAID") {
-      return;
-    }
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(`Mark ${fine.fine_reference} as paid?`);
-
-      if (confirmed) {
-        performMarkPaid();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Mark as Paid",
-
-      `Mark ${fine.fine_reference} as paid?`,
-
-      [
-        {
-          text: "Cancel",
-
-          style: "cancel",
-        },
-
-        {
-          text: "Mark as Paid",
-
-          onPress: performMarkPaid,
-        },
-      ],
-    );
+  const handleLogout = () => {
+    setShowLogoutModal(true);
   };
 
   // ==========================================
-  // LOGOUT
+  // CANCEL LOGOUT
+  // ==========================================
+
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
+
+    setShowLogoutModal(false);
+  };
+
+  // ==========================================
+  // PERFORM LOGOUT
   // ==========================================
 
   const performLogout = async () => {
     try {
+      setLogoutLoading(true);
+
       await logout();
+
+      setShowLogoutModal(false);
 
       router.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
+
+      setShowLogoutModal(false);
+
+      setWarningTitle("Logout Error");
+
+      setWarningMessage("Could not log out. Please try again.");
+
+      setShowWarningModal(true);
+    } finally {
+      setLogoutLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm("Are you sure you want to log out?");
-
-      if (confirmed) {
-        performLogout();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Log Out",
-
-      "Are you sure you want to log out?",
-
-      [
-        {
-          text: "Cancel",
-
-          style: "cancel",
-        },
-
-        {
-          text: "Log Out",
-
-          style: "destructive",
-
-          onPress: performLogout,
-        },
-      ],
-    );
   };
 
   // ==========================================
@@ -579,10 +651,14 @@ export default function FineDetailedView() {
 
   return (
     <View style={styles.screen}>
-      {/* SIDEBAR */}
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
 
       {isTablet && (
         <View style={styles.sidebar}>
+          {/* LOGO */}
+
           <View style={styles.logoArea}>
             <Image
               source={require("../../../../assets/branding/smartfineNoBG.png")}
@@ -590,6 +666,8 @@ export default function FineDetailedView() {
               resizeMode="contain"
             />
           </View>
+
+          {/* NAVIGATION */}
 
           <View style={styles.navigation}>
             {navItems.map((item) => {
@@ -600,6 +678,7 @@ export default function FineDetailedView() {
                   key={item.label}
                   style={[styles.navItem, active && styles.navItemActive]}
                   onPress={() => router.push(item.route as any)}
+                  activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
                     <Image
@@ -615,13 +694,21 @@ export default function FineDetailedView() {
             })}
           </View>
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          {/* LOGOUT */}
+
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* MAIN */}
+      {/* ======================================
+          MAIN
+      ====================================== */}
 
       <View style={styles.main}>
         <ScrollView
@@ -657,7 +744,9 @@ export default function FineDetailedView() {
             </Text>
           </TouchableOpacity>
 
-          {/* MOBILE NAV */}
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
 
           {!isTablet && (
             <ScrollView
@@ -693,7 +782,9 @@ export default function FineDetailedView() {
             </ScrollView>
           )}
 
-          {/* DETAILS CARD */}
+          {/* ==================================
+              DETAILS CARD
+          ================================== */}
 
           <View style={styles.detailsCard}>
             <View style={styles.cardHeader}>
@@ -733,7 +824,9 @@ export default function FineDetailedView() {
             <View style={styles.informationArea}>
               <InfoRow
                 label="Student"
-                value={`${fine.student_name} (${fine.student_number || "No Student ID"})`}
+                value={`${fine.student_name} (${
+                  fine.student_number || "No Student ID"
+                })`}
               />
 
               {(fine.grade_level || fine.section) && (
@@ -788,7 +881,9 @@ export default function FineDetailedView() {
             </View>
           </View>
 
-          {/* ACTION ERROR */}
+          {/* ==================================
+              ACTION ERROR
+          ================================== */}
 
           {errorMessage !== "" && (
             <View style={styles.actionError}>
@@ -796,9 +891,13 @@ export default function FineDetailedView() {
             </View>
           )}
 
-          {/* ACTIONS */}
+          {/* ==================================
+              ACTIONS
+          ================================== */}
 
           <View style={styles.actionRow}>
+            {/* CANCEL FINE */}
+
             <TouchableOpacity
               style={[
                 styles.cancelFineButton,
@@ -811,6 +910,8 @@ export default function FineDetailedView() {
               <Text style={styles.cancelFineText}>Cancel Fine</Text>
             </TouchableOpacity>
 
+            {/* EDIT FINE */}
+
             <TouchableOpacity
               style={[styles.editButton, !isUnpaid && styles.disabledButton]}
               onPress={handleEdit}
@@ -819,16 +920,14 @@ export default function FineDetailedView() {
               <Text style={styles.editButtonText}>Edit Fine</Text>
             </TouchableOpacity>
 
+            {/* MARK PAID */}
+
             <TouchableOpacity
               style={[styles.paidButton, !isUnpaid && styles.disabledButton]}
               onPress={handleMarkPaid}
               disabled={!isUnpaid || actionLoading}
             >
-              {actionLoading && !cancelModalVisible ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.paidButtonText}>Mark as Paid</Text>
-              )}
+              <Text style={styles.paidButtonText}>Mark as Paid</Text>
             </TouchableOpacity>
           </View>
 
@@ -842,7 +941,9 @@ export default function FineDetailedView() {
         </ScrollView>
       </View>
 
-      {/* CANCEL MODAL */}
+      {/* ======================================
+          CANCEL FINE MODAL
+      ====================================== */}
 
       <Modal
         visible={cancelModalVisible}
@@ -922,6 +1023,119 @@ export default function FineDetailedView() {
           </View>
         </View>
       </Modal>
+
+      {/* ======================================
+          MARK AS PAID CONFIRMATION MODAL
+      ====================================== */}
+
+      <Modal
+        visible={markPaidModalVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={closeMarkPaidModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.paidModalCard}>
+            {/* ICON */}
+
+            <View style={styles.paidModalIcon}>
+              <Text style={styles.paidModalIconText}>₱</Text>
+            </View>
+
+            {/* TITLE */}
+
+            <Text style={styles.paidModalTitle}>Mark as Paid?</Text>
+
+            {/* MESSAGE */}
+
+            <Text style={styles.paidModalMessage}>
+              Are you sure you want to mark{" "}
+              <Text style={styles.paidModalFineReference}>
+                {fine.fine_reference}
+              </Text>{" "}
+              as paid?
+            </Text>
+
+            {/* AMOUNT */}
+
+            <View style={styles.paidModalAmountBox}>
+              <Text style={styles.paidModalAmountLabel}>Amount</Text>
+
+              <Text style={styles.paidModalAmount}>
+                {formatMoney(fine.amount)}
+              </Text>
+            </View>
+
+            {/* BUTTONS */}
+
+            <View style={styles.paidModalActions}>
+              <TouchableOpacity
+                style={styles.paidModalCancelButton}
+                onPress={closeMarkPaidModal}
+                disabled={actionLoading}
+              >
+                <Text style={styles.paidModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.paidModalConfirmButton,
+
+                  actionLoading && styles.paidModalButtonDisabled,
+                ]}
+                onPress={performMarkPaid}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.paidModalConfirmText}>Mark as Paid</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ======================================
+          SUCCESS MODAL
+      ====================================== */}
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title={successTitle}
+        message={successMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowSuccessModal(false);
+        }}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowWarningModal(false);
+        }}
+      />
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
     </View>
   );
 }
@@ -936,7 +1150,9 @@ function InfoRow({
   emphasized = false,
 }: {
   label: string;
+
   value: string;
+
   emphasized?: boolean;
 }) {
   return (

@@ -1,37 +1,26 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  useWindowDimensions,
   ActivityIndicator,
   Image,
-  Alert,
-  Platform,
   RefreshControl,
-} from 'react-native';
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-import {
-  useRouter,
-} from 'expo-router';
+import { useRouter } from "expo-router";
 
-import {
-  useAuth,
-} from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
-import {
-  API_BASE,
-} from '@/constants/api';
+import { API_BASE } from "@/constants/api";
 
-import {
-  styles,
-} from './reports.styles';
+import LogoutModal from "@/components/logout-modal";
+import WarningModal from "@/components/warningmodal";
+
+import { styles } from "./reports.styles";
 
 // ==========================================
 // TYPES
@@ -39,98 +28,74 @@ import {
 
 type NavItem = {
   label: string;
+
   route: string;
+
   icon?: any;
 };
 
 type PaymentSummary = {
   totalCollectedCentavos: number;
+
   totalCollected: number;
 
   pendingPaymentsCentavos: number;
+
   pendingPayments: number;
 
   todayPaymentCentavos: number;
+
   todayPayment: number;
 
   totalCollectedCount: number;
+
   pendingPaymentCount: number;
+
   todayPaymentCount: number;
 };
 
 type PaymentTransaction = {
   id: number;
 
-  payment_reference:
-    | string
-    | null;
+  payment_reference: string | null;
 
-  payment_method:
-    | string
-    | null;
+  payment_method: string | null;
 
-  payment_status:
-    | string
-    | null;
+  payment_status: string | null;
 
   amount_centavos: number;
+
   amount: number;
 
   student_id: number;
 
-  student_number:
-    | string
-    | null;
+  student_number: string | null;
 
-  student_name:
-    | string
-    | null;
+  student_name: string | null;
 
   fine_id: number;
 
-  fine_reference:
-    | string
-    | null;
+  fine_reference: string | null;
 
-  violation_name?:
-    | string
-    | null;
+  violation_name?: string | null;
 
-  gateway_transaction_id:
-    | string
-    | null;
+  gateway_transaction_id: string | null;
 
-  gateway_reference:
-    | string
-    | null;
+  gateway_reference: string | null;
 
-  confirmed_by?:
-    | number
-    | null;
+  confirmed_by?: number | null;
 
-  confirmed_by_name?:
-    | string
-    | null;
+  confirmed_by_name?: string | null;
 
-  payment_notes?:
-    | string
-    | null;
+  payment_notes?: string | null;
 
-  created_at:
-    | string
-    | null;
+  created_at: string | null;
 
-  confirmed_at:
-    | string
-    | null;
+  confirmed_at: string | null;
 
-  paid_at:
-    | string
-    | null;
+  paid_at: string | null;
 
-  transaction_date:
-    | string
-    | null;
+  transaction_date: string | null;
 };
 
 type PaymentReportResponse = {
@@ -138,8 +103,7 @@ type PaymentReportResponse = {
 
   summary: PaymentSummary;
 
-  transactions:
-    PaymentTransaction[];
+  transactions: PaymentTransaction[];
 
   totalTransactions: number;
 
@@ -150,501 +114,324 @@ type PaymentReportResponse = {
 // EMPTY SUMMARY
 // ==========================================
 
-const EMPTY_SUMMARY:
-  PaymentSummary = {
-    totalCollectedCentavos:
-      0,
+const EMPTY_SUMMARY: PaymentSummary = {
+  totalCollectedCentavos: 0,
 
-    totalCollected:
-      0,
+  totalCollected: 0,
 
-    pendingPaymentsCentavos:
-      0,
+  pendingPaymentsCentavos: 0,
 
-    pendingPayments:
-      0,
+  pendingPayments: 0,
 
-    todayPaymentCentavos:
-      0,
+  todayPaymentCentavos: 0,
 
-    todayPayment:
-      0,
+  todayPayment: 0,
 
-    totalCollectedCount:
-      0,
+  totalCollectedCount: 0,
 
-    pendingPaymentCount:
-      0,
+  pendingPaymentCount: 0,
 
-    todayPaymentCount:
-      0,
-  };
+  todayPaymentCount: 0,
+};
 
 // ==========================================
 // PAYMENT REPORTS
 // ==========================================
 
 export default function PaymentReports() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const { logout } =
-    useAuth();
+  const { logout } = useAuth();
 
-  const { width } =
-    useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const isTablet =
-    width >= 768;
+  const isTablet = width >= 768;
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
 
   // ==========================================
   // REPORT STATE
   // ==========================================
 
-  const [
-    summary,
-    setSummary,
-  ] =
-    useState<PaymentSummary>(
-      EMPTY_SUMMARY
-    );
+  const [summary, setSummary] = useState<PaymentSummary>(EMPTY_SUMMARY);
 
-  const [
-    transactions,
-    setTransactions,
-  ] =
-    useState<
-      PaymentTransaction[]
-    >([]);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
 
-  const [
-    totalTransactions,
-    setTotalTransactions,
-  ] =
-    useState(0);
+  const [totalTransactions, setTotalTransactions] = useState(0);
 
   // ==========================================
   // PAGE STATE
   // ==========================================
 
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    refreshing,
-    setRefreshing,
-  ] =
-    useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [
-    error,
-    setError,
-  ] =
-    useState('');
+  const [error, setError] = useState("");
 
   // ==========================================
   // NAVIGATION
   // ==========================================
 
-  const navItems:
-    NavItem[] = [
-      {
-        label:
-          'Dashboard',
+  const navItems: NavItem[] = [
+    {
+      label: "Dashboard",
 
-        route:
-          '/admin/dashboard',
+      route: "/admin/dashboard",
 
-        icon:
-          require('../../../assets/icons/dashboard.png'),
-      },
+      icon: require("../../../assets/icons/dashboard.png"),
+    },
 
-      {
-        label:
-          'Students',
+    {
+      label: "Students",
 
-        route:
-          '/admin/students',
+      route: "/admin/students",
 
-        icon:
-          require('../../../assets/icons/students.png'),
-      },
+      icon: require("../../../assets/icons/students.png"),
+    },
 
-      {
-        label:
-          'Fines',
+    {
+      label: "Fines",
 
-        route:
-          '/admin/fines',
+      route: "/admin/fines",
 
-        icon:
-          require('../../../assets/icons/fines.png'),
-      },
+      icon: require("../../../assets/icons/fines.png"),
+    },
 
-      {
-        label:
-          'QR Scanner',
+    {
+      label: "QR Scanner",
 
-        route:
-          '/admin/qr-scanner',
+      route: "/admin/qr-scanner",
 
-        icon:
-          require('../../../assets/icons/qr-codeWhite.png'),
-      },
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
+    },
 
-      {
-        label:
-          'Reports',
+    {
+      label: "Reports",
 
-        route:
-          '/admin/reports',
+      route: "/admin/reports",
 
-        icon:
-          require('../../../assets/icons/reports.png'),
-      },
+      icon: require("../../../assets/icons/reports.png"),
+    },
 
-      {
-        label:
-          'Settings',
+    {
+      label: "Settings",
 
-        route:
-          '/admin/settings',
+      route: "/admin/settings",
 
-        icon:
-          require('../../../assets/icons/settings.png'),
-      },
+      icon: require("../../../assets/icons/settings.png"),
+    },
 
-      {
-        label:
-          'Officers',
+    {
+      label: "Officers",
 
-        route:
-          '/admin/officers',
+      route: "/admin/officers",
 
-        icon:
-          require('../../../assets/icons/officers.png'),
-      },
-    ];
+      icon: require("../../../assets/icons/officers.png"),
+    },
+  ];
 
   // ==========================================
   // LOAD PAYMENT REPORTS
   // ==========================================
 
-  const loadReports =
-    useCallback(
-      async (
-        isRefresh = false
-      ) => {
-        try {
-          if (
-            isRefresh
-          ) {
-            setRefreshing(
-              true
-            );
-          } else {
-            setLoading(
-              true
-            );
-          }
+  const loadReports = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-          setError(
-            ''
-          );
+      setError("");
 
-          const response =
-            await fetch(
-              `${API_BASE}/api/reports/payments`
-            );
+      const response = await fetch(`${API_BASE}/api/reports/payments`);
 
-          const data:
-            PaymentReportResponse =
-            await response.json();
+      const data: PaymentReportResponse = await response.json();
 
-          console.log(
-            'Payment reports response:',
-            data
-          );
+      console.log("Payment reports response:", data);
 
-          if (
-            !response.ok ||
-            !data.success
-          ) {
-            setError(
-              data.message ||
-                'Failed to load payment reports.'
-            );
+      // ======================================
+      // FAILED
+      // ======================================
 
-            return;
-          }
+      if (!response.ok || !data.success) {
+        setError(data.message || "Failed to load payment reports.");
 
-          setSummary(
-            data.summary ||
-              EMPTY_SUMMARY
-          );
+        return;
+      }
 
-          setTransactions(
-            Array.isArray(
-              data.transactions
-            )
-              ? data.transactions
-              : []
-          );
+      // ======================================
+      // SUMMARY
+      // ======================================
 
-          setTotalTransactions(
-            Number(
-              data.totalTransactions ||
-                0
-            )
-          );
-        } catch (error) {
-          console.error(
-            'Payment reports connection error:',
-            error
-          );
+      setSummary(data.summary || EMPTY_SUMMARY);
 
-          setError(
-            'Could not connect to the SmartFine server.'
-          );
-        } finally {
-          setLoading(
-            false
-          );
+      // ======================================
+      // TRANSACTIONS
+      // ======================================
 
-          setRefreshing(
-            false
-          );
-        }
-      },
-      []
-    );
+      setTransactions(
+        Array.isArray(data.transactions) ? data.transactions : [],
+      );
+
+      setTotalTransactions(Number(data.totalTransactions || 0));
+    } catch (error) {
+      console.error("Payment reports connection error:", error);
+
+      setError("Could not connect to the SmartFine server.");
+    } finally {
+      setLoading(false);
+
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadReports();
-  }, [
-    loadReports,
-  ]);
+  }, [loadReports]);
 
   // ==========================================
   // OPEN TRANSACTION DETAIL
   // ==========================================
 
-  const handleTransactionPress =
-    (
-      payment:
-        PaymentTransaction
-    ) => {
-      if (
-        !payment.id
-      ) {
-        return;
-      }
+  const handleTransactionPress = (payment: PaymentTransaction) => {
+    if (!payment.id) {
+      return;
+    }
 
-      router.push(
-        `/admin/reports/${payment.id}` as any
-      );
-    };
+    router.push(`/admin/reports/${payment.id}` as any);
+  };
 
   // ==========================================
   // NAVIGATION
   // ==========================================
 
-  const handleNavigation =
-    (
-      item: NavItem
-    ) => {
-      router.push(
-        item.route as any
-      );
-    };
+  const handleNavigation = (item: NavItem) => {
+    router.push(item.route as any);
+  };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT MODAL
   // ==========================================
 
-  const performLogout =
-    async () => {
-      try {
-        await logout();
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
 
-        router.replace(
-          '/login' as any
-        );
-      } catch (error) {
-        console.error(
-          'Logout error:',
-          error
-        );
-      }
-    };
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
 
-  const handleLogout =
-    () => {
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            'Are you sure you want to log out?'
-          );
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
 
-        if (
-          confirmed
-        ) {
-          performLogout();
-        }
+    setShowLogoutModal(false);
+  };
 
-        return;
-      }
+  // ==========================================
+  // PERFORM LOGOUT
+  // ==========================================
 
-      Alert.alert(
-        'Log Out',
+  const performLogout = async () => {
+    try {
+      setLogoutLoading(true);
 
-        'Are you sure you want to log out?',
+      await logout();
 
-        [
-          {
-            text:
-              'Cancel',
+      setShowLogoutModal(false);
 
-            style:
-              'cancel',
-          },
+      router.replace("/login" as any);
+    } catch (error) {
+      console.error("Logout error:", error);
 
-          {
-            text:
-              'Log Out',
+      setShowLogoutModal(false);
 
-            style:
-              'destructive',
+      setWarningTitle("Logout Error");
 
-            onPress:
-              performLogout,
-          },
-        ]
-      );
-    };
+      setWarningMessage("Could not log out. Please try again.");
+
+      setShowWarningModal(true);
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
 
   // ==========================================
   // UI
   // ==========================================
 
   return (
-    <View
-      style={
-        styles.screen
-      }
-    >
+    <View style={styles.screen}>
       {/* ======================================
           SIDEBAR
       ====================================== */}
 
       {isTablet && (
-        <View
-          style={
-            styles.sidebar
-          }
-        >
+        <View style={styles.sidebar}>
           {/* LOGO */}
 
-          <View
-            style={
-              styles.logoArea
-            }
-          >
+          <View style={styles.logoArea}>
             <Image
-              source={require('../../../assets/branding/smartfineNoBG.png')}
-              style={
-                styles.smartFineLogo
-              }
+              source={require("../../../assets/branding/smartfineNoBG.png")}
+              style={styles.smartFineLogo}
               resizeMode="contain"
             />
           </View>
 
-          {/* NAV */}
+          {/* NAVIGATION */}
 
-          <View
-            style={
-              styles.navigation
-            }
-          >
-            {navItems.map(
-              (
-                item
-              ) => {
-                const active =
-                  item.label ===
-                  'Reports';
+          <View style={styles.navigation}>
+            {navItems.map((item) => {
+              const active = item.label === "Reports";
 
-                return (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
-                    style={[
-                      styles.navItem,
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => handleNavigation(item)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-                      active &&
-                        styles.navItemActive,
-                    ]}
-                    onPress={() =>
-                      handleNavigation(
-                        item
-                      )
-                    }
-                  >
-                    <View
-                      style={
-                        styles.navIconContainer
-                      }
-                    >
-                      <Image
-                        source={
-                          item.icon
-                        }
-                        style={
-                          styles.navImageIcon
-                        }
-                        resizeMode="contain"
-                      />
-                    </View>
-
-                    <Text
-                      style={
-                        styles.navText
-                      }
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-            )}
+                  <Text style={styles.navText}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* LOGOUT */}
 
           <TouchableOpacity
-            style={
-              styles.logoutButton
-            }
-            onPress={
-              handleLogout
-            }
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
           >
-            <Text
-              style={
-                styles.logoutText
-              }
-            >
-              Log Out
-            </Text>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -653,28 +440,14 @@ export default function PaymentReports() {
           MAIN
       ====================================== */}
 
-      <View
-        style={
-          styles.main
-        }
-      >
+      <View style={styles.main}>
         <ScrollView
-          showsVerticalScrollIndicator={
-            false
-          }
-          contentContainerStyle={
-            styles.scrollContent
-          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl
-              refreshing={
-                refreshing
-              }
-              onRefresh={() =>
-                loadReports(
-                  true
-                )
-              }
+              refreshing={refreshing}
+              onRefresh={() => loadReports(true)}
             />
           }
         >
@@ -685,54 +458,34 @@ export default function PaymentReports() {
           {!isTablet && (
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
             >
-              {navItems.map(
-                (
-                  item
-                ) => {
-                  const active =
-                    item.label ===
-                    'Reports';
+              {navItems.map((item) => {
+                const active = item.label === "Reports";
 
-                  return (
-                    <TouchableOpacity
-                      key={
-                        item.label
-                      }
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={[
+                      styles.mobileNavItem,
+
+                      active && styles.mobileNavItemActive,
+                    ]}
+                    onPress={() => handleNavigation(item)}
+                  >
+                    <Text
                       style={[
-                        styles.mobileNavItem,
+                        styles.mobileNavText,
 
-                        active &&
-                          styles.mobileNavItemActive,
+                        active && styles.mobileNavTextActive,
                       ]}
-                      onPress={() =>
-                        handleNavigation(
-                          item
-                        )
-                      }
                     >
-                      <Text
-                        style={[
-                          styles.mobileNavText,
-
-                          active &&
-                            styles.mobileNavTextActive,
-                        ]}
-                      >
-                        {
-                          item.label
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
@@ -740,55 +493,24 @@ export default function PaymentReports() {
               HEADER
           ================================== */}
 
-          <View
-            style={
-              styles.header
-            }
-          >
+          <View style={styles.header}>
             <View>
-              <Text
-                style={
-                  styles.pageTitle
-                }
-              >
-                Payment Reports
-              </Text>
+              <Text style={styles.pageTitle}>Payment Reports</Text>
 
-              <Text
-                style={
-                  styles.pageSubtitle
-                }
-              >
+              <Text style={styles.pageSubtitle}>
                 View payment collections and transaction history
               </Text>
             </View>
 
             <TouchableOpacity
-              style={
-                styles.refreshButton
-              }
-              onPress={() =>
-                loadReports(
-                  true
-                )
-              }
-              disabled={
-                refreshing
-              }
+              style={styles.refreshButton}
+              onPress={() => loadReports(true)}
+              disabled={refreshing}
             >
               {refreshing ? (
-                <ActivityIndicator
-                  size="small"
-                  color="#173A73"
-                />
+                <ActivityIndicator size="small" color="#173A73" />
               ) : (
-                <Text
-                  style={
-                    styles.refreshButtonText
-                  }
-                >
-                  Refresh
-                </Text>
+                <Text style={styles.refreshButtonText}>Refresh</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -798,67 +520,26 @@ export default function PaymentReports() {
           ================================== */}
 
           {loading ? (
-            <View
-              style={
-                styles.centerState
-              }
-            >
-              <ActivityIndicator
-                size="large"
-                color="#173A73"
-              />
+            <View style={styles.centerState}>
+              <ActivityIndicator size="large" color="#173A73" />
 
-              <Text
-                style={
-                  styles.stateText
-                }
-              >
-                Loading payment reports...
-              </Text>
+              <Text style={styles.stateText}>Loading payment reports...</Text>
             </View>
           ) : error ? (
             // ==================================
             // ERROR
             // ==================================
 
-            <View
-              style={
-                styles.centerState
-              }
-            >
-              <Text
-                style={
-                  styles.errorTitle
-                }
-              >
-                Unable to Load Reports
-              </Text>
+            <View style={styles.centerState}>
+              <Text style={styles.errorTitle}>Unable to Load Reports</Text>
 
-              <Text
-                style={
-                  styles.errorText
-                }
-              >
-                {
-                  error
-                }
-              </Text>
+              <Text style={styles.errorText}>{error}</Text>
 
               <TouchableOpacity
-                style={
-                  styles.retryButton
-                }
-                onPress={() =>
-                  loadReports()
-                }
+                style={styles.retryButton}
+                onPress={() => loadReports()}
               >
-                <Text
-                  style={
-                    styles.retryButtonText
-                  }
-                >
-                  Try Again
-                </Text>
+                <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -867,180 +548,84 @@ export default function PaymentReports() {
                   SUMMARY CARDS
               ================================== */}
 
-              <View
-                style={
-                  styles.summaryRow
-                }
-              >
+              <View style={styles.summaryRow}>
                 {/* TOTAL COLLECTED */}
 
-                <View
-                  style={
-                    styles.summaryCard
-                  }
-                >
-                  <Text
-                    style={
-                      styles.summaryLabel
-                    }
-                  >
-                    Total Collected
-                  </Text>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>Total Collected</Text>
 
                   <Text
-                    style={
-                      styles.summaryAmountRed
-                    }
-                    numberOfLines={
-                      1
-                    }
+                    style={styles.summaryAmountRed}
+                    numberOfLines={1}
                     adjustsFontSizeToFit
                   >
-                    {formatMoney(
-                      summary.totalCollected
-                    )}
+                    {formatMoney(summary.totalCollected)}
                   </Text>
 
-                  <Text
-                    style={
-                      styles.summaryCount
-                    }
-                  >
-                    {summary.totalCollectedCount}{' '}
-                    {
-                      summary.totalCollectedCount ===
-                      1
-                        ? 'payment'
-                        : 'payments'
-                    }
+                  <Text style={styles.summaryCount}>
+                    {summary.totalCollectedCount}{" "}
+                    {summary.totalCollectedCount === 1 ? "payment" : "payments"}
                   </Text>
                 </View>
 
                 {/* PENDING */}
 
-                <View
-                  style={
-                    styles.summaryCard
-                  }
-                >
-                  <Text
-                    style={
-                      styles.summaryLabel
-                    }
-                  >
-                    Pending Payments
-                  </Text>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>Pending Payments</Text>
 
                   <Text
-                    style={
-                      styles.summaryAmountRed
-                    }
-                    numberOfLines={
-                      1
-                    }
+                    style={styles.summaryAmountRed}
+                    numberOfLines={1}
                     adjustsFontSizeToFit
                   >
-                    {formatMoney(
-                      summary.pendingPayments
-                    )}
+                    {formatMoney(summary.pendingPayments)}
                   </Text>
 
-                  <Text
-                    style={
-                      styles.summaryCount
-                    }
-                  >
-                    {summary.pendingPaymentCount}{' '}
-                    pending
+                  <Text style={styles.summaryCount}>
+                    {summary.pendingPaymentCount} pending
                   </Text>
                 </View>
 
                 {/* TODAY */}
 
-                <View
-                  style={
-                    styles.summaryCard
-                  }
-                >
-                  <Text
-                    style={
-                      styles.summaryLabel
-                    }
-                  >
-                    Today&apos;s Payment
-                  </Text>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>Today&apos;s Payment</Text>
 
                   <Text
-                    style={
-                      styles.summaryAmountGreen
-                    }
-                    numberOfLines={
-                      1
-                    }
+                    style={styles.summaryAmountGreen}
+                    numberOfLines={1}
                     adjustsFontSizeToFit
                   >
-                    {formatMoney(
-                      summary.todayPayment
-                    )}
+                    {formatMoney(summary.todayPayment)}
                   </Text>
 
-                  <Text
-                    style={
-                      styles.summaryCount
-                    }
-                  >
-                    {summary.todayPaymentCount}{' '}
-                    today
+                  <Text style={styles.summaryCount}>
+                    {summary.todayPaymentCount} today
                   </Text>
                 </View>
               </View>
 
               {/* ==================================
-                  TRANSACTION CARD
+                  TRANSACTIONS CARD
               ================================== */}
 
-              <View
-                style={
-                  styles.transactionsCard
-                }
-              >
+              <View style={styles.transactionsCard}>
                 {/* CARD TITLE */}
 
-                <View
-                  style={
-                    styles.transactionsTitleRow
-                  }
-                >
+                <View style={styles.transactionsTitleRow}>
                   <View>
-                    <Text
-                      style={
-                        styles.transactionsTitle
-                      }
-                    >
+                    <Text style={styles.transactionsTitle}>
                       Payment Transactions
                     </Text>
 
-                    <Text
-                      style={
-                        styles.transactionsSubtitle
-                      }
-                    >
+                    <Text style={styles.transactionsSubtitle}>
                       Complete SmartFine payment transaction history
                     </Text>
                   </View>
 
-                  <Text
-                    style={
-                      styles.transactionCount
-                    }
-                  >
-                    {totalTransactions}{' '}
-                    {
-                      totalTransactions ===
-                      1
-                        ? 'Transaction'
-                        : 'Transactions'
-                    }
+                  <Text style={styles.transactionCount}>
+                    {totalTransactions}{" "}
+                    {totalTransactions === 1 ? "Transaction" : "Transactions"}
                   </Text>
                 </View>
 
@@ -1051,116 +636,56 @@ export default function PaymentReports() {
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator
-                  contentContainerStyle={
-                    styles.horizontalTableContent
-                  }
+                  contentContainerStyle={styles.horizontalTableContent}
                 >
-                  <View
-                    style={
-                      styles.table
-                    }
-                  >
-                    {/* HEADER */}
+                  <View style={styles.table}>
+                    {/* TABLE HEADER */}
 
-                    <View
-                      style={
-                        styles.tableHeader
-                      }
-                    >
+                    <View style={styles.tableHeader}>
                       <Text
-                        style={[
-                          styles.headerCell,
-                          styles.transactionColumn,
-                        ]}
+                        style={[styles.headerCell, styles.transactionColumn]}
                       >
                         Transaction ID
                       </Text>
 
-                      <Text
-                        style={[
-                          styles.headerCell,
-                          styles.methodColumn,
-                        ]}
-                      >
+                      <Text style={[styles.headerCell, styles.methodColumn]}>
                         Payment Method
                       </Text>
 
-                      <Text
-                        style={[
-                          styles.headerCell,
-                          styles.studentColumn,
-                        ]}
-                      >
+                      <Text style={[styles.headerCell, styles.studentColumn]}>
                         Student Name
                       </Text>
 
-                      <Text
-                        style={[
-                          styles.headerCell,
-                          styles.amountColumn,
-                        ]}
-                      >
+                      <Text style={[styles.headerCell, styles.amountColumn]}>
                         Amount
                       </Text>
 
-                      <Text
-                        style={[
-                          styles.headerCell,
-                          styles.fineColumn,
-                        ]}
-                      >
+                      <Text style={[styles.headerCell, styles.fineColumn]}>
                         Fine Reference
                       </Text>
 
-                      <Text
-                        style={[
-                          styles.headerCell,
-                          styles.dateColumn,
-                        ]}
-                      >
+                      <Text style={[styles.headerCell, styles.dateColumn]}>
                         Date
                       </Text>
                     </View>
 
                     {/* ==================================
-                        EMPTY
+                        EMPTY STATE
                     ================================== */}
 
-                    {transactions.length ===
-                    0 ? (
-                      <View
-                        style={
-                          styles.emptyState
-                        }
-                      >
-                        <View
-                          style={
-                            styles.emptyIcon
-                          }
-                        >
-                          <Text
-                            style={
-                              styles.emptyIconText
-                            }
-                          >
-                            ₱
-                          </Text>
+                    {transactions.length === 0 ? (
+                      <View style={styles.emptyState}>
+                        <View style={styles.emptyIcon}>
+                          <Text style={styles.emptyIconText}>₱</Text>
                         </View>
 
-                        <Text
-                          style={
-                            styles.emptyTitle
-                          }
-                        >
+                        <Text style={styles.emptyTitle}>
                           No payment transactions found
                         </Text>
 
-                        <Text
-                          style={
-                            styles.emptyText
-                          }
-                        >
-                          Payment transactions will appear here once students begin making payments.
+                        <Text style={styles.emptyText}>
+                          Payment transactions will appear here once students
+                          begin making payments.
                         </Text>
                       </View>
                     ) : (
@@ -1168,231 +693,151 @@ export default function PaymentReports() {
                       // TRANSACTIONS
                       // ==================================
 
-                      transactions.map(
-                        (
-                          payment
-                        ) => {
-                          // If paid_at exists,
-                          // always display Paid even if an
-                          // older status value was not
-                          // updated correctly.
+                      transactions.map((payment) => {
+                        // ==================================
+                        // DISPLAY STATUS
+                        // ==================================
 
-                          const displayStatus =
-                            payment.paid_at
-                              ? 'PAID'
-                              : payment.payment_status;
+                        const displayStatus = payment.paid_at
+                          ? "PAID"
+                          : payment.payment_status;
 
-                          return (
-                            <TouchableOpacity
-                              key={
-                                payment.id
-                              }
-                              style={
-                                styles.transactionRow
-                              }
-                              activeOpacity={
-                                0.7
-                              }
-                              onPress={() =>
-                                handleTransactionPress(
-                                  payment
-                                )
-                              }
-                            >
-                              {/* ==================================
+                        return (
+                          <TouchableOpacity
+                            key={payment.id}
+                            style={styles.transactionRow}
+                            activeOpacity={0.7}
+                            onPress={() => handleTransactionPress(payment)}
+                          >
+                            {/* ==================================
                                   TRANSACTION
                               ================================== */}
 
-                              <View
-                                style={
-                                  styles.transactionColumn
-                                }
+                            <View style={styles.transactionColumn}>
+                              <Text
+                                style={styles.transactionReference}
+                                numberOfLines={1}
                               >
+                                {payment.payment_reference ||
+                                  `PAY-${payment.id}`}
+                              </Text>
+
+                              {payment.gateway_transaction_id && (
                                 <Text
-                                  style={
-                                    styles.transactionReference
-                                  }
-                                  numberOfLines={
-                                    1
-                                  }
+                                  style={styles.gatewayText}
+                                  numberOfLines={1}
                                 >
-                                  {payment.payment_reference ||
-                                    `PAY-${payment.id}`}
+                                  {payment.gateway_transaction_id}
                                 </Text>
+                              )}
+                            </View>
 
-                                {payment.gateway_transaction_id && (
-                                  <Text
-                                    style={
-                                      styles.gatewayText
-                                    }
-                                    numberOfLines={
-                                      1
-                                    }
-                                  >
-                                    {
-                                      payment.gateway_transaction_id
-                                    }
-                                  </Text>
-                                )}
-                              </View>
-
-                              {/* ==================================
+                            {/* ==================================
                                   METHOD
                               ================================== */}
 
+                            <View style={styles.methodColumn}>
+                              <Text style={styles.bodyCell} numberOfLines={1}>
+                                {formatPaymentMethod(payment.payment_method)}
+                              </Text>
+
                               <View
-                                style={
-                                  styles.methodColumn
-                                }
+                                style={[
+                                  styles.paymentStatusBadge,
+
+                                  getPaymentStatusBadgeStyle(displayStatus),
+                                ]}
                               >
                                 <Text
-                                  style={
-                                    styles.bodyCell
-                                  }
-                                  numberOfLines={
-                                    1
-                                  }
-                                >
-                                  {formatPaymentMethod(
-                                    payment.payment_method
-                                  )}
-                                </Text>
-
-                                <View
                                   style={[
-                                    styles.paymentStatusBadge,
+                                    styles.paymentStatusText,
 
-                                    getPaymentStatusBadgeStyle(
-                                      displayStatus
-                                    ),
+                                    getPaymentStatusTextStyle(displayStatus),
                                   ]}
                                 >
-                                  <Text
-                                    style={[
-                                      styles.paymentStatusText,
-
-                                      getPaymentStatusTextStyle(
-                                        displayStatus
-                                      ),
-                                    ]}
-                                  >
-                                    {formatPaymentStatus(
-                                      displayStatus
-                                    )}
-                                  </Text>
-                                </View>
+                                  {formatPaymentStatus(displayStatus)}
+                                </Text>
                               </View>
+                            </View>
 
-                              {/* ==================================
+                            {/* ==================================
                                   STUDENT
                               ================================== */}
 
-                              <View
-                                style={
-                                  styles.studentColumn
-                                }
+                            <View style={styles.studentColumn}>
+                              <Text
+                                style={styles.studentName}
+                                numberOfLines={1}
                               >
-                                <Text
-                                  style={
-                                    styles.studentName
-                                  }
-                                  numberOfLines={
-                                    1
-                                  }
-                                >
-                                  {payment.student_name ||
-                                    'Unknown Student'}
-                                </Text>
+                                {payment.student_name || "Unknown Student"}
+                              </Text>
 
-                                <Text
-                                  style={
-                                    styles.studentNumber
-                                  }
-                                  numberOfLines={
-                                    1
-                                  }
-                                >
-                                  {payment.student_number ||
-                                    'No Student ID'}
-                                </Text>
-                              </View>
+                              <Text
+                                style={styles.studentNumber}
+                                numberOfLines={1}
+                              >
+                                {payment.student_number || "No Student ID"}
+                              </Text>
+                            </View>
 
-                              {/* ==================================
+                            {/* ==================================
                                   AMOUNT
                               ================================== */}
 
-                              <Text
-                                style={[
-                                  styles.bodyCell,
-                                  styles.amountColumn,
-                                  styles.amountText,
-                                ]}
-                              >
-                                {formatMoney(
-                                  payment.amount
-                                )}
-                              </Text>
+                            <Text
+                              style={[
+                                styles.bodyCell,
 
-                              {/* ==================================
+                                styles.amountColumn,
+
+                                styles.amountText,
+                              ]}
+                            >
+                              {formatMoney(payment.amount)}
+                            </Text>
+
+                            {/* ==================================
                                   FINE
                               ================================== */}
 
-                              <View
-                                style={
-                                  styles.fineColumn
-                                }
+                            <View style={styles.fineColumn}>
+                              <Text
+                                style={[styles.bodyCell, styles.fineReference]}
+                                numberOfLines={1}
                               >
+                                {payment.fine_reference ||
+                                  `Fine #${payment.fine_id}`}
+                              </Text>
+
+                              {payment.violation_name && (
                                 <Text
-                                  style={[
-                                    styles.bodyCell,
-                                    styles.fineReference,
-                                  ]}
-                                  numberOfLines={
-                                    1
-                                  }
+                                  style={styles.gatewayText}
+                                  numberOfLines={1}
                                 >
-                                  {payment.fine_reference ||
-                                    `Fine #${payment.fine_id}`}
+                                  {payment.violation_name}
                                 </Text>
+                              )}
+                            </View>
 
-                                {payment.violation_name && (
-                                  <Text
-                                    style={
-                                      styles.gatewayText
-                                    }
-                                    numberOfLines={
-                                      1
-                                    }
-                                  >
-                                    {
-                                      payment.violation_name
-                                    }
-                                  </Text>
-                                )}
-                              </View>
-
-                              {/* ==================================
+                            {/* ==================================
                                   DATE
                               ================================== */}
 
-                              <Text
-                                style={[
-                                  styles.bodyCell,
-                                  styles.dateColumn,
-                                  styles.dateText,
-                                ]}
-                                numberOfLines={
-                                  1
-                                }
-                              >
-                                {formatDate(
-                                  payment.transaction_date
-                                )}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        }
-                      )
+                            <Text
+                              style={[
+                                styles.bodyCell,
+
+                                styles.dateColumn,
+
+                                styles.dateText,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {formatDate(payment.transaction_date)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })
                     )}
                   </View>
                 </ScrollView>
@@ -1401,24 +846,18 @@ export default function PaymentReports() {
                     ROW HELP
                 ================================== */}
 
-                {transactions.length >
-                  0 && (
+                {transactions.length > 0 && (
                   <Text
                     style={{
-                      color:
-                        '#8C939F',
+                      color: "#8C939F",
 
-                      fontSize:
-                        9,
+                      fontSize: 9,
 
-                      textAlign:
-                        'center',
+                      textAlign: "center",
 
-                      paddingTop:
-                        2,
+                      paddingTop: 2,
 
-                      paddingBottom:
-                        14,
+                      paddingBottom: 14,
                     }}
                   >
                     Select a transaction to view its detailed report.
@@ -1429,6 +868,31 @@ export default function PaymentReports() {
           )}
         </ScrollView>
       </View>
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowWarningModal(false);
+        }}
+      />
     </View>
   );
 }
@@ -1437,251 +901,138 @@ export default function PaymentReports() {
 // MONEY
 // ==========================================
 
-function formatMoney(
-  amount:
-    | number
-    | null
-    | undefined
-) {
-  return `₱ ${Number(
-    amount ||
-      0
-  ).toLocaleString(
-    'en-PH',
-    {
-      minimumFractionDigits:
-        2,
+function formatMoney(amount: number | null | undefined) {
+  return `₱ ${Number(amount || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
 
-      maximumFractionDigits:
-        2,
-    }
-  )}`;
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 // ==========================================
 // DATE
 // ==========================================
 
-function formatDate(
-  value:
-    | string
-    | null
-    | undefined
-) {
-  if (
-    !value
-  ) {
-    return '—';
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return "—";
   }
 
-  const normalized =
-    value.includes(
-      'T'
-    )
-      ? value
-      : value.replace(
-          ' ',
-          'T'
-        );
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
 
-  const date =
-    new Date(
-      normalized
-    );
+  const date = new Date(normalized);
 
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return date.toLocaleDateString(
-    'en-US',
-    {
-      month:
-        'short',
+  return date.toLocaleDateString("en-US", {
+    month: "short",
 
-      day:
-        'numeric',
+    day: "numeric",
 
-      year:
-        'numeric',
-    }
-  );
+    year: "numeric",
+  });
 }
 
 // ==========================================
 // PAYMENT METHOD
 // ==========================================
 
-function formatPaymentMethod(
-  method:
-    | string
-    | null
-    | undefined
-) {
-  if (
-    !method
-  ) {
-    return 'Not specified';
+function formatPaymentMethod(method: string | null | undefined) {
+  if (!method) {
+    return "Not specified";
   }
 
-  const normalized =
-    String(
-      method
-    )
-      .trim()
-      .toUpperCase();
+  const normalized = String(method).trim().toUpperCase();
 
   // ========================================
   // CASHIER
   // ========================================
 
   if (
-    normalized ===
-      'CASHIER' ||
-    normalized ===
-      'CASH' ||
-    normalized ===
-      'PAY_AT_CASHIER'
+    normalized === "CASHIER" ||
+    normalized === "CASH" ||
+    normalized === "PAY_AT_CASHIER"
   ) {
-    return 'Pay at Cashier';
+    return "Pay at Cashier";
   }
 
   // ========================================
   // GCASH
   // ========================================
 
-  if (
-    normalized ===
-    'GCASH'
-  ) {
-    return 'GCash';
+  if (normalized === "GCASH") {
+    return "GCash";
   }
 
-  return String(
-    method
-  )
-    .replace(
-      /_/g,
-      ' '
-    )
+  return String(method)
+    .replace(/_/g, " ")
     .toLowerCase()
-    .replace(
-      /\b\w/g,
-      (
-        character
-      ) =>
-        character.toUpperCase()
-    );
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 // ==========================================
 // PAYMENT STATUS
 // ==========================================
 
-function formatPaymentStatus(
-  status:
-    | string
-    | null
-    | undefined
-) {
-  if (
-    !status
-  ) {
-    return 'Pending';
+function formatPaymentStatus(status: string | null | undefined) {
+  if (!status) {
+    return "Pending";
   }
 
-  const normalized =
-    String(
-      status
-    )
-      .trim()
-      .toUpperCase();
+  const normalized = String(status).trim().toUpperCase();
 
   if (
-    normalized ===
-      'PAID' ||
-    normalized ===
-      'COMPLETED' ||
-    normalized ===
-      'SUCCESS'
+    normalized === "PAID" ||
+    normalized === "COMPLETED" ||
+    normalized === "SUCCESS"
   ) {
-    return 'Paid';
+    return "Paid";
   }
 
-  if (
-    normalized ===
-    'CANCELLED'
-  ) {
-    return 'Cancelled';
+  if (normalized === "CANCELLED") {
+    return "Cancelled";
   }
 
-  if (
-    normalized ===
-    'FAILED'
-  ) {
-    return 'Failed';
+  if (normalized === "FAILED") {
+    return "Failed";
   }
 
-  return 'Pending';
+  return "Pending";
 }
 
 // ==========================================
 // STATUS BADGE
 // ==========================================
 
-function getPaymentStatusBadgeStyle(
-  status:
-    | string
-    | null
-    | undefined
-) {
-  const normalized =
-    String(
-      status ||
-        'PENDING'
-    ).toUpperCase();
+function getPaymentStatusBadgeStyle(status: string | null | undefined) {
+  const normalized = String(status || "PENDING").toUpperCase();
 
   if (
-    normalized ===
-      'PAID' ||
-    normalized ===
-      'COMPLETED' ||
-    normalized ===
-      'SUCCESS'
+    normalized === "PAID" ||
+    normalized === "COMPLETED" ||
+    normalized === "SUCCESS"
   ) {
     return {
-      backgroundColor:
-        '#E5F7E8',
+      backgroundColor: "#E5F7E8",
     };
   }
 
-  if (
-    normalized ===
-    'CANCELLED'
-  ) {
+  if (normalized === "CANCELLED") {
     return {
-      backgroundColor:
-        '#ECEFF4',
+      backgroundColor: "#ECEFF4",
     };
   }
 
-  if (
-    normalized ===
-    'FAILED'
-  ) {
+  if (normalized === "FAILED") {
     return {
-      backgroundColor:
-        '#FFEAEA',
+      backgroundColor: "#FFEAEA",
     };
   }
 
   return {
-    backgroundColor:
-      '#FFF4D6',
+    backgroundColor: "#FFF4D6",
   };
 }
 
@@ -1689,54 +1040,32 @@ function getPaymentStatusBadgeStyle(
 // STATUS TEXT
 // ==========================================
 
-function getPaymentStatusTextStyle(
-  status:
-    | string
-    | null
-    | undefined
-) {
-  const normalized =
-    String(
-      status ||
-        'PENDING'
-    ).toUpperCase();
+function getPaymentStatusTextStyle(status: string | null | undefined) {
+  const normalized = String(status || "PENDING").toUpperCase();
 
   if (
-    normalized ===
-      'PAID' ||
-    normalized ===
-      'COMPLETED' ||
-    normalized ===
-      'SUCCESS'
+    normalized === "PAID" ||
+    normalized === "COMPLETED" ||
+    normalized === "SUCCESS"
   ) {
     return {
-      color:
-        '#2E9D43',
+      color: "#2E9D43",
     };
   }
 
-  if (
-    normalized ===
-    'CANCELLED'
-  ) {
+  if (normalized === "CANCELLED") {
     return {
-      color:
-        '#606775',
+      color: "#606775",
     };
   }
 
-  if (
-    normalized ===
-    'FAILED'
-  ) {
+  if (normalized === "FAILED") {
     return {
-      color:
-        '#D32F2F',
+      color: "#D32F2F",
     };
   }
 
   return {
-    color:
-      '#A16A00',
+    color: "#A16A00",
   };
 }

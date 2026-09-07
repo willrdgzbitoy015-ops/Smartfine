@@ -101,14 +101,19 @@ export const styles = StyleSheet.create({
 
   navIconContainer: {
     width: 28,
+
     height: 28,
+
     marginRight: 10,
+
     alignItems: "center",
+
     justifyContent: "center",
   },
 
   navImageIcon: {
     width: 20,
+
     height: 20,
   },
 
@@ -198,12 +203,18 @@ export const styles = StyleSheet.create({
     marginTop: 5,
   },
 
+  // ==========================================
+  // UPLOAD PROFILE PICTURE BUTTON
+  // ==========================================
+
   uploadButton: {
-    minHeight: 44,
+    minWidth: 220,
+
+    minHeight: 48,
 
     backgroundColor: COLORS.green,
 
-    borderRadius: 8,
+    borderRadius: 9,
 
     paddingHorizontal: 22,
 
@@ -211,7 +222,22 @@ export const styles = StyleSheet.create({
 
     justifyContent: "center",
 
-    opacity: 0.6,
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+
+    shadowOpacity: 0.08,
+
+    shadowRadius: 4,
+
+    elevation: 2,
+  },
+
+  uploadButtonDisabled: {
+    opacity: 0.55,
   },
 
   uploadButtonText: {
@@ -219,7 +245,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
   // ==========================================
@@ -297,6 +323,7 @@ export const styles = StyleSheet.create({
 
     shadowOffset: {
       width: 0,
+
       height: 2,
     },
 

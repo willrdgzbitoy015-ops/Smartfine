@@ -1,37 +1,26 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useEffect, useMemo, useState } from "react";
 
 import {
-  View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   useWindowDimensions,
-  Image,
-  Alert,
-  Platform,
-} from 'react-native';
+  View,
+} from "react-native";
 
-import {
-  useRouter,
-} from 'expo-router';
+import { useRouter } from "expo-router";
 
-import {
-  useAuth,
-} from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
-import {
-  API_BASE,
-} from '@/constants/api';
+import { API_BASE } from "@/constants/api";
 
-import {
-  styles,
-} from './fines.styles';
+import LogoutModal from "@/components/logout-modal";
+import WarningModal from "@/components/warningmodal";
+
+import { styles } from "./fines.styles";
 
 // ==========================================
 // TYPES
@@ -44,21 +33,15 @@ type Fine = {
 
   student_id: number;
 
-  student_number:
-    | string
-    | null;
+  student_number: string | null;
 
-  student_username:
-    | string
-    | null;
+  student_username: string | null;
 
   student_name: string;
 
   violation_type_id: number;
 
-  violation_code:
-    | string
-    | null;
+  violation_code: string | null;
 
   violation_name: string;
 
@@ -66,29 +49,19 @@ type Fine = {
 
   amount: number;
 
-  remarks:
-    | string
-    | null;
+  remarks: string | null;
 
-  officer_id:
-    | number
-    | null;
+  officer_id: number | null;
 
   officer_name: string;
 
   issued_at: string;
 
-  paid_at:
-    | string
-    | null;
+  paid_at: string | null;
 
-  cancelled_at:
-    | string
-    | null;
+  cancelled_at: string | null;
 
-  cancellation_reason:
-    | string
-    | null;
+  cancellation_reason: string | null;
 
   status: string;
 };
@@ -96,9 +69,7 @@ type Fine = {
 type ViolationType = {
   id: number;
 
-  violation_code:
-    | string
-    | null;
+  violation_code: string | null;
 
   violation_name: string;
 
@@ -109,7 +80,9 @@ type ViolationType = {
 
 type NavItem = {
   label: string;
+
   route: string;
+
   icon?: any;
 };
 
@@ -118,161 +91,123 @@ type NavItem = {
 // ==========================================
 
 export default function FinesDirectory() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const { logout } =
-    useAuth();
+  const { logout } = useAuth();
 
-  const { width } =
-    useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const isTablet =
-    width >= 768;
+  const isTablet = width >= 768;
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
 
   // ==========================================
   // DATA
   // ==========================================
 
-  const [
-    fines,
-    setFines,
-  ] = useState<Fine[]>([]);
+  const [fines, setFines] = useState<Fine[]>([]);
 
-  const [
-    violationTypes,
-    setViolationTypes,
-  ] = useState<
-    ViolationType[]
-  >([]);
+  const [violationTypes, setViolationTypes] = useState<ViolationType[]>([]);
 
   // ==========================================
   // FILTERS
   // ==========================================
 
-  const [
-    searchText,
-    setSearchText,
-  ] = useState('');
+  const [searchText, setSearchText] = useState("");
 
-  const [
-    selectedStatus,
-    setSelectedStatus,
-  ] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState("ALL");
 
-  const [
-    selectedViolationId,
-    setSelectedViolationId,
-  ] = useState<
-    number | null
-  >(null);
+  const [selectedViolationId, setSelectedViolationId] = useState<number | null>(
+    null,
+  );
 
-  const [
-    statusMenuOpen,
-    setStatusMenuOpen,
-  ] = useState(false);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
 
-  const [
-    violationMenuOpen,
-    setViolationMenuOpen,
-  ] = useState(false);
+  const [violationMenuOpen, setViolationMenuOpen] = useState(false);
 
   // ==========================================
   // PAGE STATE
   // ==========================================
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
   // ==========================================
   // NAVIGATION ITEMS
-  //
-  // Keep this order the same as Students.
   // ==========================================
 
   const navItems: NavItem[] = [
     {
-      label:
-        'Dashboard',
+      label: "Dashboard",
 
-      route:
-        '/admin/dashboard',
+      route: "/admin/dashboard",
 
-      icon:
-        require('../../../assets/icons/dashboard.png'),
+      icon: require("../../../assets/icons/dashboard.png"),
     },
 
     {
-      label:
-        'Students',
+      label: "Students",
 
-      route:
-        '/admin/students',
+      route: "/admin/students",
 
-      icon:
-        require('../../../assets/icons/students.png'),
+      icon: require("../../../assets/icons/students.png"),
     },
 
     {
-      label:
-        'Fines',
+      label: "Fines",
 
-      route:
-        '/admin/fines',
+      route: "/admin/fines",
 
-      icon:
-        require('../../../assets/icons/fines.png'),
+      icon: require("../../../assets/icons/fines.png"),
     },
 
     {
-      label:
-        'QR Scanner',
+      label: "QR Scanner",
 
-      route:
-        '/admin/qr-scanner',
+      route: "/admin/qr-scanner",
 
-      icon:
-        require('../../../assets/icons/qr-codeWhite.png'),
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
-      label:
-        'Reports',
+      label: "Reports",
 
-      route:
-        '/admin/reports',
+      route: "/admin/reports",
 
-      icon:
-        require('../../../assets/icons/reports.png'),
+      icon: require("../../../assets/icons/reports.png"),
     },
 
     {
-      label:
-        'Settings',
+      label: "Settings",
 
-      route:
-        '/admin/settings',
+      route: "/admin/settings",
 
-      icon:
-        require('../../../assets/icons/settings.png'),
+      icon: require("../../../assets/icons/settings.png"),
     },
 
     {
-      label:
-        'Officers',
+      label: "Officers",
 
-      route:
-        '/admin/officers',
+      route: "/admin/officers",
 
-      icon:
-        require('../../../assets/icons/officers.png'),
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
 
@@ -284,355 +219,233 @@ export default function FinesDirectory() {
     loadPageData();
   }, []);
 
-  const loadPageData =
-    async () => {
-      try {
-        setLoading(true);
+  const loadPageData = async () => {
+    try {
+      setLoading(true);
 
-        setErrorMessage('');
+      setErrorMessage("");
 
-        const [
-          finesResponse,
-          violationsResponse,
-        ] =
-          await Promise.all([
-            fetch(
-              `${API_BASE}/api/fines`
-            ),
+      const [finesResponse, violationsResponse] = await Promise.all([
+        fetch(`${API_BASE}/api/fines`),
 
-            fetch(
-              `${API_BASE}/api/fines/options/violations`
-            ),
-          ]);
+        fetch(`${API_BASE}/api/fines/options/violations`),
+      ]);
 
-        const finesData =
-          await finesResponse.json();
+      const finesData = await finesResponse.json();
 
-        const violationsData =
-          await violationsResponse.json();
+      const violationsData = await violationsResponse.json();
 
-        // ======================================
-        // FINES ERROR
-        // ======================================
+      // ======================================
+      // FINES ERROR
+      // ======================================
 
-        if (
-          !finesResponse.ok ||
-          !finesData.success
-        ) {
-          throw new Error(
-            finesData.message ||
-              'Failed to load fines.'
-          );
-        }
-
-        // ======================================
-        // VIOLATION TYPES ERROR
-        // ======================================
-
-        if (
-          !violationsResponse.ok ||
-          !violationsData.success
-        ) {
-          throw new Error(
-            violationsData.message ||
-              'Failed to load violation types.'
-          );
-        }
-
-        // ======================================
-        // SAVE DATA
-        // ======================================
-
-        setFines(
-          finesData.fines || []
-        );
-
-        setViolationTypes(
-          violationsData.violations ||
-            []
-        );
-      } catch (error) {
-        console.error(
-          'Load fines directory error:',
-          error
-        );
-
-        setErrorMessage(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setLoading(false);
+      if (!finesResponse.ok || !finesData.success) {
+        throw new Error(finesData.message || "Failed to load fines.");
       }
-    };
+
+      // ======================================
+      // VIOLATION TYPES ERROR
+      // ======================================
+
+      if (!violationsResponse.ok || !violationsData.success) {
+        throw new Error(
+          violationsData.message || "Failed to load violation types.",
+        );
+      }
+
+      // ======================================
+      // SAVE DATA
+      // ======================================
+
+      setFines(finesData.fines || []);
+
+      setViolationTypes(violationsData.violations || []);
+    } catch (error) {
+      console.error("Load fines directory error:", error);
+
+      setErrorMessage("Could not connect to the SmartFine server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ==========================================
   // FILTER FINES
   // ==========================================
 
-  const filteredFines =
-    useMemo(() => {
-      const search =
-        searchText
-          .trim()
+  const filteredFines = useMemo(() => {
+    const search = searchText.trim().toLowerCase();
+
+    return fines.filter((fine) => {
+      // ==================================
+      // SEARCH
+      // ==================================
+
+      if (search) {
+        const searchable = [
+          fine.fine_reference,
+
+          fine.student_number,
+
+          fine.student_username,
+
+          fine.student_name,
+
+          fine.violation_name,
+
+          fine.officer_name,
+        ]
+          .filter(Boolean)
+          .join(" ")
           .toLowerCase();
 
-      return fines.filter(
-        (fine) => {
-          // ==================================
-          // SEARCH
-          // ==================================
-
-          if (search) {
-            const searchable =
-              [
-                fine.fine_reference,
-
-                fine.student_number,
-
-                fine.student_username,
-
-                fine.student_name,
-
-                fine.violation_name,
-
-                fine.officer_name,
-              ]
-                .filter(Boolean)
-                .join(' ')
-                .toLowerCase();
-
-            if (
-              !searchable.includes(
-                search
-              )
-            ) {
-              return false;
-            }
-          }
-
-          // ==================================
-          // STATUS FILTER
-          // ==================================
-
-          if (
-            selectedStatus !==
-            'ALL'
-          ) {
-            if (
-              String(
-                fine.status
-              ).toUpperCase() !==
-              selectedStatus
-            ) {
-              return false;
-            }
-          }
-
-          // ==================================
-          // VIOLATION FILTER
-          // ==================================
-
-          if (
-            selectedViolationId !==
-            null
-          ) {
-            if (
-              Number(
-                fine.violation_type_id
-              ) !==
-              selectedViolationId
-            ) {
-              return false;
-            }
-          }
-
-          return true;
+        if (!searchable.includes(search)) {
+          return false;
         }
-      );
-    }, [
-      fines,
-      searchText,
-      selectedStatus,
-      selectedViolationId,
-    ]);
+      }
+
+      // ==================================
+      // STATUS FILTER
+      // ==================================
+
+      if (selectedStatus !== "ALL") {
+        if (String(fine.status).toUpperCase() !== selectedStatus) {
+          return false;
+        }
+      }
+
+      // ==================================
+      // VIOLATION FILTER
+      // ==================================
+
+      if (selectedViolationId !== null) {
+        if (Number(fine.violation_type_id) !== selectedViolationId) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [fines, searchText, selectedStatus, selectedViolationId]);
 
   // ==========================================
   // SELECTED VIOLATION LABEL
   // ==========================================
 
-  const selectedViolationName =
-    useMemo(() => {
-      if (
-        selectedViolationId ===
-        null
-      ) {
-        return 'Violation Type';
-      }
+  const selectedViolationName = useMemo(() => {
+    if (selectedViolationId === null) {
+      return "Violation Type";
+    }
 
-      const violation =
-        violationTypes.find(
-          (item) =>
-            item.id ===
-            selectedViolationId
-        );
+    const violation = violationTypes.find(
+      (item) => item.id === selectedViolationId,
+    );
 
-      return (
-        violation?.violation_name ||
-        'Violation Type'
-      );
-    }, [
-      violationTypes,
-      selectedViolationId,
-    ]);
+    return violation?.violation_name || "Violation Type";
+  }, [violationTypes, selectedViolationId]);
 
   // ==========================================
   // OPEN ADD FINE
   // ==========================================
 
-  const handleAddFine =
-    () => {
-      router.push(
-        '/admin/fines/add' as any
-      );
-    };
+  const handleAddFine = () => {
+    router.push("/admin/fines/add" as any);
+  };
 
   // ==========================================
   // OPEN FINE DETAILS
   // ==========================================
 
-  const handleOpenFine = (
-    fineId: number
-  ) => {
-    router.push(
-      `/admin/fines/${fineId}` as any
-    );
+  const handleOpenFine = (fineId: number) => {
+    router.push(`/admin/fines/${fineId}` as any);
   };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT MODAL
   // ==========================================
 
-  const performLogout =
-    async () => {
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
+
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
+
+    setShowLogoutModal(false);
+  };
+
+  // ==========================================
+  // PERFORM LOGOUT
+  // ==========================================
+
+  const performLogout = async () => {
+    try {
+      setLogoutLoading(true);
+
+      console.log("Logout confirmation accepted.");
+
       await logout();
 
-      router.replace(
-        '/login'
-      );
-    };
+      setShowLogoutModal(false);
 
-  const handleLogout =
-    () => {
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            'Are you sure you want to log out?'
-          );
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
 
-        if (confirmed) {
-          performLogout();
-        }
+      setShowLogoutModal(false);
 
-        return;
-      }
+      setWarningTitle("Logout Error");
 
-      Alert.alert(
-        'Log Out',
+      setWarningMessage("Could not log out. Please try again.");
 
-        'Are you sure you want to log out?',
-
-        [
-          {
-            text:
-              'Cancel',
-
-            style:
-              'cancel',
-          },
-
-          {
-            text:
-              'Log Out',
-
-            style:
-              'destructive',
-
-            onPress:
-              performLogout,
-          },
-        ]
-      );
-    };
+      setShowWarningModal(true);
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
 
   // ==========================================
   // MONEY
   // ==========================================
 
-  const formatMoney = (
-    amount: number
-  ) => {
-    return `₱${Number(
-      amount || 0
-    ).toLocaleString(
-      'en-PH',
-      {
-        minimumFractionDigits:
-          2,
+  const formatMoney = (amount: number) => {
+    return `₱${Number(amount || 0).toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
 
-        maximumFractionDigits:
-          2,
-      }
-    )}`;
+      maximumFractionDigits: 2,
+    })}`;
   };
 
   // ==========================================
   // DATE
   // ==========================================
 
-  const formatDate = (
-    value: string
-  ) => {
+  const formatDate = (value: string) => {
     if (!value) {
-      return '—';
+      return "—";
     }
 
-    const normalized =
-      value.includes('T')
-        ? value
-        : value.replace(
-            ' ',
-            'T'
-          );
+    const normalized = value.includes("T") ? value : value.replace(" ", "T");
 
-    const date =
-      new Date(
-        normalized
-      );
+    const date = new Date(normalized);
 
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
+    if (Number.isNaN(date.getTime())) {
       return value;
     }
 
-    return date.toLocaleDateString(
-      'en-US',
-      {
-        month:
-          'short',
+    return date.toLocaleDateString("en-US", {
+      month: "short",
 
-        day:
-          'numeric',
+      day: "numeric",
 
-        year:
-          'numeric',
-      }
-    );
+      year: "numeric",
+    });
   };
 
   // ==========================================
@@ -640,116 +453,60 @@ export default function FinesDirectory() {
   // ==========================================
 
   return (
-    <View
-      style={
-        styles.screen
-      }
-    >
+    <View style={styles.screen}>
       {/* ======================================
           SIDEBAR
-          SAME STRUCTURE AS STUDENTS
       ====================================== */}
 
       {isTablet && (
-        <View
-          style={
-            styles.sidebar
-          }
-        >
+        <View style={styles.sidebar}>
           {/* LOGO */}
 
-          <View
-            style={
-              styles.logoArea
-            }
-          >
+          <View style={styles.logoArea}>
             <Image
-              source={require('../../../assets/branding/smartfineNoBG.png')}
-              style={
-                styles.smartFineLogo
-              }
+              source={require("../../../assets/branding/smartfineNoBG.png")}
+              style={styles.smartFineLogo}
               resizeMode="contain"
             />
           </View>
 
           {/* NAVIGATION */}
 
-          <View
-            style={
-              styles.navigation
-            }
-          >
-            {navItems.map(
-              (item) => {
-                const active =
-                  item.label ===
-                  'Fines';
+          <View style={styles.navigation}>
+            {navItems.map((item) => {
+              const active = item.label === "Fines";
 
-                return (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
-                    style={[
-                      styles.navItem,
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => router.push(item.route as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-                      active &&
-                        styles.navItemActive,
-                    ]}
-                    onPress={() =>
-                      router.push(
-                        item.route as any
-                      )
-                    }
-                  >
-                    <View
-                      style={
-                        styles.navIconContainer
-                      }
-                    >
-                      <Image
-                        source={
-                          item.icon
-                        }
-                        style={
-                          styles.navImageIcon
-                        }
-                        resizeMode="contain"
-                      />
-                    </View>
-
-                    <Text
-                      style={
-                        styles.navText
-                      }
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-            )}
+                  <Text style={styles.navText}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {/* LOGOUT */}
+          {/* ==================================
+              LOGOUT
+          ================================== */}
 
           <TouchableOpacity
-            style={
-              styles.logoutButton
-            }
-            onPress={
-              handleLogout
-            }
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
           >
-            <Text
-              style={
-                styles.logoutText
-              }
-            >
-              Log Out
-            </Text>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -758,18 +515,10 @@ export default function FinesDirectory() {
           MAIN
       ====================================== */}
 
-      <View
-        style={
-          styles.main
-        }
-      >
+      <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
-          showsVerticalScrollIndicator={
-            false
-          }
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
           {/* ==================================
               MOBILE NAVIGATION
@@ -778,52 +527,34 @@ export default function FinesDirectory() {
           {!isTablet && (
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
             >
-              {navItems.map(
-                (item) => {
-                  const active =
-                    item.label ===
-                    'Fines';
+              {navItems.map((item) => {
+                const active = item.label === "Fines";
 
-                  return (
-                    <TouchableOpacity
-                      key={
-                        item.label
-                      }
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={[
+                      styles.mobileNavItem,
+
+                      active && styles.mobileNavItemActive,
+                    ]}
+                    onPress={() => router.push(item.route as any)}
+                  >
+                    <Text
                       style={[
-                        styles.mobileNavItem,
+                        styles.mobileNavText,
 
-                        active &&
-                          styles.mobileNavItemActive,
+                        active && styles.mobileNavTextActive,
                       ]}
-                      onPress={() =>
-                        router.push(
-                          item.route as any
-                        )
-                      }
                     >
-                      <Text
-                        style={[
-                          styles.mobileNavText,
-
-                          active &&
-                            styles.mobileNavTextActive,
-                        ]}
-                      >
-                        {
-                          item.label
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
@@ -831,54 +562,24 @@ export default function FinesDirectory() {
               HEADER
           ================================== */}
 
-          <View
-            style={
-              styles.header
-            }
-          >
-            <Text
-              style={
-                styles.pageTitle
-              }
-            >
-              Fines Directory
-            </Text>
+          <View style={styles.header}>
+            <Text style={styles.pageTitle}>Fines Directory</Text>
           </View>
 
           {/* ==================================
               TOOLBAR
           ================================== */}
 
-          <View
-            style={
-              styles.toolbar
-            }
-          >
+          <View style={styles.toolbar}>
             {/* SEARCH */}
 
-            <View
-              style={
-                styles.searchBox
-              }
-            >
-              <Text
-                style={
-                  styles.searchIcon
-                }
-              >
-                ⌕
-              </Text>
+            <View style={styles.searchBox}>
+              <Text style={styles.searchIcon}>⌕</Text>
 
               <TextInput
-                style={
-                  styles.searchInput
-                }
-                value={
-                  searchText
-                }
-                onChangeText={
-                  setSearchText
-                }
+                style={styles.searchInput}
+                value={searchText}
+                onChangeText={setSearchText}
                 placeholder="Search student name or Fine ID"
                 placeholderTextColor="#8C939F"
               />
@@ -888,94 +589,41 @@ export default function FinesDirectory() {
                 STATUS FILTER
             ================================== */}
 
-            <View
-              style={
-                styles.filterWrapper
-              }
-            >
+            <View style={styles.filterWrapper}>
               <TouchableOpacity
-                style={
-                  styles.filterButton
-                }
+                style={styles.filterButton}
                 onPress={() => {
-                  setStatusMenuOpen(
-                    !statusMenuOpen
-                  );
+                  setStatusMenuOpen(!statusMenuOpen);
 
-                  setViolationMenuOpen(
-                    false
-                  );
+                  setViolationMenuOpen(false);
                 }}
               >
-                <Text
-                  style={
-                    styles.filterButtonText
-                  }
-                >
-                  {selectedStatus ===
-                  'ALL'
-                    ? 'All Status'
-                    : formatStatus(
-                        selectedStatus
-                      )}
+                <Text style={styles.filterButtonText}>
+                  {selectedStatus === "ALL"
+                    ? "All Status"
+                    : formatStatus(selectedStatus)}
                 </Text>
 
-                <Text
-                  style={
-                    styles.filterArrow
-                  }
-                >
-                  ▼
-                </Text>
+                <Text style={styles.filterArrow}>▼</Text>
               </TouchableOpacity>
 
               {statusMenuOpen && (
-                <View
-                  style={
-                    styles.dropdownMenu
-                  }
-                >
-                  {[
-                    'ALL',
-                    'UNPAID',
-                    'PAID',
-                    'CANCELLED',
-                  ].map(
-                    (
-                      status
-                    ) => (
-                      <TouchableOpacity
-                        key={
-                          status
-                        }
-                        style={
-                          styles.dropdownItem
-                        }
-                        onPress={() => {
-                          setSelectedStatus(
-                            status
-                          );
+                <View style={styles.dropdownMenu}>
+                  {["ALL", "UNPAID", "PAID", "CANCELLED"].map((status) => (
+                    <TouchableOpacity
+                      key={status}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setSelectedStatus(status);
 
-                          setStatusMenuOpen(
-                            false
-                          );
-                        }}
-                      >
-                        <Text
-                          style={
-                            styles.dropdownItemText
-                          }
-                        >
-                          {status ===
-                          'ALL'
-                            ? 'All Status'
-                            : formatStatus(
-                                status
-                              )}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  )}
+                        setStatusMenuOpen(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>
+                        {status === "ALL" ? "All Status" : formatStatus(status)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               )}
             </View>
@@ -984,113 +632,50 @@ export default function FinesDirectory() {
                 VIOLATION FILTER
             ================================== */}
 
-            <View
-              style={[
-                styles.filterWrapper,
-
-                styles.violationFilterWrapper,
-              ]}
-            >
+            <View style={[styles.filterWrapper, styles.violationFilterWrapper]}>
               <TouchableOpacity
-                style={
-                  styles.filterButton
-                }
+                style={styles.filterButton}
                 onPress={() => {
-                  setViolationMenuOpen(
-                    !violationMenuOpen
-                  );
+                  setViolationMenuOpen(!violationMenuOpen);
 
-                  setStatusMenuOpen(
-                    false
-                  );
+                  setStatusMenuOpen(false);
                 }}
               >
-                <Text
-                  style={
-                    styles.filterButtonText
-                  }
-                  numberOfLines={
-                    1
-                  }
-                >
-                  {
-                    selectedViolationName
-                  }
+                <Text style={styles.filterButtonText} numberOfLines={1}>
+                  {selectedViolationName}
                 </Text>
 
-                <Text
-                  style={
-                    styles.filterArrow
-                  }
-                >
-                  ▼
-                </Text>
+                <Text style={styles.filterArrow}>▼</Text>
               </TouchableOpacity>
 
               {violationMenuOpen && (
-                <View
-                  style={[
-                    styles.dropdownMenu,
-
-                    styles.violationDropdown,
-                  ]}
-                >
+                <View style={[styles.dropdownMenu, styles.violationDropdown]}>
                   <TouchableOpacity
-                    style={
-                      styles.dropdownItem
-                    }
+                    style={styles.dropdownItem}
                     onPress={() => {
-                      setSelectedViolationId(
-                        null
-                      );
+                      setSelectedViolationId(null);
 
-                      setViolationMenuOpen(
-                        false
-                      );
+                      setViolationMenuOpen(false);
                     }}
                   >
-                    <Text
-                      style={
-                        styles.dropdownItemText
-                      }
-                    >
-                      All Violations
-                    </Text>
+                    <Text style={styles.dropdownItemText}>All Violations</Text>
                   </TouchableOpacity>
 
-                  {violationTypes.map(
-                    (
-                      violation
-                    ) => (
-                      <TouchableOpacity
-                        key={
-                          violation.id
-                        }
-                        style={
-                          styles.dropdownItem
-                        }
-                        onPress={() => {
-                          setSelectedViolationId(
-                            violation.id
-                          );
+                  {violationTypes.map((violation) => (
+                    <TouchableOpacity
+                      key={violation.id}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setSelectedViolationId(violation.id);
 
-                          setViolationMenuOpen(
-                            false
-                          );
-                        }}
-                      >
-                        <Text
-                          style={
-                            styles.dropdownItemText
-                          }
-                        >
-                          {
-                            violation.violation_name
-                          }
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  )}
+                        setViolationMenuOpen(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>
+                        {violation.violation_name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               )}
             </View>
@@ -1100,20 +685,11 @@ export default function FinesDirectory() {
             ================================== */}
 
             <TouchableOpacity
-              style={
-                styles.addButton
-              }
-              onPress={
-                handleAddFine
-              }
+              style={styles.addButton}
+              onPress={handleAddFine}
+              activeOpacity={0.85}
             >
-              <Text
-                style={
-                  styles.addButtonText
-                }
-              >
-                + Add Fine
-              </Text>
+              <Text style={styles.addButtonText}>+ Add Fine</Text>
             </TouchableOpacity>
           </View>
 
@@ -1121,69 +697,30 @@ export default function FinesDirectory() {
               TABLE CARD
           ================================== */}
 
-          <View
-            style={
-              styles.tableCard
-            }
-          >
+          <View style={styles.tableCard}>
             {/* ==================================
                 LOADING
             ================================== */}
 
             {loading ? (
-              <View
-                style={
-                  styles.centerState
-                }
-              >
-                <ActivityIndicator
-                  size="large"
-                  color="#173A73"
-                />
+              <View style={styles.centerState}>
+                <ActivityIndicator size="large" color="#173A73" />
 
-                <Text
-                  style={
-                    styles.loadingText
-                  }
-                >
-                  Loading fines...
-                </Text>
+                <Text style={styles.loadingText}>Loading fines...</Text>
               </View>
             ) : errorMessage ? (
               /* ==================================
                   ERROR
               ================================== */
 
-              <View
-                style={
-                  styles.centerState
-                }
-              >
-                <Text
-                  style={
-                    styles.errorText
-                  }
-                >
-                  {
-                    errorMessage
-                  }
-                </Text>
+              <View style={styles.centerState}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
 
                 <TouchableOpacity
-                  style={
-                    styles.retryButton
-                  }
-                  onPress={
-                    loadPageData
-                  }
+                  style={styles.retryButton}
+                  onPress={loadPageData}
                 >
-                  <Text
-                    style={
-                      styles.retryButtonText
-                    }
-                  >
-                    Try Again
-                  </Text>
+                  <Text style={styles.retryButtonText}>Try Again</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1191,91 +728,38 @@ export default function FinesDirectory() {
                   TABLE
               ================================== */
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={
-                  true
-                }
-              >
-                <View
-                  style={
-                    styles.table
-                  }
-                >
-                  {/* TABLE HEADER */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                <View style={styles.table}>
+                  {/* ==================================
+                      TABLE HEADER
+                  ================================== */}
 
-                  <View
-                    style={
-                      styles.tableHeader
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.headerCell,
-
-                        styles.fineIdColumn,
-                      ]}
-                    >
+                  <View style={styles.tableHeader}>
+                    <Text style={[styles.headerCell, styles.fineIdColumn]}>
                       Fine ID
                     </Text>
 
-                    <Text
-                      style={[
-                        styles.headerCell,
-
-                        styles.violationColumn,
-                      ]}
-                    >
+                    <Text style={[styles.headerCell, styles.violationColumn]}>
                       Violation Type
                     </Text>
 
-                    <Text
-                      style={[
-                        styles.headerCell,
-
-                        styles.studentColumn,
-                      ]}
-                    >
+                    <Text style={[styles.headerCell, styles.studentColumn]}>
                       Student Name
                     </Text>
 
-                    <Text
-                      style={[
-                        styles.headerCell,
-
-                        styles.amountColumn,
-                      ]}
-                    >
+                    <Text style={[styles.headerCell, styles.amountColumn]}>
                       Amount
                     </Text>
 
-                    <Text
-                      style={[
-                        styles.headerCell,
-
-                        styles.officerColumn,
-                      ]}
-                    >
+                    <Text style={[styles.headerCell, styles.officerColumn]}>
                       Officer
                     </Text>
 
-                    <Text
-                      style={[
-                        styles.headerCell,
-
-                        styles.dateColumn,
-                      ]}
-                    >
+                    <Text style={[styles.headerCell, styles.dateColumn]}>
                       Date Issued
                     </Text>
 
-                    <Text
-                      style={[
-                        styles.headerCell,
-
-                        styles.statusColumn,
-                      ]}
-                    >
+                    <Text style={[styles.headerCell, styles.statusColumn]}>
                       Status
                     </Text>
                   </View>
@@ -1284,26 +768,11 @@ export default function FinesDirectory() {
                       EMPTY STATE
                   ================================== */}
 
-                  {filteredFines.length ===
-                  0 ? (
-                    <View
-                      style={
-                        styles.emptyTable
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.emptyTitle
-                        }
-                      >
-                        No fines found
-                      </Text>
+                  {filteredFines.length === 0 ? (
+                    <View style={styles.emptyTable}>
+                      <Text style={styles.emptyTitle}>No fines found</Text>
 
-                      <Text
-                        style={
-                          styles.emptyText
-                        }
-                      >
+                      <Text style={styles.emptyText}>
                         No fine records match the current filters.
                       </Text>
                     </View>
@@ -1312,164 +781,98 @@ export default function FinesDirectory() {
                         FINE ROWS
                     ================================== */
 
-                    filteredFines.map(
-                      (
-                        fine
-                      ) => (
-                        <TouchableOpacity
-                          key={
-                            fine.id
-                          }
-                          style={
-                            styles.tableRow
-                          }
-                          onPress={() =>
-                            handleOpenFine(
-                              fine.id
-                            )
-                          }
+                    filteredFines.map((fine) => (
+                      <TouchableOpacity
+                        key={fine.id}
+                        style={styles.tableRow}
+                        onPress={() => handleOpenFine(fine.id)}
+                        activeOpacity={0.75}
+                      >
+                        {/* FINE ID */}
+
+                        <Text
+                          style={[
+                            styles.cell,
+
+                            styles.fineIdColumn,
+
+                            styles.fineIdText,
+                          ]}
                         >
-                          {/* FINE ID */}
+                          {fine.fine_reference}
+                        </Text>
 
-                          <Text
-                            style={[
-                              styles.cell,
+                        {/* VIOLATION */}
 
-                              styles.fineIdColumn,
+                        <Text style={[styles.cell, styles.violationColumn]}>
+                          {fine.violation_name}
+                        </Text>
 
-                              styles.fineIdText,
-                            ]}
-                          >
-                            {
-                              fine.fine_reference
-                            }
+                        {/* STUDENT */}
+
+                        <View
+                          style={[styles.cellContainer, styles.studentColumn]}
+                        >
+                          <Text style={styles.studentName}>
+                            {fine.student_name}
                           </Text>
 
-                          {/* VIOLATION */}
-
-                          <Text
-                            style={[
-                              styles.cell,
-
-                              styles.violationColumn,
-                            ]}
-                          >
-                            {
-                              fine.violation_name
-                            }
+                          <Text style={styles.studentNumber}>
+                            {fine.student_number || ""}
                           </Text>
+                        </View>
 
-                          {/* STUDENT */}
+                        {/* AMOUNT */}
 
+                        <Text
+                          style={[
+                            styles.cell,
+
+                            styles.amountColumn,
+
+                            styles.amountText,
+                          ]}
+                        >
+                          {formatMoney(fine.amount)}
+                        </Text>
+
+                        {/* OFFICER */}
+
+                        <Text style={[styles.cell, styles.officerColumn]}>
+                          {fine.officer_name}
+                        </Text>
+
+                        {/* DATE */}
+
+                        <Text style={[styles.cell, styles.dateColumn]}>
+                          {formatDate(fine.issued_at)}
+                        </Text>
+
+                        {/* STATUS */}
+
+                        <View
+                          style={[styles.cellContainer, styles.statusColumn]}
+                        >
                           <View
                             style={[
-                              styles.cellContainer,
+                              styles.statusBadge,
 
-                              styles.studentColumn,
+                              getStatusBadgeStyle(fine.status),
                             ]}
                           >
                             <Text
-                              style={
-                                styles.studentName
-                              }
-                            >
-                              {
-                                fine.student_name
-                              }
-                            </Text>
-
-                            <Text
-                              style={
-                                styles.studentNumber
-                              }
-                            >
-                              {
-                                fine.student_number ||
-                                ''
-                              }
-                            </Text>
-                          </View>
-
-                          {/* AMOUNT */}
-
-                          <Text
-                            style={[
-                              styles.cell,
-
-                              styles.amountColumn,
-
-                              styles.amountText,
-                            ]}
-                          >
-                            {formatMoney(
-                              fine.amount
-                            )}
-                          </Text>
-
-                          {/* OFFICER */}
-
-                          <Text
-                            style={[
-                              styles.cell,
-
-                              styles.officerColumn,
-                            ]}
-                          >
-                            {
-                              fine.officer_name
-                            }
-                          </Text>
-
-                          {/* DATE */}
-
-                          <Text
-                            style={[
-                              styles.cell,
-
-                              styles.dateColumn,
-                            ]}
-                          >
-                            {formatDate(
-                              fine.issued_at
-                            )}
-                          </Text>
-
-                          {/* STATUS */}
-
-                          <View
-                            style={[
-                              styles.cellContainer,
-
-                              styles.statusColumn,
-                            ]}
-                          >
-                            <View
                               style={[
-                                styles.statusBadge,
+                                styles.statusText,
 
-                                getStatusBadgeStyle(
-                                  fine.status
-                                ),
+                                getStatusTextStyle(fine.status),
                               ]}
                             >
-                              <Text
-                                style={[
-                                  styles.statusText,
-
-                                  getStatusTextStyle(
-                                    fine.status
-                                  ),
-                                ]}
-                              >
-                                {formatStatus(
-                                  fine.status
-                                )}
-                              </Text>
-                            </View>
+                              {formatStatus(fine.status)}
+                            </Text>
                           </View>
-                        </TouchableOpacity>
-                      )
-                    )
+                        </View>
+                      </TouchableOpacity>
+                    ))
                   )}
                 </View>
               </ScrollView>
@@ -1477,6 +880,31 @@ export default function FinesDirectory() {
           </View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          LOGOUT CONFIRMATION MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowWarningModal(false);
+        }}
+      />
     </View>
   );
 }
@@ -1485,23 +913,18 @@ export default function FinesDirectory() {
 // FORMAT STATUS
 // ==========================================
 
-function formatStatus(
-  status: string
-) {
-  const value =
-    String(
-      status || ''
-    ).toUpperCase();
+function formatStatus(status: string) {
+  const value = String(status || "").toUpperCase();
 
   switch (value) {
-    case 'PAID':
-      return 'Paid';
+    case "PAID":
+      return "Paid";
 
-    case 'CANCELLED':
-      return 'Cancelled';
+    case "CANCELLED":
+      return "Cancelled";
 
-    case 'UNPAID':
-      return 'Unpaid';
+    case "UNPAID":
+      return "Unpaid";
 
     default:
       return status;
@@ -1512,19 +935,14 @@ function formatStatus(
 // STATUS BADGE STYLE
 // ==========================================
 
-function getStatusBadgeStyle(
-  status: string
-) {
-  const value =
-    String(
-      status || ''
-    ).toUpperCase();
+function getStatusBadgeStyle(status: string) {
+  const value = String(status || "").toUpperCase();
 
   switch (value) {
-    case 'PAID':
+    case "PAID":
       return styles.statusBadgePaid;
 
-    case 'CANCELLED':
+    case "CANCELLED":
       return styles.statusBadgeCancelled;
 
     default:
@@ -1536,19 +954,14 @@ function getStatusBadgeStyle(
 // STATUS TEXT STYLE
 // ==========================================
 
-function getStatusTextStyle(
-  status: string
-) {
-  const value =
-    String(
-      status || ''
-    ).toUpperCase();
+function getStatusTextStyle(status: string) {
+  const value = String(status || "").toUpperCase();
 
   switch (value) {
-    case 'PAID':
+    case "PAID":
       return styles.statusTextPaid;
 
-    case 'CANCELLED':
+    case "CANCELLED":
       return styles.statusTextCancelled;
 
     default:

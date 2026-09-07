@@ -17,7 +17,14 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { API_BASE } from "@/constants/api";
+
+import LogoutModal from "@/components/logout-modal";
+
 import { styles } from "./dashboard.styles";
+
+// ==========================================
+// TYPES
+// ==========================================
 
 type DashboardStats = {
   totalStudents: number;
@@ -52,6 +59,10 @@ type AdminProfile = {
   profilePictureUri: string | null;
 };
 
+// ==========================================
+// ADMIN DASHBOARD
+// ==========================================
+
 export default function AdminDashboard() {
   const router = useRouter();
 
@@ -62,6 +73,14 @@ export default function AdminDashboard() {
   const isTablet = width >= 768;
 
   const [activeMenu, setActiveMenu] = useState("Dashboard");
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   // ==========================================
   // DASHBOARD STATS
@@ -233,7 +252,7 @@ export default function AdminDashboard() {
   };
 
   // ==========================================
-  // NAVIGATION
+  // NAVIGATION ITEMS
   // ==========================================
 
   const navItems: NavItem[] = [
@@ -357,16 +376,40 @@ export default function AdminDashboard() {
   };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT MODAL
+  // ==========================================
+
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
+
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
+
+    setShowLogoutModal(false);
+  };
+
+  // ==========================================
+  // CONFIRM LOGOUT
   // ==========================================
 
   const performLogout = async () => {
     try {
-      console.log("Logout button pressed");
+      setLogoutLoading(true);
+
+      console.log("Logout confirmation accepted.");
 
       await logout();
 
       console.log("Admin logged out successfully.");
+
+      setShowLogoutModal(false);
 
       router.replace("/login");
     } catch (error) {
@@ -377,41 +420,9 @@ export default function AdminDashboard() {
       } else {
         Alert.alert("Logout Error", "Could not log out. Please try again.");
       }
+    } finally {
+      setLogoutLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm("Are you sure you want to log out?");
-
-      if (confirmed) {
-        performLogout();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Log Out",
-
-      "Are you sure you want to log out?",
-
-      [
-        {
-          text: "Cancel",
-
-          style: "cancel",
-        },
-
-        {
-          text: "Log Out",
-
-          style: "destructive",
-
-          onPress: performLogout,
-        },
-      ],
-    );
   };
 
   // ==========================================
@@ -428,11 +439,15 @@ export default function AdminDashboard() {
 
   return (
     <View style={styles.screen}>
-      {/* SIDEBAR */}
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
 
       {isTablet && (
         <View style={styles.sidebar}>
-          {/* SMARTFINE LOGO */}
+          {/* ==================================
+              SMARTFINE LOGO
+          ================================== */}
 
           <View style={styles.logoArea}>
             <Image
@@ -442,7 +457,9 @@ export default function AdminDashboard() {
             />
           </View>
 
-          {/* NAVIGATION */}
+          {/* ==================================
+              NAVIGATION
+          ================================== */}
 
           <View style={styles.navigation}>
             {navItems.map((item) => {
@@ -453,6 +470,7 @@ export default function AdminDashboard() {
                   key={item.label}
                   style={[styles.navItem, isActive && styles.navItemActive]}
                   onPress={() => handleNavigation(item)}
+                  activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
                     <Image
@@ -472,22 +490,32 @@ export default function AdminDashboard() {
             })}
           </View>
 
-          {/* LOGOUT BUTTON */}
+          {/* ==================================
+              LOGOUT BUTTON
+          ================================== */}
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* MAIN CONTENT */}
+      {/* ======================================
+          MAIN CONTENT
+      ====================================== */}
 
       <View style={styles.main}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* HEADER */}
+          {/* ==================================
+              HEADER
+          ================================== */}
 
           <View style={styles.header}>
             <View>
@@ -503,7 +531,9 @@ export default function AdminDashboard() {
                 <Text style={styles.adminRole}>Administrator</Text>
               </View>
 
-              {/* ADMIN PROFILE PHOTO */}
+              {/* ==================================
+                  ADMIN PROFILE PICTURE
+              ================================== */}
 
               <View style={styles.avatar}>
                 {adminProfilePictureUrl && !adminImageFailed ? (
@@ -522,7 +552,9 @@ export default function AdminDashboard() {
             </View>
           </View>
 
-          {/* MOBILE NAVIGATION */}
+          {/* ==================================
+              MOBILE NAVIGATION
+          ================================== */}
 
           {!isTablet && (
             <ScrollView
@@ -542,6 +574,7 @@ export default function AdminDashboard() {
                       isActive && styles.mobileNavItemActive,
                     ]}
                     onPress={() => handleNavigation(item)}
+                    activeOpacity={0.8}
                   >
                     <Text
                       style={[
@@ -558,7 +591,9 @@ export default function AdminDashboard() {
             </ScrollView>
           )}
 
-          {/* SUMMARY CARDS */}
+          {/* ==================================
+              SUMMARY CARDS
+          ================================== */}
 
           <View style={styles.cardsContainer}>
             {summaryCards.map((card) => (
@@ -593,7 +628,9 @@ export default function AdminDashboard() {
             ))}
           </View>
 
-          {/* RECENT ACTIVITIES */}
+          {/* ==================================
+              RECENT ACTIVITIES
+          ================================== */}
 
           <View style={styles.activityPanel}>
             <Text style={styles.activityTitle}>Recent Activities</Text>
@@ -644,12 +681,24 @@ export default function AdminDashboard() {
             <TouchableOpacity
               style={styles.viewActivitiesButton}
               onPress={handleViewActivities}
+              activeOpacity={0.8}
             >
               <Text style={styles.viewActivitiesText}>View all activities</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          LOGOUT CONFIRMATION MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
     </View>
   );
 }

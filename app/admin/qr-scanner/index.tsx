@@ -1,41 +1,29 @@
-import {
-  useEffect,
-  useState,
-} from 'react';
+import { useEffect, useState } from "react";
 
 import {
-  View,
+  ActivityIndicator,
+  Image,
+  Platform,
+  ScrollView,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   useWindowDimensions,
-  Image,
-  Alert,
-  Platform,
-} from 'react-native';
+  View,
+} from "react-native";
 
-import {
-  CameraView,
-  useCameraPermissions,
-} from 'expo-camera';
+import { CameraView, useCameraPermissions } from "expo-camera";
 
-import {
-  useRouter,
-} from 'expo-router';
+import { useRouter } from "expo-router";
 
-import {
-  useAuth,
-} from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
-import {
-  API_BASE,
-} from '@/constants/api';
+import { API_BASE } from "@/constants/api";
 
-import {
-  styles,
-} from './qr-scanner.styles';
+import LogoutModal from "@/components/logout-modal";
+import WarningModal from "@/components/warningmodal";
+
+import { styles } from "./qr-scanner.styles";
 
 // ==========================================
 // TYPES
@@ -50,35 +38,23 @@ type Student = {
 
   first_name: string;
 
-  middle_name:
-    | string
-    | null;
+  middle_name: string | null;
 
   last_name: string;
 
   full_name: string;
 
-  email:
-    | string
-    | null;
+  email: string | null;
 
-  contact_number:
-    | string
-    | null;
+  contact_number: string | null;
 
-  grade_level:
-    | string
-    | null;
+  grade_level: string | null;
 
-  section:
-    | string
-    | null;
+  section: string | null;
 
   account_status: string;
 
-  profile_picture_uri:
-    | string
-    | null;
+  profile_picture_uri: string | null;
 
   total_fines?: number;
 
@@ -87,7 +63,9 @@ type Student = {
 
 type NavItem = {
   label: string;
+
   route: string;
+
   icon?: any;
 };
 
@@ -95,91 +73,64 @@ type NavItem = {
 // SMARTFINE QR PREFIX
 // ==========================================
 
-const QR_PREFIX =
-  'SMARTFINE_STUDENT:';
+const QR_PREFIX = "SMARTFINE_STUDENT:";
 
 // ==========================================
 // QR SCANNER
 // ==========================================
 
 export default function QRScanner() {
-  const router =
-    useRouter();
+  const router = useRouter();
 
-  const { logout } =
-    useAuth();
+  const { logout } = useAuth();
 
-  const { width } =
-    useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  const isTablet =
-    width >= 768;
+  const isTablet = width >= 768;
 
   // ==========================================
   // CAMERA PERMISSION
   // ==========================================
 
-  const [
-    permission,
-    requestPermission,
-  ] =
-    useCameraPermissions();
+  const [permission, requestPermission] = useCameraPermissions();
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
 
   // ==========================================
   // STATE
   // ==========================================
 
-  const [
-    students,
-    setStudents,
-  ] =
-    useState<Student[]>(
-      []
-    );
+  const [students, setStudents] = useState<Student[]>([]);
 
-  const [
-    loadingStudents,
-    setLoadingStudents,
-  ] =
-    useState(true);
+  const [loadingStudents, setLoadingStudents] = useState(true);
 
-  const [
-    processingScan,
-    setProcessingScan,
-  ] =
-    useState(false);
+  const [processingScan, setProcessingScan] = useState(false);
 
-  const [
-    scanLocked,
-    setScanLocked,
-  ] =
-    useState(false);
+  const [scanLocked, setScanLocked] = useState(false);
 
-  const [
-    manualStudentId,
-    setManualStudentId,
-  ] =
-    useState('');
+  const [manualStudentId, setManualStudentId] = useState("");
 
-  const [
-    foundStudent,
-    setFoundStudent,
-  ] =
-    useState<Student | null>(
-      null
-    );
+  const [foundStudent, setFoundStudent] = useState<Student | null>(null);
 
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] =
-    useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const [
-    profileImageFailed,
-    setProfileImageFailed,
-  ] =
-    useState(false);
+  const [profileImageFailed, setProfileImageFailed] = useState(false);
 
   // ==========================================
   // NAVIGATION ITEMS
@@ -187,80 +138,59 @@ export default function QRScanner() {
 
   const navItems: NavItem[] = [
     {
-      label:
-        'Dashboard',
+      label: "Dashboard",
 
-      route:
-        '/admin/dashboard',
+      route: "/admin/dashboard",
 
-      icon:
-        require('../../../assets/icons/dashboard.png'),
+      icon: require("../../../assets/icons/dashboard.png"),
     },
 
     {
-      label:
-        'Students',
+      label: "Students",
 
-      route:
-        '/admin/students',
+      route: "/admin/students",
 
-      icon:
-        require('../../../assets/icons/students.png'),
+      icon: require("../../../assets/icons/students.png"),
     },
 
     {
-      label:
-        'Fines',
+      label: "Fines",
 
-      route:
-        '/admin/fines',
+      route: "/admin/fines",
 
-      icon:
-        require('../../../assets/icons/fines.png'),
+      icon: require("../../../assets/icons/fines.png"),
     },
 
     {
-      label:
-        'QR Scanner',
+      label: "QR Scanner",
 
-      route:
-        '/admin/qr-scanner',
+      route: "/admin/qr-scanner",
 
-      icon:
-        require('../../../assets/icons/qr-codeWhite.png'),
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
-      label:
-        'Reports',
+      label: "Reports",
 
-      route:
-        '/admin/reports',
+      route: "/admin/reports",
 
-      icon:
-        require('../../../assets/icons/reports.png'),
+      icon: require("../../../assets/icons/reports.png"),
     },
 
     {
-      label:
-        'Settings',
+      label: "Settings",
 
-      route:
-        '/admin/settings',
+      route: "/admin/settings",
 
-      icon:
-        require('../../../assets/icons/settings.png'),
+      icon: require("../../../assets/icons/settings.png"),
     },
 
     {
-      label:
-        'Officers',
+      label: "Officers",
 
-      route:
-        '/admin/officers',
+      route: "/admin/officers",
 
-      icon:
-        require('../../../assets/icons/officers.png'),
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
 
@@ -272,1209 +202,633 @@ export default function QRScanner() {
     loadStudents();
   }, []);
 
-  const loadStudents =
-    async () => {
-      try {
-        setLoadingStudents(
-          true
-        );
+  const loadStudents = async () => {
+    try {
+      setLoadingStudents(true);
 
-        setErrorMessage(
-          ''
-        );
+      setErrorMessage("");
 
-        const response =
-          await fetch(
-            `${API_BASE}/api/students`
-          );
+      const response = await fetch(`${API_BASE}/api/students`);
 
-        const data =
-          await response.json();
+      const data = await response.json();
 
-        console.log(
-          'QR scanner students:',
-          data
-        );
+      console.log("QR scanner students:", data);
 
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          setErrorMessage(
-            data.message ||
-              'Failed to load student records.'
-          );
+      if (!response.ok || !data.success) {
+        setErrorMessage(data.message || "Failed to load student records.");
 
-          return;
-        }
-
-        setStudents(
-          Array.isArray(
-            data.students
-          )
-            ? data.students
-            : []
-        );
-      } catch (error) {
-        console.error(
-          'QR scanner load students error:',
-          error
-        );
-
-        setErrorMessage(
-          'Could not connect to the SmartFine server.'
-        );
-      } finally {
-        setLoadingStudents(
-          false
-        );
+        return;
       }
-    };
+
+      setStudents(Array.isArray(data.students) ? data.students : []);
+    } catch (error) {
+      console.error("QR scanner load students error:", error);
+
+      setErrorMessage("Could not connect to the SmartFine server.");
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
 
   // ==========================================
   // PROFILE PICTURE URL
   // ==========================================
 
-  const getProfilePictureUrl =
-    (
-      uri:
-        | string
-        | null
-        | undefined
-    ) => {
-      if (
-        !uri
-      ) {
-        return null;
-      }
+  const getProfilePictureUrl = (uri: string | null | undefined) => {
+    if (!uri) {
+      return null;
+    }
 
-      if (
-        uri.startsWith(
-          'http://'
-        ) ||
-        uri.startsWith(
-          'https://'
-        )
-      ) {
-        return uri;
-      }
+    if (uri.startsWith("http://") || uri.startsWith("https://")) {
+      return uri;
+    }
 
-      return `${API_BASE}${uri}`;
-    };
+    return `${API_BASE}${uri}`;
+  };
 
   // ==========================================
   // PROCESS STUDENT ID
   // ==========================================
 
-  const processStudentId =
-    async (
-      permanentStudentId:
-        string
-    ) => {
-      try {
-        setProcessingScan(
-          true
-        );
+  const processStudentId = async (permanentStudentId: string) => {
+    try {
+      setProcessingScan(true);
 
-        setErrorMessage(
-          ''
-        );
+      setErrorMessage("");
 
-        setProfileImageFailed(
-          false
-        );
+      setProfileImageFailed(false);
 
-        const normalizedId =
-          permanentStudentId.trim();
+      const normalizedId = permanentStudentId.trim();
 
-        if (
-          !normalizedId
-        ) {
-          setFoundStudent(
-            null
-          );
+      if (!normalizedId) {
+        setFoundStudent(null);
 
-          setErrorMessage(
-            'Student ID is missing.'
-          );
+        setErrorMessage("Student ID is missing.");
 
-          return;
-        }
-
-        // ======================================
-        // RELOAD STUDENTS IF EMPTY
-        // ======================================
-
-        let currentStudents =
-          students;
-
-        if (
-          currentStudents.length ===
-          0
-        ) {
-          const response =
-            await fetch(
-              `${API_BASE}/api/students`
-            );
-
-          const data =
-            await response.json();
-
-          if (
-            !response.ok ||
-            !data.success
-          ) {
-            setErrorMessage(
-              data.message ||
-                'Could not load student records.'
-            );
-
-            return;
-          }
-
-          currentStudents =
-            Array.isArray(
-              data.students
-            )
-              ? data.students
-              : [];
-
-          setStudents(
-            currentStudents
-          );
-        }
-
-        const normalizedSearch =
-          normalizedId
-            .trim()
-            .toLowerCase();
-
-        const student =
-          currentStudents.find(
-            (
-              item
-            ) =>
-              String(
-                item.student_id ||
-                  ''
-              )
-                .trim()
-                .toLowerCase() ===
-              normalizedSearch
-          ) ||
-          null;
-
-        if (
-          !student
-        ) {
-          setFoundStudent(
-            null
-          );
-
-          setErrorMessage(
-            `No student was found with Student ID ${normalizedId}.`
-          );
-
-          return;
-        }
-
-        setFoundStudent(
-          student
-        );
-
-        setManualStudentId(
-          student.student_id
-        );
-
-        setScanLocked(
-          true
-        );
-      } catch (error) {
-        console.error(
-          'Process student QR error:',
-          error
-        );
-
-        setErrorMessage(
-          'Could not process the student QR code.'
-        );
-      } finally {
-        setProcessingScan(
-          false
-        );
+        return;
       }
-    };
+
+      // ======================================
+      // RELOAD STUDENTS IF EMPTY
+      // ======================================
+
+      let currentStudents = students;
+
+      if (currentStudents.length === 0) {
+        const response = await fetch(`${API_BASE}/api/students`);
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          setErrorMessage(data.message || "Could not load student records.");
+
+          return;
+        }
+
+        currentStudents = Array.isArray(data.students) ? data.students : [];
+
+        setStudents(currentStudents);
+      }
+
+      const normalizedSearch = normalizedId.trim().toLowerCase();
+
+      const student =
+        currentStudents.find(
+          (item) =>
+            String(item.student_id || "")
+              .trim()
+              .toLowerCase() === normalizedSearch,
+        ) || null;
+
+      if (!student) {
+        setFoundStudent(null);
+
+        setErrorMessage(
+          `No student was found with Student ID ${normalizedId}.`,
+        );
+
+        return;
+      }
+
+      setFoundStudent(student);
+
+      setManualStudentId(student.student_id);
+
+      setScanLocked(true);
+    } catch (error) {
+      console.error("Process student QR error:", error);
+
+      setErrorMessage("Could not process the student QR code.");
+    } finally {
+      setProcessingScan(false);
+    }
+  };
 
   // ==========================================
   // HANDLE QR SCAN
   // ==========================================
 
-  const handleBarcodeScanned =
-    ({
-      data,
-    }: {
-      data: string;
-    }) => {
-      if (
-        scanLocked ||
-        processingScan
-      ) {
-        return;
-      }
+  const handleBarcodeScanned = ({ data }: { data: string }) => {
+    if (scanLocked || processingScan) {
+      return;
+    }
 
-      setScanLocked(
-        true
-      );
+    setScanLocked(true);
+
+    setErrorMessage("");
+
+    const scannedValue = String(data || "").trim();
+
+    console.log("QR scanned:", scannedValue);
+
+    // ======================================
+    // CHECK SMARTFINE QR FORMAT
+    // ======================================
+
+    if (!scannedValue.startsWith(QR_PREFIX)) {
+      setFoundStudent(null);
 
       setErrorMessage(
-        ''
+        "Invalid QR Code. This is not a SmartFine Student QR Code.",
       );
 
-      const scannedValue =
-        String(
-          data ||
-            ''
-        ).trim();
+      return;
+    }
 
-      console.log(
-        'QR scanned:',
-        scannedValue
-      );
+    const permanentStudentId = scannedValue.slice(QR_PREFIX.length).trim();
 
-      // ======================================
-      // CHECK SMARTFINE QR FORMAT
-      // ======================================
+    if (!permanentStudentId) {
+      setFoundStudent(null);
 
-      if (
-        !scannedValue.startsWith(
-          QR_PREFIX
-        )
-      ) {
-        setFoundStudent(
-          null
-        );
+      setErrorMessage("Invalid SmartFine QR Code. Student ID is missing.");
 
-        setErrorMessage(
-          'Invalid QR Code. This is not a SmartFine Student QR Code.'
-        );
+      return;
+    }
 
-        return;
-      }
-
-      const permanentStudentId =
-        scannedValue
-          .slice(
-            QR_PREFIX.length
-          )
-          .trim();
-
-      if (
-        !permanentStudentId
-      ) {
-        setFoundStudent(
-          null
-        );
-
-        setErrorMessage(
-          'Invalid SmartFine QR Code. Student ID is missing.'
-        );
-
-        return;
-      }
-
-      processStudentId(
-        permanentStudentId
-      );
-    };
+    processStudentId(permanentStudentId);
+  };
 
   // ==========================================
   // MANUAL STUDENT SEARCH
   // ==========================================
 
-  const handleManualSearch =
-    async () => {
-      const normalizedId =
-        manualStudentId.trim();
+  const handleManualSearch = async () => {
+    const normalizedId = manualStudentId.trim();
 
-      if (
-        !normalizedId
-      ) {
-        setErrorMessage(
-          'Enter a Student ID first.'
-        );
+    if (!normalizedId) {
+      setErrorMessage("Enter a Student ID first.");
 
-        return;
-      }
+      return;
+    }
 
-      setScanLocked(
-        true
-      );
+    setScanLocked(true);
 
-      await processStudentId(
-        normalizedId
-      );
-    };
+    await processStudentId(normalizedId);
+  };
 
   // ==========================================
   // SCAN ANOTHER STUDENT
   // ==========================================
 
-  const handleScanAgain =
-    () => {
-      setFoundStudent(
-        null
-      );
+  const handleScanAgain = () => {
+    setFoundStudent(null);
 
-      setErrorMessage(
-        ''
-      );
+    setErrorMessage("");
 
-      setManualStudentId(
-        ''
-      );
+    setManualStudentId("");
 
-      setProfileImageFailed(
-        false
-      );
+    setProfileImageFailed(false);
 
-      setProcessingScan(
-        false
-      );
+    setProcessingScan(false);
 
-      setScanLocked(
-        false
-      );
-    };
+    setScanLocked(false);
+  };
 
   // ==========================================
   // VIEW STUDENT PROFILE
   // ==========================================
 
-  const handleViewProfile =
-    () => {
-      if (
-        !foundStudent
-      ) {
-        return;
-      }
+  const handleViewProfile = () => {
+    if (!foundStudent) {
+      return;
+    }
 
-      router.push(
-        `/admin/students/${foundStudent.id}` as any
-      );
-    };
+    router.push(`/admin/students/${foundStudent.id}` as any);
+  };
 
   // ==========================================
   // RECORD FINE
   // ==========================================
 
-  const handleRecordFine =
-    () => {
-      if (
-        !foundStudent
-      ) {
-        return;
-      }
+  const handleRecordFine = () => {
+    if (!foundStudent) {
+      return;
+    }
 
-      router.push(
-        `/admin/fines/add?studentId=${foundStudent.id}` as any
-      );
-    };
+    router.push(`/admin/fines/add?studentId=${foundStudent.id}` as any);
+  };
 
   // ==========================================
   // NAVIGATION
   // ==========================================
 
-  const handleNavigation =
-    (
-      item: NavItem
-    ) => {
-      router.push(
-        item.route as any
-      );
-    };
+  const handleNavigation = (item: NavItem) => {
+    router.push(item.route as any);
+  };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT MODAL
   // ==========================================
 
-  const performLogout =
-    async () => {
-      try {
-        await logout();
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
 
-        router.replace(
-          '/login' as any
-        );
-      } catch (error) {
-        console.error(
-          'Logout error:',
-          error
-        );
-      }
-    };
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
 
-  const handleLogout =
-    () => {
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        const confirmed =
-          window.confirm(
-            'Are you sure you want to log out?'
-          );
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
 
-        if (
-          confirmed
-        ) {
-          performLogout();
-        }
+    setShowLogoutModal(false);
+  };
 
-        return;
-      }
+  // ==========================================
+  // PERFORM LOGOUT
+  // ==========================================
 
-      Alert.alert(
-        'Log Out',
+  const performLogout = async () => {
+    try {
+      setLogoutLoading(true);
 
-        'Are you sure you want to log out?',
+      await logout();
 
-        [
-          {
-            text:
-              'Cancel',
+      setShowLogoutModal(false);
 
-            style:
-              'cancel',
-          },
+      router.replace("/login" as any);
+    } catch (error) {
+      console.error("Logout error:", error);
 
-          {
-            text:
-              'Log Out',
+      setShowLogoutModal(false);
 
-            style:
-              'destructive',
+      setWarningTitle("Logout Error");
 
-            onPress:
-              performLogout,
-          },
-        ]
-      );
-    };
+      setWarningMessage("Could not log out. Please try again.");
+
+      setShowWarningModal(true);
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
 
   // ==========================================
   // STUDENT RESULT
   // ==========================================
 
-  const renderStudentResult =
-    () => {
-      if (
-        !foundStudent
-      ) {
-        return null;
-      }
+  const renderStudentResult = () => {
+    if (!foundStudent) {
+      return null;
+    }
 
-      const student =
-        foundStudent;
+    const student = foundStudent;
 
-      const profilePictureUrl =
-        getProfilePictureUrl(
-          student.profile_picture_uri
-        );
+    const profilePictureUrl = getProfilePictureUrl(student.profile_picture_uri);
 
-      const showPicture =
-        Boolean(
-          profilePictureUrl
-        ) &&
-        !profileImageFailed;
+    const showPicture = Boolean(profilePictureUrl) && !profileImageFailed;
 
-      const initials =
-        `${
-          student
-            .first_name?.[0] ||
-          ''
-        }${
-          student
-            .last_name?.[0] ||
-          ''
-        }`.toUpperCase();
+    const initials = `${student.first_name?.[0] || ""}${
+      student.last_name?.[0] || ""
+    }`.toUpperCase();
 
-      const gradeSection =
-        [
-          student.grade_level,
-          student.section,
-        ]
-          .filter(
-            Boolean
-          )
-          .join(
-            ' - '
-          ) ||
-        'Not assigned';
+    const gradeSection =
+      [student.grade_level, student.section].filter(Boolean).join(" - ") ||
+      "Not assigned";
 
-      const isActive =
-        String(
-          student.account_status ||
-            ''
-        ).toUpperCase() ===
-        'ACTIVE';
+    const isActive =
+      String(student.account_status || "").toUpperCase() === "ACTIVE";
 
-      return (
-        <View
-          style={
-            styles.resultCard
-          }
-        >
-          {/* ==================================
+    return (
+      <View style={styles.resultCard}>
+        {/* ==================================
               RESULT HEADER
           ================================== */}
 
-          <View
-            style={
-              styles.resultHeader
-            }
-          >
-            <View>
-              <Text
-                style={
-                  styles.resultTitle
-                }
-              >
-                Student Found
-              </Text>
+        <View style={styles.resultHeader}>
+          <View>
+            <Text style={styles.resultTitle}>Student Found</Text>
 
-              <Text
-                style={
-                  styles.resultSubtitle
-                }
-              >
-                SmartFine QR verified successfully
-              </Text>
-            </View>
-
-            <View
-              style={
-                styles.verifiedBadge
-              }
-            >
-              <Text
-                style={
-                  styles.verifiedBadgeText
-                }
-              >
-                Verified
-              </Text>
-            </View>
+            <Text style={styles.resultSubtitle}>
+              SmartFine QR verified successfully
+            </Text>
           </View>
 
-          {/* ==================================
+          <View style={styles.verifiedBadge}>
+            <Text style={styles.verifiedBadgeText}>Verified</Text>
+          </View>
+        </View>
+
+        {/* ==================================
               STUDENT INFORMATION
           ================================== */}
 
-          <View
-            style={
-              styles.studentResult
-            }
-          >
-            {/* PROFILE PHOTO */}
+        <View style={styles.studentResult}>
+          {/* PROFILE PHOTO */}
 
-            {showPicture ? (
-              <Image
-                source={{
-                  uri:
-                    profilePictureUrl!,
-                }}
-                style={
-                  styles.studentAvatarImage
-                }
-                resizeMode="cover"
-                onError={() => {
-                  setProfileImageFailed(
-                    true
-                  );
-                }}
-              />
-            ) : (
-              <View
-                style={
-                  styles.studentAvatar
-                }
-              >
-                <Text
-                  style={
-                    styles.studentAvatarText
-                  }
-                >
-                  {initials ||
-                    'ST'}
-                </Text>
-              </View>
-            )}
+          {showPicture ? (
+            <Image
+              source={{
+                uri: profilePictureUrl!,
+              }}
+              style={styles.studentAvatarImage}
+              resizeMode="cover"
+              onError={() => {
+                setProfileImageFailed(true);
+              }}
+            />
+          ) : (
+            <View style={styles.studentAvatar}>
+              <Text style={styles.studentAvatarText}>{initials || "ST"}</Text>
+            </View>
+          )}
 
-            {/* DETAILS */}
+          {/* DETAILS */}
+
+          <View style={styles.studentDetails}>
+            <Text style={styles.studentName}>{student.full_name}</Text>
+
+            <Text style={styles.studentMeta}>
+              Student ID: {student.student_id}
+            </Text>
+
+            <Text style={styles.studentMeta}>{gradeSection}</Text>
+
+            <Text style={styles.studentMeta}>
+              Email: {student.email || "Not provided"}
+            </Text>
 
             <View
-              style={
-                styles.studentDetails
-              }
+              style={[
+                styles.accountStatusBadge,
+
+                isActive ? styles.activeBadge : styles.inactiveBadge,
+              ]}
             >
               <Text
-                style={
-                  styles.studentName
-                }
-              >
-                {
-                  student.full_name
-                }
-              </Text>
-
-              <Text
-                style={
-                  styles.studentMeta
-                }
-              >
-                Student ID:{' '}
-                {
-                  student.student_id
-                }
-              </Text>
-
-              <Text
-                style={
-                  styles.studentMeta
-                }
-              >
-                {
-                  gradeSection
-                }
-              </Text>
-
-              <Text
-                style={
-                  styles.studentMeta
-                }
-              >
-                Email:{' '}
-                {student.email ||
-                  'Not provided'}
-              </Text>
-
-              <View
                 style={[
-                  styles.accountStatusBadge,
+                  styles.accountStatusText,
 
-                  isActive
-                    ? styles.activeBadge
-                    : styles.inactiveBadge,
+                  isActive ? styles.activeText : styles.inactiveText,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.accountStatusText,
-
-                    isActive
-                      ? styles.activeText
-                      : styles.inactiveText,
-                  ]}
-                >
-                  {isActive
-                    ? 'Active'
-                    : 'Inactive'}
-                </Text>
-              </View>
+                {isActive ? "Active" : "Inactive"}
+              </Text>
             </View>
           </View>
+        </View>
 
-          {/* ==================================
+        {/* ==================================
               FINANCIAL SUMMARY
           ================================== */}
 
-          <View
-            style={
-              styles.resultStatsRow
-            }
-          >
-            <View
-              style={
-                styles.resultStat
-              }
-            >
-              <Text
-                style={
-                  styles.resultStatLabel
-                }
-              >
-                Total Fines
-              </Text>
+        <View style={styles.resultStatsRow}>
+          <View style={styles.resultStat}>
+            <Text style={styles.resultStatLabel}>Total Fines</Text>
 
-              <Text
-                style={
-                  styles.resultStatValue
-                }
-              >
-                ₱
-                {Number(
-                  student.total_fines ||
-                    0
-                ).toFixed(
-                  2
-                )}
-              </Text>
-            </View>
-
-            <View
-              style={
-                styles.resultStat
-              }
-            >
-              <Text
-                style={
-                  styles.resultStatLabel
-                }
-              >
-                Outstanding
-              </Text>
-
-              <Text
-                style={
-                  styles.resultOutstanding
-                }
-              >
-                ₱
-                {Number(
-                  student.outstanding_balance ||
-                    0
-                ).toFixed(
-                  2
-                )}
-              </Text>
-            </View>
+            <Text style={styles.resultStatValue}>
+              ₱{Number(student.total_fines || 0).toFixed(2)}
+            </Text>
           </View>
 
-          {/* ==================================
+          <View style={styles.resultStat}>
+            <Text style={styles.resultStatLabel}>Outstanding</Text>
+
+            <Text style={styles.resultOutstanding}>
+              ₱{Number(student.outstanding_balance || 0).toFixed(2)}
+            </Text>
+          </View>
+        </View>
+
+        {/* ==================================
               ACTIONS
           ================================== */}
 
-          <View
-            style={
-              styles.resultActions
-            }
+        <View style={styles.resultActions}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={handleScanAgain}
           >
-            <TouchableOpacity
-              style={
-                styles.secondaryButton
-              }
-              onPress={
-                handleScanAgain
-              }
-            >
-              <Text
-                style={
-                  styles.secondaryButtonText
-                }
-              >
-                Scan Another
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.secondaryButtonText}>Scan Another</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={
-                styles.profileButton
-              }
-              onPress={
-                handleViewProfile
-              }
-            >
-              <Text
-                style={
-                  styles.profileButtonText
-                }
-              >
-                View Student Profile
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={handleViewProfile}
+          >
+            <Text style={styles.profileButtonText}>View Student Profile</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.recordFineButton,
+          <TouchableOpacity
+            style={[
+              styles.recordFineButton,
 
-                !isActive &&
-                  styles.buttonDisabled,
-              ]}
-              onPress={
-                handleRecordFine
-              }
-              disabled={
-                !isActive
-              }
-            >
-              <Text
-                style={
-                  styles.recordFineButtonText
-                }
-              >
-                Record Fine
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {!isActive && (
-            <Text
-              style={
-                styles.inactiveNotice
-              }
-            >
-              This student is inactive. Fine recording is disabled.
-            </Text>
-          )}
+              !isActive && styles.buttonDisabled,
+            ]}
+            onPress={handleRecordFine}
+            disabled={!isActive}
+          >
+            <Text style={styles.recordFineButtonText}>Record Fine</Text>
+          </TouchableOpacity>
         </View>
-      );
-    };
+
+        {!isActive && (
+          <Text style={styles.inactiveNotice}>
+            This student is inactive. Fine recording is disabled.
+          </Text>
+        )}
+      </View>
+    );
+  };
 
   // ==========================================
   // CAMERA CONTENT
   // ==========================================
 
-  const renderCamera =
-    () => {
-      // ======================================
-      // WEB
-      // ======================================
+  const renderCamera = () => {
+    // ======================================
+    // WEB
+    // ======================================
 
-      if (
-        Platform.OS ===
-        'web'
-      ) {
-        return (
-          <View
-            style={
-              styles.webCameraPlaceholder
-            }
-          >
-            {/* ==================================
-                YOUR CUSTOM QR ICON
-            ================================== */}
-
-            <Image
-              source={require('../../../assets/icons/qr-code.png')}
-              style={
-                styles.cameraPlaceholderImage
-              }
-              resizeMode="contain"
-            />
-
-            <Text
-              style={
-                styles.cameraPlaceholderTitle
-              }
-            >
-              Camera Scanner
-            </Text>
-
-            <Text
-              style={
-                styles.cameraPlaceholderText
-              }
-            >
-              For the best QR scanning experience, open SmartFine on your Android phone. You can use Student ID search below while using the web version.
-            </Text>
-          </View>
-        );
-      }
-
-      // ======================================
-      // CAMERA PERMISSION LOADING
-      // ======================================
-
-      if (
-        !permission
-      ) {
-        return (
-          <View
-            style={
-              styles.cameraState
-            }
-          >
-            <ActivityIndicator
-              size="large"
-              color="#173A73"
-            />
-          </View>
-        );
-      }
-
-      // ======================================
-      // CAMERA PERMISSION NOT GRANTED
-      // ======================================
-
-      if (
-        !permission.granted
-      ) {
-        return (
-          <View
-            style={
-              styles.cameraState
-            }
-          >
-            {/* ==================================
-                YOUR CUSTOM QR ICON
-            ================================== */}
-
-            <Image
-              source={require('../../../assets/icons/qr-code.png')}
-              style={
-                styles.cameraPlaceholderImage
-              }
-              resizeMode="contain"
-            />
-
-            <Text
-              style={
-                styles.cameraPlaceholderTitle
-              }
-            >
-              Camera Permission Required
-            </Text>
-
-            <Text
-              style={
-                styles.cameraPlaceholderText
-              }
-            >
-              SmartFine needs permission to use your camera to scan Student QR Codes.
-            </Text>
-
-            <TouchableOpacity
-              style={
-                styles.permissionButton
-              }
-              onPress={
-                requestPermission
-              }
-            >
-              <Text
-                style={
-                  styles.permissionButtonText
-                }
-              >
-                Allow Camera
-              </Text>
-            </TouchableOpacity>
-          </View>
-        );
-      }
-
-      // ======================================
-      // CAMERA
-      // ======================================
-
+    if (Platform.OS === "web") {
       return (
-        <View
-          style={
-            styles.cameraWrapper
-          }
-        >
-          <CameraView
-            style={
-              styles.camera
-            }
-            facing="back"
-            barcodeScannerSettings={{
-              barcodeTypes: [
-                'qr',
-              ],
-            }}
-            onBarcodeScanned={
-              scanLocked
-                ? undefined
-                : handleBarcodeScanned
-            }
+        <View style={styles.webCameraPlaceholder}>
+          <Image
+            source={require("../../../assets/icons/qr-code.png")}
+            style={styles.cameraPlaceholderImage}
+            resizeMode="contain"
           />
 
-          {/* ==================================
+          <Text style={styles.cameraPlaceholderTitle}>Camera Scanner</Text>
+
+          <Text style={styles.cameraPlaceholderText}>
+            For the best QR scanning experience, open SmartFine on your Android
+            phone. You can use Student ID search below while using the web
+            version.
+          </Text>
+        </View>
+      );
+    }
+
+    // ======================================
+    // CAMERA PERMISSION LOADING
+    // ======================================
+
+    if (!permission) {
+      return (
+        <View style={styles.cameraState}>
+          <ActivityIndicator size="large" color="#173A73" />
+        </View>
+      );
+    }
+
+    // ======================================
+    // CAMERA PERMISSION NOT GRANTED
+    // ======================================
+
+    if (!permission.granted) {
+      return (
+        <View style={styles.cameraState}>
+          <Image
+            source={require("../../../assets/icons/qr-code.png")}
+            style={styles.cameraPlaceholderImage}
+            resizeMode="contain"
+          />
+
+          <Text style={styles.cameraPlaceholderTitle}>
+            Camera Permission Required
+          </Text>
+
+          <Text style={styles.cameraPlaceholderText}>
+            SmartFine needs permission to use your camera to scan Student QR
+            Codes.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={requestPermission}
+          >
+            <Text style={styles.permissionButtonText}>Allow Camera</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // ======================================
+    // CAMERA
+    // ======================================
+
+    return (
+      <View style={styles.cameraWrapper}>
+        <CameraView
+          style={styles.camera}
+          facing="back"
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+          onBarcodeScanned={scanLocked ? undefined : handleBarcodeScanned}
+        />
+
+        {/* ==================================
               CAMERA OVERLAY
           ================================== */}
 
-          <View
-            pointerEvents="none"
-            style={
-              styles.cameraOverlay
-            }
-          >
-            <View
-              style={
-                styles.scanFrame
-              }
-            />
+        <View pointerEvents="none" style={styles.cameraOverlay}>
+          <View style={styles.scanFrame} />
 
-            <Text
-              style={
-                styles.scanInstruction
-              }
-            >
-              Position the SmartFine Student QR Code inside the frame
-            </Text>
-          </View>
+          <Text style={styles.scanInstruction}>
+            Position the SmartFine Student QR Code inside the frame
+          </Text>
+        </View>
 
-          {/* ==================================
+        {/* ==================================
               PROCESSING
           ================================== */}
 
-          {scanLocked &&
-            !foundStudent && (
-              <View
-                style={
-                  styles.processingOverlay
-                }
-              >
-                {processingScan ? (
-                  <>
-                    <ActivityIndicator
-                      size="large"
-                      color="#FFFFFF"
-                    />
+        {scanLocked && !foundStudent && (
+          <View style={styles.processingOverlay}>
+            {processingScan ? (
+              <>
+                <ActivityIndicator size="large" color="#FFFFFF" />
 
-                    <Text
-                      style={
-                        styles.processingText
-                      }
-                    >
-                      Verifying student...
-                    </Text>
-                  </>
-                ) : (
-                  <TouchableOpacity
-                    style={
-                      styles.scanAgainOverlayButton
-                    }
-                    onPress={
-                      handleScanAgain
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.scanAgainOverlayText
-                      }
-                    >
-                      Scan Again
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                <Text style={styles.processingText}>Verifying student...</Text>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={styles.scanAgainOverlayButton}
+                onPress={handleScanAgain}
+              >
+                <Text style={styles.scanAgainOverlayText}>Scan Again</Text>
+              </TouchableOpacity>
             )}
-        </View>
-      );
-    };
+          </View>
+        )}
+      </View>
+    );
+  };
 
   // ==========================================
   // UI
   // ==========================================
 
   return (
-    <View
-      style={
-        styles.screen
-      }
-    >
+    <View style={styles.screen}>
       {/* ======================================
           SIDEBAR
       ====================================== */}
 
       {isTablet && (
-        <View
-          style={
-            styles.sidebar
-          }
-        >
-          <View
-            style={
-              styles.logoArea
-            }
-          >
+        <View style={styles.sidebar}>
+          <View style={styles.logoArea}>
             <Image
-              source={require('../../../assets/branding/smartfineNoBG.png')}
-              style={
-                styles.smartFineLogo
-              }
+              source={require("../../../assets/branding/smartfineNoBG.png")}
+              style={styles.smartFineLogo}
               resizeMode="contain"
             />
           </View>
 
-          <View
-            style={
-              styles.navigation
-            }
-          >
-            {navItems.map(
-              (
-                item
-              ) => {
-                const active =
-                  item.label ===
-                  'QR Scanner';
+          <View style={styles.navigation}>
+            {navItems.map((item) => {
+              const active = item.label === "QR Scanner";
 
-                return (
-                  <TouchableOpacity
-                    key={
-                      item.label
-                    }
-                    style={[
-                      styles.navItem,
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[styles.navItem, active && styles.navItemActive]}
+                  onPress={() => handleNavigation(item)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.navIconContainer}>
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-                      active &&
-                        styles.navItemActive,
-                    ]}
-                    onPress={() =>
-                      handleNavigation(
-                        item
-                      )
-                    }
-                  >
-                    <View
-                      style={
-                        styles.navIconContainer
-                      }
-                    >
-                      <Image
-                        source={
-                          item.icon
-                        }
-                        style={
-                          styles.navImageIcon
-                        }
-                        resizeMode="contain"
-                      />
-                    </View>
-
-                    <Text
-                      style={
-                        styles.navText
-                      }
-                    >
-                      {
-                        item.label
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }
-            )}
+                  <Text style={styles.navText}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <TouchableOpacity
-            style={
-              styles.logoutButton
-            }
-            onPress={
-              handleLogout
-            }
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
           >
-            <Text
-              style={
-                styles.logoutText
-              }
-            >
-              Log Out
-            </Text>
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1483,18 +837,10 @@ export default function QRScanner() {
           MAIN
       ====================================== */}
 
-      <View
-        style={
-          styles.main
-        }
-      >
+      <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
-          showsVerticalScrollIndicator={
-            false
-          }
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* ==================================
@@ -1504,54 +850,34 @@ export default function QRScanner() {
           {!isTablet && (
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={
-                false
-              }
-              contentContainerStyle={
-                styles.mobileNav
-              }
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mobileNav}
             >
-              {navItems.map(
-                (
-                  item
-                ) => {
-                  const active =
-                    item.label ===
-                    'QR Scanner';
+              {navItems.map((item) => {
+                const active = item.label === "QR Scanner";
 
-                  return (
-                    <TouchableOpacity
-                      key={
-                        item.label
-                      }
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={[
+                      styles.mobileNavItem,
+
+                      active && styles.mobileNavItemActive,
+                    ]}
+                    onPress={() => handleNavigation(item)}
+                  >
+                    <Text
                       style={[
-                        styles.mobileNavItem,
+                        styles.mobileNavText,
 
-                        active &&
-                          styles.mobileNavItemActive,
+                        active && styles.mobileNavTextActive,
                       ]}
-                      onPress={() =>
-                        handleNavigation(
-                          item
-                        )
-                      }
                     >
-                      <Text
-                        style={[
-                          styles.mobileNavText,
-
-                          active &&
-                            styles.mobileNavTextActive,
-                        ]}
-                      >
-                        {
-                          item.label
-                        }
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
@@ -1559,24 +885,10 @@ export default function QRScanner() {
               HEADER
           ================================== */}
 
-          <View
-            style={
-              styles.header
-            }
-          >
-            <Text
-              style={
-                styles.pageTitle
-              }
-            >
-              QR Scanner
-            </Text>
+          <View style={styles.header}>
+            <Text style={styles.pageTitle}>QR Scanner</Text>
 
-            <Text
-              style={
-                styles.subtitle
-              }
-            >
+            <Text style={styles.subtitle}>
               Scan a SmartFine Student QR Code to identify a student quickly
             </Text>
           </View>
@@ -1586,21 +898,10 @@ export default function QRScanner() {
           ================================== */}
 
           {loadingStudents ? (
-            <View
-              style={
-                styles.loadingCard
-              }
-            >
-              <ActivityIndicator
-                size="large"
-                color="#173A73"
-              />
+            <View style={styles.loadingCard}>
+              <ActivityIndicator size="large" color="#173A73" />
 
-              <Text
-                style={
-                  styles.loadingText
-                }
-              >
+              <Text style={styles.loadingText}>
                 Loading SmartFine student records...
               </Text>
             </View>
@@ -1611,36 +912,18 @@ export default function QRScanner() {
               ================================== */}
 
               {!foundStudent && (
-                <View
-                  style={
-                    styles.scannerCard
-                  }
-                >
-                  <View
-                    style={
-                      styles.scannerCardHeader
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.scannerTitle
-                      }
-                    >
+                <View style={styles.scannerCard}>
+                  <View style={styles.scannerCardHeader}>
+                    <Text style={styles.scannerTitle}>
                       Scan Student QR Code
                     </Text>
 
-                    <Text
-                      style={
-                        styles.scannerSubtitle
-                      }
-                    >
+                    <Text style={styles.scannerSubtitle}>
                       Only SmartFine Student QR Codes are accepted.
                     </Text>
                   </View>
 
-                  {
-                    renderCamera()
-                  }
+                  {renderCamera()}
                 </View>
               )}
 
@@ -1648,53 +931,20 @@ export default function QRScanner() {
                   ERROR
               ================================== */}
 
-              {errorMessage !==
-                '' && (
-                <View
-                  style={
-                    styles.errorBox
-                  }
-                >
-                  <View
-                    style={
-                      styles.errorContent
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.errorTitle
-                      }
-                    >
-                      QR Scan Error
-                    </Text>
+              {errorMessage !== "" && (
+                <View style={styles.errorBox}>
+                  <View style={styles.errorContent}>
+                    <Text style={styles.errorTitle}>QR Scan Error</Text>
 
-                    <Text
-                      style={
-                        styles.errorText
-                      }
-                    >
-                      {
-                        errorMessage
-                      }
-                    </Text>
+                    <Text style={styles.errorText}>{errorMessage}</Text>
                   </View>
 
                   {scanLocked && (
                     <TouchableOpacity
-                      style={
-                        styles.errorResetButton
-                      }
-                      onPress={
-                        handleScanAgain
-                      }
+                      style={styles.errorResetButton}
+                      onPress={handleScanAgain}
                     >
-                      <Text
-                        style={
-                          styles.errorResetText
-                        }
-                      >
-                        Try Again
-                      </Text>
+                      <Text style={styles.errorResetText}>Try Again</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1704,98 +954,50 @@ export default function QRScanner() {
                   STUDENT RESULT
               ================================== */}
 
-              {
-                renderStudentResult()
-              }
+              {renderStudentResult()}
 
               {/* ==================================
                   MANUAL SEARCH
               ================================== */}
 
               {!foundStudent && (
-                <View
-                  style={
-                    styles.manualCard
-                  }
-                >
-                  <Text
-                    style={
-                      styles.manualTitle
-                    }
-                  >
-                    Search by Student ID
-                  </Text>
+                <View style={styles.manualCard}>
+                  <Text style={styles.manualTitle}>Search by Student ID</Text>
 
-                  <Text
-                    style={
-                      styles.manualSubtitle
-                    }
-                  >
+                  <Text style={styles.manualSubtitle}>
                     Use this option if the QR code cannot be scanned.
                   </Text>
 
-                  <View
-                    style={
-                      styles.manualSearchRow
-                    }
-                  >
+                  <View style={styles.manualSearchRow}>
                     <TextInput
-                      style={
-                        styles.manualInput
-                      }
-                      value={
-                        manualStudentId
-                      }
-                      onChangeText={(
-                        text
-                      ) => {
-                        setManualStudentId(
-                          text
-                        );
+                      style={styles.manualInput}
+                      value={manualStudentId}
+                      onChangeText={(text) => {
+                        setManualStudentId(text);
 
-                        setErrorMessage(
-                          ''
-                        );
+                        setErrorMessage("");
                       }}
                       placeholder="Example: 2026-0004"
                       placeholderTextColor="#8C939F"
                       autoCapitalize="characters"
-                      autoCorrect={
-                        false
-                      }
-                      editable={
-                        !processingScan
-                      }
-                      onSubmitEditing={
-                        handleManualSearch
-                      }
+                      autoCorrect={false}
+                      editable={!processingScan}
+                      onSubmitEditing={handleManualSearch}
                     />
 
                     <TouchableOpacity
                       style={[
                         styles.searchButton,
 
-                        processingScan &&
-                          styles.buttonDisabled,
+                        processingScan && styles.buttonDisabled,
                       ]}
-                      onPress={
-                        handleManualSearch
-                      }
-                      disabled={
-                        processingScan
-                      }
+                      onPress={handleManualSearch}
+                      disabled={processingScan}
                     >
                       {processingScan ? (
-                        <ActivityIndicator
-                          size="small"
-                          color="#FFFFFF"
-                        />
+                        <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
-                        <Text
-                          style={
-                            styles.searchButtonText
-                          }
-                        >
+                        <Text style={styles.searchButtonText}>
                           Search Student
                         </Text>
                       )}
@@ -1807,6 +1009,32 @@ export default function QRScanner() {
           )}
         </ScrollView>
       </View>
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowWarningModal(false);
+        }}
+      />
     </View>
   );
 }
+ 

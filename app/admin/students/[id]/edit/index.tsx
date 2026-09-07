@@ -21,6 +21,8 @@ import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 
+import SuccessModal from "@/components/success-modal";
+
 import { styles } from "./edit-student.styles";
 
 // ==========================================
@@ -79,6 +81,14 @@ export default function EditStudent() {
   const rawId = params.id;
 
   const studentDatabaseId = Array.isArray(rawId) ? rawId[0] : rawId;
+
+  // ==========================================
+  // SUCCESS MODAL
+  // ==========================================
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [successMessage, setSuccessMessage] = useState("");
 
   // ==========================================
   // STUDENT ID
@@ -649,6 +659,12 @@ export default function EditStudent() {
     try {
       setSaving(true);
 
+      // Remember whether the user selected
+      // a new profile picture before the
+      // upload resets selectedProfilePicture.
+
+      const hadNewProfilePicture = Boolean(selectedProfilePicture);
+
       const response = await fetch(
         `${API_BASE}/api/students/${studentDatabaseId}`,
         {
@@ -690,6 +706,10 @@ export default function EditStudent() {
         return;
       }
 
+      // ======================================
+      // PROFILE PICTURE UPLOAD
+      // ======================================
+
       if (selectedProfilePicture) {
         const uploadResult = await uploadProfilePicture();
 
@@ -703,7 +723,11 @@ export default function EditStudent() {
         }
       }
 
-      showSuccess();
+      // ======================================
+      // SUCCESS
+      // ======================================
+
+      showSuccess(hadNewProfilePicture);
     } catch (error) {
       console.error("Update student error:", error);
 
@@ -717,33 +741,24 @@ export default function EditStudent() {
   // FULL SUCCESS
   // ==========================================
 
-  const showSuccess = () => {
-    const message = selectedProfilePicture
+  const showSuccess = (profilePictureUpdated: boolean) => {
+    const message = profilePictureUpdated
       ? "Student information and profile picture updated successfully."
       : "Student information updated successfully.";
 
-    if (Platform.OS === "web") {
-      window.alert(message);
+    setSuccessMessage(message);
 
-      router.replace(`/admin/students/${studentDatabaseId}` as any);
+    setShowSuccessModal(true);
+  };
 
-      return;
-    }
+  // ==========================================
+  // SUCCESS MODAL CLOSE
+  // ==========================================
 
-    Alert.alert(
-      "Student Updated",
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
 
-      message,
-
-      [
-        {
-          text: "OK",
-
-          onPress: () =>
-            router.replace(`/admin/students/${studentDatabaseId}` as any),
-        },
-      ],
-    );
+    router.replace(`/admin/students/${studentDatabaseId}` as any);
   };
 
   // ==========================================
@@ -751,7 +766,9 @@ export default function EditStudent() {
   // ==========================================
 
   const showPartialSuccess = (pictureError: string) => {
-    const message = `Student information was updated successfully, but the profile picture could not be updated.\n\n${pictureError}`;
+    const message =
+      `Student information was updated successfully, but the profile picture could not be updated.\n\n` +
+      pictureError;
 
     if (Platform.OS === "web") {
       window.alert(message);
@@ -759,11 +776,7 @@ export default function EditStudent() {
       return;
     }
 
-    Alert.alert(
-      "Student Updated",
-
-      message,
-    );
+    Alert.alert("Student Updated", message);
   };
 
   // ==========================================
@@ -1456,6 +1469,18 @@ export default function EditStudent() {
           </View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          SMARTFINE SUCCESS MODAL
+      ====================================== */}
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Student Updated"
+        message={successMessage}
+        buttonText="OK"
+        onClose={handleSuccessModalClose}
+      />
     </View>
   );
 }

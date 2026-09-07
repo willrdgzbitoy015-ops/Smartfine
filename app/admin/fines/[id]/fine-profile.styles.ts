@@ -21,6 +21,10 @@ const COLORS = {
 };
 
 export const styles = StyleSheet.create({
+  // ==========================================
+  // SCREEN
+  // ==========================================
+
   screen: {
     flex: 1,
 
@@ -620,7 +624,7 @@ export const styles = StyleSheet.create({
   },
 
   // ==========================================
-  // CANCEL MODAL
+  // SHARED MODAL OVERLAY
   // ==========================================
 
   modalOverlay: {
@@ -634,6 +638,10 @@ export const styles = StyleSheet.create({
 
     padding: 20,
   },
+
+  // ==========================================
+  // CANCEL FINE MODAL
+  // ==========================================
 
   cancelModalCard: {
     width: "100%",
@@ -829,6 +837,206 @@ export const styles = StyleSheet.create({
 
   cancelModalButtonDisabled: {
     opacity: 0.5,
+  },
+
+  // ==========================================
+  // MARK AS PAID MODAL
+  // ==========================================
+
+  paidModalCard: {
+    width: "100%",
+
+    maxWidth: 415,
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 10,
+
+    borderWidth: 1,
+
+    borderColor: "#555555",
+
+    paddingTop: 27,
+
+    paddingHorizontal: 32,
+
+    paddingBottom: 32,
+
+    alignItems: "center",
+
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+
+      height: 5,
+    },
+
+    shadowOpacity: 0.2,
+
+    shadowRadius: 10,
+
+    elevation: 12,
+  },
+
+  paidModalIcon: {
+    width: 58,
+
+    height: 58,
+
+    borderRadius: 29,
+
+    backgroundColor: "#E7F8EA",
+
+    borderWidth: 2,
+
+    borderColor: COLORS.green,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    marginBottom: 16,
+  },
+
+  paidModalIconText: {
+    color: COLORS.green,
+
+    fontSize: 28,
+
+    fontWeight: "800",
+  },
+
+  paidModalTitle: {
+    color: COLORS.navy,
+
+    fontSize: 25,
+
+    fontWeight: "800",
+
+    textAlign: "center",
+
+    marginBottom: 16,
+  },
+
+  paidModalMessage: {
+    width: "100%",
+
+    color: "#64789B",
+
+    fontSize: 14,
+
+    lineHeight: 21,
+
+    textAlign: "center",
+
+    marginBottom: 20,
+  },
+
+  paidModalFineReference: {
+    color: COLORS.navy,
+
+    fontWeight: "800",
+  },
+
+  paidModalAmountBox: {
+    width: "100%",
+
+    maxWidth: 280,
+
+    backgroundColor: "#F5F7FA",
+
+    borderRadius: 9,
+
+    paddingVertical: 12,
+
+    paddingHorizontal: 18,
+
+    alignItems: "center",
+
+    marginBottom: 28,
+  },
+
+  paidModalAmountLabel: {
+    color: COLORS.muted,
+
+    fontSize: 11,
+
+    marginBottom: 4,
+  },
+
+  paidModalAmount: {
+    color: COLORS.green,
+
+    fontSize: 20,
+
+    fontWeight: "800",
+  },
+
+  paidModalActions: {
+    width: "100%",
+
+    maxWidth: 310,
+
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    gap: 16,
+  },
+
+  paidModalCancelButton: {
+    flex: 1,
+
+    height: 43,
+
+    backgroundColor: COLORS.white,
+
+    borderWidth: 2,
+
+    borderColor: "#7A8EAD",
+
+    borderRadius: 10,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  paidModalCancelText: {
+    color: COLORS.navy,
+
+    fontSize: 14,
+
+    fontWeight: "700",
+  },
+
+  paidModalConfirmButton: {
+    flex: 1,
+
+    height: 43,
+
+    backgroundColor: COLORS.green,
+
+    borderRadius: 10,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  paidModalConfirmText: {
+    color: COLORS.white,
+
+    fontSize: 13,
+
+    fontWeight: "800",
+  },
+
+  paidModalButtonDisabled: {
+    opacity: 0.55,
   },
 });
 

@@ -67,6 +67,8 @@ type Fine = {
 
   issued_at: string;
 
+  created_at: string | null;
+
   status: string;
 
   officer_name: string;
@@ -626,7 +628,7 @@ export default function StudentProfile() {
                       </Text>
 
                       <Text style={[styles.historyCell, styles.dateColumn]}>
-                        {formatDate(fine.issued_at)}
+                        {formatRecordedDate(fine.created_at || fine.issued_at)}
                       </Text>
 
                       <Text
@@ -916,20 +918,35 @@ function formatFineStatus(status: string) {
 }
 
 // ==========================================
-// DATE
+// RECORDED DATE / TIME
 // ==========================================
 
-function formatDate(value: string) {
+function formatRecordedDate(value: string) {
   if (!value) {
     return "—";
   }
 
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const trimmedValue = String(value).trim();
+
+  let normalized = trimmedValue;
+
+  // SQLite CURRENT_TIMESTAMP normally returns:
+  // YYYY-MM-DD HH:MM:SS
+  //
+  // It represents UTC time.
+  // Adding "Z" allows JavaScript to convert it
+  // correctly to the device/browser local time.
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(trimmedValue)) {
+    normalized = `${trimmedValue.replace(" ", "T")}Z`;
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedValue)) {
+    // Fallback for older date-only values.
+    normalized = `${trimmedValue}T00:00:00`;
+  }
 
   const date = new Date(normalized);
 
   if (Number.isNaN(date.getTime())) {
-    return value;
+    return trimmedValue;
   }
 
   return date.toLocaleString("en-US", {

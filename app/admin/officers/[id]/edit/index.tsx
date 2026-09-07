@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Platform,
   ScrollView,
@@ -20,6 +19,11 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+
+import DeleteModal from "@/components/deletationmodal";
+import LogoutModal from "@/components/logout-modal";
+import SuccessModal from "@/components/success-modal";
+import WarningModal from "@/components/warningmodal";
 
 import { styles } from "./edit-officer.styles";
 
@@ -61,7 +65,9 @@ type Officer = {
 
 type NavItem = {
   label: string;
+
   route: string;
+
   icon: any;
 };
 
@@ -104,6 +110,44 @@ export default function EditOfficer() {
   const [profileImageFailed, setProfileImageFailed] = useState(false);
 
   const [removingPicture, setRemovingPicture] = useState(false);
+
+  // ==========================================
+  // REMOVE PICTURE MODAL
+  // ==========================================
+
+  const [showRemovePictureModal, setShowRemovePictureModal] = useState(false);
+
+  // ==========================================
+  // SUCCESS MODAL
+  // ==========================================
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [successTitle, setSuccessTitle] = useState("");
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const [successRedirectRoute, setSuccessRedirectRoute] = useState<
+    string | null
+  >(null);
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   // ==========================================
   // FORM
@@ -198,6 +242,36 @@ export default function EditOfficer() {
       icon: require("../../../../../assets/icons/officers.png"),
     },
   ];
+
+  // ==========================================
+  // SHOW WARNING
+  // ==========================================
+
+  const showWarning = (title: string, message: string) => {
+    setWarningTitle(title);
+
+    setWarningMessage(message);
+
+    setShowWarningModal(true);
+  };
+
+  // ==========================================
+  // SHOW SUCCESS
+  // ==========================================
+
+  const showSuccess = (
+    title: string,
+    message: string,
+    redirectRoute: string | null = null,
+  ) => {
+    setSuccessTitle(title);
+
+    setSuccessMessage(message);
+
+    setSuccessRedirectRoute(redirectRoute);
+
+    setShowSuccessModal(true);
+  };
 
   // ==========================================
   // PROFILE PICTURE URL
@@ -325,9 +399,8 @@ export default function EditOfficer() {
           await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permission.granted) {
-          Alert.alert(
+          showWarning(
             "Permission Required",
-
             "Please allow SmartFine to access your photos so you can select an officer profile picture.",
           );
 
@@ -361,7 +434,7 @@ export default function EditOfficer() {
     } catch (error) {
       console.error("Choose officer picture error:", error);
 
-      setErrorMessage("Could not select the profile picture.");
+      showWarning("Photo Error", "Could not select the profile picture.");
     }
   };
 
@@ -463,67 +536,73 @@ export default function EditOfficer() {
 
       console.log("Remove officer profile picture response:", data);
 
+      // ======================================
+      // FAILED
+      // ======================================
+
       if (!response.ok || !data.success) {
-        setErrorMessage(
+        setShowRemovePictureModal(false);
+
+        showWarning(
+          "Unable to Remove Picture",
           data.message || "Could not remove officer profile picture.",
         );
 
         return;
       }
 
+      // ======================================
+      // SUCCESS
+      // ======================================
+
       setCurrentProfilePictureUri(null);
 
       setNewProfilePicture(null);
 
       setProfileImageFailed(false);
+
+      setShowRemovePictureModal(false);
+
+      showSuccess(
+        "Profile Picture Removed",
+        "Officer profile picture removed successfully.",
+      );
     } catch (error) {
       console.error("Remove officer profile picture error:", error);
 
-      setErrorMessage("Could not connect to the SmartFine server.");
+      setShowRemovePictureModal(false);
+
+      showWarning(
+        "Unable to Remove Picture",
+        "Could not connect to the SmartFine server.",
+      );
     } finally {
       setRemovingPicture(false);
     }
   };
 
   // ==========================================
-  // CONFIRM REMOVE PROFILE PICTURE
+  // OPEN REMOVE PICTURE MODAL
   // ==========================================
 
   const handleRemoveProfilePicture = () => {
-    const message =
-      "Remove this officer profile picture? The officer will return to the initials avatar.";
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(message);
-
-      if (confirmed) {
-        performRemoveProfilePicture();
-      }
-
+    if (!currentProfilePictureUri) {
       return;
     }
 
-    Alert.alert(
-      "Remove Profile Picture",
+    setShowRemovePictureModal(true);
+  };
 
-      message,
+  // ==========================================
+  // CANCEL REMOVE PICTURE
+  // ==========================================
 
-      [
-        {
-          text: "Cancel",
+  const handleCancelRemovePicture = () => {
+    if (removingPicture) {
+      return;
+    }
 
-          style: "cancel",
-        },
-
-        {
-          text: "Remove",
-
-          style: "destructive",
-
-          onPress: performRemoveProfilePicture,
-        },
-      ],
-    );
+    setShowRemovePictureModal(false);
   };
 
   // ==========================================
@@ -602,8 +681,17 @@ export default function EditOfficer() {
       return;
     }
 
+    // Remember whether a new picture was selected
+    // before it gets cleared after upload.
+
+    const hadNewProfilePicture = Boolean(newProfilePicture);
+
     try {
       setSaving(true);
+
+      // ======================================
+      // UPDATE OFFICER INFORMATION
+      // ======================================
 
       const response = await fetch(`${API_BASE}/api/officers/${officerId}`, {
         method: "PUT",
@@ -643,6 +731,10 @@ export default function EditOfficer() {
         return;
       }
 
+      // ======================================
+      // UPDATE PROFILE PICTURE
+      // ======================================
+
       if (newProfilePicture) {
         try {
           const uploadedUri = await uploadProfilePicture();
@@ -665,7 +757,8 @@ export default function EditOfficer() {
               ? profileError.message
               : "Profile picture upload failed.";
 
-          setErrorMessage(
+          showWarning(
+            "Officer Updated with Warning",
             `Officer information was saved successfully, but the profile picture could not be updated. ${message}`,
           );
 
@@ -673,7 +766,15 @@ export default function EditOfficer() {
         }
       }
 
-      handleSuccess();
+      // ======================================
+      // SUCCESS
+      // ======================================
+
+      const message = hadNewProfilePicture
+        ? "Officer information and profile picture updated successfully."
+        : "Officer information updated successfully.";
+
+      showSuccess("Officer Updated", message, `/admin/officers/${officerId}`);
     } catch (error) {
       console.error("Update officer error:", error);
 
@@ -684,35 +785,19 @@ export default function EditOfficer() {
   };
 
   // ==========================================
-  // SUCCESS
+  // SUCCESS MODAL CLOSE
   // ==========================================
 
-  const handleSuccess = () => {
-    const message = newProfilePicture
-      ? "Officer information and profile picture updated successfully."
-      : "Officer information updated successfully.";
+  const handleSuccessModalClose = () => {
+    const redirectRoute = successRedirectRoute;
 
-    if (Platform.OS === "web") {
-      window.alert(message);
+    setShowSuccessModal(false);
 
-      router.replace(`/admin/officers/${officerId}` as any);
+    setSuccessRedirectRoute(null);
 
-      return;
+    if (redirectRoute) {
+      router.replace(redirectRoute as any);
     }
-
-    Alert.alert(
-      "Officer Updated",
-
-      message,
-
-      [
-        {
-          text: "OK",
-
-          onPress: () => router.replace(`/admin/officers/${officerId}` as any),
-        },
-      ],
-    );
   };
 
   // ==========================================
@@ -740,51 +825,47 @@ export default function EditOfficer() {
   };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT MODAL
+  // ==========================================
+
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
+
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
+
+    setShowLogoutModal(false);
+  };
+
+  // ==========================================
+  // PERFORM LOGOUT
   // ==========================================
 
   const performLogout = async () => {
     try {
+      setLogoutLoading(true);
+
       await logout();
+
+      setShowLogoutModal(false);
 
       router.replace("/login" as any);
     } catch (error) {
       console.error("Logout error:", error);
+
+      setShowLogoutModal(false);
+
+      showWarning("Logout Error", "Could not log out. Please try again.");
+    } finally {
+      setLogoutLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm("Are you sure you want to log out?");
-
-      if (confirmed) {
-        performLogout();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Log Out",
-
-      "Are you sure you want to log out?",
-
-      [
-        {
-          text: "Cancel",
-
-          style: "cancel",
-        },
-
-        {
-          text: "Log Out",
-
-          style: "destructive",
-
-          onPress: performLogout,
-        },
-      ],
-    );
   };
 
   // ==========================================
@@ -862,6 +943,7 @@ export default function EditOfficer() {
                   key={item.label}
                   style={[styles.navItem, active && styles.navItemActive]}
                   onPress={() => handleNavigation(item)}
+                  activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
                     <Image
@@ -877,7 +959,11 @@ export default function EditOfficer() {
             })}
           </View>
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
@@ -983,7 +1069,9 @@ export default function EditOfficer() {
           ================================== */}
 
           <View style={styles.formCard}>
-            {/* OFFICER INFORMATION */}
+            {/* ==================================
+                OFFICER INFORMATION
+            ================================== */}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Officer Information</Text>
@@ -1283,6 +1371,8 @@ export default function EditOfficer() {
                 </View>
               </View>
 
+              {/* LAST NAME */}
+
               <Text style={styles.label}>Last Name *</Text>
 
               <TextInput
@@ -1297,6 +1387,8 @@ export default function EditOfficer() {
                 placeholderTextColor="#8C939F"
                 editable={!busy}
               />
+
+              {/* EMAIL */}
 
               <Text style={styles.label}>Email Address *</Text>
 
@@ -1315,6 +1407,8 @@ export default function EditOfficer() {
                 autoCorrect={false}
                 editable={!busy}
               />
+
+              {/* CONTACT */}
 
               <Text style={styles.label}>Contact Number *</Text>
 
@@ -1335,6 +1429,8 @@ export default function EditOfficer() {
                 editable={!busy}
               />
 
+              {/* ASSIGNED AREA */}
+
               <Text style={styles.label}>Assigned Area *</Text>
 
               <TextInput
@@ -1351,10 +1447,14 @@ export default function EditOfficer() {
               />
             </View>
 
-            {/* ACCOUNT INFORMATION */}
+            {/* ==================================
+                ACCOUNT INFORMATION
+            ================================== */}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Account Information</Text>
+
+              {/* USERNAME */}
 
               <Text style={styles.label}>Username *</Text>
 
@@ -1378,6 +1478,8 @@ export default function EditOfficer() {
               <Text style={styles.helperText}>
                 Username is used by the officer to log in to SmartFine.
               </Text>
+
+              {/* STATUS */}
 
               <View style={styles.statusCard}>
                 <View style={styles.statusInfo}>
@@ -1425,7 +1527,9 @@ export default function EditOfficer() {
             </View>
           </View>
 
-          {/* ACTIONS */}
+          {/* ==================================
+              ACTIONS
+          ================================== */}
 
           <View style={styles.actionRow}>
             <TouchableOpacity
@@ -1450,6 +1554,56 @@ export default function EditOfficer() {
           </View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          REMOVE PROFILE PICTURE MODAL
+      ====================================== */}
+
+      <DeleteModal
+        visible={showRemovePictureModal}
+        loading={removingPicture}
+        title="Remove Profile Picture?"
+        message="Remove this officer profile picture? The officer will return to the initials avatar."
+        onCancel={handleCancelRemovePicture}
+        onConfirm={performRemoveProfilePicture}
+      />
+
+      {/* ======================================
+          SUCCESS MODAL
+      ====================================== */}
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title={successTitle}
+        message={successMessage}
+        buttonText="OK"
+        onClose={handleSuccessModalClose}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowWarningModal(false);
+        }}
+      />
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
     </View>
   );
 }
@@ -1488,7 +1642,6 @@ function getImageExtension(asset: ImagePicker.ImagePickerAsset) {
 
 function getImageMimeType(
   asset: ImagePicker.ImagePickerAsset,
-
   extension: string,
 ) {
   if (asset.mimeType) {

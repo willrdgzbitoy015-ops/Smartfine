@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   ActivityIndicator,
-  Alert,
   Image,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -18,6 +16,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+
+import LogoutModal from "@/components/logout-modal";
+import SuccessModal from "@/components/success-modal";
+import WarningModal from "@/components/warningmodal";
 
 import { styles } from "./add-fine.styles";
 
@@ -77,7 +79,9 @@ type OfficerOption = {
 
 type NavItem = {
   label: string;
+
   route: string;
+
   icon?: any;
 };
 
@@ -97,6 +101,32 @@ export default function AddFine() {
   const isTablet = width >= 768;
 
   const isCompact = width < 600;
+
+  // ==========================================
+  // SUCCESS MODAL
+  // ==========================================
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
 
   // ==========================================
   // STUDENT PASSED FROM QR SCANNER
@@ -273,15 +303,27 @@ export default function AddFine() {
 
       const officersData = await officersResponse.json();
 
+      // ======================================
+      // STUDENTS
+      // ======================================
+
       if (!studentsResponse.ok || !studentsData.success) {
         throw new Error(studentsData.message || "Failed to load students.");
       }
+
+      // ======================================
+      // VIOLATIONS
+      // ======================================
 
       if (!violationsResponse.ok || !violationsData.success) {
         throw new Error(
           violationsData.message || "Failed to load violation types.",
         );
       }
+
+      // ======================================
+      // OFFICERS
+      // ======================================
 
       if (!officersResponse.ok || !officersData.success) {
         throw new Error(officersData.message || "Failed to load officers.");
@@ -299,6 +341,10 @@ export default function AddFine() {
       setViolations(loadedViolations);
 
       setOfficers(loadedOfficers);
+
+      // ======================================
+      // STUDENT FROM QR SCANNER
+      // ======================================
 
       if (scannedStudentDatabaseId !== null) {
         const scannedStudent = loadedStudents.find(
@@ -321,6 +367,10 @@ export default function AddFine() {
           );
         }
       }
+
+      // ======================================
+      // AUTO SELECT SINGLE OFFICER
+      // ======================================
 
       if (loadedOfficers.length === 1) {
         setSelectedOfficerId(loadedOfficers[0].id);
@@ -359,9 +409,13 @@ export default function AddFine() {
       .filter((student) => {
         const searchable = [
           student.full_name,
+
           student.student_id,
+
           student.username,
+
           student.grade_level,
+
           student.section,
         ]
           .filter(Boolean)
@@ -465,11 +519,19 @@ export default function AddFine() {
   const handleSave = async () => {
     setErrorMessage("");
 
+    // ======================================
+    // STUDENT
+    // ======================================
+
     if (selectedStudentId === null) {
       setErrorMessage("Please search for and select a student.");
 
       return;
     }
+
+    // ======================================
+    // VIOLATION
+    // ======================================
 
     if (selectedViolationId === null) {
       setErrorMessage("Please select a violation type.");
@@ -477,17 +539,29 @@ export default function AddFine() {
       return;
     }
 
+    // ======================================
+    // OFFICER
+    // ======================================
+
     if (selectedOfficerId === null) {
       setErrorMessage("Please select an assigned officer.");
 
       return;
     }
 
+    // ======================================
+    // DATE
+    // ======================================
+
     if (!isValidDate(issuedAt)) {
       setErrorMessage("Please enter the violation date using YYYY-MM-DD.");
 
       return;
     }
+
+    // ======================================
+    // CREATE
+    // ======================================
 
     try {
       setSaving(true);
@@ -514,13 +588,32 @@ export default function AddFine() {
 
       const data = await response.json();
 
+      console.log("Create fine response:", data);
+
+      // ======================================
+      // FAILED
+      // ======================================
+
       if (!response.ok || !data.success) {
         setErrorMessage(data.message || "Failed to record fine.");
 
         return;
       }
 
-      showSuccess(data.fine?.fineReference);
+      // ======================================
+      // SUCCESS MODAL
+      // ======================================
+
+      const fineReference =
+        data.fine?.fineReference || data.fine?.fine_reference;
+
+      const message = fineReference
+        ? `Fine ${fineReference} recorded successfully.`
+        : "Fine recorded successfully.";
+
+      setSuccessMessage(message);
+
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Create fine error:", error);
 
@@ -531,35 +624,13 @@ export default function AddFine() {
   };
 
   // ==========================================
-  // SUCCESS
+  // SUCCESS MODAL CLOSE
   // ==========================================
 
-  const showSuccess = (fineReference: string | undefined) => {
-    const message = fineReference
-      ? `Fine ${fineReference} recorded successfully.`
-      : "Fine recorded successfully.";
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
 
-    if (Platform.OS === "web") {
-      window.alert(message);
-
-      router.replace("/admin/fines" as any);
-
-      return;
-    }
-
-    Alert.alert(
-      "Fine Recorded",
-
-      message,
-
-      [
-        {
-          text: "OK",
-
-          onPress: () => router.replace("/admin/fines" as any),
-        },
-      ],
-    );
+    router.replace("/admin/fines" as any);
   };
 
   // ==========================================
@@ -571,47 +642,51 @@ export default function AddFine() {
   };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT MODAL
   // ==========================================
 
-  const performLogout = async () => {
-    await logout();
-
-    router.replace("/login" as any);
+  const handleLogout = () => {
+    setShowLogoutModal(true);
   };
 
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm("Are you sure you want to log out?");
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
 
-      if (confirmed) {
-        performLogout();
-      }
-
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
       return;
     }
 
-    Alert.alert(
-      "Log Out",
+    setShowLogoutModal(false);
+  };
 
-      "Are you sure you want to log out?",
+  // ==========================================
+  // PERFORM LOGOUT
+  // ==========================================
 
-      [
-        {
-          text: "Cancel",
+  const performLogout = async () => {
+    try {
+      setLogoutLoading(true);
 
-          style: "cancel",
-        },
+      await logout();
 
-        {
-          text: "Log Out",
+      setShowLogoutModal(false);
 
-          style: "destructive",
+      router.replace("/login" as any);
+    } catch (error) {
+      console.error("Logout error:", error);
 
-          onPress: performLogout,
-        },
-      ],
-    );
+      setShowLogoutModal(false);
+
+      setWarningTitle("Logout Error");
+
+      setWarningMessage("Could not log out. Please try again.");
+
+      setShowWarningModal(true);
+    } finally {
+      setLogoutLoading(false);
+    }
   };
 
   // ==========================================
@@ -634,7 +709,9 @@ export default function AddFine() {
 
   return (
     <View style={styles.screen}>
-      {/* SIDEBAR */}
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
 
       {isTablet && (
         <View style={styles.sidebar}>
@@ -655,6 +732,7 @@ export default function AddFine() {
                   key={item.label}
                   style={[styles.navItem, active && styles.navItemActive]}
                   onPress={() => router.push(item.route as any)}
+                  activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
                     <Image
@@ -670,13 +748,19 @@ export default function AddFine() {
             })}
           </View>
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* MAIN */}
+      {/* ======================================
+          MAIN
+      ====================================== */}
 
       <View style={styles.main}>
         <ScrollView
@@ -713,7 +797,9 @@ export default function AddFine() {
             </Text>
           </TouchableOpacity>
 
-          {/* MOBILE NAV */}
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
 
           {!isTablet && (
             <ScrollView
@@ -749,10 +835,16 @@ export default function AddFine() {
             </ScrollView>
           )}
 
-          {/* FORM CARD */}
+          {/* ==================================
+              FORM CARD
+          ================================== */}
 
           <View style={styles.formCard}>
             <Text style={styles.cardTitle}>Record New Fine</Text>
+
+            {/* ==================================
+                QR SCANNER STUDENT
+            ================================== */}
 
             {scannedStudentDatabaseId !== null && selectedStudent && (
               <View
@@ -794,15 +886,21 @@ export default function AddFine() {
                   }}
                 >
                   {selectedStudent.full_name}
+
                   {" • "}
+
                   {selectedStudent.student_id}
                 </Text>
               </View>
             )}
 
-            {/* ROW 1 */}
+            {/* ==================================
+                ROW 1
+            ================================== */}
 
             <View style={[styles.formRow, styles.formRowTop]}>
+              {/* STUDENT */}
+
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Student Name</Text>
 
@@ -863,6 +961,8 @@ export default function AddFine() {
                 )}
               </View>
 
+              {/* DATE */}
+
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Date of Violation</Text>
 
@@ -881,9 +981,13 @@ export default function AddFine() {
               </View>
             </View>
 
-            {/* ROW 2 */}
+            {/* ==================================
+                ROW 2
+            ================================== */}
 
             <View style={[styles.formRow, styles.formRowMiddle]}>
+              {/* VIOLATION */}
+
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Violation Type</Text>
 
@@ -939,6 +1043,8 @@ export default function AddFine() {
                   </View>
                 )}
               </View>
+
+              {/* OFFICER */}
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Assigned Officer</Text>
@@ -997,9 +1103,13 @@ export default function AddFine() {
               </View>
             </View>
 
-            {/* ROW 3 */}
+            {/* ==================================
+                ROW 3
+            ================================== */}
 
             <View style={[styles.formRow, styles.formRowBottom]}>
+              {/* AMOUNT */}
+
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Amount</Text>
 
@@ -1011,6 +1121,8 @@ export default function AddFine() {
                   </Text>
                 </View>
               </View>
+
+              {/* NOTES */}
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Notes / Description</Text>
@@ -1030,6 +1142,10 @@ export default function AddFine() {
               </View>
             </View>
 
+            {/* ==================================
+                ERROR
+            ================================== */}
+
             {errorMessage !== "" && (
               <View style={styles.errorBox}>
                 <Text style={styles.errorTitle}>Unable to Save Fine</Text>
@@ -1037,6 +1153,10 @@ export default function AddFine() {
                 <Text style={styles.errorText}>{errorMessage}</Text>
               </View>
             )}
+
+            {/* ==================================
+                ACTIONS
+            ================================== */}
 
             <View style={styles.actionRow}>
               <TouchableOpacity
@@ -1062,6 +1182,43 @@ export default function AddFine() {
           </View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          SUCCESS MODAL
+      ====================================== */}
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Fine Recorded"
+        message={successMessage}
+        buttonText="OK"
+        onClose={handleSuccessModalClose}
+      />
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowWarningModal(false);
+        }}
+      />
     </View>
   );
 }

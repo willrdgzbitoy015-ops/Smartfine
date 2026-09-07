@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -14,10 +15,7 @@ import {
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { useRouter } from "expo-router";
-
-import { styles } from "@/styles/login/login.styles";
 
 import { API_BASE } from "@/constants/api";
 
@@ -33,13 +31,9 @@ export default function LoginScreen() {
   // ==========================================
 
   const [username, setUsername] = useState("");
-
   const [password, setPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
-
   const [rememberMe, setRememberMe] = useState(false);
 
   // ==========================================
@@ -47,7 +41,6 @@ export default function LoginScreen() {
   // ==========================================
 
   const [errorTitle, setErrorTitle] = useState("");
-
   const [errorMessage, setErrorMessage] = useState("");
 
   // ==========================================
@@ -56,7 +49,6 @@ export default function LoginScreen() {
 
   const showError = (title: string, message: string) => {
     setErrorTitle(title);
-
     setErrorMessage(message);
   };
 
@@ -66,7 +58,6 @@ export default function LoginScreen() {
 
   const clearError = () => {
     setErrorTitle("");
-
     setErrorMessage("");
   };
 
@@ -81,7 +72,6 @@ export default function LoginScreen() {
 
     const timer = setTimeout(() => {
       setErrorTitle("");
-
       setErrorMessage("");
     }, 3000);
 
@@ -106,27 +96,17 @@ export default function LoginScreen() {
     const userEmail = String(data.user.email || data.user.username || "");
 
     const userId = String(data.user.id);
-
     const userRole = String(data.user.role);
-
-    // ======================================
-    // STORE AUTH DATA
-    // ======================================
 
     await AsyncStorage.multiSet([
       ["token", String(data.token)],
-
       ["userEmail", userEmail],
-
       ["userId", userId],
-
       ["userRole", userRole],
     ]);
 
     console.log("Login session saved.");
-
     console.log("Saved user ID:", userId);
-
     console.log("Saved role:", userRole);
   };
 
@@ -177,7 +157,6 @@ export default function LoginScreen() {
 
         body: JSON.stringify({
           username: username.trim(),
-
           password,
         }),
       });
@@ -198,10 +177,6 @@ export default function LoginScreen() {
 
       // ====================================
       // READ RESPONSE AS TEXT FIRST
-      //
-      // Do not call response.json() directly.
-      // The mobile/ngrok response may contain
-      // plain text, HTML, or another format.
       // ====================================
 
       const rawResponseText = await response.text();
@@ -394,10 +369,6 @@ export default function LoginScreen() {
 
       clearError();
 
-      // ====================================
-      // SAVE TOKEN + CURRENT USER
-      // ====================================
-
       await saveLoginSession(data);
 
       const role = String(data.user.role).toUpperCase();
@@ -421,9 +392,6 @@ export default function LoginScreen() {
 
         router.replace("/student/dashboard");
       } else {
-        // Remove invalid session if role
-        // returned by server is unsupported.
-
         await AsyncStorage.multiRemove([
           "token",
           "userEmail",
@@ -451,6 +419,133 @@ export default function LoginScreen() {
   };
 
   // ==========================================
+  // LOGIN FORM
+  // ==========================================
+
+  const LoginForm = () => (
+    <>
+      {/* USERNAME */}
+
+      <View style={styles.inputContainer}>
+        <View style={styles.iconContainer}>
+          <Image
+            source={require("../../assets/icons/user.png")}
+            style={styles.userIcon}
+            resizeMode="contain"
+          />
+        </View>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your ID or Username"
+          placeholderTextColor="#6E6E6E"
+          value={username}
+          onChangeText={(text) => {
+            setUsername(text);
+            clearError();
+          }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+          returnKeyType="next"
+        />
+      </View>
+
+      {/* PASSWORD */}
+
+      <View style={styles.inputContainer}>
+        <View style={styles.iconContainer}>
+          <Image
+            source={require("../../assets/icons/padlock.png")}
+            style={styles.lockIcon}
+            resizeMode="contain"
+          />
+        </View>
+
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Enter your password"
+          placeholderTextColor="#6E6E6E"
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            clearError();
+          }}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+          onSubmitEditing={handleLogin}
+          returnKeyType="done"
+        />
+
+        <TouchableOpacity
+          style={styles.eyeButton}
+          onPress={() => setShowPassword((current) => !current)}
+          disabled={loading}
+          activeOpacity={0.7}
+        >
+          <Image
+            source={
+              showPassword
+                ? require("../../assets/icons/hide.png")
+                : require("../../assets/icons/view.png")
+            }
+            style={styles.eyeIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* ERROR */}
+
+      {errorMessage !== "" && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorTitle}>{errorTitle}</Text>
+
+          <Text style={styles.errorMessage}>{errorMessage}</Text>
+        </View>
+      )}
+
+      {/* OPTIONS */}
+
+      <View style={styles.optionsRow}>
+        <TouchableOpacity
+          style={styles.rememberRow}
+          onPress={() => setRememberMe(!rememberMe)}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+            {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+
+          <Text style={styles.rememberText}>Remember me</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity disabled={loading} activeOpacity={0.7}>
+          <Text style={styles.forgotText}>Forgot Password?</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* LOGIN BUTTON */}
+
+      <TouchableOpacity
+        style={[styles.loginButton, loading && styles.disabledButton]}
+        onPress={handleLogin}
+        disabled={loading}
+        activeOpacity={0.85}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.loginButtonText}>LOGIN</Text>
+        )}
+      </TouchableOpacity>
+    </>
+  );
+
+  // ==========================================
   // UI
   // ==========================================
 
@@ -460,6 +555,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.container,
 
@@ -468,8 +564,8 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ======================================
-            BRAND AREA
+        {/* =====================================
+            BRAND
         ====================================== */}
 
         <View
@@ -496,13 +592,14 @@ export default function LoginScreen() {
               isTablet ? styles.taglineTablet : styles.taglinePhone,
             ]}
           >
-            A Student Fines Monitoring and{"\n"}
-            Management System
+            A Student Fines Monitoring and Management
+            {"\n"}
+            System
           </Text>
         </View>
 
-        {/* ======================================
-            LOGIN AREA
+        {/* =====================================
+            LOGIN SIDE / MOBILE SECTION
         ====================================== */}
 
         <View
@@ -512,147 +609,47 @@ export default function LoginScreen() {
             isTablet ? styles.loginTablet : styles.loginPhone,
           ]}
         >
-          <View
-            style={[
-              styles.loginCard,
+          {/* =================================
+              TABLET LOGO ONLY
+          ================================= */}
 
-              isTablet ? styles.loginCardTablet : styles.loginCardPhone,
-            ]}
-          >
-            {/* ==================================
-                SMALL LOGO
-            ================================== */}
-
-            <View style={styles.smallLogoBox}>
-              <Image
-                source={require("../../assets/branding/smartfine-logo.png")}
-                style={styles.smallLogo}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* ==================================
-                WELCOME
-            ================================== */}
-
-            <Text style={styles.welcomeText}>Welcome Back!</Text>
-
-            <Text style={styles.loginTitle}>LOGIN</Text>
-
-            {/* ==================================
-                USERNAME
-            ================================== */}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your ID or Username"
-              placeholderTextColor="#777777"
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text);
-
-                clearError();
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-            />
-
-            {/* ==================================
-                PASSWORD
-            ================================== */}
-
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="Password"
-                placeholderTextColor="#777777"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-
-                  clearError();
-                }}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!loading}
-                onSubmitEditing={handleLogin}
-              />
-
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.showButton}
-                disabled={loading}
-              >
-                <Text style={styles.showText}>
-                  {showPassword ? "Hide" : "Show"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* ==================================
-                ERROR
-            ================================== */}
-
-            {errorMessage !== "" && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorTitle}>{errorTitle}</Text>
-
-                <Text style={styles.errorMessage}>{errorMessage}</Text>
+          {isTablet && (
+            <View style={styles.loginCardTablet}>
+              <View style={styles.smallLogoBox}>
+                <Image
+                  source={require("../../assets/branding/smartfine-logo.png")}
+                  style={styles.smallLogo}
+                  resizeMode="contain"
+                />
               </View>
-            )}
 
-            {/* ==================================
-                OPTIONS
-            ================================== */}
+              <Text style={styles.welcomeTextTablet}>Welcome Back!</Text>
 
-            <View style={styles.optionsRow}>
-              <TouchableOpacity
-                style={styles.rememberRow}
-                onPress={() => setRememberMe(!rememberMe)}
-                disabled={loading}
-              >
-                <View
-                  style={[
-                    styles.checkbox,
+              <Text style={styles.loginTitleTablet}>LOGIN</Text>
 
-                    rememberMe && styles.checkboxChecked,
-                  ]}
-                >
-                  {rememberMe && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-
-                <Text style={styles.rememberText}>Remember me</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity disabled={loading}>
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-              </TouchableOpacity>
+              <LoginForm />
             </View>
+          )}
 
-            {/* ==================================
-                LOGIN BUTTON
-            ================================== */}
+          {/* =================================
+              PHONE VERSION
+          ================================= */}
 
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.disabledButton]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.loginButtonText}>LOGIN</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          {!isTablet && (
+            <>
+              <Text style={styles.welcomeTextPhone}>Welcome Back!</Text>
 
-          {/* ======================================
-              SECURITY TEXT
-          ====================================== */}
+              <Text style={styles.loginTitlePhone}>Login</Text>
 
-          <Text style={styles.securityText}>
+              <View style={styles.loginCardPhone}>
+                <LoginForm />
+              </View>
+            </>
+          )}
+
+          <Text
+            style={[styles.securityText, !isTablet && styles.securityTextPhone]}
+          >
             Secure access for students and authorized school personnel
           </Text>
         </View>
@@ -660,3 +657,490 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+// ==========================================
+// STYLES
+// ==========================================
+
+const styles = StyleSheet.create({
+  // ========================================
+  // SCREEN
+  // ========================================
+
+  screen: {
+    flex: 1,
+    backgroundColor: "#173568",
+  },
+
+  scrollView: {
+    flex: 1,
+    backgroundColor: "#173568",
+  },
+
+  container: {
+    flexGrow: 1,
+    backgroundColor: "#173568",
+  },
+
+  // ========================================
+  // TABLET
+  // ========================================
+
+  tabletContainer: {
+    minHeight: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+
+    paddingHorizontal: 50,
+    paddingVertical: 35,
+  },
+
+  // ========================================
+  // PHONE
+  // ========================================
+
+  phoneContainer: {
+    minHeight: "100%",
+
+    alignItems: "center",
+
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 35,
+  },
+
+  // ========================================
+  // BRAND SECTION
+  // ========================================
+
+  brandSection: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  brandTablet: {
+    flex: 1,
+  },
+
+  brandPhone: {
+    width: "100%",
+
+    marginBottom: 21,
+  },
+
+  brandLogo: {
+    alignSelf: "center",
+  },
+
+  brandLogoTablet: {
+    width: 330,
+    height: 175,
+  },
+
+  // ========================================
+  // MOBILE MAIN LOGO
+  // ========================================
+
+  brandLogoPhone: {
+    width: 300,
+    height: 185,
+
+    marginBottom: -22,
+  },
+
+  tagline: {
+    color: "#FFFFFF",
+
+    textAlign: "center",
+  },
+
+  taglineTablet: {
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
+
+  taglinePhone: {
+    width: "100%",
+
+    fontSize: 13,
+    fontWeight: "400",
+
+    lineHeight: 18,
+
+    marginTop: 0,
+  },
+
+  // ========================================
+  // LOGIN SECTION
+  // ========================================
+
+  loginSection: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  loginTablet: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+
+  loginPhone: {
+    width: "100%",
+  },
+
+  // ========================================
+  // MOBILE TITLE
+  // ========================================
+
+  welcomeTextPhone: {
+    color: "#FFFFFF",
+
+    fontSize: 23,
+    fontWeight: "800",
+
+    textAlign: "center",
+
+    marginTop: 0,
+  },
+
+  loginTitlePhone: {
+    color: "#16E564",
+
+    fontSize: 20,
+    fontWeight: "700",
+
+    textAlign: "center",
+
+    marginTop: 20,
+    marginBottom: 20,
+  },
+
+  // ========================================
+  // PHONE CARD
+  // ========================================
+
+  loginCardPhone: {
+    width: "86%",
+    maxWidth: 340,
+
+    backgroundColor: "#425D89",
+
+    borderRadius: 10,
+
+    paddingHorizontal: 19,
+    paddingTop: 22,
+    paddingBottom: 30,
+
+    alignItems: "center",
+
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+
+    elevation: 6,
+  },
+
+  // ========================================
+  // TABLET CARD
+  // ========================================
+
+  loginCardTablet: {
+    width: "100%",
+    maxWidth: 440,
+
+    backgroundColor: "#425D89",
+
+    borderRadius: 14,
+
+    paddingHorizontal: 46,
+    paddingTop: 38,
+    paddingBottom: 42,
+
+    alignItems: "center",
+
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+
+    elevation: 8,
+  },
+
+  // ========================================
+  // TABLET SMALL LOGO
+  // ========================================
+
+  smallLogoBox: {
+    width: 110,
+    height: 110,
+
+    borderRadius: 24,
+
+    backgroundColor: "#082947",
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    marginBottom: 20,
+
+    overflow: "hidden",
+  },
+
+  smallLogo: {
+    width: 72,
+    height: 72,
+  },
+
+  welcomeTextTablet: {
+    color: "#FFFFFF",
+
+    fontSize: 26,
+    fontWeight: "800",
+
+    textAlign: "center",
+  },
+
+  loginTitleTablet: {
+    color: "#16E564",
+
+    fontSize: 19,
+    fontWeight: "800",
+
+    textAlign: "center",
+
+    marginTop: 3,
+    marginBottom: 24,
+  },
+
+  // ========================================
+  // INPUTS
+  // ========================================
+
+  inputContainer: {
+    width: "100%",
+
+    height: 43,
+
+    backgroundColor: "#FFFFFF",
+
+    borderRadius: 6,
+
+    flexDirection: "row",
+    alignItems: "center",
+
+    marginBottom: 29,
+
+    overflow: "hidden",
+  },
+
+  iconContainer: {
+    width: 47,
+    height: "100%",
+
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  userIcon: {
+    width: 28,
+    height: 28,
+  },
+
+  lockIcon: {
+    width: 23,
+    height: 23,
+  },
+
+  input: {
+    flex: 1,
+    height: "100%",
+
+    color: "#222222",
+
+    fontSize: 12,
+
+    paddingHorizontal: 4,
+    paddingRight: 12,
+  },
+
+  passwordInput: {
+    flex: 1,
+    height: "100%",
+
+    color: "#222222",
+
+    fontSize: 12,
+
+    paddingHorizontal: 4,
+  },
+
+  eyeButton: {
+    width: 43,
+    height: "100%",
+
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  eyeIcon: {
+    width: 23,
+    height: 23,
+  },
+
+  // ========================================
+  // ERROR
+  // ========================================
+
+  errorBox: {
+    width: "100%",
+
+    backgroundColor: "#FFF1F1",
+
+    borderWidth: 1,
+    borderColor: "#E15252",
+
+    borderRadius: 6,
+
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+
+    marginTop: -15,
+    marginBottom: 14,
+  },
+
+  errorTitle: {
+    color: "#B42318",
+
+    fontSize: 12,
+    fontWeight: "700",
+
+    marginBottom: 2,
+  },
+
+  errorMessage: {
+    color: "#B42318",
+
+    fontSize: 11,
+    lineHeight: 16,
+  },
+
+  // ========================================
+  // OPTIONS
+  // ========================================
+
+  optionsRow: {
+    width: "100%",
+
+    flexDirection: "row",
+
+    alignItems: "center",
+    justifyContent: "space-between",
+
+    marginTop: -10,
+    marginBottom: 42,
+  },
+
+  rememberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  checkbox: {
+    width: 12,
+    height: 12,
+
+    backgroundColor: "#FFFFFF",
+
+    borderRadius: 2,
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    marginRight: 6,
+  },
+
+  checkboxChecked: {
+    backgroundColor: "#20C95C",
+  },
+
+  checkmark: {
+    color: "#FFFFFF",
+
+    fontSize: 9,
+    fontWeight: "800",
+  },
+
+  rememberText: {
+    color: "#FFFFFF",
+
+    fontSize: 10,
+    fontWeight: "500",
+  },
+
+  forgotText: {
+    color: "#18E968",
+
+    fontSize: 10,
+    fontWeight: "600",
+  },
+
+  // ========================================
+  // LOGIN BUTTON
+  // ========================================
+
+  loginButton: {
+    width: "100%",
+
+    height: 33,
+
+    backgroundColor: "#4CB94F",
+
+    borderRadius: 4,
+
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  disabledButton: {
+    opacity: 0.65,
+  },
+
+  loginButtonText: {
+    color: "#FFFFFF",
+
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  // ========================================
+  // SECURITY TEXT
+  // ========================================
+
+  securityText: {
+    color: "#C6D2E5",
+
+    fontSize: 10,
+
+    textAlign: "center",
+
+    marginTop: 15,
+  },
+
+  securityTextPhone: {
+    marginTop: 18,
+    fontSize: 9,
+  },
+});

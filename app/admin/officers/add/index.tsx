@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Platform,
   ScrollView,
@@ -21,6 +20,10 @@ import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 
+import LogoutModal from "@/components/logout-modal";
+import SuccessModal from "@/components/success-modal";
+import WarningModal from "@/components/warningmodal";
+
 import { styles } from "./add-officer.styles";
 
 // ==========================================
@@ -29,7 +32,9 @@ import { styles } from "./add-officer.styles";
 
 type NavItem = {
   label: string;
+
   route: string;
+
   icon?: any;
 };
 
@@ -122,6 +127,40 @@ export default function AddOfficer() {
   const [loading, setLoading] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
+
+  // ==========================================
+  // SUCCESS MODAL
+  // ==========================================
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const [successRedirectRoute, setSuccessRedirectRoute] = useState<
+    string | null
+  >(null);
+
+  // ==========================================
+  // WARNING MODAL
+  // ==========================================
+
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  const [warningTitle, setWarningTitle] = useState("");
+
+  const [warningMessage, setWarningMessage] = useState("");
+
+  const [warningRedirectRoute, setWarningRedirectRoute] = useState<
+    string | null
+  >(null);
+
+  // ==========================================
+  // LOGOUT MODAL
+  // ==========================================
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   // ==========================================
   // NAVIGATION
@@ -262,6 +301,24 @@ export default function AddOfficer() {
   };
 
   // ==========================================
+  // SHOW WARNING
+  // ==========================================
+
+  const showWarning = (
+    title: string,
+    message: string,
+    redirectRoute: string | null = null,
+  ) => {
+    setWarningTitle(title);
+
+    setWarningMessage(message);
+
+    setWarningRedirectRoute(redirectRoute);
+
+    setShowWarningModal(true);
+  };
+
+  // ==========================================
   // SELECT PROFILE PICTURE
   // ==========================================
 
@@ -274,7 +331,7 @@ export default function AddOfficer() {
           await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (!permission.granted) {
-          Alert.alert(
+          showWarning(
             "Permission Required",
             "Please allow SmartFine to access your photos so you can select an officer profile picture.",
           );
@@ -307,7 +364,7 @@ export default function AddOfficer() {
     } catch (error) {
       console.error("Choose officer profile picture error:", error);
 
-      setErrorMessage("Could not select the profile picture.");
+      showWarning("Photo Error", "Could not select the profile picture.");
     }
   };
 
@@ -545,6 +602,10 @@ export default function AddOfficer() {
 
       const createdUsername = data.officer?.username || normalizedUsername;
 
+      // ======================================
+      // PROFILE PICTURE
+      // ======================================
+
       if (
         profilePicture &&
         Number.isInteger(createdOfficerId) &&
@@ -574,6 +635,10 @@ export default function AddOfficer() {
         }
       }
 
+      // ======================================
+      // SUCCESS
+      // ======================================
+
       handleSuccess(createdOfficerId, createdEmployeeNumber, createdUsername);
     } catch (error) {
       console.error("Create officer error:", error);
@@ -590,9 +655,7 @@ export default function AddOfficer() {
 
   const handleSuccess = (
     createdOfficerId: number,
-
     createdEmployeeNumber: string,
-
     createdUsername: string,
   ) => {
     const pictureMessage = profilePicture ? "\nProfile Picture: Uploaded" : "";
@@ -603,31 +666,16 @@ export default function AddOfficer() {
       `Username: ${createdUsername}` +
       pictureMessage;
 
-    if (Platform.OS === "web") {
-      window.alert(message);
+    const redirectRoute =
+      Number.isInteger(createdOfficerId) && createdOfficerId > 0
+        ? `/admin/officers/${createdOfficerId}`
+        : "/admin/officers";
 
-      if (Number.isInteger(createdOfficerId) && createdOfficerId > 0) {
-        router.replace(`/admin/officers/${createdOfficerId}` as any);
-      } else {
-        router.replace("/admin/officers" as any);
-      }
+    setSuccessMessage(message);
 
-      return;
-    }
+    setSuccessRedirectRoute(redirectRoute);
 
-    Alert.alert("Officer Created", message, [
-      {
-        text: "OK",
-
-        onPress: () => {
-          if (Number.isInteger(createdOfficerId) && createdOfficerId > 0) {
-            router.replace(`/admin/officers/${createdOfficerId}` as any);
-          } else {
-            router.replace("/admin/officers" as any);
-          }
-        },
-      },
-    ]);
+    setShowSuccessModal(true);
   };
 
   // ==========================================
@@ -636,11 +684,8 @@ export default function AddOfficer() {
 
   const handlePartialSuccess = (
     createdOfficerId: number,
-
     createdEmployeeNumber: string,
-
     createdUsername: string,
-
     profileError: string,
   ) => {
     const message =
@@ -650,31 +695,44 @@ export default function AddOfficer() {
       `${profileError}\n\n` +
       `You can add the picture later from Edit Officer.`;
 
-    if (Platform.OS === "web") {
-      window.alert(message);
+    const redirectRoute =
+      Number.isInteger(createdOfficerId) && createdOfficerId > 0
+        ? `/admin/officers/${createdOfficerId}`
+        : "/admin/officers";
 
-      if (Number.isInteger(createdOfficerId) && createdOfficerId > 0) {
-        router.replace(`/admin/officers/${createdOfficerId}` as any);
-      } else {
-        router.replace("/admin/officers" as any);
-      }
+    showWarning("Officer Created with Warning", message, redirectRoute);
+  };
 
-      return;
+  // ==========================================
+  // SUCCESS MODAL CLOSE
+  // ==========================================
+
+  const handleSuccessModalClose = () => {
+    const redirectRoute = successRedirectRoute;
+
+    setShowSuccessModal(false);
+
+    setSuccessRedirectRoute(null);
+
+    if (redirectRoute) {
+      router.replace(redirectRoute as any);
     }
+  };
 
-    Alert.alert("Officer Created", message, [
-      {
-        text: "OK",
+  // ==========================================
+  // WARNING MODAL CLOSE
+  // ==========================================
 
-        onPress: () => {
-          if (Number.isInteger(createdOfficerId) && createdOfficerId > 0) {
-            router.replace(`/admin/officers/${createdOfficerId}` as any);
-          } else {
-            router.replace("/admin/officers" as any);
-          }
-        },
-      },
-    ]);
+  const handleWarningModalClose = () => {
+    const redirectRoute = warningRedirectRoute;
+
+    setShowWarningModal(false);
+
+    setWarningRedirectRoute(null);
+
+    if (redirectRoute) {
+      router.replace(redirectRoute as any);
+    }
   };
 
   // ==========================================
@@ -694,51 +752,47 @@ export default function AddOfficer() {
   };
 
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT
+  // ==========================================
+
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  // ==========================================
+  // CANCEL LOGOUT
+  // ==========================================
+
+  const handleCancelLogout = () => {
+    if (logoutLoading) {
+      return;
+    }
+
+    setShowLogoutModal(false);
+  };
+
+  // ==========================================
+  // PERFORM LOGOUT
   // ==========================================
 
   const performLogout = async () => {
     try {
+      setLogoutLoading(true);
+
       await logout();
+
+      setShowLogoutModal(false);
 
       router.replace("/login" as any);
     } catch (error) {
       console.error("Logout error:", error);
+
+      setShowLogoutModal(false);
+
+      showWarning("Logout Error", "Could not log out. Please try again.");
+    } finally {
+      setLogoutLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm("Are you sure you want to log out?");
-
-      if (confirmed) {
-        performLogout();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Log Out",
-
-      "Are you sure you want to log out?",
-
-      [
-        {
-          text: "Cancel",
-
-          style: "cancel",
-        },
-
-        {
-          text: "Log Out",
-
-          style: "destructive",
-
-          onPress: performLogout,
-        },
-      ],
-    );
   };
 
   // ==========================================
@@ -747,7 +801,9 @@ export default function AddOfficer() {
 
   return (
     <View style={styles.screen}>
-      {/* SIDEBAR */}
+      {/* ======================================
+          SIDEBAR
+      ====================================== */}
 
       {isTablet && (
         <View style={styles.sidebar}>
@@ -768,6 +824,7 @@ export default function AddOfficer() {
                   key={item.label}
                   style={[styles.navItem, active && styles.navItemActive]}
                   onPress={() => handleNavigation(item)}
+                  activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
                     <Image
@@ -783,13 +840,19 @@ export default function AddOfficer() {
             })}
           </View>
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* MAIN */}
+      {/* ======================================
+          MAIN
+      ====================================== */}
 
       <View style={styles.main}>
         <ScrollView
@@ -878,7 +941,9 @@ export default function AddOfficer() {
             </Text>
           </View>
 
-          {/* MOBILE NAV */}
+          {/* ==================================
+              MOBILE NAV
+          ================================== */}
 
           {!isTablet && (
             <ScrollView
@@ -914,9 +979,15 @@ export default function AddOfficer() {
             </ScrollView>
           )}
 
-          {/* FORM */}
+          {/* ==================================
+              FORM
+          ================================== */}
 
           <View style={styles.formContainer}>
+            {/* ==================================
+                OFFICER INFORMATION
+            ================================== */}
+
             <View style={styles.formCard}>
               <Text style={styles.cardTitle}>Officer Information</Text>
 
@@ -1100,6 +1171,8 @@ export default function AddOfficer() {
                 </View>
               </View>
 
+              {/* EMPLOYEE NUMBER */}
+
               <Text style={styles.label}>Employee Number</Text>
 
               <View style={styles.readOnlyBox}>
@@ -1122,6 +1195,8 @@ export default function AddOfficer() {
                 Employee Number is generated automatically and cannot be
                 changed.
               </Text>
+
+              {/* FIRST + MIDDLE */}
 
               <View style={styles.twoColumnRow}>
                 <View style={styles.flexField}>
@@ -1159,6 +1234,8 @@ export default function AddOfficer() {
                 </View>
               </View>
 
+              {/* LAST NAME */}
+
               <Text style={styles.label}>Last Name *</Text>
 
               <TextInput
@@ -1173,6 +1250,8 @@ export default function AddOfficer() {
                 placeholderTextColor="#8C939F"
                 editable={!loading}
               />
+
+              {/* EMAIL */}
 
               <Text style={styles.label}>Email Address *</Text>
 
@@ -1191,6 +1270,8 @@ export default function AddOfficer() {
                 autoCorrect={false}
                 editable={!loading}
               />
+
+              {/* CONTACT */}
 
               <Text style={styles.label}>Contact Number *</Text>
 
@@ -1211,6 +1292,8 @@ export default function AddOfficer() {
                 editable={!loading}
               />
 
+              {/* ASSIGNED AREA */}
+
               <Text style={styles.label}>Assigned Area *</Text>
 
               <TextInput
@@ -1227,10 +1310,14 @@ export default function AddOfficer() {
               />
             </View>
 
-            {/* ACCOUNT */}
+            {/* ==================================
+                ACCOUNT INFORMATION
+            ================================== */}
 
             <View style={styles.formCard}>
               <Text style={styles.cardTitle}>Account Information</Text>
+
+              {/* USERNAME */}
 
               <Text style={styles.label}>Username *</Text>
 
@@ -1257,6 +1344,8 @@ export default function AddOfficer() {
                 Suggested automatically from the officer&apos;s name. You may
                 change it before creating the account.
               </Text>
+
+              {/* PASSWORD */}
 
               <Text style={styles.label}>Enter Password *</Text>
 
@@ -1293,6 +1382,8 @@ export default function AddOfficer() {
                 one special character.
               </Text>
 
+              {/* CONFIRM PASSWORD */}
+
               <Text style={styles.label}>Confirm Password *</Text>
 
               <TextInput
@@ -1310,6 +1401,8 @@ export default function AddOfficer() {
                 autoCorrect={false}
                 editable={!loading}
               />
+
+              {/* STATUS */}
 
               <View style={styles.statusCard}>
                 <View>
@@ -1358,6 +1451,10 @@ export default function AddOfficer() {
             </View>
           </View>
 
+          {/* ==================================
+              ERROR
+          ================================== */}
+
           {errorMessage !== "" && (
             <View style={styles.errorBox}>
               <Text style={styles.errorTitle}>Unable to Create Officer</Text>
@@ -1365,6 +1462,10 @@ export default function AddOfficer() {
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           )}
+
+          {/* ==================================
+              ACTIONS
+          ================================== */}
 
           <View style={styles.actionRow}>
             <TouchableOpacity
@@ -1396,6 +1497,41 @@ export default function AddOfficer() {
           </View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          SUCCESS MODAL
+      ====================================== */}
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Officer Created"
+        message={successMessage}
+        buttonText="OK"
+        onClose={handleSuccessModalClose}
+      />
+
+      {/* ======================================
+          WARNING MODAL
+      ====================================== */}
+
+      <WarningModal
+        visible={showWarningModal}
+        title={warningTitle}
+        message={warningMessage}
+        buttonText="OK"
+        onClose={handleWarningModalClose}
+      />
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
+
+      <LogoutModal
+        visible={showLogoutModal}
+        loading={logoutLoading}
+        onCancel={handleCancelLogout}
+        onConfirm={performLogout}
+      />
     </View>
   );
 }
@@ -1434,7 +1570,6 @@ function getImageExtension(asset: ImagePicker.ImagePickerAsset) {
 
 function getImageMimeType(
   asset: ImagePicker.ImagePickerAsset,
-
   extension: string,
 ) {
   if (asset.mimeType) {
