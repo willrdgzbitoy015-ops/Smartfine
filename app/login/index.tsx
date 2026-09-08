@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -19,6 +19,16 @@ import { useRouter } from "expo-router";
 
 import { API_BASE } from "@/constants/api";
 
+// ==========================================
+// TYPES
+// ==========================================
+
+type ScreenMode = "login" | "forgot" | "verify" | "reset" | "success";
+
+// ==========================================
+// LOGIN SCREEN
+// ==========================================
+
 export default function LoginScreen() {
   const router = useRouter();
 
@@ -27,20 +37,82 @@ export default function LoginScreen() {
   const isTablet = width >= 768;
 
   // ==========================================
-  // LOGIN FORM STATE
+  // INPUT REFERENCES
+  // ==========================================
+
+  const usernameRef = useRef<TextInput | null>(null);
+
+  const passwordRef = useRef<TextInput | null>(null);
+
+  const resetIdentifierRef = useRef<TextInput | null>(null);
+
+  const newPasswordRef = useRef<TextInput | null>(null);
+
+  const confirmPasswordRef = useRef<TextInput | null>(null);
+
+  const otpRefs = useRef<Array<TextInput | null>>([]);
+
+  // ==========================================
+  // CURRENT SCREEN
+  // ==========================================
+
+  const [screenMode, setScreenMode] = useState<ScreenMode>("login");
+
+  // ==========================================
+  // LOGIN FORM
   // ==========================================
 
   const [username, setUsername] = useState("");
+
   const [password, setPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+
   const [rememberMe, setRememberMe] = useState(false);
 
   // ==========================================
-  // LOGIN ERROR STATE
+  // PASSWORD RESET
+  // ==========================================
+
+  const [resetIdentifier, setResetIdentifier] = useState("");
+
+  const [challengeId, setChallengeId] = useState("");
+
+  const [maskedEmail, setMaskedEmail] = useState("");
+
+  const [verificationCode, setVerificationCode] = useState<string[]>([
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+
+  const [resetToken, setResetToken] = useState("");
+
+  const [newPassword, setNewPassword] = useState("");
+
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  // ==========================================
+  // LOADING
+  // ==========================================
+
+  const [loading, setLoading] = useState(false);
+
+  // ==========================================
+  // ERROR
   // ==========================================
 
   const [errorTitle, setErrorTitle] = useState("");
+
   const [errorMessage, setErrorMessage] = useState("");
 
   // ==========================================
@@ -49,6 +121,7 @@ export default function LoginScreen() {
 
   const showError = (title: string, message: string) => {
     setErrorTitle(title);
+
     setErrorMessage(message);
   };
 
@@ -58,6 +131,7 @@ export default function LoginScreen() {
 
   const clearError = () => {
     setErrorTitle("");
+
     setErrorMessage("");
   };
 
@@ -71,14 +145,68 @@ export default function LoginScreen() {
     }
 
     const timer = setTimeout(() => {
-      setErrorTitle("");
-      setErrorMessage("");
-    }, 3000);
+      clearError();
+    }, 5000);
 
     return () => {
       clearTimeout(timer);
     };
   }, [errorMessage]);
+
+  // ==========================================
+  // RESEND COUNTDOWN
+  // ==========================================
+
+  useEffect(() => {
+    if (resendCountdown <= 0) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setResendCountdown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [resendCountdown]);
+
+  // ==========================================
+  // SAFE API RESPONSE
+  // ==========================================
+
+  const readApiResponse = async (response: Response) => {
+    const rawText = await response.text();
+
+    if (!rawText.trim()) {
+      return {
+        success: false,
+
+        code: "EMPTY_RESPONSE",
+
+        message: "The SmartFine server returned an empty response.",
+      };
+    }
+
+    try {
+      return JSON.parse(rawText);
+    } catch (error) {
+      console.error("SmartFine API returned invalid JSON:", error);
+
+      console.error("Status:", response.status);
+
+      console.error("Raw response:", rawText);
+
+      return {
+        success: false,
+
+        code: "INVALID_SERVER_RESPONSE",
+
+        message:
+          "The SmartFine server returned an unexpected response. Please check the backend connection.",
+      };
+    }
+  };
 
   // ==========================================
   // SAVE LOGIN SESSION
@@ -96,17 +224,23 @@ export default function LoginScreen() {
     const userEmail = String(data.user.email || data.user.username || "");
 
     const userId = String(data.user.id);
+
     const userRole = String(data.user.role);
 
     await AsyncStorage.multiSet([
       ["token", String(data.token)],
+
       ["userEmail", userEmail],
+
       ["userId", userId],
+
       ["userRole", userRole],
     ]);
 
     console.log("Login session saved.");
+
     console.log("Saved user ID:", userId);
+
     console.log("Saved role:", userRole);
   };
 
@@ -116,10 +250,6 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     clearError();
-
-    // ======================================
-    // EMPTY FIELD VALIDATION
-    // ======================================
 
     if (!username.trim() || !password.trim()) {
       showError(
@@ -136,104 +266,44 @@ export default function LoginScreen() {
       setLoading(true);
 
       console.log("==========================================");
-      console.log("SMARTFINE LOGIN REQUEST");
-      console.log("==========================================");
-      console.log("Platform:", Platform.OS);
-      console.log("API base:", API_BASE);
-      console.log("Login API URL:", loginUrl);
-      console.log("Username:", username.trim());
 
-      // ====================================
-      // LOGIN REQUEST
-      // ====================================
+      console.log("SMARTFINE LOGIN REQUEST");
+
+      console.log("==========================================");
+
+      console.log("Platform:", Platform.OS);
+
+      console.log("API base:", API_BASE);
+
+      console.log("Login API URL:", loginUrl);
+
+      console.log("Username:", username.trim());
 
       const response = await fetch(loginUrl, {
         method: "POST",
 
         headers: {
           "Content-Type": "application/json",
+
           Accept: "application/json",
         },
 
         body: JSON.stringify({
           username: username.trim(),
+
           password,
         }),
       });
 
-      // ====================================
-      // RESPONSE DEBUGGING
-      // ====================================
-
-      const contentType =
-        response.headers.get("content-type") || "No content-type returned";
-
-      console.log("==========================================");
-      console.log("SMARTFINE LOGIN RESPONSE");
-      console.log("==========================================");
-      console.log("Response status:", response.status);
-      console.log("Response OK:", response.ok);
-      console.log("Response content-type:", contentType);
-
-      // ====================================
-      // READ RESPONSE AS TEXT FIRST
-      // ====================================
-
-      const rawResponseText = await response.text();
-
-      let data: any;
-
-      // ====================================
-      // EMPTY RESPONSE
-      // ====================================
-
-      if (!rawResponseText.trim()) {
-        console.error("Login response body is empty.");
-
-        showError(
-          "Server Error",
-          "The SmartFine server returned an empty response. Please check the backend and ngrok connection.",
-        );
-
-        return;
-      }
-
-      // ====================================
-      // SAFE JSON PARSING
-      // ====================================
-
-      try {
-        data = JSON.parse(rawResponseText);
-      } catch (parseError) {
-        console.error("==========================================");
-        console.error("LOGIN RESPONSE IS NOT VALID JSON");
-        console.error("==========================================");
-        console.error("JSON parse error:", parseError);
-        console.error("Response status:", response.status);
-        console.error("Response content-type:", contentType);
-        console.error("Raw response text:");
-        console.error(rawResponseText);
-        console.error("==========================================");
-
-        showError(
-          response.status >= 500 ? "Server Error" : "Connection Error",
-          "The SmartFine server returned an unexpected response. Please check that the backend and ngrok tunnel are running, then try again.",
-        );
-
-        return;
-      }
+      const data = await readApiResponse(response);
 
       console.log("Login response:", data);
 
-      // ====================================
+      // ======================================
       // LOGIN FAILED
-      // ====================================
+      // ======================================
 
-      if (!response.ok) {
-        // ==================================
-        // INVALID CREDENTIALS
-        // ==================================
-
+      if (!response.ok || !data.success) {
         if (data.code === "INVALID_CREDENTIALS") {
           let message = data.message || "Invalid username or password.";
 
@@ -248,36 +318,29 @@ export default function LoginScreen() {
 
           setPassword("");
 
+          setTimeout(() => {
+            passwordRef.current?.focus();
+          }, 100);
+
           return;
         }
 
-        // ==================================
-        // ACCOUNT LOCKED
-        // ==================================
-
         if (data.code === "ACCOUNT_LOCKED") {
-          let message = data.message || "This account is temporarily locked.";
+          showError(
+            "Account Temporarily Locked",
 
-          if (!data.message && typeof data.retryAfterMinutes === "number") {
-            message =
-              `This account is temporarily locked. ` +
-              `Please try again in approximately ${data.retryAfterMinutes} minute(s).`;
-          }
-
-          showError("Account Temporarily Locked", message);
+            data.message || "This account is temporarily locked.",
+          );
 
           setPassword("");
 
           return;
         }
 
-        // ==================================
-        // DEACTIVATED
-        // ==================================
-
         if (data.code === "ACCOUNT_DEACTIVATED") {
           showError(
             "Account Deactivated",
+
             data.message ||
               "This account has been deactivated. Please contact the SmartFine administrator.",
           );
@@ -287,13 +350,10 @@ export default function LoginScreen() {
           return;
         }
 
-        // ==================================
-        // ACCOUNT UNAVAILABLE
-        // ==================================
-
         if (data.code === "ACCOUNT_UNAVAILABLE") {
           showError(
             "Account Unavailable",
+
             data.message ||
               "This account is currently unavailable. Please contact the SmartFine administrator.",
           );
@@ -303,51 +363,33 @@ export default function LoginScreen() {
           return;
         }
 
-        // ==================================
-        // MISSING CREDENTIALS
-        // ==================================
-
         if (data.code === "MISSING_CREDENTIALS") {
           showError(
             "Missing Information",
+
             data.message || "Username and password are required.",
           );
 
           return;
         }
 
-        // ==================================
-        // SERVER ERROR
-        // ==================================
-
-        if (data.code === "SERVER_ERROR") {
-          showError(
-            "Server Error",
-            data.message || "An error occurred while logging in.",
-          );
-
-          return;
-        }
-
-        // ==================================
-        // OTHER ERROR
-        // ==================================
-
         showError(
           "Login Failed",
+
           data.message || "Unable to log in. Please try again.",
         );
 
         return;
       }
 
-      // ====================================
+      // ======================================
       // VALIDATE RESPONSE
-      // ====================================
+      // ======================================
 
       if (!data.user || !data.user.role) {
         showError(
           "Login Error",
+
           "The server did not return a valid user role.",
         );
 
@@ -357,15 +399,16 @@ export default function LoginScreen() {
       if (!data.token) {
         showError(
           "Login Error",
+
           "The server did not return a valid login token.",
         );
 
         return;
       }
 
-      // ====================================
+      // ======================================
       // LOGIN SUCCESS
-      // ====================================
+      // ======================================
 
       clearError();
 
@@ -373,23 +416,15 @@ export default function LoginScreen() {
 
       const role = String(data.user.role).toUpperCase();
 
-      console.log("Logged-in role:", role);
-
-      // ====================================
+      // ======================================
       // ROLE REDIRECTION
-      // ====================================
+      // ======================================
 
       if (role === "ADMIN") {
-        console.log("Redirecting to Admin Dashboard...");
-
         router.replace("/admin/dashboard");
       } else if (role === "FINES_OFFICER") {
-        console.log("Redirecting to Officer Dashboard...");
-
         router.replace("/officer/dashboard");
       } else if (role === "STUDENT") {
-        console.log("Redirecting to Student Dashboard...");
-
         router.replace("/student/dashboard");
       } else {
         await AsyncStorage.multiRemove([
@@ -402,16 +437,12 @@ export default function LoginScreen() {
         showError("Login Error", `Unknown user role: ${role}`);
       }
     } catch (error) {
-      console.error("==========================================");
-      console.error("SMARTFINE LOGIN CONNECTION ERROR");
-      console.error("==========================================");
-      console.error("Login API URL:", loginUrl);
-      console.error("Login error:", error);
-      console.error("==========================================");
+      console.error("SMARTFINE LOGIN CONNECTION ERROR:", error);
 
       showError(
         "Connection Error",
-        "Could not connect to the SmartFine server. Please check your connection, backend server, and ngrok tunnel.",
+
+        "Could not connect to the SmartFine server. Please check your backend server, network connection, and ngrok tunnel.",
       );
     } finally {
       setLoading(false);
@@ -419,7 +450,574 @@ export default function LoginScreen() {
   };
 
   // ==========================================
+  // OPEN FORGOT PASSWORD
+  // ==========================================
+
+  const handleOpenForgotPassword = () => {
+    clearError();
+
+    setResetIdentifier(username.trim());
+
+    setScreenMode("forgot");
+
+    setTimeout(() => {
+      resetIdentifierRef.current?.focus();
+    }, 250);
+  };
+
+  // ==========================================
+  // REQUEST VERIFICATION CODE
+  // ==========================================
+
+  const handleRequestReset = async () => {
+    clearError();
+
+    if (!resetIdentifier.trim()) {
+      showError(
+        "Missing Information",
+
+        "Please enter your ID or username.",
+      );
+
+      setTimeout(() => {
+        resetIdentifierRef.current?.focus();
+      }, 100);
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        `${API_BASE}/api/auth/forgot-password/request`,
+
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+
+            Accept: "application/json",
+          },
+
+          body: JSON.stringify({
+            identifier: resetIdentifier.trim(),
+          }),
+        },
+      );
+
+      const data = await readApiResponse(response);
+
+      console.log("Password reset request response:", data);
+
+      if (!response.ok || !data.success) {
+        showError(
+          "Password Reset",
+
+          data.message || "Unable to send the verification code.",
+        );
+
+        return;
+      }
+
+      setChallengeId(String(data.challengeId || ""));
+
+      setMaskedEmail(String(data.maskedEmail || ""));
+
+      setVerificationCode(["", "", "", "", "", ""]);
+
+      setResendCountdown(Number(data.resendAfterSeconds || 60));
+
+      clearError();
+
+      setScreenMode("verify");
+
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 300);
+    } catch (error) {
+      console.error("Forgot password request error:", error);
+
+      showError(
+        "Connection Error",
+
+        "Could not connect to the SmartFine server.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // OTP INPUT CHANGE
+  // ==========================================
+
+  const handleOtpChange = (text: string, index: number) => {
+    clearError();
+
+    const digits = text.replace(/\D/g, "");
+
+    // ======================================
+    // EMPTY CURRENT BOX
+    // ======================================
+
+    if (!digits) {
+      const updated = [...verificationCode];
+
+      updated[index] = "";
+
+      setVerificationCode(updated);
+
+      return;
+    }
+
+    // ======================================
+    // PASTE MULTIPLE DIGITS
+    // ======================================
+
+    if (digits.length > 1) {
+      const updated = [...verificationCode];
+
+      let position = index;
+
+      for (const digit of digits) {
+        if (position >= 6) {
+          break;
+        }
+
+        updated[position] = digit;
+
+        position += 1;
+      }
+
+      setVerificationCode(updated);
+
+      if (position < 6) {
+        requestAnimationFrame(() => {
+          otpRefs.current[position]?.focus();
+        });
+      } else {
+        requestAnimationFrame(() => {
+          otpRefs.current[5]?.focus();
+        });
+      }
+
+      return;
+    }
+
+    // ======================================
+    // SINGLE DIGIT
+    // ======================================
+
+    const updated = [...verificationCode];
+
+    updated[index] = digits.charAt(digits.length - 1);
+
+    setVerificationCode(updated);
+
+    if (index < 5) {
+      requestAnimationFrame(() => {
+        otpRefs.current[index + 1]?.focus();
+      });
+    }
+  };
+
+  // ==========================================
+  // OTP BACKSPACE
+  // ==========================================
+
+  const handleOtpBackspace = (index: number) => {
+    if (verificationCode[index]) {
+      const updated = [...verificationCode];
+
+      updated[index] = "";
+
+      setVerificationCode(updated);
+
+      return;
+    }
+
+    if (index > 0) {
+      const updated = [...verificationCode];
+
+      updated[index - 1] = "";
+
+      setVerificationCode(updated);
+
+      requestAnimationFrame(() => {
+        otpRefs.current[index - 1]?.focus();
+      });
+    }
+  };
+
+  // ==========================================
+  // VERIFY CODE
+  // ==========================================
+
+  const handleVerifyCode = async () => {
+    clearError();
+
+    const code = verificationCode.join("");
+
+    if (code.length !== 6) {
+      showError(
+        "Verification Code",
+
+        "Please enter the complete 6-digit verification code.",
+      );
+
+      const firstEmpty = verificationCode.findIndex((digit) => !digit);
+
+      setTimeout(() => {
+        otpRefs.current[firstEmpty >= 0 ? firstEmpty : 0]?.focus();
+      }, 100);
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        `${API_BASE}/api/auth/forgot-password/verify`,
+
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+
+            Accept: "application/json",
+          },
+
+          body: JSON.stringify({
+            challengeId,
+
+            code,
+          }),
+        },
+      );
+
+      const data = await readApiResponse(response);
+
+      console.log("Verification response:", data);
+
+      if (!response.ok || !data.success) {
+        showError(
+          "Verification Failed",
+
+          data.message || "The verification code could not be verified.",
+        );
+
+        setVerificationCode(["", "", "", "", "", ""]);
+
+        setTimeout(() => {
+          otpRefs.current[0]?.focus();
+        }, 150);
+
+        return;
+      }
+
+      setResetToken(String(data.resetToken || ""));
+
+      setNewPassword("");
+
+      setConfirmPassword("");
+
+      clearError();
+
+      setScreenMode("reset");
+
+      setTimeout(() => {
+        newPasswordRef.current?.focus();
+      }, 300);
+    } catch (error) {
+      console.error("Verify code error:", error);
+
+      showError(
+        "Connection Error",
+
+        "Could not connect to the SmartFine server.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // RESEND CODE
+  // ==========================================
+
+  const handleResendCode = async () => {
+    if (loading || resendCountdown > 0) {
+      return;
+    }
+
+    clearError();
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        `${API_BASE}/api/auth/forgot-password/resend`,
+
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+
+            Accept: "application/json",
+          },
+
+          body: JSON.stringify({
+            challengeId,
+          }),
+        },
+      );
+
+      const data = await readApiResponse(response);
+
+      console.log("Resend verification response:", data);
+
+      if (!response.ok || !data.success) {
+        if (typeof data.retryAfterSeconds === "number") {
+          setResendCountdown(data.retryAfterSeconds);
+        }
+
+        showError(
+          "Resend Code",
+
+          data.message || "Unable to resend the verification code.",
+        );
+
+        return;
+      }
+
+      setMaskedEmail(String(data.maskedEmail || maskedEmail));
+
+      setVerificationCode(["", "", "", "", "", ""]);
+
+      setResendCountdown(Number(data.resendAfterSeconds || 60));
+
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 250);
+    } catch (error) {
+      console.error("Resend verification code error:", error);
+
+      showError(
+        "Connection Error",
+
+        "Could not connect to the SmartFine server.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // CREATE NEW PASSWORD
+  // ==========================================
+
+  const handleResetPassword = async () => {
+    clearError();
+
+    if (!newPassword || !confirmPassword) {
+      showError(
+        "Missing Information",
+
+        "Please enter and confirm your new password.",
+      );
+
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      showError(
+        "Invalid Password",
+
+        "Password must contain at least 8 characters.",
+      );
+
+      setTimeout(() => {
+        newPasswordRef.current?.focus();
+      }, 100);
+
+      return;
+    }
+
+    if (!/[A-Za-z]/.test(newPassword)) {
+      showError(
+        "Invalid Password",
+
+        "Password must contain at least one letter.",
+      );
+
+      return;
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      showError(
+        "Invalid Password",
+
+        "Password must contain at least one number.",
+      );
+
+      return;
+    }
+
+    if (!/[^A-Za-z0-9\s]/.test(newPassword)) {
+      showError(
+        "Invalid Password",
+
+        "Password must contain at least one special character.",
+      );
+
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showError(
+        "Password Mismatch",
+
+        "New password and confirmation do not match.",
+      );
+
+      setTimeout(() => {
+        confirmPasswordRef.current?.focus();
+      }, 100);
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        `${API_BASE}/api/auth/forgot-password/reset`,
+
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+
+            Accept: "application/json",
+          },
+
+          body: JSON.stringify({
+            challengeId,
+
+            resetToken,
+
+            newPassword,
+
+            confirmPassword,
+          }),
+        },
+      );
+
+      const data = await readApiResponse(response);
+
+      console.log("Password reset response:", data);
+
+      if (!response.ok || !data.success) {
+        showError(
+          "Password Reset",
+
+          data.message || "Unable to reset your password.",
+        );
+
+        return;
+      }
+
+      clearError();
+
+      setPassword("");
+
+      setScreenMode("success");
+    } catch (error) {
+      console.error("Reset password error:", error);
+
+      showError(
+        "Connection Error",
+
+        "Could not connect to the SmartFine server.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================
+  // BACK TO LOGIN
+  // ==========================================
+
+  const handleBackToLogin = () => {
+    clearError();
+
+    setScreenMode("login");
+
+    setResetIdentifier("");
+
+    setChallengeId("");
+
+    setMaskedEmail("");
+
+    setVerificationCode(["", "", "", "", "", ""]);
+
+    setResetToken("");
+
+    setNewPassword("");
+
+    setConfirmPassword("");
+
+    setShowNewPassword(false);
+
+    setShowConfirmPassword(false);
+
+    setResendCountdown(0);
+
+    setPassword("");
+
+    setTimeout(() => {
+      usernameRef.current?.focus();
+    }, 250);
+  };
+
+  // ==========================================
+  // ERROR BOX
+  //
+  // IMPORTANT:
+  // Rendered as a regular function instead
+  // of <ErrorBox /> to prevent input remounts.
+  // ==========================================
+
+  const renderErrorBox = () => {
+    if (!errorMessage) {
+      return null;
+    }
+
+    return (
+      <View style={styles.errorBox}>
+        <Text style={styles.errorTitle}>{errorTitle}</Text>
+
+        <Text style={styles.errorMessage}>{errorMessage}</Text>
+      </View>
+    );
+  };
+
+  // ==========================================
   // LOGIN FORM
+  //
+  // IMPORTANT:
+  // This is called as LoginForm()
+  // rather than <LoginForm />.
+  //
+  // This prevents React from recreating the
+  // nested component every time text changes.
   // ==========================================
 
   const LoginForm = () => (
@@ -436,18 +1034,25 @@ export default function LoginScreen() {
         </View>
 
         <TextInput
+          ref={usernameRef}
           style={styles.input}
           placeholder="Enter your ID or Username"
           placeholderTextColor="#6E6E6E"
           value={username}
           onChangeText={(text) => {
             setUsername(text);
+
             clearError();
           }}
           autoCapitalize="none"
           autoCorrect={false}
+          autoComplete="username"
           editable={!loading}
           returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => {
+            passwordRef.current?.focus();
+          }}
         />
       </View>
 
@@ -463,17 +1068,20 @@ export default function LoginScreen() {
         </View>
 
         <TextInput
+          ref={passwordRef}
           style={styles.passwordInput}
           placeholder="Enter your password"
           placeholderTextColor="#6E6E6E"
           value={password}
           onChangeText={(text) => {
             setPassword(text);
+
             clearError();
           }}
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
+          autoComplete="password"
           editable={!loading}
           onSubmitEditing={handleLogin}
           returnKeyType="done"
@@ -497,15 +1105,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ERROR */}
-
-      {errorMessage !== "" && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorTitle}>{errorTitle}</Text>
-
-          <Text style={styles.errorMessage}>{errorMessage}</Text>
-        </View>
-      )}
+      {renderErrorBox()}
 
       {/* OPTIONS */}
 
@@ -523,7 +1123,11 @@ export default function LoginScreen() {
           <Text style={styles.rememberText}>Remember me</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity disabled={loading} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={handleOpenForgotPassword}
+          disabled={loading}
+          activeOpacity={0.7}
+        >
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
       </View>
@@ -544,6 +1148,373 @@ export default function LoginScreen() {
       </TouchableOpacity>
     </>
   );
+
+  // ==========================================
+  // FORGOT PASSWORD
+  // ==========================================
+
+  const ForgotPasswordForm = () => (
+    <>
+      <Text style={styles.recoveryTitle}>Forgot Password?</Text>
+
+      <Text style={styles.recoveryDescription}>
+        Enter your ID or username to recover your account.
+      </Text>
+
+      <View style={styles.recoveryFieldCard}>
+        <Text style={styles.fieldLabel}>ID or Username</Text>
+
+        <View style={styles.recoveryInputContainer}>
+          <Image
+            source={require("../../assets/icons/user.png")}
+            style={styles.recoveryInputIcon}
+            resizeMode="contain"
+          />
+
+          <TextInput
+            ref={resetIdentifierRef}
+            style={styles.recoveryInput}
+            placeholder="Enter your ID or Username"
+            placeholderTextColor="#777777"
+            value={resetIdentifier}
+            onChangeText={(text) => {
+              setResetIdentifier(text);
+
+              clearError();
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="username"
+            editable={!loading}
+            returnKeyType="next"
+            onSubmitEditing={handleRequestReset}
+          />
+        </View>
+      </View>
+
+      {renderErrorBox()}
+
+      <TouchableOpacity
+        style={[styles.recoveryButton, loading && styles.disabledButton]}
+        onPress={handleRequestReset}
+        disabled={loading}
+        activeOpacity={0.85}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.recoveryButtonText}>Next</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.backToLoginButton}
+        onPress={handleBackToLogin}
+        disabled={loading}
+      >
+        <Text style={styles.backToLoginText}>Back to Login</Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  // ==========================================
+  // VERIFY CODE
+  // ==========================================
+
+  const VerifyForm = () => (
+    <>
+      <Text style={styles.recoveryTitle}>Enter Verification Code</Text>
+
+      <Text style={styles.recoveryDescription}>
+        Enter the 6-digit code we sent to
+      </Text>
+
+      <Text style={styles.maskedEmailText}>{maskedEmail}</Text>
+
+      <View style={styles.otpRow}>
+        {verificationCode.map((digit, index) => (
+          <TextInput
+            key={`otp-${index}`}
+            ref={(reference) => {
+              otpRefs.current[index] = reference;
+            }}
+            style={[styles.otpInput, digit !== "" && styles.otpInputFilled]}
+            value={digit}
+            onChangeText={(text) => handleOtpChange(text, index)}
+            onKeyPress={({ nativeEvent }) => {
+              if (nativeEvent.key === "Backspace") {
+                handleOtpBackspace(index);
+              }
+            }}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            autoComplete={index === 0 ? "sms-otp" : "off"}
+            maxLength={6}
+            textAlign="center"
+            selectTextOnFocus
+            editable={!loading}
+            returnKeyType={index === 5 ? "done" : "next"}
+            onSubmitEditing={() => {
+              if (index === 5) {
+                handleVerifyCode();
+              } else {
+                otpRefs.current[index + 1]?.focus();
+              }
+            }}
+          />
+        ))}
+      </View>
+
+      {renderErrorBox()}
+
+      <Text style={styles.didNotReceiveText}>Didn't receive the code?</Text>
+
+      <TouchableOpacity
+        onPress={handleResendCode}
+        disabled={loading || resendCountdown > 0}
+      >
+        <Text
+          style={[
+            styles.resendText,
+
+            resendCountdown > 0 && styles.resendDisabled,
+          ]}
+        >
+          {resendCountdown > 0
+            ? `Resend Code (${resendCountdown}s)`
+            : "Resend Code"}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.recoveryButton,
+
+          styles.verifyButton,
+
+          loading && styles.disabledButton,
+        ]}
+        onPress={handleVerifyCode}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.recoveryButtonText}>Verify</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.backToLoginButton}
+        onPress={handleBackToLogin}
+        disabled={loading}
+      >
+        <Text style={styles.backToLoginText}>Back to Login</Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  // ==========================================
+  // RESET PASSWORD
+  // ==========================================
+
+  const ResetPasswordForm = () => (
+    <>
+      <Text style={styles.recoveryTitle}>Create New Password</Text>
+
+      <Text style={styles.recoveryDescription}>
+        Create a secure new password for your SmartFine account.
+      </Text>
+
+      <View style={styles.passwordFieldCard}>
+        {/* NEW PASSWORD */}
+
+        <Text style={styles.fieldLabel}>New Password</Text>
+
+        <View style={styles.passwordRecoveryInput}>
+          <TextInput
+            ref={newPasswordRef}
+            style={styles.passwordRecoveryTextInput}
+            placeholder="Enter new password"
+            placeholderTextColor="#777777"
+            value={newPassword}
+            onChangeText={(text) => {
+              setNewPassword(text);
+
+              clearError();
+            }}
+            secureTextEntry={!showNewPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="new-password"
+            editable={!loading}
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => {
+              confirmPasswordRef.current?.focus();
+            }}
+          />
+
+          <TouchableOpacity
+            style={styles.recoveryEyeButton}
+            onPress={() => setShowNewPassword(!showNewPassword)}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={
+                showNewPassword
+                  ? require("../../assets/icons/hide.png")
+                  : require("../../assets/icons/view.png")
+              }
+              style={styles.recoveryEyeIcon}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* CONFIRM PASSWORD */}
+
+        <Text style={[styles.fieldLabel, styles.confirmLabel]}>
+          Confirm Password
+        </Text>
+
+        <View style={styles.passwordRecoveryInput}>
+          <TextInput
+            ref={confirmPasswordRef}
+            style={styles.passwordRecoveryTextInput}
+            placeholder="Confirm new password"
+            placeholderTextColor="#777777"
+            value={confirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+
+              clearError();
+            }}
+            secureTextEntry={!showConfirmPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="new-password"
+            editable={!loading}
+            returnKeyType="done"
+            onSubmitEditing={handleResetPassword}
+          />
+
+          <TouchableOpacity
+            style={styles.recoveryEyeButton}
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={
+                showConfirmPassword
+                  ? require("../../assets/icons/hide.png")
+                  : require("../../assets/icons/view.png")
+              }
+              style={styles.recoveryEyeIcon}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <Text style={styles.passwordHelper}>
+        At least 8 characters, including a letter, number, and special
+        character.
+      </Text>
+
+      {renderErrorBox()}
+
+      <TouchableOpacity
+        style={[styles.recoveryButton, loading && styles.disabledButton]}
+        onPress={handleResetPassword}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.recoveryButtonText}>Create Password</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.backToLoginButton}
+        onPress={handleBackToLogin}
+        disabled={loading}
+      >
+        <Text style={styles.backToLoginText}>Back to Login</Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  // ==========================================
+  // SUCCESS
+  // ==========================================
+
+  const SuccessForm = () => (
+    <View style={styles.successContent}>
+      {/* =====================================
+          SUCCESS ICON
+
+          SmartFine logo above this screen
+          has been removed.
+      ====================================== */}
+
+      <Image
+        source={require("../../assets/icons/check.png")}
+        style={styles.successIcon}
+        resizeMode="contain"
+      />
+
+      <Text style={styles.successTitle}>Password Reset</Text>
+
+      <Text style={styles.successSubtitle}>Successful!</Text>
+
+      <Text style={styles.successDescription}>
+        Your password has been updated successfully.
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.recoveryButton, styles.successButton]}
+        onPress={handleBackToLogin}
+      >
+        <Text style={styles.recoveryButtonText}>Back to Login</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ==========================================
+  // CURRENT RECOVERY SCREEN
+  //
+  // IMPORTANT:
+  // Call these functions directly.
+  // Do NOT change these back to:
+  //
+  // <ForgotPasswordForm />
+  // <VerifyForm />
+  // <ResetPasswordForm />
+  //
+  // Doing that can cause TextInput focus to
+  // reset while typing.
+  // ==========================================
+
+  const RecoveryForm = () => {
+    switch (screenMode) {
+      case "forgot":
+        return ForgotPasswordForm();
+
+      case "verify":
+        return VerifyForm();
+
+      case "reset":
+        return ResetPasswordForm();
+
+      case "success":
+        return SuccessForm();
+
+      default:
+        return null;
+    }
+  };
 
   // ==========================================
   // UI
@@ -599,7 +1570,7 @@ export default function LoginScreen() {
         </View>
 
         {/* =====================================
-            LOGIN SIDE / MOBILE SECTION
+            LOGIN / RECOVERY CONTENT
         ====================================== */}
 
         <View
@@ -610,48 +1581,77 @@ export default function LoginScreen() {
           ]}
         >
           {/* =================================
-              TABLET LOGO ONLY
+              TABLET
           ================================= */}
 
           {isTablet && (
             <View style={styles.loginCardTablet}>
-              <View style={styles.smallLogoBox}>
-                <Image
-                  source={require("../../assets/branding/smartfine-logo.png")}
-                  style={styles.smallLogo}
-                  resizeMode="contain"
-                />
-              </View>
+              {/* =================================
+                  REMOVE SMARTFINE LOGO
+                  ONLY ON SUCCESS SCREEN
+              ================================= */}
 
-              <Text style={styles.welcomeTextTablet}>Welcome Back!</Text>
+              {screenMode !== "success" && (
+                <View style={styles.smallLogoBox}>
+                  <Image
+                    source={require("../../assets/branding/smartfine-logo.png")}
+                    style={styles.smallLogo}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
 
-              <Text style={styles.loginTitleTablet}>LOGIN</Text>
+              {screenMode === "login" ? (
+                <>
+                  <Text style={styles.welcomeTextTablet}>Welcome Back!</Text>
 
-              <LoginForm />
+                  <Text style={styles.loginTitleTablet}>LOGIN</Text>
+
+                  {LoginForm()}
+                </>
+              ) : (
+                RecoveryForm()
+              )}
             </View>
           )}
 
           {/* =================================
-              PHONE VERSION
+              PHONE
           ================================= */}
 
           {!isTablet && (
             <>
-              <Text style={styles.welcomeTextPhone}>Welcome Back!</Text>
+              {screenMode === "login" ? (
+                <>
+                  <Text style={styles.welcomeTextPhone}>Welcome Back!</Text>
 
-              <Text style={styles.loginTitlePhone}>Login</Text>
+                  <Text style={styles.loginTitlePhone}>Login</Text>
 
-              <View style={styles.loginCardPhone}>
-                <LoginForm />
-              </View>
+                  <View style={styles.loginCardPhone}>{LoginForm()}</View>
+                </>
+              ) : (
+                <View style={styles.recoveryPhoneContainer}>
+                  {RecoveryForm()}
+                </View>
+              )}
             </>
           )}
 
-          <Text
-            style={[styles.securityText, !isTablet && styles.securityTextPhone]}
-          >
-            Secure access for students and authorized school personnel
-          </Text>
+          {/* =================================
+              SECURITY TEXT
+          ================================= */}
+
+          {screenMode === "login" && (
+            <Text
+              style={[
+                styles.securityText,
+
+                !isTablet && styles.securityTextPhone,
+              ]}
+            >
+              Secure access for students and authorized school personnel
+            </Text>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -669,16 +1669,19 @@ const styles = StyleSheet.create({
 
   screen: {
     flex: 1,
+
     backgroundColor: "#173568",
   },
 
   scrollView: {
     flex: 1,
+
     backgroundColor: "#173568",
   },
 
   container: {
     flexGrow: 1,
+
     backgroundColor: "#173568",
   },
 
@@ -688,11 +1691,15 @@ const styles = StyleSheet.create({
 
   tabletContainer: {
     minHeight: "100%",
+
     flexDirection: "row",
+
     alignItems: "center",
+
     justifyContent: "center",
 
     paddingHorizontal: 50,
+
     paddingVertical: 35,
   },
 
@@ -706,7 +1713,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
 
     paddingHorizontal: 20,
+
     paddingTop: 52,
+
     paddingBottom: 35,
   },
 
@@ -716,6 +1725,7 @@ const styles = StyleSheet.create({
 
   brandSection: {
     alignItems: "center",
+
     justifyContent: "center",
   },
 
@@ -735,15 +1745,13 @@ const styles = StyleSheet.create({
 
   brandLogoTablet: {
     width: 330,
+
     height: 175,
   },
 
-  // ========================================
-  // MOBILE MAIN LOGO
-  // ========================================
-
   brandLogoPhone: {
     width: 300,
+
     height: 185,
 
     marginBottom: -22,
@@ -757,7 +1765,9 @@ const styles = StyleSheet.create({
 
   taglineTablet: {
     fontSize: 18,
+
     fontWeight: "700",
+
     lineHeight: 24,
   },
 
@@ -765,6 +1775,7 @@ const styles = StyleSheet.create({
     width: "100%",
 
     fontSize: 13,
+
     fontWeight: "400",
 
     lineHeight: 18,
@@ -778,11 +1789,13 @@ const styles = StyleSheet.create({
 
   loginSection: {
     alignItems: "center",
+
     justifyContent: "center",
   },
 
   loginTablet: {
     flex: 1,
+
     paddingHorizontal: 20,
   },
 
@@ -791,13 +1804,14 @@ const styles = StyleSheet.create({
   },
 
   // ========================================
-  // MOBILE TITLE
+  // MOBILE TITLES
   // ========================================
 
   welcomeTextPhone: {
     color: "#FFFFFF",
 
     fontSize: 23,
+
     fontWeight: "800",
 
     textAlign: "center",
@@ -809,20 +1823,23 @@ const styles = StyleSheet.create({
     color: "#16E564",
 
     fontSize: 20,
+
     fontWeight: "700",
 
     textAlign: "center",
 
     marginTop: 20,
+
     marginBottom: 20,
   },
 
   // ========================================
-  // PHONE CARD
+  // PHONE LOGIN CARD
   // ========================================
 
   loginCardPhone: {
     width: "86%",
+
     maxWidth: 340,
 
     backgroundColor: "#425D89",
@@ -830,7 +1847,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
 
     paddingHorizontal: 19,
+
     paddingTop: 22,
+
     paddingBottom: 30,
 
     alignItems: "center",
@@ -839,21 +1858,24 @@ const styles = StyleSheet.create({
 
     shadowOffset: {
       width: 0,
+
       height: 4,
     },
 
     shadowOpacity: 0.14,
+
     shadowRadius: 8,
 
     elevation: 6,
   },
 
   // ========================================
-  // TABLET CARD
+  // TABLET LOGIN CARD
   // ========================================
 
   loginCardTablet: {
     width: "100%",
+
     maxWidth: 440,
 
     backgroundColor: "#425D89",
@@ -861,7 +1883,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
 
     paddingHorizontal: 46,
+
     paddingTop: 38,
+
     paddingBottom: 42,
 
     alignItems: "center",
@@ -870,10 +1894,12 @@ const styles = StyleSheet.create({
 
     shadowOffset: {
       width: 0,
+
       height: 6,
     },
 
     shadowOpacity: 0.2,
+
     shadowRadius: 12,
 
     elevation: 8,
@@ -885,6 +1911,7 @@ const styles = StyleSheet.create({
 
   smallLogoBox: {
     width: 110,
+
     height: 110,
 
     borderRadius: 24,
@@ -892,6 +1919,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#082947",
 
     alignItems: "center",
+
     justifyContent: "center",
 
     marginBottom: 20,
@@ -901,6 +1929,7 @@ const styles = StyleSheet.create({
 
   smallLogo: {
     width: 72,
+
     height: 72,
   },
 
@@ -908,6 +1937,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
 
     fontSize: 26,
+
     fontWeight: "800",
 
     textAlign: "center",
@@ -917,16 +1947,18 @@ const styles = StyleSheet.create({
     color: "#16E564",
 
     fontSize: 19,
+
     fontWeight: "800",
 
     textAlign: "center",
 
     marginTop: 3,
+
     marginBottom: 24,
   },
 
   // ========================================
-  // INPUTS
+  // LOGIN INPUTS
   // ========================================
 
   inputContainer: {
@@ -939,6 +1971,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
 
     flexDirection: "row",
+
     alignItems: "center",
 
     marginBottom: 29,
@@ -948,55 +1981,69 @@ const styles = StyleSheet.create({
 
   iconContainer: {
     width: 47,
+
     height: "100%",
 
     alignItems: "center",
+
     justifyContent: "center",
   },
 
   userIcon: {
     width: 28,
+
     height: 28,
   },
 
   lockIcon: {
     width: 23,
+
     height: 23,
   },
 
   input: {
     flex: 1,
+
     height: "100%",
 
     color: "#222222",
 
     fontSize: 12,
 
+    fontWeight: "400",
+
     paddingHorizontal: 4,
+
     paddingRight: 12,
   },
 
   passwordInput: {
     flex: 1,
+
     height: "100%",
 
     color: "#222222",
 
     fontSize: 12,
+
+    fontWeight: "400",
 
     paddingHorizontal: 4,
   },
 
   eyeButton: {
     width: 43,
+
     height: "100%",
 
     alignItems: "center",
+
     justifyContent: "center",
   },
 
   eyeIcon: {
     width: 23,
+
     height: 23,
   },
 
@@ -1010,14 +2057,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF1F1",
 
     borderWidth: 1,
+
     borderColor: "#E15252",
 
     borderRadius: 6,
 
     paddingHorizontal: 10,
+
     paddingVertical: 8,
 
-    marginTop: -15,
     marginBottom: 14,
   },
 
@@ -1025,6 +2073,7 @@ const styles = StyleSheet.create({
     color: "#B42318",
 
     fontSize: 12,
+
     fontWeight: "700",
 
     marginBottom: 2,
@@ -1034,11 +2083,14 @@ const styles = StyleSheet.create({
     color: "#B42318",
 
     fontSize: 11,
+
+    fontWeight: "400",
+
     lineHeight: 16,
   },
 
   // ========================================
-  // OPTIONS
+  // LOGIN OPTIONS
   // ========================================
 
   optionsRow: {
@@ -1047,19 +2099,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
 
     alignItems: "center",
+
     justifyContent: "space-between",
 
     marginTop: -10,
+
     marginBottom: 42,
   },
 
   rememberRow: {
     flexDirection: "row",
+
     alignItems: "center",
   },
 
   checkbox: {
     width: 12,
+
     height: 12,
 
     backgroundColor: "#FFFFFF",
@@ -1067,6 +2123,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
 
     alignItems: "center",
+
     justifyContent: "center",
 
     marginRight: 6,
@@ -1080,6 +2137,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
 
     fontSize: 9,
+
     fontWeight: "800",
   },
 
@@ -1087,6 +2145,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
 
     fontSize: 10,
+
     fontWeight: "500",
   },
 
@@ -1094,6 +2153,7 @@ const styles = StyleSheet.create({
     color: "#18E968",
 
     fontSize: 10,
+
     fontWeight: "600",
   },
 
@@ -1111,6 +2171,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
 
     alignItems: "center",
+
     justifyContent: "center",
   },
 
@@ -1122,6 +2183,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
 
     fontSize: 12,
+
     fontWeight: "800",
   },
 
@@ -1141,6 +2203,392 @@ const styles = StyleSheet.create({
 
   securityTextPhone: {
     marginTop: 18,
+
     fontSize: 9,
+  },
+
+  // ========================================
+  // RECOVERY PHONE
+  // ========================================
+
+  recoveryPhoneContainer: {
+    width: "86%",
+
+    maxWidth: 340,
+
+    alignSelf: "center",
+
+    alignItems: "center",
+
+    paddingTop: 0,
+  },
+
+  recoveryTitle: {
+    color: "#FFFFFF",
+
+    fontSize: 18,
+
+    fontWeight: "800",
+
+    textAlign: "center",
+
+    marginTop: 0,
+
+    marginBottom: 8,
+  },
+
+  recoveryDescription: {
+    color: "#FFFFFF",
+
+    fontSize: 10,
+
+    fontWeight: "400",
+
+    lineHeight: 15,
+
+    textAlign: "center",
+
+    marginBottom: 4,
+  },
+
+  maskedEmailText: {
+    color: "#FFFFFF",
+
+    fontSize: 10,
+
+    fontWeight: "300",
+
+    textAlign: "center",
+
+    marginBottom: 24,
+  },
+
+  // ========================================
+  // RECOVERY FIELD CARD
+  // ========================================
+
+  recoveryFieldCard: {
+    width: "100%",
+
+    backgroundColor: "#425D89",
+
+    borderRadius: 7,
+
+    paddingHorizontal: 12,
+
+    paddingVertical: 10,
+
+    marginTop: 24,
+
+    marginBottom: 14,
+  },
+
+  fieldLabel: {
+    color: "#FFFFFF",
+
+    fontSize: 9,
+
+    fontWeight: "500",
+
+    marginBottom: 5,
+  },
+
+  recoveryInputContainer: {
+    width: "100%",
+
+    height: 39,
+
+    backgroundColor: "#FFFFFF",
+
+    borderRadius: 4,
+
+    flexDirection: "row",
+
+    alignItems: "center",
+  },
+
+  recoveryInputIcon: {
+    width: 20,
+
+    height: 20,
+
+    marginLeft: 8,
+
+    marginRight: 8,
+  },
+
+  recoveryInput: {
+    flex: 1,
+
+    height: "100%",
+
+    color: "#222222",
+
+    fontSize: 10,
+
+    fontWeight: "400",
+
+    paddingRight: 10,
+  },
+
+  // ========================================
+  // RECOVERY BUTTON
+  // ========================================
+
+  recoveryButton: {
+    width: "100%",
+
+    minHeight: 34,
+
+    backgroundColor: "#4CB94F",
+
+    borderRadius: 4,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    marginTop: 4,
+
+    paddingHorizontal: 10,
+  },
+
+  recoveryButtonText: {
+    color: "#FFFFFF",
+
+    fontSize: 10,
+
+    fontWeight: "600",
+  },
+
+  backToLoginButton: {
+    paddingVertical: 14,
+
+    paddingHorizontal: 10,
+  },
+
+  backToLoginText: {
+    color: "#FFFFFF",
+
+    fontSize: 9,
+
+    fontWeight: "500",
+
+    textAlign: "center",
+  },
+
+  // ========================================
+  // OTP
+  // ========================================
+
+  otpRow: {
+    width: "100%",
+
+    flexDirection: "row",
+
+    justifyContent: "space-between",
+
+    marginTop: 23,
+
+    marginBottom: 20,
+  },
+
+  otpInput: {
+    width: 42,
+
+    height: 45,
+
+    borderRadius: 6,
+
+    backgroundColor: "#425D89",
+
+    color: "#FFFFFF",
+
+    fontSize: 19,
+
+    fontWeight: "600",
+
+    textAlign: "center",
+
+    borderWidth: 1,
+
+    borderColor: "transparent",
+
+    padding: 0,
+  },
+
+  otpInputFilled: {
+    borderColor: "#56C85C",
+  },
+
+  didNotReceiveText: {
+    color: "#FFFFFF",
+
+    fontSize: 9,
+
+    fontWeight: "400",
+
+    textAlign: "center",
+  },
+
+  resendText: {
+    color: "#16E564",
+
+    fontSize: 9,
+
+    fontWeight: "500",
+
+    textAlign: "center",
+
+    marginTop: 4,
+  },
+
+  resendDisabled: {
+    color: "#A8B6CC",
+  },
+
+  verifyButton: {
+    marginTop: 18,
+  },
+
+  // ========================================
+  // PASSWORD RESET
+  // ========================================
+
+  passwordFieldCard: {
+    width: "100%",
+
+    backgroundColor: "#425D89",
+
+    borderRadius: 7,
+
+    paddingHorizontal: 12,
+
+    paddingVertical: 12,
+
+    marginTop: 22,
+
+    marginBottom: 10,
+  },
+
+  confirmLabel: {
+    marginTop: 13,
+  },
+
+  passwordRecoveryInput: {
+    width: "100%",
+
+    height: 39,
+
+    backgroundColor: "#FFFFFF",
+
+    borderRadius: 4,
+
+    flexDirection: "row",
+
+    alignItems: "center",
+  },
+
+  passwordRecoveryTextInput: {
+    flex: 1,
+
+    height: "100%",
+
+    color: "#222222",
+
+    fontSize: 10,
+
+    fontWeight: "400",
+
+    paddingHorizontal: 10,
+  },
+
+  recoveryEyeButton: {
+    width: 40,
+
+    height: "100%",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  recoveryEyeIcon: {
+    width: 18,
+
+    height: 18,
+  },
+
+  passwordHelper: {
+    width: "100%",
+
+    color: "#C6D2E5",
+
+    fontSize: 8,
+
+    fontWeight: "300",
+
+    lineHeight: 12,
+
+    marginBottom: 10,
+  },
+
+  // ========================================
+  // SUCCESS
+  // ========================================
+
+  successContent: {
+    width: "100%",
+
+    alignItems: "center",
+
+    paddingTop: 10,
+  },
+
+  successIcon: {
+    width: 110,
+    height: 110,
+    marginBottom: 24,
+  },
+  successTitle: {
+    color: "#FFFFFF",
+
+    fontSize: 19,
+
+    fontWeight: "800",
+
+    textAlign: "center",
+  },
+
+  successSubtitle: {
+    color: "#16E564",
+
+    fontSize: 15,
+
+    fontWeight: "600",
+
+    textAlign: "center",
+
+    marginTop: 2,
+  },
+
+  successDescription: {
+    color: "#FFFFFF",
+
+    fontSize: 10,
+
+    fontWeight: "400",
+
+    lineHeight: 15,
+
+    textAlign: "center",
+
+    marginTop: 26,
+
+    marginBottom: 30,
+  },
+
+  successButton: {
+    marginTop: 0,
   },
 });
