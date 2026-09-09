@@ -989,10 +989,6 @@ export default function LoginScreen() {
 
   // ==========================================
   // ERROR BOX
-  //
-  // IMPORTANT:
-  // Rendered as a regular function instead
-  // of <ErrorBox /> to prevent input remounts.
   // ==========================================
 
   const renderErrorBox = () => {
@@ -1011,13 +1007,6 @@ export default function LoginScreen() {
 
   // ==========================================
   // LOGIN FORM
-  //
-  // IMPORTANT:
-  // This is called as LoginForm()
-  // rather than <LoginForm />.
-  //
-  // This prevents React from recreating the
-  // nested component every time text changes.
   // ==========================================
 
   const LoginForm = () => (
@@ -1231,6 +1220,10 @@ export default function LoginScreen() {
 
       <Text style={styles.maskedEmailText}>{maskedEmail}</Text>
 
+      {/* =====================================
+          6-DIGIT OTP INPUT
+      ====================================== */}
+
       <View style={styles.otpRow}>
         {verificationCode.map((digit, index) => (
           <TextInput
@@ -1253,6 +1246,7 @@ export default function LoginScreen() {
             textAlign="center"
             selectTextOnFocus
             editable={!loading}
+            selectionColor="#56C85C"
             returnKeyType={index === 5 ? "done" : "next"}
             onSubmitEditing={() => {
               if (index === 5) {
@@ -1452,13 +1446,6 @@ export default function LoginScreen() {
 
   const SuccessForm = () => (
     <View style={styles.successContent}>
-      {/* =====================================
-          SUCCESS ICON
-
-          SmartFine logo above this screen
-          has been removed.
-      ====================================== */}
-
       <Image
         source={require("../../assets/icons/check.png")}
         style={styles.successIcon}
@@ -1484,17 +1471,6 @@ export default function LoginScreen() {
 
   // ==========================================
   // CURRENT RECOVERY SCREEN
-  //
-  // IMPORTANT:
-  // Call these functions directly.
-  // Do NOT change these back to:
-  //
-  // <ForgotPasswordForm />
-  // <VerifyForm />
-  // <ResetPasswordForm />
-  //
-  // Doing that can cause TextInput focus to
-  // reset while typing.
   // ==========================================
 
   const RecoveryForm = () => {
@@ -1581,16 +1557,11 @@ export default function LoginScreen() {
           ]}
         >
           {/* =================================
-              TABLET
+              TABLET / WEB
           ================================= */}
 
           {isTablet && (
             <View style={styles.loginCardTablet}>
-              {/* =================================
-                  REMOVE SMARTFINE LOGO
-                  ONLY ON SUCCESS SCREEN
-              ================================= */}
-
               {screenMode !== "success" && (
                 <View style={styles.smallLogoBox}>
                   <Image
@@ -2386,69 +2357,93 @@ const styles = StyleSheet.create({
 
     flexDirection: "row",
 
+    alignItems: "center",
+
     justifyContent: "space-between",
 
-    marginTop: 23,
+    marginTop: 24,
 
-    marginBottom: 20,
+    marginBottom: 24,
   },
 
   otpInput: {
-    width: 42,
+    width: "14%",
 
-    height: 45,
+    minWidth: 38,
 
-    borderRadius: 6,
+    maxWidth: 48,
 
-    backgroundColor: "#425D89",
+    height: 52,
+
+    backgroundColor: "#5B7098",
+
+    borderWidth: 2,
+
+    borderColor: "#6D83AA",
+
+    borderRadius: 7,
 
     color: "#FFFFFF",
 
-    fontSize: 19,
+    fontSize: 21,
 
-    fontWeight: "600",
+    fontWeight: "700",
 
     textAlign: "center",
 
-    borderWidth: 1,
-
-    borderColor: "transparent",
-
     padding: 0,
+
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+
+      height: 2,
+    },
+
+    shadowOpacity: 0.1,
+
+    shadowRadius: 3,
+
+    elevation: 2,
   },
 
   otpInputFilled: {
+    backgroundColor: "#647DA8",
+
     borderColor: "#56C85C",
   },
 
   didNotReceiveText: {
     color: "#FFFFFF",
 
-    fontSize: 9,
+    fontSize: 10,
 
     fontWeight: "400",
 
     textAlign: "center",
+
+    marginTop: 2,
   },
 
   resendText: {
     color: "#16E564",
 
-    fontSize: 9,
+    fontSize: 10,
 
-    fontWeight: "500",
+    fontWeight: "600",
 
     textAlign: "center",
 
-    marginTop: 4,
+    marginTop: 7,
   },
 
   resendDisabled: {
-    color: "#A8B6CC",
+    color: "#B8C4D7",
   },
 
   verifyButton: {
-    marginTop: 18,
+    marginTop: 20,
   },
 
   // ========================================
@@ -2547,9 +2542,12 @@ const styles = StyleSheet.create({
 
   successIcon: {
     width: 110,
+
     height: 110,
+
     marginBottom: 24,
   },
+
   successTitle: {
     color: "#FFFFFF",
 
