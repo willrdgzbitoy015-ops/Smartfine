@@ -1919,4 +1919,132 @@ router.delete(
   },
 );
 
+// ==========================================
+// FINES OFFICER DASHBOARD
+// GET /api/auth/officer-dashboard
+// ==========================================
+
+router.get("/officer-dashboard", authenticateToken, (req, res) => {
+  try {
+    const userId = Number(req.authUser?.userId);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Your session is invalid. Please log in again.",
+      });
+    }
+
+    const officer = getCurrentUser(userId);
+
+    if (!officer) {
+      return res.status(401).json({
+        success: false,
+        message: "Your account could not be found.",
+      });
+    }
+
+    if (
+      String(officer.role).toUpperCase() !== "FINES_OFFICER" ||
+      String(officer.account_status).toUpperCase() !== "ACTIVE"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "An active Fines Officer account is required.",
+      });
+    }
+
+    // Total students, excluding archived student accounts.
+    const students = db
+      .prepare(
+        `
+      SELECT COUNT(*) AS total
+      FROM users
+      WHERE role = 'STUDENT'
+        AND username NOT GLOB '__archived_student_*'
+    `,
+      )
+      .get();
+
+    // Only fines recorded by the logged-in officer.
+    // Today's amount uses Philippine time.
+    const totals = db
+      .prepare(
+        `
+      SELECT
+        COUNT(*) AS finesRecorded,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN DATE(
+                COALESCE(issued_at, created_at),
+                '+8 hours'
+              ) = DATE('now', '+8 hours')
+              THEN amount_centavos
+              ELSE 0
+            END
+          ),
+          0
+        ) AS todayAmountCentavos
+      FROM fines
+      WHERE recorded_by = ?
+        AND cancelled_at IS NULL
+        AND UPPER(COALESCE(fine_status, 'UNPAID')) != 'CANCELLED'
+    `,
+      )
+      .get(userId);
+
+    const activities = db
+      .prepare(
+        `
+      SELECT
+        f.id,
+        TRIM(
+          COALESCE(u.first_name, '') || ' ' ||
+          COALESCE(u.middle_name || ' ', '') ||
+          COALESCE(u.last_name, '')
+        ) AS studentName,
+        u.profile_picture_uri AS profilePictureUri,
+        vt.violation_name AS violationName,
+        f.amount_centavos AS amountCentavos,
+        COALESCE(f.issued_at, f.created_at) AS recordedAt
+      FROM fines f
+      JOIN users u ON u.id = f.student_id
+      LEFT JOIN violation_types vt ON vt.id = f.violation_type_id
+      WHERE f.recorded_by = ?
+        AND f.cancelled_at IS NULL
+        AND UPPER(COALESCE(f.fine_status, 'UNPAID')) != 'CANCELLED'
+      ORDER BY
+        DATETIME(COALESCE(f.issued_at, f.created_at)) DESC,
+        f.id DESC
+      LIMIT 5
+    `,
+      )
+      .all(userId);
+
+    return res.json({
+      success: true,
+      user: formatUser(officer),
+      stats: {
+        totalStudents: Number(students.total),
+        finesRecorded: Number(totals.finesRecorded),
+        todayAmountCentavos: Number(totals.todayAmountCentavos),
+      },
+      activities: activities.map((activity) => ({
+        ...activity,
+        id: Number(activity.id),
+        amountCentavos: Number(activity.amountCentavos),
+      })),
+    });
+  } catch (error) {
+    console.error("Officer dashboard error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load the officer dashboard.",
+    });
+  }
+});
+
 module.exports = router;
+module.exports.authenticateToken = authenticateToken;
