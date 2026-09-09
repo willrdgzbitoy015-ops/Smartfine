@@ -1,27 +1,24 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+require("dotenv").config({
+  path: require("path").join(__dirname, ".env"),
+});
 
-const authRoutes =
-  require('./routes/auth');
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
 
-const dashboardRoutes =
-  require('./routes/dashboard');
+const authRoutes = require("./routes/auth");
 
-const studentsRoutes =
-  require('./routes/students');
+const dashboardRoutes = require("./routes/dashboard");
 
-const finesRoutes =
-  require('./routes/fines');
+const studentsRoutes = require("./routes/students");
 
-const officersRoutes =
-  require('./routes/officers');
+const finesRoutes = require("./routes/fines");
 
-const reportsRoutes =
-  require('./routes/reports');
+const officersRoutes = require("./routes/officers");
 
-const settingsRoutes =
-  require('./routes/settings');
+const reportsRoutes = require("./routes/reports");
+
+const settingsRoutes = require("./routes/settings");
 
 const app = express();
 
@@ -39,84 +36,42 @@ app.use(express.json());
 // ROUTES
 // ==========================================
 
-app.use(
-  '/api/dashboard',
-  dashboardRoutes
-);
+app.use("/api/dashboard", dashboardRoutes);
 
-app.use(
-  '/api/students',
-  studentsRoutes
-);
+app.use("/api/students", studentsRoutes);
 
-app.use(
-  '/api/auth',
-  authRoutes
-);
+app.use("/api/auth", authRoutes);
 
-app.use(
-  '/api/fines',
-  finesRoutes
-);
+app.use("/api/fines", finesRoutes);
 
-app.use(
-  '/api/officers',
-  officersRoutes
-);
+app.use("/api/officers", officersRoutes);
 
-app.use(
-  '/api/reports',
-  reportsRoutes
-);
+app.use("/api/reports", reportsRoutes);
 
-app.use(
-  '/api/settings',
-  settingsRoutes
-);
+app.use("/api/settings", settingsRoutes);
 
 // ==========================================
 // STATIC UPLOADS
 // ==========================================
 
-app.use(
-  '/uploads',
-  express.static(
-    path.join(
-      __dirname,
-      'uploads'
-    )
-  )
-);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ==========================================
 // API TEST
 // ==========================================
 
-app.get(
-  '/',
-  (
-    req,
-    res
-  ) => {
-    res.json({
-      success: true,
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
 
-      message:
-        'SmartFine API is running.',
-    });
-  }
-);
+    message: "SmartFine API is running.",
+  });
+});
 
 // ==========================================
 // START SERVER
 // ==========================================
 
-app.listen(
-  PORT,
-  '0.0.0.0',
-  () => {
-    console.log(
-      `SmartFine server running on port ${PORT}`
-    );
-  }
-);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`SmartFine server running on port ${PORT}`);
+});
