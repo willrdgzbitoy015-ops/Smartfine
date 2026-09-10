@@ -97,6 +97,7 @@ export default function OfficerQRScanner() {
     return () => subscription.remove();
   }, []);
 
+  // Cancel and Scan Again both return to the live camera.
   const resetScan = () => {
     requestRef.current?.abort();
     requestRef.current = null;
@@ -115,13 +116,8 @@ export default function OfficerQRScanner() {
     setError("");
   };
 
-  const goHome = () => {
-    requestRef.current?.abort();
-    router.replace("/officer/dashboard");
-  };
-
   const handleBarcodeScanned = ({ data }: { data: string }) => {
-    // A ref locks immediately, before React updates state.
+    // Lock immediately before React updates state.
     if (scanLockRef.current || requestRef.current) return;
 
     scanLockRef.current = true;
@@ -145,7 +141,6 @@ export default function OfficerQRScanner() {
     setCandidateId(id);
   };
 
-  // Reuse the student-list endpoint from your existing scanner.
   // Fetch on confirmation to avoid using an old cached list.
   const identifyStudent = async (value: string) => {
     if (requestRef.current) return;
@@ -312,7 +307,7 @@ export default function OfficerQRScanner() {
     !cameraError;
 
   // ========================================
-  // STUDENT IDENTIFIED — PROTOTYPE SCREEN
+  // STUDENT IDENTIFIED
   // ========================================
 
   if (student) {
@@ -387,6 +382,7 @@ export default function OfficerQRScanner() {
               style={[styles.button, styles.resultCancelButton]}
               onPress={resetScan}
               accessibilityRole="button"
+              accessibilityLabel="Cancel student selection and return to camera"
             >
               <Text style={styles.resultCancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -397,7 +393,7 @@ export default function OfficerQRScanner() {
   }
 
   // ========================================
-  // QR SCANNER — PROTOTYPE SCREEN
+  // QR SCANNER
   // ========================================
 
   return (
@@ -478,7 +474,11 @@ export default function OfficerQRScanner() {
           ) : null}
 
           {scanLocked && !processing && (
-            <TouchableOpacity style={styles.textButton} onPress={resetScan}>
+            <TouchableOpacity
+              style={styles.textButton}
+              onPress={resetScan}
+              accessibilityRole="button"
+            >
               <Text style={styles.linkText}>Scan Again</Text>
             </TouchableOpacity>
           )}
@@ -504,8 +504,9 @@ export default function OfficerQRScanner() {
 
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
-            onPress={goHome}
+            onPress={resetScan}
             accessibilityRole="button"
+            accessibilityLabel="Cancel scan and return to camera"
           >
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>

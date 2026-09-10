@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-    ActivityIndicator,
-    Image,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -118,12 +118,9 @@ const navigationItems: NavigationItem[] = [
 
   {
     label: "Students",
-
     icon: icons.students,
-
-    route: null,
-
-    enabled: false,
+    route: "/officer/student",
+    enabled: true,
   },
 
   {
@@ -151,9 +148,9 @@ const navigationItems: NavigationItem[] = [
 
     icon: icons.records,
 
-    route: null,
+    route: "/officer/records",
 
-    enabled: false,
+    enabled: true,
   },
 ];
 

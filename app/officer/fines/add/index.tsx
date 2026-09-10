@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+
 import {
   ActivityIndicator,
   Image,
@@ -216,9 +217,17 @@ export default function OfficerAddFine() {
     };
   }, [studentId]);
 
+  // Return to the screen that opened Add Fine.
+  // Students -> student profile.
+  // Scanner -> scanner.
   const back = () => {
     if (savingRef.current) return;
-    router.replace("/officer/qr-scanner" as any);
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/officer/student");
+    }
   };
 
   const openConfirmation = () => {
@@ -261,8 +270,7 @@ export default function OfficerAddFine() {
           recordedBy: officerId,
           remarks: description.trim(),
 
-          // Omit issuedAt. The existing backend uses
-          // CURRENT_TIMESTAMP when no date is supplied.
+          // Omit issuedAt so the backend uses CURRENT_TIMESTAMP.
         }),
       });
 
@@ -284,6 +292,7 @@ export default function OfficerAddFine() {
   };
 
   const avatarUri = pictureUrl(student?.profile_picture_uri);
+
   const initials =
     `${student?.first_name?.charAt(0) || ""}${
       student?.last_name?.charAt(0) || ""
@@ -308,6 +317,7 @@ export default function OfficerAddFine() {
         <Text style={styles.studentName}>
           {student?.full_name || "Student"}
         </Text>
+
         <Text style={styles.studentMeta}>
           {[student?.grade_level, student?.section].filter(Boolean).join(" - ")}
           {" · Student ID: "}
@@ -335,7 +345,7 @@ export default function OfficerAddFine() {
               style={styles.backButton}
               onPress={back}
               disabled={saving}
-              accessibilityLabel="Back to scanner"
+              accessibilityLabel="Back to previous screen"
             >
               <Image
                 source={require("../../../../assets/icons/back_icon.png")}
@@ -345,12 +355,14 @@ export default function OfficerAddFine() {
             </TouchableOpacity>
 
             <Text style={styles.title}>Add Fine</Text>
+
             <View style={styles.headerSpacer} />
           </View>
 
           {loading ? (
             <View style={styles.loading}>
               <ActivityIndicator size="large" color="#173A73" />
+
               <Text style={styles.helper}>Loading student information…</Text>
             </View>
           ) : (
@@ -376,10 +388,12 @@ export default function OfficerAddFine() {
                   <Text style={styles.fieldText}>
                     {selected?.violation_name || "Select violation"}
                   </Text>
+
                   <View style={styles.chevron} />
                 </TouchableOpacity>
 
                 <Text style={styles.label}>Fine Amount</Text>
+
                 <View style={styles.field}>
                   <Text style={styles.amount}>
                     {selected ? pesos(amount) : "₱ —"}
@@ -387,6 +401,7 @@ export default function OfficerAddFine() {
                 </View>
 
                 <Text style={styles.label}>Description</Text>
+
                 <TextInput
                   style={styles.description}
                   value={description}
@@ -472,6 +487,7 @@ export default function OfficerAddFine() {
                       <Text style={styles.optionName}>
                         {violation.violation_name}
                       </Text>
+
                       <Text style={styles.optionAmount}>
                         {pesos(Number(violation.amount_centavos) / 100)}
                       </Text>
@@ -490,17 +506,21 @@ export default function OfficerAddFine() {
               {modal === "confirm" && (
                 <>
                   <Text style={styles.modalTitle}>Fine Details</Text>
+
                   {studentHeader()}
 
                   <Text style={styles.detailLabel}>Violation</Text>
+
                   <Text style={styles.detailText}>
                     {selected?.violation_name}
                   </Text>
 
                   <Text style={styles.detailLabel}>Amount</Text>
+
                   <Text style={styles.redAmount}>{pesos(amount)}</Text>
 
                   <Text style={styles.detailLabel}>Description</Text>
+
                   <Text style={styles.detailText}>
                     {description.trim() || "No description"}
                   </Text>
@@ -553,6 +573,7 @@ export default function OfficerAddFine() {
                     <Text style={styles.receiptText}>
                       {savedFine?.violationName || selected?.violation_name}
                     </Text>
+
                     <Text style={styles.redAmount}>
                       {pesos(Number(savedFine?.amount ?? amount))}
                     </Text>
@@ -579,7 +600,7 @@ export default function OfficerAddFine() {
 
                   <TouchableOpacity
                     style={[styles.button, styles.cancelButton]}
-                    onPress={() => router.replace("/officer/qr-scanner" as any)}
+                    onPress={() => router.replace("/officer/qr-scanner")}
                   >
                     <Text style={styles.cancelText}>Scan Another Student</Text>
                   </TouchableOpacity>
