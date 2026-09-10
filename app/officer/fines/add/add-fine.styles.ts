@@ -1,874 +1,317 @@
 import { StyleSheet } from "react-native";
 
-const COLORS = {
-  navy: "#173A73",
-
-  darkNavy: "#0C2F64",
-
-  text: "#123266",
-
-  green: "#45B94F",
-
-  lightGreen: "#56C85C",
-
-  lime: "#8ED000",
-
-  white: "#FFFFFF",
-
-  background: "#F4F6F9",
-
-  muted: "#8C939F",
-
-  border: "#DDE3EB",
-
-  red: "#D32F2F",
-};
-
 export const styles = StyleSheet.create({
-  // ========================================
-  // SCREEN
-  // MOBILE PHONE ONLY
-  // ========================================
-
   screen: {
     flex: 1,
-
-    backgroundColor: COLORS.background,
+    backgroundColor: "#DADADA",
   },
-
-  // ========================================
-  // LOADING
-  // ========================================
-
-  loadingScreen: {
-    flex: 1,
-
-    backgroundColor: COLORS.background,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    paddingHorizontal: 30,
-  },
-
-  loadingTitle: {
-    color: COLORS.text,
-
-    fontFamily: "Poppins-SemiBold",
-
-    fontSize: 15,
-
-    marginTop: 15,
-  },
-
-  loadingText: {
-    color: COLORS.muted,
-
-    fontFamily: "Poppins-Light",
-
-    fontSize: 10,
-
-    marginTop: 3,
-  },
-
-  // ========================================
-  // HEADER
-  // ========================================
-
-  header: {
-    minHeight: 92,
-
-    backgroundColor: COLORS.navy,
-
-    paddingHorizontal: 18,
-
-    paddingTop: 15,
-
-    paddingBottom: 16,
-
-    flexDirection: "row",
-
-    alignItems: "center",
-
-    borderBottomLeftRadius: 24,
-
-    borderBottomRightRadius: 24,
-  },
-
-  backButton: {
-    width: 42,
-
-    height: 42,
-
-    borderRadius: 13,
-
-    backgroundColor: "rgba(255,255,255,0.10)",
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    marginRight: 12,
-  },
-
-  backIcon: {
-    width: 21,
-
-    height: 21,
-
-    transform: [
-      {
-        rotate: "180deg",
-      },
-    ],
-  },
-
-  headerTextContainer: {
+  keyboard: {
     flex: 1,
   },
-
-  headerEyebrow: {
-    color: COLORS.lime,
-
-    fontFamily: "Poppins-Medium",
-
-    fontSize: 10,
-
-    marginBottom: 1,
-  },
-
-  headerTitle: {
-    color: COLORS.white,
-
-    fontFamily: "Poppins-Bold",
-
-    fontSize: 21,
-  },
-
-  headerFineIconBox: {
-    width: 44,
-
-    height: 44,
-
-    borderRadius: 14,
-
-    backgroundColor: COLORS.darkNavy,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-  },
-
-  headerFineIcon: {
-    width: 23,
-
-    height: 23,
-  },
-
-  // ========================================
-  // SCROLL
-  // ========================================
-
-  scrollView: {
-    flex: 1,
-  },
-
-  scrollContent: {
-    paddingHorizontal: 17,
-
-    paddingTop: 18,
-  },
-
-  // ========================================
-  // STUDENT CARD
-  // ========================================
-
-  studentCard: {
+  content: {
+    flexGrow: 1,
     width: "100%",
-
-    backgroundColor: COLORS.white,
-
-    borderRadius: 16,
-
-    padding: 15,
-
-    marginBottom: 15,
-
-    elevation: 2,
-
-    shadowColor: "#000000",
-
-    shadowOffset: {
-      width: 0,
-
-      height: 2,
-    },
-
-    shadowOpacity: 0.06,
-
-    shadowRadius: 5,
+    maxWidth: 480,
+    alignSelf: "center",
+    paddingHorizontal: 30,
+    paddingBottom: 30,
   },
-
-  selectedStudentBadge: {
-    alignSelf: "flex-start",
-
-    backgroundColor: "#E8F8E9",
-
-    borderRadius: 20,
-
-    paddingHorizontal: 10,
-
-    paddingVertical: 4,
-
-    marginBottom: 13,
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 56,
+    marginBottom: 18,
   },
-
-  selectedStudentBadgeText: {
-    color: "#2D9B38",
-
-    fontFamily: "Poppins-Medium",
-
-    fontSize: 8,
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
-
+  backIcon: {
+    width: 23,
+    height: 23,
+    tintColor: "#111111",
+    transform: [{ rotate: "180deg" }],
+  },
+  headerSpacer: {
+    width: 44,
+  },
+  title: {
+    flex: 1,
+    textAlign: "center",
+    color: "#123266",
+    fontFamily: "Poppins_700Bold",
+    fontSize: 18,
+  },
   studentRow: {
     flexDirection: "row",
-
     alignItems: "center",
+    gap: 10,
+    marginBottom: 26,
+    width: "100%",
   },
-
-  studentPhoto: {
-    width: 66,
-
-    height: 66,
-
-    borderRadius: 33,
-
-    borderWidth: 2,
-
-    borderColor: "#E3F4E5",
-
-    marginRight: 14,
-  },
-
-  studentPhotoFallback: {
-    width: 66,
-
-    height: 66,
-
-    borderRadius: 33,
-
-    backgroundColor: COLORS.navy,
-
-    borderWidth: 2,
-
-    borderColor: "#E3F4E5",
-
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: "hidden",
+    backgroundColor: "#173A73",
     alignItems: "center",
-
     justifyContent: "center",
-
-    marginRight: 14,
   },
-
-  studentInitials: {
-    color: COLORS.white,
-
-    fontFamily: "Poppins-Bold",
-
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  initials: {
+    color: "#FFFFFF",
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 20,
   },
-
-  studentDetails: {
+  studentText: {
     flex: 1,
-
     minWidth: 0,
   },
-
   studentName: {
-    color: COLORS.text,
-
-    fontFamily: "Poppins-Bold",
-
-    fontSize: 15,
-
-    lineHeight: 20,
+    color: "#111111",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 18,
   },
-
-  studentNumber: {
-    color: COLORS.green,
-
-    fontFamily: "Poppins-Medium",
-
+  studentMeta: {
+    color: "#111111",
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
-
-    marginTop: 3,
+    lineHeight: 16,
   },
-
-  studentGrade: {
-    color: "#667085",
-
-    fontFamily: "Poppins-Regular",
-
-    fontSize: 10,
-
-    marginTop: 2,
-  },
-
-  // ========================================
-  // ERROR
-  // ========================================
-
-  errorCard: {
+  form: {
     width: "100%",
-
-    backgroundColor: "#FFF1F1",
-
-    borderWidth: 1,
-
-    borderColor: "#F0B6B6",
-
-    borderRadius: 12,
-
-    padding: 11,
-
-    flexDirection: "row",
-
-    alignItems: "flex-start",
-
-    marginBottom: 15,
+    marginTop: 8,
   },
-
-  errorIconBox: {
-    width: 30,
-
-    height: 30,
-
-    borderRadius: 15,
-
-    backgroundColor: COLORS.red,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    marginRight: 9,
-  },
-
-  errorIconText: {
-    color: COLORS.white,
-
-    fontFamily: "Poppins-Bold",
-
-    fontSize: 14,
-  },
-
-  errorTextContainer: {
-    flex: 1,
-  },
-
-  errorTitle: {
-    color: "#B42318",
-
-    fontFamily: "Poppins-SemiBold",
-
-    fontSize: 10,
-  },
-
-  errorMessage: {
-    color: "#B42318",
-
-    fontFamily: "Poppins-Regular",
-
-    fontSize: 9,
-
-    lineHeight: 14,
-
-    marginTop: 2,
-  },
-
-  // ========================================
-  // FORM CARD
-  // ========================================
-
-  formCard: {
-    width: "100%",
-
-    backgroundColor: COLORS.white,
-
-    borderRadius: 16,
-
-    padding: 16,
-
-    elevation: 2,
-
-    shadowColor: "#000000",
-
-    shadowOffset: {
-      width: 0,
-
-      height: 2,
-    },
-
-    shadowOpacity: 0.06,
-
-    shadowRadius: 5,
-  },
-
-  sectionTitle: {
-    color: COLORS.text,
-
-    fontFamily: "Poppins-SemiBold",
-
+  label: {
+    color: "#111111",
+    fontFamily: "Poppins_500Medium",
     fontSize: 16,
+    marginBottom: 4,
   },
-
-  sectionDescription: {
-    color: COLORS.muted,
-
-    fontFamily: "Poppins-Light",
-
-    fontSize: 9,
-
-    lineHeight: 14,
-
-    marginTop: 3,
-
-    marginBottom: 20,
-  },
-
-  // ========================================
-  // FIELD
-  // ========================================
-
-  fieldGroup: {
-    width: "100%",
-
-    marginBottom: 20,
-
-    position: "relative",
-  },
-
-  lastFieldGroup: {
-    marginBottom: 0,
-  },
-
-  fieldLabel: {
-    color: "#202020",
-
-    fontFamily: "Poppins-Medium",
-
-    fontSize: 10,
-
-    marginBottom: 7,
-  },
-
-  // ========================================
-  // SELECT
-  // ========================================
-
-  selectButton: {
-    width: "100%",
-
-    height: 47,
-
-    backgroundColor: COLORS.white,
-
+  field: {
+    minHeight: 44,
     borderWidth: 1,
-
-    borderColor: COLORS.border,
-
-    borderRadius: 9,
-
+    borderColor: "#333333",
+    borderRadius: 7,
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
-
     alignItems: "center",
-
-    justifyContent: "space-between",
-
-    paddingHorizontal: 13,
-  },
-
-  selectButtonActive: {
-    borderColor: COLORS.navy,
-
-    borderWidth: 1.5,
-  },
-
-  selectText: {
-    flex: 1,
-
-    color: COLORS.text,
-
-    fontFamily: "Poppins-Regular",
-
-    fontSize: 11,
-
-    marginRight: 8,
-  },
-
-  placeholderText: {
-    color: "#9AA5B5",
-  },
-
-  selectArrow: {
-    color: COLORS.navy,
-
-    fontFamily: "Poppins-Medium",
-
-    fontSize: 10,
-  },
-
-  // ========================================
-  // DROPDOWN
-  // ========================================
-
-  dropdownMenu: {
-    width: "100%",
-
-    maxHeight: 235,
-
-    backgroundColor: COLORS.white,
-
-    borderWidth: 1,
-
-    borderColor: COLORS.navy,
-
-    borderRadius: 9,
-
-    marginTop: 6,
-
-    overflow: "hidden",
-
-    elevation: 6,
-
-    shadowColor: "#000000",
-
-    shadowOffset: {
-      width: 0,
-
-      height: 3,
-    },
-
-    shadowOpacity: 0.12,
-
-    shadowRadius: 7,
-  },
-
-  dropdownScroll: {
-    maxHeight: 235,
-  },
-
-  dropdownItem: {
-    minHeight: 61,
-
-    flexDirection: "row",
-
-    alignItems: "center",
-
-    justifyContent: "space-between",
-
-    paddingHorizontal: 13,
-
-    paddingVertical: 10,
-
-    borderBottomWidth: 1,
-
-    borderBottomColor: "#EDF0F4",
-  },
-
-  dropdownTextArea: {
-    flex: 1,
-
-    paddingRight: 10,
-  },
-
-  dropdownTitle: {
-    color: COLORS.text,
-
-    fontFamily: "Poppins-SemiBold",
-
-    fontSize: 10,
-  },
-
-  dropdownDescription: {
-    color: COLORS.muted,
-
-    fontFamily: "Poppins-Light",
-
-    fontSize: 8,
-
-    lineHeight: 12,
-
-    marginTop: 2,
-  },
-
-  dropdownAmount: {
-    color: COLORS.green,
-
-    fontFamily: "Poppins-SemiBold",
-
-    fontSize: 10,
-  },
-
-  emptyDropdown: {
-    minHeight: 60,
-
-    alignItems: "center",
-
     justifyContent: "center",
-
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 14,
   },
-
-  emptyDropdownText: {
-    color: COLORS.muted,
-
-    fontFamily: "Poppins-Regular",
-
-    fontSize: 9,
-
+  fieldText: {
+    flex: 1,
+    color: "#555555",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
     textAlign: "center",
   },
-
-  // ========================================
-  // AMOUNT
-  // ========================================
-
-  amountCard: {
-    width: "100%",
-
-    minHeight: 68,
-
-    backgroundColor: "#F4FAF5",
-
+  chevron: {
+    width: 11,
+    height: 11,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: "#111111",
+    transform: [{ rotate: "45deg" }],
+    marginLeft: 10,
+    marginTop: -5,
+  },
+  amount: {
+    color: "#7A89A8",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 18,
+    textAlign: "center",
+  },
+  description: {
+    minHeight: 118,
     borderWidth: 1,
-
-    borderColor: "#D6EDD9",
-
-    borderRadius: 10,
-
-    paddingHorizontal: 14,
-
+    borderColor: "#333333",
+    borderRadius: 7,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+    color: "#123266",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 15,
+    lineHeight: 23,
+    textAlign: "center",
+  },
+  actions: {
+    width: "100%",
+    maxWidth: 230,
+    alignSelf: "center",
+    gap: 18,
+    marginTop: 72,
+    marginBottom: 24,
+  },
+  button: {
+    width: "100%",
+    minHeight: 44,
+    borderRadius: 6,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-
-    flexDirection: "row",
-
     alignItems: "center",
-
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
-
-  amountLabel: {
-    color: "#667085",
-
-    fontFamily: "Poppins-Regular",
-
-    fontSize: 10,
+  primaryButton: {
+    backgroundColor: "#123266",
   },
-
-  amountValue: {
-    color: COLORS.green,
-
-    fontFamily: "Poppins-Bold",
-
+  cancelButton: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#555555",
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    textAlign: "center",
+    flexShrink: 1,
+  },
+  cancelText: {
+    color: "#123266",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    textAlign: "center",
+    flexShrink: 1,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  loading: {
+    paddingVertical: 70,
+    alignItems: "center",
+  },
+  error: {
+    color: "#D32F2F",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  helper: {
+    color: "#687386",
+    fontFamily: "Poppins_300Light",
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 5,
+    textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 36,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 380,
+    maxHeight: "90%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  modalContent: {
+    padding: 22,
+    gap: 10,
+  },
+  modalTitle: {
+    color: "#123266",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 19,
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  option: {
+    paddingHorizontal: 12,
+    paddingVertical: 15,
+    borderWidth: 1,
+    borderColor: "#D2D7DF",
+    borderRadius: 7,
+  },
+  optionSelected: {
+    backgroundColor: "#EDF6EE",
+    borderColor: "#45B94F",
+  },
+  optionName: {
+    color: "#123266",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+  },
+  optionAmount: {
+    color: "#687386",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  detailLabel: {
+    color: "#687386",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+  },
+  detailText: {
+    color: "#123266",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  redAmount: {
+    color: "#D32F2F",
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 19,
   },
-
-  amountHelper: {
-    color: COLORS.muted,
-
-    fontFamily: "Poppins-Light",
-
-    fontSize: 8,
-
-    lineHeight: 12,
-
-    marginTop: 5,
+  modalActions: {
+    gap: 12,
+    marginTop: 18,
   },
-
-  // ========================================
-  // TEXT INPUT
-  // ========================================
-
-  textInput: {
-    width: "100%",
-
-    height: 47,
-
-    backgroundColor: COLORS.white,
-
-    borderWidth: 1,
-
-    borderColor: COLORS.border,
-
-    borderRadius: 9,
-
-    paddingHorizontal: 13,
-
-    color: COLORS.text,
-
-    fontFamily: "Poppins-Regular",
-
-    fontSize: 11,
-  },
-
-  helperText: {
-    color: COLORS.muted,
-
-    fontFamily: "Poppins-Light",
-
-    fontSize: 8,
-
-    marginTop: 5,
-  },
-
-  // ========================================
-  // REMARKS
-  // ========================================
-
-  remarksInput: {
-    width: "100%",
-
-    minHeight: 100,
-
-    maxHeight: 150,
-
-    backgroundColor: COLORS.white,
-
-    borderWidth: 1,
-
-    borderColor: COLORS.border,
-
-    borderRadius: 9,
-
-    paddingHorizontal: 13,
-
-    paddingTop: 12,
-
-    paddingBottom: 12,
-
-    color: COLORS.text,
-
-    fontFamily: "Poppins-Regular",
-
-    fontSize: 11,
-
-    lineHeight: 17,
-  },
-
-  characterCount: {
-    alignSelf: "flex-end",
-
-    color: COLORS.muted,
-
-    fontFamily: "Poppins-Light",
-
-    fontSize: 8,
-
-    marginTop: 5,
-  },
-
-  // ========================================
-  // ACTIONS
-  // ========================================
-
-  actionContainer: {
-    width: "100%",
-
-    flexDirection: "row",
-
-    gap: 10,
-
-    marginTop: 15,
-  },
-
-  cancelButton: {
-    flex: 1,
-
-    minHeight: 47,
-
-    borderWidth: 1,
-
-    borderColor: COLORS.navy,
-
-    borderRadius: 9,
-
-    backgroundColor: COLORS.white,
-
+  successCircle: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    backgroundColor: "#00C900",
+    alignSelf: "center",
     alignItems: "center",
-
     justifyContent: "center",
+    marginVertical: 10,
   },
-
-  cancelButtonText: {
-    color: COLORS.navy,
-
-    fontFamily: "Poppins-Medium",
-
-    fontSize: 11,
+  successIcon: {
+    width: 54,
+    height: 54,
+    tintColor: "#FFFFFF",
   },
-
-  saveButton: {
-    flex: 1.4,
-
-    minHeight: 47,
-
-    borderRadius: 9,
-
-    backgroundColor: COLORS.green,
-
+  receipt: {
     alignItems: "center",
-
-    justifyContent: "center",
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#D2D7DF",
+    borderRadius: 7,
+    marginBottom: 12,
   },
-
-  saveButtonText: {
-    color: COLORS.white,
-
-    fontFamily: "Poppins-Medium",
-
-    fontSize: 11,
+  receiptText: {
+    color: "#123266",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 5,
   },
-
-  disabledButton: {
-    opacity: 0.55,
-  },
-
-  // ========================================
-  // RETURN TO SCANNER
-  // ========================================
-
-  returnScannerButton: {
-    width: "100%",
-
-    minHeight: 47,
-
-    backgroundColor: COLORS.navy,
-
-    borderRadius: 9,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    marginTop: 5,
-  },
-
-  returnScannerButtonText: {
-    color: COLORS.white,
-
-    fontFamily: "Poppins-Medium",
-
-    fontSize: 11,
-  },
-
-  // ========================================
-  // EXTRA
-  // ========================================
-
-  bottomSpacing: {
-    height: 30,
+  successButton: {
+    backgroundColor: "#45B94F",
   },
 });
+
+// Preserves your requested colocated file structure.
+// Expo Router still registers this as a blank route.
+export default function OfficerAddFineStylesRoute() {
+  return null;
+}
