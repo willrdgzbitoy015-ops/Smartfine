@@ -20,7 +20,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { API_BASE } from "@/constants/api";
-import { styles } from "./add-fine.styles";
+import { useResponsiveStyles } from "./add-fine.styles";
 
 type Student = {
   id: number;
@@ -115,6 +115,7 @@ function formatRecordedAt(value?: string) {
 }
 
 export default function OfficerAddFine() {
+  const styles = useResponsiveStyles();
   const router = useRouter();
   const params = useLocalSearchParams();
   const rawId = params.studentId;

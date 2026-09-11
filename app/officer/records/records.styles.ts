@@ -1,3 +1,4 @@
+import { useOfficerLayout } from "@/hooks/use-officer-layout";
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
@@ -302,4 +303,8 @@ export const styles = StyleSheet.create({
 // Expo Router also discovers this file inside app/.
 export default function OfficerRecordsStylesRoute() {
   return null;
+}
+
+export function useResponsiveStyles() {
+  return useOfficerLayout(styles);
 }

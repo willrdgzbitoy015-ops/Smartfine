@@ -20,7 +20,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { API_BASE } from "@/constants/api";
-import { styles } from "./qr-scanner.styles";
+import { useResponsiveStyles } from "./qr-scanner.styles";
 
 type Student = {
   id: number;
@@ -52,6 +52,7 @@ function profileUrl(uri: string | null): string | null {
 }
 
 export default function OfficerQRScanner() {
+  const styles = useResponsiveStyles();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -97,7 +98,7 @@ export default function OfficerQRScanner() {
     return () => subscription.remove();
   }, []);
 
-  // Cancel and Scan Again both return to the live camera.
+  // Reset the student selection and return to the live camera.
   const resetScan = () => {
     requestRef.current?.abort();
     requestRef.current = null;
@@ -114,6 +115,21 @@ export default function OfficerQRScanner() {
     setImageFailed(false);
     setCameraError("");
     setError("");
+  };
+
+  // Cancel from the camera screen and return to the officer dashboard.
+  const handleCancelScanner = () => {
+    if (navigatingRef.current) return;
+
+    requestRef.current?.abort();
+    requestRef.current = null;
+
+    scanLockRef.current = false;
+    navigatingRef.current = true;
+
+    setProcessing(false);
+
+    router.replace("/officer/dashboard" as any);
   };
 
   const handleBarcodeScanned = ({ data }: { data: string }) => {
@@ -504,9 +520,9 @@ export default function OfficerQRScanner() {
 
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
-            onPress={resetScan}
+            onPress={handleCancelScanner}
             accessibilityRole="button"
-            accessibilityLabel="Cancel scan and return to camera"
+            accessibilityLabel="Cancel scanning and return to dashboard"
           >
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>

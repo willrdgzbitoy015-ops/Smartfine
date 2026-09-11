@@ -26,7 +26,7 @@ import QRCode from "react-native-qrcode-svg";
 
 import { API_BASE } from "@/constants/api";
 
-import { styles } from "./student.styles";
+import { useResponsiveStyles } from "./student.styles";
 
 // ==========================================
 // TYPES
@@ -63,7 +63,7 @@ const NAV_ITEMS = [
   },
   {
     label: "Profile",
-    route: null,
+    route: "/officer/profile",
     icon: require("../../../assets/icons/user.png"),
   },
   {
@@ -130,6 +130,7 @@ function StudentPhoto({
   student: Student;
   large?: boolean;
 }) {
+  const styles = useResponsiveStyles();
   const [failed, setFailed] = useState(false);
 
   const uri = pictureUrl(student.profile_picture_uri);
@@ -163,6 +164,7 @@ function StudentPhoto({
 // ==========================================
 
 export default function OfficerStudentsScreen() {
+  const styles = useResponsiveStyles();
   const router = useRouter();
   const { width } = useWindowDimensions();
 

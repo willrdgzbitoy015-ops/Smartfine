@@ -23,7 +23,7 @@ import {
 
 import { API_BASE } from "@/constants/api";
 
-import { styles } from "./records.styles";
+import { useResponsiveStyles } from "./records.styles";
 
 // ==========================================
 // TYPES
@@ -167,6 +167,7 @@ function statusLabel(value: string) {
 // ==========================================
 
 export default function OfficerRecordsScreen() {
+  const styles = useResponsiveStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 

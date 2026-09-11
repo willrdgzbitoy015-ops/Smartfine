@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { API_BASE } from "@/constants/api";
 
-import { styles } from "./dashboard-styles";
+import { useResponsiveStyles } from "./dashboard-styles";
 
 // ==========================================
 // TYPES
@@ -135,12 +135,9 @@ const navigationItems: NavigationItem[] = [
 
   {
     label: "Profile",
-
     icon: icons.profile,
-
-    route: null,
-
-    enabled: false,
+    route: "/officer/profile",
+    enabled: true,
   },
 
   {
@@ -271,6 +268,7 @@ function Avatar({
 
   large?: boolean;
 }) {
+  const styles = useResponsiveStyles();
   const [failed, setFailed] = useState(false);
 
   const url = imageUrl(uri);
@@ -306,6 +304,7 @@ function Avatar({
 // ==========================================
 
 export default function OfficerDashboard() {
+  const styles = useResponsiveStyles();
   const router = useRouter();
 
   // ========================================

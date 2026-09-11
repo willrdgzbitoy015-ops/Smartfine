@@ -1,3 +1,4 @@
+import { useOfficerLayout } from "@/hooks/use-officer-layout";
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
@@ -26,8 +27,8 @@ export const styles = StyleSheet.create({
 
   cameraFrame: {
     width: "100%",
-    maxWidth: 240,
-    aspectRatio: 1,
+    maxWidth: 300,
+    aspectRatio: 0.85,
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#0C2F64",
@@ -312,4 +313,8 @@ export const styles = StyleSheet.create({
 // Expo Router will register this as a blank route.
 export default function OfficerQRScannerStylesRoute() {
   return null;
+}
+
+export function useResponsiveStyles() {
+  return useOfficerLayout(styles);
 }

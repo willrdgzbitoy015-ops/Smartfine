@@ -1,3 +1,4 @@
+import { useOfficerLayout } from "@/hooks/use-officer-layout";
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
@@ -311,4 +312,8 @@ export const styles = StyleSheet.create({
 
 export default function OfficerDashboardStylesRoute() {
   return null;
+}
+
+export function useResponsiveStyles() {
+  return useOfficerLayout(styles);
 }

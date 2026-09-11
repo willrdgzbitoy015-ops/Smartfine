@@ -8,6 +8,8 @@ const path = require("path");
 
 const authRoutes = require("./routes/auth");
 
+const officerProfileRoutes = require("./routes/officer-profile");
+
 const dashboardRoutes = require("./routes/dashboard");
 
 const studentsRoutes = require("./routes/students");
@@ -49,6 +51,8 @@ app.use("/api/officers", officersRoutes);
 app.use("/api/reports", reportsRoutes);
 
 app.use("/api/settings", settingsRoutes);
+
+app.use("/api/officer-profile", officerProfileRoutes);
 
 // ==========================================
 // STATIC UPLOADS
