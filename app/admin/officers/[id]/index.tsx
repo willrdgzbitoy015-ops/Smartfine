@@ -336,7 +336,7 @@ export default function OfficerProfile() {
   };
 
   // ==========================================
-  // DELETE OFFICER
+  // DELETE / ARCHIVE OFFICER
   // ==========================================
 
   const performDeleteOfficer = async () => {
@@ -355,30 +355,40 @@ export default function OfficerProfile() {
 
       console.log("Delete officer response:", result);
 
-      // ======================================
+      // ====================================
       // FAILED
-      // ======================================
+      // ====================================
 
       if (!response.ok || !result.success) {
         setShowDeleteModal(false);
 
         showWarning(
-          "Unable to Delete Officer",
-          result.message || "Could not delete officer.",
+          "Unable to Remove Officer",
+
+          result.message || "Could not remove officer.",
         );
 
         return;
       }
 
-      // ======================================
+      // ====================================
       // SUCCESS
-      // ======================================
+      // ====================================
 
       setShowDeleteModal(false);
 
-      setSuccessTitle("Officer Deleted");
+      if (result.archived) {
+        setSuccessTitle("Officer Removed");
 
-      setSuccessMessage("Officer deleted successfully.");
+        setSuccessMessage(
+          result.message ||
+            "Officer removed successfully. Historical fine records were preserved.",
+        );
+      } else {
+        setSuccessTitle("Officer Deleted");
+
+        setSuccessMessage(result.message || "Officer deleted successfully.");
+      }
 
       setShowSuccessModal(true);
     } catch (error) {
@@ -387,7 +397,8 @@ export default function OfficerProfile() {
       setShowDeleteModal(false);
 
       showWarning(
-        "Unable to Delete Officer",
+        "Unable to Remove Officer",
+
         "Could not connect to the SmartFine server.",
       );
     } finally {
@@ -408,35 +419,40 @@ export default function OfficerProfile() {
 
     const status = String(officer.account_status || "").toUpperCase();
 
-    // ======================================
+    // ====================================
     // ACTIVE OFFICER
-    // ======================================
+    // ====================================
 
     if (status === "ACTIVE") {
       showWarning(
         "Officer is Active",
-        "Active officers cannot be deleted. Edit the officer and set the account status to Inactive first.",
+
+        "Active officers cannot be removed. Edit the officer and set the account status to Inactive first.",
       );
 
       return;
     }
 
-    // ======================================
-    // HAS FINE HISTORY
-    // ======================================
+    // ====================================
+    // UNRESOLVED FINE RECORDS
+    //
+    // Paid / Cancelled / Waived fines
+    // should NOT block removal.
+    // ====================================
 
-    if (Number(data.stats?.totalFines || 0) > 0) {
+    if (Number(data.stats?.activeFines || 0) > 0) {
       showWarning(
-        "Officer Has Fine Records",
-        "This officer cannot be permanently deleted because the account already has recorded fines. Keep the officer inactive to preserve SmartFine history.",
+        "Officer Has Active Fine Records",
+
+        "This officer still has unpaid or pending fine records. Resolve those fines before removing the officer.",
       );
 
       return;
     }
 
-    // ======================================
-    // CONFIRM DELETE
-    // ======================================
+    // ====================================
+    // ALLOW DELETE OR ARCHIVE
+    // ====================================
 
     setShowDeleteModal(true);
   };
@@ -517,7 +533,11 @@ export default function OfficerProfile() {
 
       setShowLogoutModal(false);
 
-      showWarning("Logout Error", "Could not log out. Please try again.");
+      showWarning(
+        "Logout Error",
+
+        "Could not log out. Please try again.",
+      );
     } finally {
       setLogoutLoading(false);
     }
@@ -899,6 +919,22 @@ export default function OfficerProfile() {
   };
 
   // ==========================================
+  // DELETE MODAL INFORMATION
+  // ==========================================
+
+  const hasFineHistory = Number(data?.stats?.totalFines || 0) > 0;
+
+  const deleteModalTitle = hasFineHistory
+    ? "Remove Officer?"
+    : "Delete Officer?";
+
+  const deleteModalMessage = data?.officer
+    ? hasFineHistory
+      ? `Remove ${data.officer.full_name} (${data.officer.employee_number}) from the Officers list? Historical fine records will be preserved.`
+      : `Permanently delete ${data.officer.full_name} (${data.officer.employee_number})? This action cannot be undone.`
+    : "Remove this officer?";
+
+  // ==========================================
   // UI
   // ==========================================
 
@@ -1040,18 +1076,14 @@ export default function OfficerProfile() {
       </View>
 
       {/* ======================================
-          DELETE MODAL
+          DELETE / REMOVE MODAL
       ====================================== */}
 
       <DeleteModal
         visible={showDeleteModal}
         loading={deleting}
-        title="Delete Officer?"
-        message={
-          data?.officer
-            ? `Permanently delete ${data.officer.full_name} (${data.officer.employee_number})? This action cannot be undone.`
-            : "Permanently delete this officer? This action cannot be undone."
-        }
+        title={deleteModalTitle}
+        message={deleteModalMessage}
         onCancel={handleCancelDelete}
         onConfirm={performDeleteOfficer}
       />
