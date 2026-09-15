@@ -1,16 +1,20 @@
+import { File as ExpoFile } from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
+import { fetch as expoFetch } from "expo/fetch";
 import { useCallback, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useOfficerPhotoStyles } from "../../../hooks/officer-photo.styles";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -136,6 +140,10 @@ async function profileRequest(
 
 export default function OfficerProfile() {
   const styles = useResponsiveStyles();
+  const photoStyles = useOfficerPhotoStyles();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoLock = useRef(false);
+  const [photoMessage, setPhotoMessage] = useState("");
   const router = useRouter();
   const { logout } = useAuth();
 
@@ -161,7 +169,7 @@ export default function OfficerProfile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
 
-  const busy = saving || loggingOut;
+  const busy = saving || loggingOut || uploadingPhoto;
 
   useFocusEffect(
     useCallback(() => {
@@ -401,7 +409,7 @@ export default function OfficerProfile() {
   };
 
   const confirmLogout = async () => {
-    if (saving || logoutLock.current) return;
+    if (saving || photoLock.current || logoutLock.current) return;
 
     logoutLock.current = true;
     setLoggingOut(true);
@@ -426,6 +434,147 @@ export default function OfficerProfile() {
     }
   };
 
+  const choosePhoto = async () => {
+    if (busy || photoLock.current) return;
+    photoLock.current = true;
+    setUploadingPhoto(true);
+    setPhotoMessage("");
+    setError("");
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    try {
+      if (Platform.OS !== "web") {
+        const permission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          throw new Error(
+            "Please allow photo access in your phone settings to change your picture.",
+          );
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+        throw new Error("Profile picture must be 5 MB or smaller.");
+      }
+      const token = await AsyncStorage.getItem("token");
+      if (!token)
+        throw new Error("Your session is missing. Please log in again.");
+      const extension = (asset.fileName || asset.uri)
+        .split(/[?#]/)[0]
+        .split(".")
+        .pop()
+        ?.toLowerCase();
+      const mime =
+        asset.mimeType ||
+        (extension === "png"
+          ? "image/png"
+          : extension === "webp"
+            ? "image/webp"
+            : "image/jpeg");
+      if (
+        !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mime)
+      ) {
+        throw new Error("Please select a JPG, PNG, or WEBP photo.");
+      }
+      const name = `officer-photo.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"}`;
+      const form = new FormData();
+      timeout = setTimeout(() => controller.abort(), 30000);
+      if (Platform.OS === "web") {
+        let blob: Blob | undefined = asset.file;
+        if (!blob) {
+          const imageResponse = await fetch(asset.uri, {
+            signal: controller.signal,
+          });
+          if (!imageResponse.ok) {
+            throw new Error(
+              "Unable to read the selected photo. Please select it again.",
+            );
+          }
+          blob = await imageResponse.blob();
+        }
+        if (!blob) {
+          throw new Error(
+            "The selected photo could not be read. Please select it again.",
+          );
+        }
+        if (blob.size > 5 * 1024 * 1024)
+          throw new Error("Profile picture must be 5 MB or smaller.");
+        form.append("profilePicture", blob, name);
+      } else {
+        const file = new ExpoFile(asset.uri);
+        if (!file.exists || file.size === 0) {
+          throw new Error(
+            "The selected photo could not be read. Please select it again.",
+          );
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error("Profile picture must be 5 MB or smaller.");
+        }
+        form.append("profilePicture", file, name);
+      }
+      const uploadFetch = Platform.OS === "web" ? fetch : expoFetch;
+      const response = await uploadFetch(
+        `${API_BASE.replace(/\/+$/, "")}/api/officer-profile/me/profile-picture`,
+        {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: form,
+        },
+      );
+      const raw = await response.text();
+      let body: {
+        success?: boolean;
+        message?: string;
+        profilePictureUri?: string;
+      };
+      try {
+        body = JSON.parse(raw);
+      } catch {
+        throw new Error(
+          `Unexpected server response (HTTP ${response.status}). Check your API connection.`,
+        );
+      }
+      if (!response.ok || !body.success || !body.profilePictureUri) {
+        throw new Error(
+          body.message || "Unable to upload your profile picture.",
+        );
+      }
+      const uri = body.profilePictureUri;
+      setOfficer((previous) =>
+        previous ? { ...previous, profilePictureUri: uri } : previous,
+      );
+      setDraft((previous) =>
+        previous ? { ...previous, profilePictureUri: uri } : previous,
+      );
+      setImageFailed(false);
+      setPhotoMessage("Profile picture saved.");
+    } catch (caught) {
+      setError(
+        controller.signal.aborted
+          ? "Upload timed out. Reopen Profile to check whether the photo saved before retrying."
+          : caught instanceof Error
+            ? caught.message
+            : "Unable to change your profile picture.",
+      );
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      photoLock.current = false;
+      setUploadingPhoto(false);
+    }
+  };
+
   const avatar = imageUrl(officer?.profilePictureUri || null);
 
   const initials =
@@ -437,7 +586,10 @@ export default function OfficerProfile() {
     <View style={[styles.avatar, large && styles.avatarLarge]}>
       {avatar && !imageFailed ? (
         <Image
-          source={{ uri: avatar }}
+          source={{
+            uri: avatar,
+            headers: { "ngrok-skip-browser-warning": "true" },
+          }}
           style={styles.avatarImage}
           onError={() => setImageFailed(true)}
         />
@@ -604,7 +756,43 @@ export default function OfficerProfile() {
 
                 {page === "edit" && draft && (
                   <>
-                    <View style={styles.photoArea}>{renderAvatar(true)}</View>
+                    <View style={styles.photoArea}>
+                      <View style={photoStyles.photoWrapper}>
+                        {renderAvatar(true)}
+                        <TouchableOpacity
+                          style={[
+                            photoStyles.photoButton,
+                            busy && styles.disabled,
+                          ]}
+                          onPress={() => void choosePhoto()}
+                          disabled={busy}
+                          accessibilityRole="button"
+                          accessibilityLabel="Change profile picture"
+                          accessibilityState={{
+                            disabled: busy,
+                            busy: uploadingPhoto,
+                          }}
+                        >
+                          {uploadingPhoto ? (
+                            <ActivityIndicator size="small" color="#123266" />
+                          ) : (
+                            <Image
+                              source={require("../../../assets/icons/edit-image.png")}
+                              style={photoStyles.photoIcon}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                      <Text
+                        style={photoStyles.photoHint}
+                        accessibilityLiveRegion="polite"
+                      >
+                        {uploadingPhoto
+                          ? "Selecting or uploading photo…"
+                          : photoMessage ||
+                            "Tap the photo button to change your picture. Photos save immediately. JPG, PNG or WEBP • Up to 5 MB."}
+                      </Text>
+                    </View>
 
                     <View style={styles.field}>
                       <Text style={styles.label}>Full Name</Text>

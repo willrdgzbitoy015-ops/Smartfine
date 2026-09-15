@@ -1,3 +1,5 @@
+import { File as ExpoFile } from "expo-file-system";
+import { fetch as expoFetch } from "expo/fetch";
 import { useCallback, useEffect, useState } from "react";
 
 import {
@@ -765,36 +767,49 @@ export default function AdminSettings() {
       }
 
       const formData = new FormData();
-
+      const filename = createImageFilename(asset);
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+        throw new Error("Profile picture must be 5 MB or smaller.");
+      }
       if (Platform.OS === "web") {
-        if (asset.file) {
-          formData.append("profilePicture", asset.file);
-        } else {
-          const blob = await fetch(asset.uri).then((response) =>
-            response.blob(),
-          );
-
-          formData.append("profilePicture", blob, createImageFilename(asset));
+        let blob: Blob | undefined = asset.file;
+        if (!blob) {
+          const imageResponse = await fetch(asset.uri);
+          if (!imageResponse.ok)
+            throw new Error("Unable to read the selected photo.");
+          blob = await imageResponse.blob();
         }
+        if (!blob) throw new Error("Please select the photo again.");
+        if (blob.size > 5 * 1024 * 1024) {
+          throw new Error("Profile picture must be 5 MB or smaller.");
+        }
+        formData.append("profilePicture", blob, filename);
       } else {
-        formData.append("profilePicture", {
-          uri: asset.uri,
-
-          name: createImageFilename(asset),
-
-          type: asset.mimeType || getMimeType(asset.uri),
-        } as any);
+        const file = new ExpoFile(asset.uri);
+        if (!file.exists || file.size === 0) {
+          throw new Error(
+            "The selected photo could not be read. Please select it again.",
+          );
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error("Profile picture must be 5 MB or smaller.");
+        }
+        formData.append("profilePicture", file, filename);
       }
 
-      const response = await fetch(`${API_BASE}/api/auth/me/profile-picture`, {
-        method: "POST",
-
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const uploadFetch = Platform.OS === "web" ? fetch : expoFetch;
+      const response = await uploadFetch(
+        `${API_BASE}/api/auth/me/profile-picture`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: formData,
         },
-
-        body: formData,
-      });
+      );
 
       const data: BasicResponse = await response.json();
 
@@ -822,7 +837,12 @@ export default function AdminSettings() {
     } catch (error) {
       console.error("Upload admin photo error:", error);
 
-      showMessage("Connection Error", "Could not upload the profile picture.");
+      showMessage(
+        "Upload Failed",
+        error instanceof Error
+          ? error.message
+          : "Could not upload the profile picture.",
+      );
     } finally {
       setUploadingPhoto(false);
     }
