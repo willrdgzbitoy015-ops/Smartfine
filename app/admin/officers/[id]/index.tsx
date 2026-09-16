@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Modal,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -139,6 +140,12 @@ export default function OfficerProfile() {
   const [error, setError] = useState("");
 
   const [profileImageFailed, setProfileImageFailed] = useState(false);
+
+  // ==========================================
+  // SELECTED FINE
+  // ==========================================
+
+  const [selectedFine, setSelectedFine] = useState<RecentFine | null>(null);
 
   // ==========================================
   // DELETE MODAL
@@ -324,7 +331,7 @@ export default function OfficerProfile() {
   };
 
   // ==========================================
-  // EDIT
+  // EDIT INFORMATION
   // ==========================================
 
   const handleEdit = () => {
@@ -355,25 +362,16 @@ export default function OfficerProfile() {
 
       console.log("Delete officer response:", result);
 
-      // ====================================
-      // FAILED
-      // ====================================
-
       if (!response.ok || !result.success) {
         setShowDeleteModal(false);
 
         showWarning(
           "Unable to Remove Officer",
-
           result.message || "Could not remove officer.",
         );
 
         return;
       }
-
-      // ====================================
-      // SUCCESS
-      // ====================================
 
       setShowDeleteModal(false);
 
@@ -398,7 +396,6 @@ export default function OfficerProfile() {
 
       showWarning(
         "Unable to Remove Officer",
-
         "Could not connect to the SmartFine server.",
       );
     } finally {
@@ -419,40 +416,23 @@ export default function OfficerProfile() {
 
     const status = String(officer.account_status || "").toUpperCase();
 
-    // ====================================
-    // ACTIVE OFFICER
-    // ====================================
-
     if (status === "ACTIVE") {
       showWarning(
         "Officer is Active",
-
         "Active officers cannot be removed. Edit the officer and set the account status to Inactive first.",
       );
 
       return;
     }
 
-    // ====================================
-    // UNRESOLVED FINE RECORDS
-    //
-    // Paid / Cancelled / Waived fines
-    // should NOT block removal.
-    // ====================================
-
     if (Number(data.stats?.activeFines || 0) > 0) {
       showWarning(
         "Officer Has Active Fine Records",
-
         "This officer still has unpaid or pending fine records. Resolve those fines before removing the officer.",
       );
 
       return;
     }
-
-    // ====================================
-    // ALLOW DELETE OR ARCHIVE
-    // ====================================
 
     setShowDeleteModal(true);
   };
@@ -480,11 +460,19 @@ export default function OfficerProfile() {
   };
 
   // ==========================================
-  // OPEN FINE
+  // OPEN FINE POPUP
   // ==========================================
 
-  const handleFinePress = (fineId: number) => {
-    router.push(`/admin/fines/${fineId}` as any);
+  const handleFinePress = (fine: RecentFine) => {
+    setSelectedFine(fine);
+  };
+
+  // ==========================================
+  // CLOSE FINE POPUP
+  // ==========================================
+
+  const handleCloseFinePopup = () => {
+    setSelectedFine(null);
   };
 
   // ==========================================
@@ -533,11 +521,7 @@ export default function OfficerProfile() {
 
       setShowLogoutModal(false);
 
-      showWarning(
-        "Logout Error",
-
-        "Could not log out. Please try again.",
-      );
+      showWarning("Logout Error", "Could not log out. Please try again.");
     } finally {
       setLogoutLoading(false);
     }
@@ -548,10 +532,6 @@ export default function OfficerProfile() {
   // ==========================================
 
   const renderContent = () => {
-    // ======================================
-    // LOADING
-    // ======================================
-
     if (loading) {
       return (
         <View style={styles.centerState}>
@@ -561,10 +541,6 @@ export default function OfficerProfile() {
         </View>
       );
     }
-
-    // ======================================
-    // ERROR
-    // ======================================
 
     if (error || !data) {
       return (
@@ -605,7 +581,7 @@ export default function OfficerProfile() {
           <View
             style={[styles.profileTop, isCompact && styles.profileTopCompact]}
           >
-            {/* PROFILE PICTURE */}
+            {/* PROFILE IMAGE */}
 
             {showProfilePicture ? (
               <Image
@@ -632,7 +608,7 @@ export default function OfficerProfile() {
               </View>
             )}
 
-            {/* HEADING */}
+            {/* OFFICER NAME */}
 
             <View style={styles.profileHeading}>
               <Text
@@ -670,7 +646,9 @@ export default function OfficerProfile() {
               </View>
             </View>
 
-            {/* ACTIONS */}
+            {/* ==================================
+                PROFILE ACTIONS
+            ================================== */}
 
             <View
               style={[
@@ -679,6 +657,8 @@ export default function OfficerProfile() {
                 isCompact && styles.profileActionsCompact,
               ]}
             >
+              {/* EDIT INFORMATION */}
+
               <TouchableOpacity
                 style={[
                   styles.editButton,
@@ -689,8 +669,16 @@ export default function OfficerProfile() {
                 disabled={deleting}
                 activeOpacity={0.75}
               >
-                <Text style={styles.editButtonText}>Edit Officer</Text>
+                <Image
+                  source={require("../../../../assets/icons/edit-image.png")}
+                  style={styles.editButtonIcon}
+                  resizeMode="contain"
+                />
+
+                <Text style={styles.editButtonText}>Edit Information</Text>
               </TouchableOpacity>
+
+              {/* DELETE OFFICER */}
 
               <TouchableOpacity
                 style={[
@@ -799,12 +787,15 @@ export default function OfficerProfile() {
             <Text style={styles.historyTitle}>Recent Fines Recorded</Text>
 
             <Text style={styles.historySubtitle}>
-              Most recent fines recorded by this officer
+              Tap a fine to view its information without leaving this officer
+              profile.
             </Text>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator>
             <View style={styles.historyTable}>
+              {/* TABLE HEADER */}
+
               <View style={styles.tableHeader}>
                 <Text style={[styles.headerCell, styles.referenceColumn]}>
                   Fine Reference
@@ -829,6 +820,8 @@ export default function OfficerProfile() {
                 </Text>
               </View>
 
+              {/* EMPTY */}
+
               {recentFines.length === 0 ? (
                 <View style={styles.emptyHistory}>
                   <Text style={styles.emptyHistoryText}>
@@ -844,8 +837,10 @@ export default function OfficerProfile() {
                       key={fine.id}
                       style={styles.historyRow}
                       activeOpacity={0.7}
-                      onPress={() => handleFinePress(fine.id)}
+                      onPress={() => handleFinePress(fine)}
                     >
+                      {/* REFERENCE */}
+
                       <Text
                         style={[
                           styles.bodyCell,
@@ -858,6 +853,8 @@ export default function OfficerProfile() {
                         {fine.fine_reference}
                       </Text>
 
+                      {/* STUDENT */}
+
                       <View style={styles.studentColumn}>
                         <Text style={styles.studentName}>
                           {fine.student_name}
@@ -868,13 +865,19 @@ export default function OfficerProfile() {
                         </Text>
                       </View>
 
+                      {/* VIOLATION */}
+
                       <Text style={[styles.bodyCell, styles.violationColumn]}>
                         {fine.violation_name}
                       </Text>
 
+                      {/* DATE */}
+
                       <Text style={[styles.bodyCell, styles.dateColumn]}>
                         {formatDate(fine.issued_at)}
                       </Text>
+
+                      {/* AMOUNT */}
 
                       <Text
                         style={[
@@ -887,6 +890,8 @@ export default function OfficerProfile() {
                       >
                         {formatMoney(fine.amount)}
                       </Text>
+
+                      {/* STATUS */}
 
                       <View style={styles.statusColumn}>
                         <View
@@ -933,6 +938,14 @@ export default function OfficerProfile() {
       ? `Remove ${data.officer.full_name} (${data.officer.employee_number}) from the Officers list? Historical fine records will be preserved.`
       : `Permanently delete ${data.officer.full_name} (${data.officer.employee_number})? This action cannot be undone.`
     : "Remove this officer?";
+
+  // ==========================================
+  // SELECTED FINE STATUS
+  // ==========================================
+
+  const selectedFineStatus = selectedFine
+    ? normalizeFineStatus(selectedFine.fine_status)
+    : "UNPAID";
 
   // ==========================================
   // UI
@@ -1002,9 +1015,7 @@ export default function OfficerProfile() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* ==================================
-              PAGE HEADER / BACK
-          ================================== */}
+          {/* PAGE HEADER */}
 
           <View style={styles.pageHeader}>
             <TouchableOpacity
@@ -1033,9 +1044,7 @@ export default function OfficerProfile() {
             </Text>
           </View>
 
-          {/* ==================================
-              MOBILE NAV
-          ================================== */}
+          {/* MOBILE NAV */}
 
           {!isTablet && (
             <ScrollView
@@ -1076,7 +1085,142 @@ export default function OfficerProfile() {
       </View>
 
       {/* ======================================
-          DELETE / REMOVE MODAL
+          FINE INFORMATION POPUP
+      ====================================== */}
+
+      <Modal
+        visible={Boolean(selectedFine)}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseFinePopup}
+      >
+        <View style={styles.fineModalBackdrop}>
+          <View
+            style={[
+              styles.fineModalCard,
+
+              isCompact && styles.fineModalCardCompact,
+            ]}
+          >
+            {/* MODAL HEADER */}
+
+            <View style={styles.fineModalHeader}>
+              <View style={styles.fineModalHeaderText}>
+                <Text style={styles.fineModalTitle}>Fine Information</Text>
+
+                <Text style={styles.fineModalSubtitle}>
+                  Fine recorded by this officer
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.fineModalCloseIconButton}
+                onPress={handleCloseFinePopup}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Close fine information"
+              >
+                <Text style={styles.fineModalCloseIcon}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedFine && (
+              <>
+                {/* FINE REFERENCE */}
+
+                <View style={styles.fineReferenceBox}>
+                  <Text style={styles.fineReferenceLabel}>Fine Reference</Text>
+
+                  <Text style={styles.fineReferenceValue}>
+                    {selectedFine.fine_reference}
+                  </Text>
+                </View>
+
+                <View style={styles.fineModalDivider} />
+
+                {/* DETAILS */}
+
+                <View style={styles.fineModalDetails}>
+                  <View style={styles.fineModalRow}>
+                    <Text style={styles.fineModalLabel}>Student</Text>
+
+                    <Text style={styles.fineModalValue}>
+                      {selectedFine.student_name}
+                    </Text>
+                  </View>
+
+                  <View style={styles.fineModalRow}>
+                    <Text style={styles.fineModalLabel}>Student ID</Text>
+
+                    <Text style={styles.fineModalValue}>
+                      {selectedFine.student_number}
+                    </Text>
+                  </View>
+
+                  <View style={styles.fineModalRow}>
+                    <Text style={styles.fineModalLabel}>Violation</Text>
+
+                    <Text style={styles.fineModalValue}>
+                      {selectedFine.violation_name}
+                    </Text>
+                  </View>
+
+                  <View style={styles.fineModalRow}>
+                    <Text style={styles.fineModalLabel}>Date Issued</Text>
+
+                    <Text style={styles.fineModalValue}>
+                      {formatDate(selectedFine.issued_at)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.fineModalRow}>
+                    <Text style={styles.fineModalLabel}>Amount</Text>
+
+                    <Text style={styles.fineModalAmount}>
+                      {formatMoney(selectedFine.amount)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.fineModalRow}>
+                    <Text style={styles.fineModalLabel}>Status</Text>
+
+                    <View
+                      style={[
+                        styles.fineModalStatusBadge,
+
+                        getFineStatusBadgeStyle(selectedFineStatus),
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.fineModalStatusText,
+
+                          getFineStatusTextStyle(selectedFineStatus),
+                        ]}
+                      >
+                        {getFineStatusLabel(selectedFineStatus)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* CLOSE BUTTON */}
+
+                <TouchableOpacity
+                  style={styles.fineModalCloseButton}
+                  onPress={handleCloseFinePopup}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.fineModalCloseButtonText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ======================================
+          DELETE MODAL
       ====================================== */}
 
       <DeleteModal
