@@ -47,3 +47,6 @@ server/uploads/student-profiles/*
 # Environment secrets
 server/.env
 .env
+# Runtime uploaded profile pictures
+server/uploads/admin-profiles/
+server/uploads/officer-profiles/
