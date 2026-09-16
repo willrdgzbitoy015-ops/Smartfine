@@ -1,7 +1,12 @@
 import { useOfficerLayout } from "@/hooks/use-officer-layout";
+
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
+  // ==========================================
+  // SCREEN
+  // ==========================================
+
   safeArea: {
     flex: 1,
     backgroundColor: "#E8E8E8",
@@ -24,6 +29,10 @@ export const styles = StyleSheet.create({
     paddingTop: 34,
     paddingBottom: 28,
   },
+
+  // ==========================================
+  // HEADER
+  // ==========================================
 
   header: {
     flexDirection: "row",
@@ -48,6 +57,10 @@ export const styles = StyleSheet.create({
     lineHeight: 27,
     color: "#161616",
   },
+
+  // ==========================================
+  // AVATAR
+  // ==========================================
 
   avatar: {
     width: 34,
@@ -81,6 +94,10 @@ export const styles = StyleSheet.create({
     fontSize: 19,
   },
 
+  // ==========================================
+  // TOTAL STUDENTS
+  // ==========================================
+
   totalCard: {
     minHeight: 108,
     padding: 15,
@@ -103,6 +120,10 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 7,
   },
+
+  // ==========================================
+  // SUMMARY
+  // ==========================================
 
   summaryRow: {
     flexDirection: "row",
@@ -146,6 +167,10 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     marginVertical: 8,
   },
+
+  // ==========================================
+  // RECENT ACTIVITIES
+  // ==========================================
 
   sectionTitle: {
     fontFamily: "Poppins_600SemiBold",
@@ -210,6 +235,34 @@ export const styles = StyleSheet.create({
     textAlign: "right",
   },
 
+  // ==========================================
+  // VIEW ALL ACTIVITIES
+  // ==========================================
+
+  viewAllButton: {
+    minHeight: 42,
+    alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 22,
+    marginTop: 2,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#173A73",
+    borderRadius: 7,
+    backgroundColor: "#FFFFFF",
+  },
+
+  viewAllText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    color: "#173A73",
+  },
+
+  // ==========================================
+  // BOTTOM NAVIGATION
+  // ==========================================
+
   bottomArea: {
     backgroundColor: "#123266",
   },
@@ -254,11 +307,113 @@ export const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
 
+  // ==========================================
+  // ALL ACTIVITIES MODAL
+  // ==========================================
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 28,
+  },
+
+  modalCard: {
+    width: "100%",
+    maxWidth: 440,
+    maxHeight: "88%",
+    backgroundColor: "#E8E8E8",
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+
+  modalHeader: {
+    minHeight: 74,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: "#E8E8E8",
+    borderBottomWidth: 1,
+    borderBottomColor: "#C9CDD3",
+  },
+
+  modalBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+
+  modalBackIcon: {
+    width: 23,
+    height: 23,
+    tintColor: "#111111",
+    transform: [
+      {
+        scaleX: -1,
+      },
+    ],
+  },
+
+  modalTitleArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  modalTitle: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 18,
+    color: "#111111",
+    textAlign: "center",
+  },
+
+  modalSubtitle: {
+    fontFamily: "Poppins_300Light",
+    fontSize: 10,
+    color: "#626975",
+    marginTop: 2,
+    textAlign: "center",
+  },
+
+  modalHeaderSpacer: {
+    width: 40,
+  },
+
+  modalScroll: {
+    flexGrow: 0,
+  },
+
+  modalContent: {
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 24,
+  },
+
+  modalEmptyPanel: {
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#BFC5CE",
+    borderRadius: 9,
+  },
+
+  // ==========================================
+  // LOADING
+  // ==========================================
+
   loadingPanel: {
     paddingVertical: 15,
     alignItems: "center",
     gap: 10,
   },
+
+  // ==========================================
+  // ERROR
+  // ==========================================
 
   errorPanel: {
     borderWidth: 1,
@@ -287,6 +442,10 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: "#173A73",
   },
+
+  // ==========================================
+  // EMPTY STATE
+  // ==========================================
 
   emptyPanel: {
     padding: 20,

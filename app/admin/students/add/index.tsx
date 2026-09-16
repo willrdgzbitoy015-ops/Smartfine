@@ -37,6 +37,34 @@ type NavItem = {
 };
 
 // ==========================================
+// PASSWORD POLICY
+// ==========================================
+
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return "Password must contain at least 8 characters.";
+  }
+
+  if (!/[a-z]/.test(password)) {
+    return "Password must contain at least one lowercase letter.";
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    return "Password must contain at least one uppercase letter.";
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return "Password must contain at least one number.";
+  }
+
+  if (!/[^A-Za-z0-9\s]/.test(password)) {
+    return "Password must contain at least one special character.";
+  }
+
+  return null;
+}
+
+// ==========================================
 // ADD STUDENT
 // ==========================================
 
@@ -116,7 +144,11 @@ export default function AddStudent() {
 
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Password and Confirm Password have
+  // independent visibility controls.
   const [showPassword, setShowPassword] = useState(false);
+
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [accountActive, setAccountActive] = useState(true);
 
@@ -449,7 +481,9 @@ export default function AddStudent() {
   const handleCreateStudent = async () => {
     setErrorMessage("");
 
+    // ======================================
     // REQUIRED FIELDS
+    // ======================================
 
     if (
       !firstName.trim() ||
@@ -467,7 +501,9 @@ export default function AddStudent() {
       return;
     }
 
+    // ======================================
     // FIRST NAME
+    // ======================================
 
     if (firstName.trim().length < 2) {
       setErrorMessage("First Name must contain at least 2 characters.");
@@ -475,7 +511,9 @@ export default function AddStudent() {
       return;
     }
 
+    // ======================================
     // LAST NAME
+    // ======================================
 
     if (lastName.trim().length < 2) {
       setErrorMessage("Last Name must contain at least 2 characters.");
@@ -483,7 +521,9 @@ export default function AddStudent() {
       return;
     }
 
+    // ======================================
     // USERNAME
+    // ======================================
 
     const normalizedUsername = username.trim().toLowerCase();
 
@@ -501,7 +541,9 @@ export default function AddStudent() {
       return;
     }
 
+    // ======================================
     // CONTACT NUMBER
+    // ======================================
 
     const normalizedContact = contactNumber.trim().replace(/[^0-9]/g, "");
 
@@ -517,7 +559,9 @@ export default function AddStudent() {
       return;
     }
 
+    // ======================================
     // EMAIL
+    // ======================================
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -527,41 +571,21 @@ export default function AddStudent() {
       return;
     }
 
+    // ======================================
     // PASSWORD
+    // ======================================
 
-    if (password.length < 8) {
-      setErrorMessage("Password must contain at least 8 characters.");
+    const passwordError = validatePassword(password);
 
-      return;
-    }
-
-    const hasLetter = /[A-Za-z]/.test(password);
-
-    const hasNumber = /[0-9]/.test(password);
-
-    const hasSpecialCharacter = /[^A-Za-z0-9\s]/.test(password);
-
-    if (!hasLetter) {
-      setErrorMessage("Password must contain at least one letter.");
+    if (passwordError) {
+      setErrorMessage(passwordError);
 
       return;
     }
 
-    if (!hasNumber) {
-      setErrorMessage("Password must contain at least one number.");
-
-      return;
-    }
-
-    if (!hasSpecialCharacter) {
-      setErrorMessage(
-        "Password must contain at least one special character such as !, @, #, $, %, or &.",
-      );
-
-      return;
-    }
-
+    // ======================================
     // CONFIRM PASSWORD
+    // ======================================
 
     if (password !== confirmPassword) {
       setErrorMessage("Password and Confirm Password do not match.");
@@ -569,7 +593,9 @@ export default function AddStudent() {
       return;
     }
 
+    // ======================================
     // CREATE ACCOUNT
+    // ======================================
 
     try {
       setLoading(true);
@@ -600,6 +626,8 @@ export default function AddStudent() {
 
           password,
 
+          confirmPassword,
+
           accountStatus: accountActive ? "ACTIVE" : "INACTIVE",
         }),
       });
@@ -618,7 +646,9 @@ export default function AddStudent() {
 
       const studentDatabaseId = Number(newStudent?.id);
 
+      // ======================================
       // PROFILE PICTURE UPLOAD
+      // ======================================
 
       let pictureUploadSucceeded = true;
 
@@ -636,7 +666,9 @@ export default function AddStudent() {
         }
       }
 
+      // ======================================
       // SUCCESS
+      // ======================================
 
       handleSuccess(
         newStudent.studentId,
@@ -846,7 +878,9 @@ export default function AddStudent() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* HEADER */}
+          {/* ==================================
+              HEADER
+          ================================== */}
 
           <View style={styles.header}>
             <View>
@@ -1014,7 +1048,9 @@ export default function AddStudent() {
           ================================== */}
 
           <View style={styles.formContainer}>
-            {/* STUDENT INFORMATION */}
+            {/* ==================================
+                STUDENT INFORMATION
+            ================================== */}
 
             <View style={styles.formCard}>
               <Text style={styles.cardTitle}>Student Information</Text>
@@ -1158,7 +1194,9 @@ export default function AddStudent() {
               />
             </View>
 
-            {/* ACCOUNT INFORMATION */}
+            {/* ==================================
+                ACCOUNT INFORMATION
+            ================================== */}
 
             <View style={styles.formCard}>
               <Text style={styles.cardTitle}>Account Information</Text>
@@ -1181,6 +1219,10 @@ export default function AddStudent() {
                 You can edit the username before creating the account.
               </Text>
 
+              {/* ==================================
+                  PASSWORD
+              ================================== */}
+
               <Text style={styles.label}>Enter Password *</Text>
 
               <View style={styles.passwordContainer}>
@@ -1202,37 +1244,87 @@ export default function AddStudent() {
 
                 <TouchableOpacity
                   style={styles.passwordToggle}
-                  onPress={() => setShowPassword(!showPassword)}
+                  onPress={() => setShowPassword((current) => !current)}
                   disabled={loading}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showPassword ? "Hide password" : "Show password"
+                  }
                 >
-                  <Text style={styles.passwordToggleText}>
-                    {showPassword ? "Hide" : "Show"}
-                  </Text>
+                  <Image
+                    source={
+                      showPassword
+                        ? require("../../../../assets/icons/hide.png")
+                        : require("../../../../assets/icons/view.png")
+                    }
+                    style={{
+                      width: 20,
+                      height: 20,
+                    }}
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.usernameNote}>
-                Minimum 8 characters with at least one letter, one number, and
-                one special character (! @ # $ % &).
+                Minimum 8 characters with uppercase, lowercase, number, and
+                special character (! @ # $ % &).
               </Text>
+
+              {/* ==================================
+                  CONFIRM PASSWORD
+              ================================== */}
 
               <Text style={styles.label}>Confirm Password *</Text>
 
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm password"
-                placeholderTextColor="#8C939F"
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Confirm password"
+                  placeholderTextColor="#8C939F"
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
 
-                  clearError();
-                }}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!loading}
-              />
+                    clearError();
+                  }}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!loading}
+                />
+
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowConfirmPassword((current) => !current)}
+                  disabled={loading}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showConfirmPassword
+                      ? "Hide confirm password"
+                      : "Show confirm password"
+                  }
+                >
+                  <Image
+                    source={
+                      showConfirmPassword
+                        ? require("../../../../assets/icons/hide.png")
+                        : require("../../../../assets/icons/view.png")
+                    }
+                    style={{
+                      width: 20,
+                      height: 20,
+                    }}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* ==================================
+                  ACCOUNT STATUS
+              ================================== */}
 
               <View style={styles.statusCard}>
                 <View>
@@ -1277,7 +1369,9 @@ export default function AddStudent() {
             </View>
           </View>
 
-          {/* ERROR */}
+          {/* ==================================
+              ERROR
+          ================================== */}
 
           {errorMessage !== "" && (
             <View style={styles.errorBox}>
@@ -1287,7 +1381,9 @@ export default function AddStudent() {
             </View>
           )}
 
-          {/* ACTIONS */}
+          {/* ==================================
+              ACTIONS
+          ================================== */}
 
           <View style={styles.actionRow}>
             <TouchableOpacity

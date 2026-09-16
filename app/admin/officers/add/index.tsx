@@ -61,6 +61,34 @@ function generateSuggestedUsername(firstName: string, lastName: string) {
 }
 
 // ==========================================
+// PASSWORD POLICY
+// ==========================================
+
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return "Password must contain at least 8 characters.";
+  }
+
+  if (!/[a-z]/.test(password)) {
+    return "Password must contain at least one lowercase letter.";
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    return "Password must contain at least one uppercase letter.";
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return "Password must contain at least one number.";
+  }
+
+  if (!/[^A-Za-z0-9\s]/.test(password)) {
+    return "Password must contain at least one special character.";
+  }
+
+  return null;
+}
+
+// ==========================================
 // ADD OFFICER
 // ==========================================
 
@@ -116,7 +144,12 @@ export default function AddOfficer() {
 
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Password and confirmation have their own
+  // independent visibility controls.
+
   const [showPassword, setShowPassword] = useState(false);
+
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [accountActive, setAccountActive] = useState(true);
 
@@ -306,7 +339,9 @@ export default function AddOfficer() {
 
   const showWarning = (
     title: string,
+
     message: string,
+
     redirectRoute: string | null = null,
   ) => {
     setWarningTitle(title);
@@ -333,6 +368,7 @@ export default function AddOfficer() {
         if (!permission.granted) {
           showWarning(
             "Permission Required",
+
             "Please allow SmartFine to access your photos so you can select an officer profile picture.",
           );
 
@@ -360,11 +396,25 @@ export default function AddOfficer() {
         return;
       }
 
+      if (selectedAsset.fileSize && selectedAsset.fileSize > 5 * 1024 * 1024) {
+        showWarning(
+          "Picture Too Large",
+
+          "Profile picture must be 5 MB or smaller.",
+        );
+
+        return;
+      }
+
       setProfilePicture(selectedAsset);
     } catch (error) {
       console.error("Choose officer profile picture error:", error);
 
-      showWarning("Photo Error", "Could not select the profile picture.");
+      showWarning(
+        "Photo Error",
+
+        "Could not select the profile picture.",
+      );
     }
   };
 
@@ -391,7 +441,11 @@ export default function AddOfficer() {
 
     if (Platform.OS === "web") {
       if (profilePicture.file) {
-        formData.append("profilePicture", profilePicture.file);
+        formData.append(
+          "profilePicture",
+
+          profilePicture.file,
+        );
       } else {
         const imageResponse = await fetch(profilePicture.uri);
 
@@ -399,24 +453,35 @@ export default function AddOfficer() {
 
         const extension = getImageExtension(profilePicture);
 
-        formData.append("profilePicture", blob, `officer-profile.${extension}`);
+        formData.append(
+          "profilePicture",
+
+          blob,
+
+          `officer-profile.${extension}`,
+        );
       }
     } else {
       const extension = getImageExtension(profilePicture);
 
       const mimeType = getImageMimeType(profilePicture, extension);
 
-      formData.append("profilePicture", {
-        uri: profilePicture.uri,
+      formData.append(
+        "profilePicture",
 
-        name: profilePicture.fileName || `officer-profile.${extension}`,
+        {
+          uri: profilePicture.uri,
 
-        type: mimeType,
-      } as any);
+          name: profilePicture.fileName || `officer-profile.${extension}`,
+
+          type: mimeType,
+        } as any,
+      );
     }
 
     const response = await fetch(
       `${API_BASE}/api/officers/${officerId}/profile-picture`,
+
       {
         method: "POST",
 
@@ -449,6 +514,10 @@ export default function AddOfficer() {
       return;
     }
 
+    // ======================================
+    // REQUIRED FIELDS
+    // ======================================
+
     if (
       !firstName.trim() ||
       !lastName.trim() ||
@@ -464,17 +533,29 @@ export default function AddOfficer() {
       return;
     }
 
+    // ======================================
+    // FIRST NAME
+    // ======================================
+
     if (firstName.trim().length < 2) {
       setErrorMessage("First Name must contain at least 2 characters.");
 
       return;
     }
 
+    // ======================================
+    // LAST NAME
+    // ======================================
+
     if (lastName.trim().length < 2) {
       setErrorMessage("Last Name must contain at least 2 characters.");
 
       return;
     }
+
+    // ======================================
+    // USERNAME
+    // ======================================
 
     const normalizedUsername = username.trim().toLowerCase();
 
@@ -492,6 +573,10 @@ export default function AddOfficer() {
       return;
     }
 
+    // ======================================
+    // EMAIL
+    // ======================================
+
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(email.trim())) {
@@ -499,6 +584,10 @@ export default function AddOfficer() {
 
       return;
     }
+
+    // ======================================
+    // CONTACT
+    // ======================================
 
     const normalizedContact = contactNumber.trim();
 
@@ -514,37 +603,31 @@ export default function AddOfficer() {
       return;
     }
 
+    // ======================================
+    // ASSIGNED AREA
+    // ======================================
+
     if (assignedArea.trim().length < 2) {
       setErrorMessage("Please enter a valid assigned area.");
 
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("Password must contain at least 8 characters.");
+    // ======================================
+    // PASSWORD POLICY
+    // ======================================
+
+    const passwordError = validatePassword(password);
+
+    if (passwordError) {
+      setErrorMessage(passwordError);
 
       return;
     }
 
-    if (!/[A-Za-z]/.test(password)) {
-      setErrorMessage("Password must contain at least one letter.");
-
-      return;
-    }
-
-    if (!/[0-9]/.test(password)) {
-      setErrorMessage("Password must contain at least one number.");
-
-      return;
-    }
-
-    if (!/[^A-Za-z0-9\s]/.test(password)) {
-      setErrorMessage(
-        "Password must contain at least one special character such as !, @, #, $, %, or &.",
-      );
-
-      return;
-    }
+    // ======================================
+    // CONFIRM PASSWORD
+    // ======================================
 
     if (password !== confirmPassword) {
       setErrorMessage("Password and Confirm Password do not match.");
@@ -552,36 +635,46 @@ export default function AddOfficer() {
       return;
     }
 
+    // ======================================
+    // CREATE ACCOUNT
+    // ======================================
+
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_BASE}/api/officers`, {
-        method: "POST",
+      const response = await fetch(
+        `${API_BASE}/api/officers`,
 
-        headers: {
-          "Content-Type": "application/json",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            username: normalizedUsername,
+
+            firstName: firstName.trim(),
+
+            middleName: middleName.trim(),
+
+            lastName: lastName.trim(),
+
+            email: email.trim().toLowerCase(),
+
+            contactNumber: normalizedContact,
+
+            assignedArea: assignedArea.trim(),
+
+            password,
+
+            confirmPassword,
+
+            accountStatus: accountActive ? "ACTIVE" : "INACTIVE",
+          }),
         },
-
-        body: JSON.stringify({
-          username: normalizedUsername,
-
-          firstName: firstName.trim(),
-
-          middleName: middleName.trim(),
-
-          lastName: lastName.trim(),
-
-          email: email.trim().toLowerCase(),
-
-          contactNumber: normalizedContact,
-
-          assignedArea: assignedArea.trim(),
-
-          password,
-
-          accountStatus: accountActive ? "ACTIVE" : "INACTIVE",
-        }),
-      });
+      );
 
       const data = await response.json();
 
@@ -602,9 +695,9 @@ export default function AddOfficer() {
 
       const createdUsername = data.officer?.username || normalizedUsername;
 
-      // ======================================
+      // ====================================
       // PROFILE PICTURE
-      // ======================================
+      // ====================================
 
       if (
         profilePicture &&
@@ -616,6 +709,7 @@ export default function AddOfficer() {
         } catch (profileError) {
           console.error(
             "Officer was created but profile upload failed:",
+
             profileError,
           );
 
@@ -626,8 +720,11 @@ export default function AddOfficer() {
 
           handlePartialSuccess(
             createdOfficerId,
+
             createdEmployeeNumber,
+
             createdUsername,
+
             profileMessage,
           );
 
@@ -635,13 +732,23 @@ export default function AddOfficer() {
         }
       }
 
-      // ======================================
+      // ====================================
       // SUCCESS
-      // ======================================
+      // ====================================
 
-      handleSuccess(createdOfficerId, createdEmployeeNumber, createdUsername);
+      handleSuccess(
+        createdOfficerId,
+
+        createdEmployeeNumber,
+
+        createdUsername,
+      );
     } catch (error) {
-      console.error("Create officer error:", error);
+      console.error(
+        "Create officer error:",
+
+        error,
+      );
 
       setErrorMessage("Could not connect to the SmartFine server.");
     } finally {
@@ -655,7 +762,9 @@ export default function AddOfficer() {
 
   const handleSuccess = (
     createdOfficerId: number,
+
     createdEmployeeNumber: string,
+
     createdUsername: string,
   ) => {
     const pictureMessage = profilePicture ? "\nProfile Picture: Uploaded" : "";
@@ -684,8 +793,11 @@ export default function AddOfficer() {
 
   const handlePartialSuccess = (
     createdOfficerId: number,
+
     createdEmployeeNumber: string,
+
     createdUsername: string,
+
     profileError: string,
   ) => {
     const message =
@@ -693,14 +805,20 @@ export default function AddOfficer() {
       `Employee Number: ${createdEmployeeNumber}\n` +
       `Username: ${createdUsername}\n\n` +
       `${profileError}\n\n` +
-      `You can add the picture later from Edit Officer.`;
+      `You can add the picture later from Edit Information.`;
 
     const redirectRoute =
       Number.isInteger(createdOfficerId) && createdOfficerId > 0
         ? `/admin/officers/${createdOfficerId}`
         : "/admin/officers";
 
-    showWarning("Officer Created with Warning", message, redirectRoute);
+    showWarning(
+      "Officer Created with Warning",
+
+      message,
+
+      redirectRoute,
+    );
   };
 
   // ==========================================
@@ -789,7 +907,11 @@ export default function AddOfficer() {
 
       setShowLogoutModal(false);
 
-      showWarning("Logout Error", "Could not log out. Please try again.");
+      showWarning(
+        "Logout Error",
+
+        "Could not log out. Please try again.",
+      );
     } finally {
       setLogoutLoading(false);
     }
@@ -801,9 +923,7 @@ export default function AddOfficer() {
 
   return (
     <View style={styles.screen}>
-      {/* ======================================
-          SIDEBAR
-      ====================================== */}
+      {/* SIDEBAR */}
 
       {isTablet && (
         <View style={styles.sidebar}>
@@ -850,9 +970,7 @@ export default function AddOfficer() {
         </View>
       )}
 
-      {/* ======================================
-          MAIN
-      ====================================== */}
+      {/* MAIN */}
 
       <View style={styles.main}>
         <ScrollView
@@ -860,9 +978,7 @@ export default function AddOfficer() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ==================================
-              BACK / PAGE TITLE
-          ================================== */}
+          {/* PAGE HEADER */}
 
           <View
             style={{
@@ -918,7 +1034,7 @@ export default function AddOfficer() {
 
                   fontSize: width < 600 ? 18 : 20,
 
-                  fontWeight: "800",
+                  fontFamily: "Poppins_700Bold",
 
                   flexShrink: 1,
                 }}
@@ -941,9 +1057,7 @@ export default function AddOfficer() {
             </Text>
           </View>
 
-          {/* ==================================
-              MOBILE NAV
-          ================================== */}
+          {/* MOBILE NAV */}
 
           {!isTablet && (
             <ScrollView
@@ -979,14 +1093,10 @@ export default function AddOfficer() {
             </ScrollView>
           )}
 
-          {/* ==================================
-              FORM
-          ================================== */}
+          {/* FORM */}
 
           <View style={styles.formContainer}>
-            {/* ==================================
-                OFFICER INFORMATION
-            ================================== */}
+            {/* OFFICER INFORMATION */}
 
             <View style={styles.formCard}>
               <Text style={styles.cardTitle}>Officer Information</Text>
@@ -1046,7 +1156,7 @@ export default function AddOfficer() {
 
                         fontSize: 30,
 
-                        fontWeight: "800",
+                        fontFamily: "Poppins_700Bold",
                       }}
                     >
                       {getOfficerInitials()}
@@ -1060,7 +1170,7 @@ export default function AddOfficer() {
 
                     fontSize: 13,
 
-                    fontWeight: "700",
+                    fontFamily: "Poppins_600SemiBold",
 
                     marginTop: 12,
                   }}
@@ -1073,6 +1183,8 @@ export default function AddOfficer() {
                     color: "#8C939F",
 
                     fontSize: 10,
+
+                    fontFamily: "Poppins_300Light",
 
                     textAlign: "center",
 
@@ -1122,7 +1234,7 @@ export default function AddOfficer() {
 
                         fontSize: 11,
 
-                        fontWeight: "700",
+                        fontFamily: "Poppins_600SemiBold",
                       }}
                     >
                       {profilePicture ? "Change Picture" : "Choose Picture"}
@@ -1161,7 +1273,7 @@ export default function AddOfficer() {
 
                           fontSize: 11,
 
-                          fontWeight: "700",
+                          fontFamily: "Poppins_600SemiBold",
                         }}
                       >
                         Remove
@@ -1310,9 +1422,7 @@ export default function AddOfficer() {
               />
             </View>
 
-            {/* ==================================
-                ACCOUNT INFORMATION
-            ================================== */}
+            {/* ACCOUNT INFORMATION */}
 
             <View style={styles.formCard}>
               <Text style={styles.cardTitle}>Account Information</Text>
@@ -1345,7 +1455,9 @@ export default function AddOfficer() {
                 change it before creating the account.
               </Text>
 
-              {/* PASSWORD */}
+              {/* ==================================
+                  PASSWORD
+              ================================== */}
 
               <Text style={styles.label}>Enter Password *</Text>
 
@@ -1368,39 +1480,85 @@ export default function AddOfficer() {
 
                 <TouchableOpacity
                   style={styles.passwordToggle}
-                  onPress={() => setShowPassword(!showPassword)}
+                  onPress={() => setShowPassword((current) => !current)}
                   disabled={loading}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showPassword ? "Hide password" : "Show password"
+                  }
                 >
-                  <Text style={styles.passwordToggleText}>
-                    {showPassword ? "Hide" : "Show"}
-                  </Text>
+                  <Image
+                    source={
+                      showPassword
+                        ? require("../../../../assets/icons/hide.png")
+                        : require("../../../../assets/icons/view.png")
+                    }
+                    style={{
+                      width: 20,
+
+                      height: 20,
+                    }}
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.helperText}>
-                Minimum 8 characters with at least one letter, one number, and
-                one special character.
+                Minimum 8 characters with uppercase, lowercase, number, and
+                special character (! @ # $ % &).
               </Text>
 
-              {/* CONFIRM PASSWORD */}
+              {/* ==================================
+                  CONFIRM PASSWORD
+              ================================== */}
 
               <Text style={styles.label}>Confirm Password *</Text>
 
-              <TextInput
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={(text) => {
-                  setConfirmPassword(text);
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
 
-                  clearError();
-                }}
-                placeholder="Confirm password"
-                placeholderTextColor="#8C939F"
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!loading}
-              />
+                    clearError();
+                  }}
+                  placeholder="Confirm password"
+                  placeholderTextColor="#8C939F"
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!loading}
+                />
+
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowConfirmPassword((current) => !current)}
+                  disabled={loading}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showConfirmPassword
+                      ? "Hide confirm password"
+                      : "Show confirm password"
+                  }
+                >
+                  <Image
+                    source={
+                      showConfirmPassword
+                        ? require("../../../../assets/icons/hide.png")
+                        : require("../../../../assets/icons/view.png")
+                    }
+                    style={{
+                      width: 20,
+
+                      height: 20,
+                    }}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
 
               {/* STATUS */}
 
@@ -1451,9 +1609,7 @@ export default function AddOfficer() {
             </View>
           </View>
 
-          {/* ==================================
-              ERROR
-          ================================== */}
+          {/* ERROR */}
 
           {errorMessage !== "" && (
             <View style={styles.errorBox}>
@@ -1463,9 +1619,7 @@ export default function AddOfficer() {
             </View>
           )}
 
-          {/* ==================================
-              ACTIONS
-          ================================== */}
+          {/* ACTIONS */}
 
           <View style={styles.actionRow}>
             <TouchableOpacity
@@ -1498,9 +1652,7 @@ export default function AddOfficer() {
         </ScrollView>
       </View>
 
-      {/* ======================================
-          SUCCESS MODAL
-      ====================================== */}
+      {/* SUCCESS MODAL */}
 
       <SuccessModal
         visible={showSuccessModal}
@@ -1510,9 +1662,7 @@ export default function AddOfficer() {
         onClose={handleSuccessModalClose}
       />
 
-      {/* ======================================
-          WARNING MODAL
-      ====================================== */}
+      {/* WARNING MODAL */}
 
       <WarningModal
         visible={showWarningModal}
@@ -1522,9 +1672,7 @@ export default function AddOfficer() {
         onClose={handleWarningModalClose}
       />
 
-      {/* ======================================
-          LOGOUT MODAL
-      ====================================== */}
+      {/* LOGOUT MODAL */}
 
       <LogoutModal
         visible={showLogoutModal}
@@ -1570,6 +1718,7 @@ function getImageExtension(asset: ImagePicker.ImagePickerAsset) {
 
 function getImageMimeType(
   asset: ImagePicker.ImagePickerAsset,
+
   extension: string,
 ) {
   if (asset.mimeType) {

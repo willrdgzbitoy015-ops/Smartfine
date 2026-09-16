@@ -2,6 +2,7 @@ import { File as ExpoFile } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { fetch as expoFetch } from "expo/fetch";
 import { useCallback, useRef, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +15,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useOfficerPhotoStyles } from "../../../hooks/officer-photo.styles";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -22,11 +22,18 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import LogoutModal from "@/components/logout-modal";
+import SuccessModal from "@/components/success-modal";
+
 import { API_BASE } from "@/constants/api";
 import { useAuth } from "@/hooks/use-auth";
+
 import { useResponsiveStyles } from "./profile.styles";
 
-type Page = "profile" | "edit" | "password" | "about";
+// ==========================================
+// TYPES
+// ==========================================
+
+type Page = "profile" | "edit" | "password" | "about" | "privacy";
 
 type Officer = {
   id: number;
@@ -48,12 +55,31 @@ type ResponseBody = {
   user?: Officer;
 };
 
+type MenuIcon = "user" | "padlock" | "policy";
+
+// ==========================================
+// ICONS
+// ==========================================
+
 const icons = {
   user: require("../../../assets/icons/user.png"),
+
   padlock: require("../../../assets/icons/padlock.png"),
+
+  policy: require("../../../assets/icons/policy-icon.png"),
+
   back: require("../../../assets/icons/back_icon.png"),
+
   arrow: require("../../../assets/icons/arrow.png"),
+
+  view: require("../../../assets/icons/view.png"),
+
+  hide: require("../../../assets/icons/hide.png"),
 };
+
+// ==========================================
+// BOTTOM NAVIGATION
+// ==========================================
 
 const navigation = [
   {
@@ -61,21 +87,25 @@ const navigation = [
     icon: require("../../../assets/icons/dashboard.png"),
     route: "/officer/dashboard",
   },
+
   {
     label: "Students",
     icon: require("../../../assets/icons/students.png"),
     route: "/officer/student",
   },
+
   {
     label: "Scan",
     icon: require("../../../assets/icons/qr-codeWhite.png"),
     route: "/officer/qr-scanner",
   },
+
   {
     label: "Profile",
     icon: icons.user,
     route: "/officer/profile",
   },
+
   {
     label: "Records",
     icon: require("../../../assets/icons/reports.png"),
@@ -83,8 +113,14 @@ const navigation = [
   },
 ];
 
+// ==========================================
+// PROFILE IMAGE URL
+// ==========================================
+
 function imageUrl(uri: string | null) {
-  if (!uri) return null;
+  if (!uri) {
+    return null;
+  }
 
   if (/^https?:\/\//i.test(uri)) {
     return uri;
@@ -92,6 +128,38 @@ function imageUrl(uri: string | null) {
 
   return `${API_BASE.replace(/\/+$/, "")}/${uri.replace(/^\/+/, "")}`;
 }
+
+// ==========================================
+// PASSWORD VALIDATION
+// ==========================================
+
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return "New password must contain at least 8 characters.";
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    return "New password must contain at least one uppercase letter.";
+  }
+
+  if (!/[a-z]/.test(password)) {
+    return "New password must contain at least one lowercase letter.";
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return "New password must contain at least one number.";
+  }
+
+  if (!/[^A-Za-z0-9\s]/.test(password)) {
+    return "New password must contain at least one special character.";
+  }
+
+  return null;
+}
+
+// ==========================================
+// PROFILE API REQUEST
+// ==========================================
 
 async function profileRequest(
   path: string,
@@ -109,18 +177,33 @@ async function profileRequest(
     `${API_BASE.replace(/\/+$/, "")}/api/officer-profile${path}`,
     {
       method,
+
       signal,
+
       headers: {
         Accept: "application/json",
+
         Authorization: `Bearer ${token}`,
+
         "ngrok-skip-browser-warning": "true",
-        ...(data ? { "Content-Type": "application/json" } : {}),
+
+        ...(data
+          ? {
+              "Content-Type": "application/json",
+            }
+          : {}),
       },
-      ...(data ? { body: JSON.stringify(data) } : {}),
+
+      ...(data
+        ? {
+            body: JSON.stringify(data),
+          }
+        : {}),
     },
   );
 
   const raw = await response.text();
+
   let body: ResponseBody;
 
   try {
@@ -138,69 +221,135 @@ async function profileRequest(
   return body;
 }
 
+// ==========================================
+// OFFICER PROFILE
+// ==========================================
+
 export default function OfficerProfile() {
   const styles = useResponsiveStyles();
-  const photoStyles = useOfficerPhotoStyles();
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const photoLock = useRef(false);
-  const [photoMessage, setPhotoMessage] = useState("");
+
   const router = useRouter();
+
   const { logout } = useAuth();
 
+  // ==========================================
+  // PAGE
+  // ==========================================
+
   const [page, setPage] = useState<Page>("profile");
-  const [passwordReturn, setPasswordReturn] = useState<Page>("profile");
+
+  // ==========================================
+  // OFFICER DATA
+  // ==========================================
 
   const [officer, setOfficer] = useState<Officer | null>(null);
+
   const [draft, setDraft] = useState<Officer | null>(null);
+
   const [fullNameInput, setFullNameInput] = useState("");
 
+  // ==========================================
+  // SCREEN STATE
+  // ==========================================
+
   const [loading, setLoading] = useState(true);
+
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
+
   const [reload, setReload] = useState(0);
+
   const [imageFailed, setImageFailed] = useState(false);
 
-  const [logoutVisible, setLogoutVisible] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const logoutLock = useRef(false);
+  // ==========================================
+  // PROFILE PHOTO
+  // ==========================================
+
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const photoLock = useRef(false);
+
+  const [photoMessage, setPhotoMessage] = useState("");
+
+  // ==========================================
+  // PASSWORD
+  // ==========================================
 
   const [currentPassword, setCurrentPassword] = useState("");
+
   const [newPassword, setNewPassword] = useState("");
+
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPasswords, setShowPasswords] = useState(false);
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // ==========================================
+  // PASSWORD SUCCESS
+  // ==========================================
+
+  const [passwordSuccessVisible, setPasswordSuccessVisible] = useState(false);
+
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
+  const [logoutVisible, setLogoutVisible] = useState(false);
+
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const logoutLock = useRef(false);
 
   const busy = saving || loggingOut || uploadingPhoto;
+
+  // ==========================================
+  // LOAD PROFILE
+  // ==========================================
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
+
       let timedOut = false;
 
       const controller = new AbortController();
 
       setLoading(true);
+
       setError("");
 
       const timeout = setTimeout(() => {
         timedOut = true;
+
         controller.abort();
       }, 15000);
 
       void profileRequest("/me", "GET", undefined, controller.signal)
         .then((body) => {
-          if (!active) return;
+          if (!active) {
+            return;
+          }
 
           if (!body.user) {
             throw new Error("The server returned no profile.");
           }
 
           setOfficer(body.user);
+
           setDraft(body.user);
+
           setFullNameInput(body.user.fullName);
+
           setImageFailed(false);
         })
         .catch((caught) => {
-          if (!active) return;
+          if (!active) {
+            return;
+          }
 
           setError(
             timedOut
@@ -220,65 +369,113 @@ export default function OfficerProfile() {
 
       return () => {
         active = false;
+
         clearTimeout(timeout);
+
         controller.abort();
       };
     }, [reload]),
   );
 
+  // ==========================================
+  // CLEAR PASSWORDS
+  // ==========================================
+
   const clearPasswords = () => {
     setCurrentPassword("");
+
     setNewPassword("");
+
     setConfirmPassword("");
-    setShowPasswords(false);
+
+    setShowCurrentPassword(false);
+
+    setShowNewPassword(false);
+
+    setShowConfirmPassword(false);
   };
 
-  const openPassword = () => {
-    if (busy) return;
-
-    setPasswordReturn(page);
-    clearPasswords();
-    setError("");
-    setPage("password");
-  };
+  // ==========================================
+  // BACK
+  // ==========================================
 
   const goBack = () => {
-    if (busy) return;
+    if (busy) {
+      return;
+    }
 
     setError("");
 
     if (page === "profile") {
       router.replace("/officer/dashboard" as any);
-    } else if (page === "password") {
-      clearPasswords();
-      setPage(passwordReturn);
-    } else {
-      setPage("profile");
+
+      return;
     }
+
+    if (page === "password") {
+      clearPasswords();
+    }
+
+    setPage("profile");
   };
+
+  // ==========================================
+  // OPEN PASSWORD
+  // ==========================================
+
+  const openPassword = () => {
+    if (busy) {
+      return;
+    }
+
+    clearPasswords();
+
+    setError("");
+
+    setPage("password");
+  };
+
+  // ==========================================
+  // EDIT FIELD
+  // ==========================================
 
   const editField = (
     key: "email" | "username" | "contactNumber",
     value: string,
   ) => {
     setDraft((previous) =>
-      previous ? { ...previous, [key]: value } : previous,
+      previous
+        ? {
+            ...previous,
+            [key]: value,
+          }
+        : previous,
     );
+
+    setError("");
   };
 
+  // ==========================================
+  // SAVE PROFILE
+  // ==========================================
+
   const saveProfile = async () => {
-    if (!draft || busy) return;
+    if (!draft || busy) {
+      return;
+    }
 
     const normalizedName = fullNameInput.trim().replace(/\s+/g, " ");
+
     const originalName = [draft.firstName, draft.middleName, draft.lastName]
       .filter(Boolean)
       .join(" ")
       .trim()
       .replace(/\s+/g, " ");
 
-    // Preserve the stored name parts when the full name is unchanged.
     let firstName = draft.firstName;
+
     let middleName = draft.middleName;
+
     let lastName = draft.lastName;
 
     if (normalizedName !== originalName) {
@@ -286,18 +483,23 @@ export default function OfficerProfile() {
 
       if (nameParts.length < 2) {
         setError("Please enter both your first name and last name.");
+
         return;
       }
 
       firstName = nameParts[0];
+
       lastName = nameParts[nameParts.length - 1];
+
       middleName = nameParts.slice(1, -1).join(" ");
     }
 
     setSaving(true);
+
     setError("");
 
     const controller = new AbortController();
+
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
@@ -306,10 +508,15 @@ export default function OfficerProfile() {
         "PUT",
         {
           firstName,
+
           middleName,
+
           lastName,
+
           username: draft.username,
+
           email: draft.email,
+
           contactNumber: draft.contactNumber,
         },
         controller.signal,
@@ -320,19 +527,14 @@ export default function OfficerProfile() {
       }
 
       setOfficer(body.user);
+
       setDraft(body.user);
+
       setFullNameInput(body.user.fullName);
+
       setPage("profile");
 
-      try {
-        await AsyncStorage.setItem("userEmail", body.user.email);
-      } catch {
-        Alert.alert(
-          "Profile saved",
-          "Your profile was saved, but local session information could not be refreshed. Please log out and log in again.",
-        );
-        return;
-      }
+      await AsyncStorage.setItem("userEmail", body.user.email);
 
       Alert.alert("Success", "Your profile has been updated.");
     } catch (caught) {
@@ -345,32 +547,46 @@ export default function OfficerProfile() {
       );
     } finally {
       clearTimeout(timeout);
+
       setSaving(false);
     }
   };
 
-  const savePassword = async () => {
-    if (busy) return;
+  // ==========================================
+  // SAVE PASSWORD
+  // ==========================================
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("Please complete all password fields.");
+  const savePassword = async () => {
+    if (busy) {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError("New password must contain at least 8 characters.");
+    setError("");
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError("Please complete all password fields.");
+
+      return;
+    }
+
+    const passwordError = validatePassword(newPassword);
+
+    if (passwordError) {
+      setError(passwordError);
+
       return;
     }
 
     if (newPassword !== confirmPassword) {
       setError("New password and confirmation do not match.");
+
       return;
     }
 
     setSaving(true);
-    setError("");
 
     const controller = new AbortController();
+
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
@@ -386,9 +602,10 @@ export default function OfficerProfile() {
       );
 
       clearPasswords();
-      setPage(passwordReturn);
 
-      Alert.alert("Success", "Your password has been changed.");
+      setError("");
+
+      setPasswordSuccessVisible(true);
     } catch (caught) {
       setError(
         controller.signal.aborted
@@ -399,78 +616,90 @@ export default function OfficerProfile() {
       );
     } finally {
       clearTimeout(timeout);
+
       setSaving(false);
     }
   };
 
-  const handleLogout = () => {
-    if (busy) return;
-    setLogoutVisible(true);
+  // ==========================================
+  // PASSWORD SUCCESS
+  // ==========================================
+
+  const handlePasswordSuccessClose = () => {
+    setPasswordSuccessVisible(false);
+
+    clearPasswords();
+
+    setError("");
+
+    setPage("profile");
   };
 
-  const confirmLogout = async () => {
-    if (saving || photoLock.current || logoutLock.current) return;
-
-    logoutLock.current = true;
-    setLoggingOut(true);
-
-    try {
-      await logout();
-
-      clearPasswords();
-      setLogoutVisible(false);
-
-      router.replace("/" as any);
-    } catch {
-      setLogoutVisible(false);
-
-      Alert.alert(
-        "Logout failed",
-        "Unable to clear your session. Please try again.",
-      );
-    } finally {
-      logoutLock.current = false;
-      setLoggingOut(false);
-    }
-  };
+  // ==========================================
+  // PROFILE PHOTO
+  // ==========================================
 
   const choosePhoto = async () => {
-    if (busy || photoLock.current) return;
+    if (busy || photoLock.current) {
+      return;
+    }
+
     photoLock.current = true;
+
     setUploadingPhoto(true);
+
     setPhotoMessage("");
+
     setError("");
+
     let timeout: ReturnType<typeof setTimeout> | undefined;
+
     const controller = new AbortController();
+
     try {
       if (Platform.OS !== "web") {
         const permission =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
+
         if (!permission.granted) {
           throw new Error(
             "Please allow photo access in your phone settings to change your picture.",
           );
         }
       }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
+
         allowsEditing: true,
+
         aspect: [1, 1],
+
         quality: 0.85,
       });
-      if (result.canceled || !result.assets?.length) return;
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
       const asset = result.assets[0];
+
       if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
         throw new Error("Profile picture must be 5 MB or smaller.");
       }
+
       const token = await AsyncStorage.getItem("token");
-      if (!token)
+
+      if (!token) {
         throw new Error("Your session is missing. Please log in again.");
+      }
+
       const extension = (asset.fileName || asset.uri)
         .split(/[?#]/)[0]
         .split(".")
         .pop()
         ?.toLowerCase();
+
       const mime =
         asset.mimeType ||
         (extension === "png"
@@ -478,102 +707,156 @@ export default function OfficerProfile() {
           : extension === "webp"
             ? "image/webp"
             : "image/jpeg");
-      if (
-        !["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(mime)
-      ) {
-        throw new Error("Please select a JPG, PNG, or WEBP photo.");
-      }
-      const name = `officer-photo.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"}`;
+
+      const name = `officer-photo.${
+        mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg"
+      }`;
+
       const form = new FormData();
+
       timeout = setTimeout(() => controller.abort(), 30000);
+
       if (Platform.OS === "web") {
         let blob: Blob | undefined = asset.file;
+
         if (!blob) {
           const imageResponse = await fetch(asset.uri, {
             signal: controller.signal,
           });
-          if (!imageResponse.ok) {
-            throw new Error(
-              "Unable to read the selected photo. Please select it again.",
-            );
-          }
+
           blob = await imageResponse.blob();
         }
+
         if (!blob) {
-          throw new Error(
-            "The selected photo could not be read. Please select it again.",
-          );
+          throw new Error("The selected photo could not be read.");
         }
-        if (blob.size > 5 * 1024 * 1024)
-          throw new Error("Profile picture must be 5 MB or smaller.");
+
         form.append("profilePicture", blob, name);
       } else {
         const file = new ExpoFile(asset.uri);
+
         if (!file.exists || file.size === 0) {
-          throw new Error(
-            "The selected photo could not be read. Please select it again.",
-          );
+          throw new Error("The selected photo could not be read.");
         }
-        if (file.size > 5 * 1024 * 1024) {
-          throw new Error("Profile picture must be 5 MB or smaller.");
-        }
+
         form.append("profilePicture", file, name);
       }
+
       const uploadFetch = Platform.OS === "web" ? fetch : expoFetch;
+
       const response = await uploadFetch(
-        `${API_BASE.replace(/\/+$/, "")}/api/officer-profile/me/profile-picture`,
+        `${API_BASE.replace(
+          /\/+$/,
+          "",
+        )}/api/officer-profile/me/profile-picture`,
         {
           method: "POST",
+
           signal: controller.signal,
+
           headers: {
             Accept: "application/json",
+
             Authorization: `Bearer ${token}`,
+
             "ngrok-skip-browser-warning": "true",
           },
+
           body: form,
         },
       );
+
       const raw = await response.text();
-      let body: {
-        success?: boolean;
-        message?: string;
-        profilePictureUri?: string;
-      };
-      try {
-        body = JSON.parse(raw);
-      } catch {
-        throw new Error(
-          `Unexpected server response (HTTP ${response.status}). Check your API connection.`,
-        );
-      }
+
+      const body = JSON.parse(raw);
+
       if (!response.ok || !body.success || !body.profilePictureUri) {
         throw new Error(
           body.message || "Unable to upload your profile picture.",
         );
       }
+
       const uri = body.profilePictureUri;
+
       setOfficer((previous) =>
-        previous ? { ...previous, profilePictureUri: uri } : previous,
+        previous
+          ? {
+              ...previous,
+              profilePictureUri: uri,
+            }
+          : previous,
       );
+
       setDraft((previous) =>
-        previous ? { ...previous, profilePictureUri: uri } : previous,
+        previous
+          ? {
+              ...previous,
+              profilePictureUri: uri,
+            }
+          : previous,
       );
+
       setImageFailed(false);
+
       setPhotoMessage("Profile picture saved.");
     } catch (caught) {
       setError(
         controller.signal.aborted
-          ? "Upload timed out. Reopen Profile to check whether the photo saved before retrying."
+          ? "Upload timed out. Please try again."
           : caught instanceof Error
             ? caught.message
             : "Unable to change your profile picture.",
       );
     } finally {
-      if (timeout) clearTimeout(timeout);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+
       photoLock.current = false;
+
       setUploadingPhoto(false);
     }
   };
+
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
+  const handleLogout = () => {
+    if (busy) {
+      return;
+    }
+
+    setLogoutVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    if (loggingOut || logoutLock.current) {
+      return;
+    }
+
+    logoutLock.current = true;
+
+    setLoggingOut(true);
+
+    try {
+      await logout();
+
+      setLogoutVisible(false);
+
+      router.replace("/login" as any);
+    } catch {
+      Alert.alert("Logout failed", "Unable to log out. Please try again.");
+    } finally {
+      logoutLock.current = false;
+
+      setLoggingOut(false);
+    }
+  };
+
+  // ==========================================
+  // AVATAR
+  // ==========================================
 
   const avatar = imageUrl(officer?.profilePictureUri || null);
 
@@ -588,7 +871,10 @@ export default function OfficerProfile() {
         <Image
           source={{
             uri: avatar,
-            headers: { "ngrok-skip-browser-warning": "true" },
+
+            headers: {
+              "ngrok-skip-browser-warning": "true",
+            },
           }}
           style={styles.avatarImage}
           onError={() => setImageFailed(true)}
@@ -601,16 +887,16 @@ export default function OfficerProfile() {
     </View>
   );
 
-  const menuButton = (
-    label: string,
-    icon: "user" | "padlock",
-    onPress: () => void,
-  ) => (
+  // ==========================================
+  // MENU BUTTON
+  // ==========================================
+
+  const menuButton = (label: string, icon: MenuIcon, onPress: () => void) => (
     <TouchableOpacity
       style={styles.menuButton}
       onPress={onPress}
       disabled={busy}
-      accessibilityRole="button"
+      activeOpacity={0.7}
     >
       <Image
         source={icons[icon]}
@@ -628,37 +914,100 @@ export default function OfficerProfile() {
     </TouchableOpacity>
   );
 
+  // ==========================================
+  // PASSWORD FIELD
+  // ==========================================
+
+  const passwordInput = (
+    label: string,
+    value: string,
+    update: (value: string) => void,
+    visible: boolean,
+    toggleVisible: () => void,
+  ) => (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+
+      <View style={styles.passwordInputContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          value={value}
+          onChangeText={(text) => {
+            update(text);
+
+            setError("");
+          }}
+          placeholder={
+            label === "Current Password"
+              ? "Enter current password"
+              : label === "New Password"
+                ? "Enter new password"
+                : "Re-enter new password"
+          }
+          placeholderTextColor="#8C939F"
+          secureTextEntry={!visible}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!busy}
+        />
+
+        <TouchableOpacity
+          style={styles.passwordToggle}
+          onPress={toggleVisible}
+          disabled={busy}
+        >
+          <Image
+            source={visible ? icons.hide : icons.view}
+            style={styles.passwordIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // ==========================================
+  // PAGE TITLE
+  // ==========================================
+
   const title = {
     profile: "My Profile",
+
     edit: "Edit Profile",
+
     password: "Change Password",
+
     about: "About SmartFine",
+
+    privacy: "Privacy Policy",
   }[page];
+
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
 
       <View style={styles.phone}>
+        {/* HEADER */}
+
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={goBack}
             disabled={busy}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
           >
-            <Image
-              source={icons.back}
-              style={styles.backIcon}
-              resizeMode="contain"
-            />
+            <Image source={icons.back} style={styles.backIcon} />
           </TouchableOpacity>
 
           <Text style={styles.title}>{title}</Text>
 
           <View style={styles.headerSpacer} />
         </View>
+
+        {/* CONTENT */}
 
         <KeyboardAvoidingView
           style={styles.flex}
@@ -677,23 +1026,26 @@ export default function OfficerProfile() {
               </View>
             ) : (
               <>
+                {/* ERROR */}
+
                 {!!error && (
                   <View style={styles.errorPanel}>
-                    <Text style={styles.errorText} accessibilityRole="alert">
-                      {error}
-                    </Text>
+                    <Text style={styles.errorText}>{error}</Text>
 
                     {page === "profile" && (
                       <TouchableOpacity
                         style={styles.retry}
                         onPress={() => setReload((value) => value + 1)}
-                        disabled={busy}
                       >
                         <Text style={styles.link}>Retry</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                 )}
+
+                {/* ==================================
+                    PROFILE
+                ================================== */}
 
                 {officer && page === "profile" && (
                   <>
@@ -727,9 +1079,14 @@ export default function OfficerProfile() {
 
                     <View style={styles.menu}>
                       {menuButton("Edit Personal Information", "user", () => {
-                        setDraft({ ...officer });
+                        setDraft({
+                          ...officer,
+                        });
+
                         setFullNameInput(officer.fullName);
+
                         setError("");
+
                         setPage("edit");
                       })}
 
@@ -737,14 +1094,20 @@ export default function OfficerProfile() {
 
                       {menuButton("About SmartFine", "user", () => {
                         setError("");
+
                         setPage("about");
+                      })}
+
+                      {menuButton("Privacy Policy", "policy", () => {
+                        setError("");
+
+                        setPage("privacy");
                       })}
 
                       <TouchableOpacity
                         style={[styles.primaryButton, busy && styles.disabled]}
                         onPress={handleLogout}
                         disabled={busy}
-                        accessibilityRole="button"
                       >
                         <Text style={styles.primaryText}>
                           {loggingOut ? "Logging out…" : "Logout"}
@@ -754,44 +1117,62 @@ export default function OfficerProfile() {
                   </>
                 )}
 
+                {/* ==================================
+                    EDIT PROFILE
+                ================================== */}
+
                 {page === "edit" && draft && (
                   <>
                     <View style={styles.photoArea}>
-                      <View style={photoStyles.photoWrapper}>
+                      <View>
                         {renderAvatar(true)}
+
                         <TouchableOpacity
-                          style={[
-                            photoStyles.photoButton,
-                            busy && styles.disabled,
-                          ]}
+                          style={{
+                            position: "absolute",
+
+                            right: 0,
+
+                            bottom: 0,
+
+                            width: 38,
+
+                            height: 38,
+
+                            borderRadius: 19,
+
+                            backgroundColor: "#FFFFFF",
+
+                            borderWidth: 1,
+
+                            borderColor: "#123266",
+
+                            alignItems: "center",
+
+                            justifyContent: "center",
+                          }}
                           onPress={() => void choosePhoto()}
                           disabled={busy}
-                          accessibilityRole="button"
-                          accessibilityLabel="Change profile picture"
-                          accessibilityState={{
-                            disabled: busy,
-                            busy: uploadingPhoto,
-                          }}
                         >
                           {uploadingPhoto ? (
                             <ActivityIndicator size="small" color="#123266" />
                           ) : (
                             <Image
                               source={require("../../../assets/icons/edit-image.png")}
-                              style={photoStyles.photoIcon}
+                              style={{
+                                width: 20,
+
+                                height: 20,
+                              }}
+                              resizeMode="contain"
                             />
                           )}
                         </TouchableOpacity>
                       </View>
-                      <Text
-                        style={photoStyles.photoHint}
-                        accessibilityLiveRegion="polite"
-                      >
-                        {uploadingPhoto
-                          ? "Selecting or uploading photo…"
-                          : photoMessage ||
-                            "Tap the photo button to change your picture. Photos save immediately. JPG, PNG or WEBP • Up to 5 MB."}
-                      </Text>
+
+                      {!!photoMessage && (
+                        <Text style={styles.helper}>{photoMessage}</Text>
+                      )}
                     </View>
 
                     <View style={styles.field}>
@@ -802,18 +1183,19 @@ export default function OfficerProfile() {
                         value={fullNameInput}
                         onChangeText={(value) => {
                           setFullNameInput(value);
+
                           setError("");
                         }}
                         editable={!busy}
-                        autoCorrect={false}
-                        autoCapitalize="words"
                       />
                     </View>
 
                     {(
                       [
                         ["email", "Email"],
+
                         ["username", "Username"],
+
                         ["contactNumber", "Contact Number"],
                       ] as const
                     ).map(([key, label]) => (
@@ -825,7 +1207,6 @@ export default function OfficerProfile() {
                           value={draft[key]}
                           onChangeText={(value) => editField(key, value)}
                           editable={!busy}
-                          autoCorrect={false}
                           autoCapitalize="none"
                           keyboardType={
                             key === "email"
@@ -838,94 +1219,90 @@ export default function OfficerProfile() {
                       </View>
                     ))}
 
-                    {menuButton("Change Password", "padlock", openPassword)}
-
                     <TouchableOpacity
                       style={[styles.primaryButton, busy && styles.disabled]}
                       onPress={() => void saveProfile()}
                       disabled={busy}
-                      accessibilityRole="button"
                     >
-                      <Text style={styles.primaryText}>
-                        {saving ? "Saving…" : "Save Changes"}
-                      </Text>
+                      {saving ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.primaryText}>Save Changes</Text>
+                      )}
                     </TouchableOpacity>
                   </>
                 )}
+
+                {/* ==================================
+                    CHANGE PASSWORD
+                ================================== */}
 
                 {page === "password" && (
                   <View style={styles.passwordPage}>
                     <View>
                       <Text style={styles.passwordHelp}>
                         Enter your current password, then choose a new password
-                        with at least 8 characters.
+                        with at least 8 characters, uppercase, lowercase,
+                        number, and special character.
                       </Text>
 
-                      {[
-                        {
-                          label: "Current Password",
-                          value: currentPassword,
-                          update: setCurrentPassword,
-                        },
-                        {
-                          label: "New Password",
-                          value: newPassword,
-                          update: setNewPassword,
-                        },
-                        {
-                          label: "Confirm New Password",
-                          value: confirmPassword,
-                          update: setConfirmPassword,
-                        },
-                      ].map((field) => (
-                        <View key={field.label} style={styles.field}>
-                          <Text style={styles.label}>{field.label}</Text>
+                      {passwordInput(
+                        "Current Password",
+                        currentPassword,
+                        setCurrentPassword,
+                        showCurrentPassword,
+                        () => setShowCurrentPassword((current) => !current),
+                      )}
 
-                          <TextInput
-                            style={styles.input}
-                            value={field.value}
-                            onChangeText={field.update}
-                            secureTextEntry={!showPasswords}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            editable={!busy}
-                          />
-                        </View>
-                      ))}
+                      {passwordInput(
+                        "New Password",
+                        newPassword,
+                        setNewPassword,
+                        showNewPassword,
+                        () => setShowNewPassword((current) => !current),
+                      )}
 
-                      <TouchableOpacity
-                        style={styles.showPassword}
-                        onPress={() => setShowPasswords((value) => !value)}
-                        disabled={busy}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.link}>
-                          {showPasswords ? "Hide passwords" : "Show passwords"}
-                        </Text>
-                      </TouchableOpacity>
+                      {passwordInput(
+                        "Confirm New Password",
+                        confirmPassword,
+                        setConfirmPassword,
+                        showConfirmPassword,
+                        () => setShowConfirmPassword((current) => !current),
+                      )}
                     </View>
 
                     <TouchableOpacity
                       style={[
                         styles.primaryButton,
+
                         styles.saveButton,
+
                         busy && styles.disabled,
                       ]}
                       onPress={() => void savePassword()}
                       disabled={busy}
-                      accessibilityRole="button"
                     >
-                      <Text style={styles.primaryText}>
-                        {saving ? "Updating…" : "Update Password"}
-                      </Text>
+                      {saving ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.primaryText}>Update Password</Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 )}
 
+                {/* ==================================
+                    ABOUT SMARTFINE
+                ================================== */}
+
                 {page === "about" && (
                   <>
-                    <View style={styles.logoPlaceholder}>
-                      <Text style={styles.logoText}>SmartFine</Text>
+                    <View style={styles.aboutLogoArea}>
+                      <Image
+                        source={require("../../../assets/branding/smartfine-logo.png")}
+                        style={styles.aboutLogo}
+                        resizeMode="contain"
+                      />
                     </View>
 
                     <View style={styles.sectionHeading}>
@@ -935,11 +1312,11 @@ export default function OfficerProfile() {
                     <View style={styles.aboutCard}>
                       <Text style={styles.aboutText}>
                         SmartFine is a mobile application designed to help
-                        schools manage student fines digitally. Students can
-                        view their fines and access their QR code. Fines
-                        officers can identify students, record fines, and view
-                        payment status, while administrators manage fine records
-                        and update payment status.
+                        schools manage student fines digitally. It allows
+                        students to monitor their fines, receive notifications,
+                        make secure payments, and access their QR code, while
+                        enabling administrators to record and manage fines
+                        efficiently.
                       </Text>
                     </View>
 
@@ -947,13 +1324,108 @@ export default function OfficerProfile() {
                       <Text style={styles.sectionTitle}>Developed By</Text>
                     </View>
 
+                    <View style={styles.developerCard}>
+                      <Image
+                        source={require("../../../assets/branding/programmer.jpg")}
+                        style={styles.developerPhoto}
+                        resizeMode="cover"
+                      />
+
+                      <View style={styles.developerInfo}>
+                        <Text style={styles.developerName}>Will R. Bitoy</Text>
+
+                        <Text style={styles.developerContact}>
+                          REMOVED
+                        </Text>
+
+                        <Text style={styles.developerContact}>
+                          Email: REMOVED
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                )}
+
+                {/* ==================================
+                    PRIVACY POLICY
+                ================================== */}
+
+                {page === "privacy" && (
+                  <>
+                    <View style={styles.sectionHeading}>
+                      <Text style={styles.sectionTitle}>
+                        SmartFine Privacy Policy
+                      </Text>
+                    </View>
+
                     <View style={styles.aboutCard}>
-                      <Text style={styles.developerName}>Will R. Bitoy</Text>
-
-                      <Text style={styles.aboutText}>REMOVED</Text>
-
                       <Text style={styles.aboutText}>
-                        Email: REMOVED
+                        SmartFine respects the privacy of its users. This policy
+                        explains how information is used and handled within the
+                        system.
+                      </Text>
+                    </View>
+
+                    <View style={styles.sectionHeading}>
+                      <Text style={styles.sectionTitle}>
+                        Information We Collect
+                      </Text>
+                    </View>
+
+                    <View style={styles.aboutCard}>
+                      <Text style={styles.aboutText}>
+                        SmartFine stores account information such as names,
+                        usernames, email addresses, contact numbers, profile
+                        pictures, and assigned user roles.
+                      </Text>
+                    </View>
+
+                    <View style={styles.sectionHeading}>
+                      <Text style={styles.sectionTitle}>
+                        Student and Fine Records
+                      </Text>
+                    </View>
+
+                    <View style={styles.aboutCard}>
+                      <Text style={styles.aboutText}>
+                        SmartFine stores student identification information,
+                        violation information, fine records, and payment status
+                        needed to manage student fines.
+                      </Text>
+                    </View>
+
+                    <View style={styles.sectionHeading}>
+                      <Text style={styles.sectionTitle}>Account Security</Text>
+                    </View>
+
+                    <View style={styles.aboutCard}>
+                      <Text style={styles.aboutText}>
+                        Passwords are protected using secure password hashing.
+                        Users should keep their login credentials private and
+                        should not share their passwords.
+                      </Text>
+                    </View>
+
+                    <View style={styles.sectionHeading}>
+                      <Text style={styles.sectionTitle}>Data Access</Text>
+                    </View>
+
+                    <View style={styles.aboutCard}>
+                      <Text style={styles.aboutText}>
+                        Information and system functions are available according
+                        to each user's assigned SmartFine role.
+                      </Text>
+                    </View>
+
+                    <View style={styles.sectionHeading}>
+                      <Text style={styles.sectionTitle}>Data Retention</Text>
+                    </View>
+
+                    <View style={styles.aboutCard}>
+                      <Text style={styles.aboutText}>
+                        Historical records may be retained when necessary to
+                        preserve account, fine, payment, and transaction
+                        history.
                       </Text>
                     </View>
                   </>
@@ -963,6 +1435,10 @@ export default function OfficerProfile() {
           </ScrollView>
         </KeyboardAvoidingView>
 
+        {/* ==================================
+            BOTTOM NAVIGATION
+        ================================== */}
+
         <SafeAreaView edges={["bottom"]} style={styles.bottomArea}>
           <View style={styles.bottomNavigation}>
             {navigation.map((item) => (
@@ -970,14 +1446,12 @@ export default function OfficerProfile() {
                 key={item.label}
                 style={styles.navItem}
                 disabled={busy}
-                accessibilityRole="button"
-                accessibilityState={{
-                  selected: item.label === "Profile",
-                }}
                 onPress={() => {
                   if (item.label === "Profile") {
                     setPage("profile");
+
                     setError("");
+
                     clearPasswords();
                   } else {
                     router.replace(item.route as any);
@@ -991,6 +1465,7 @@ export default function OfficerProfile() {
                 <View
                   style={[
                     styles.activeIndicator,
+
                     item.label !== "Profile" && styles.hiddenIndicator,
                   ]}
                 />
@@ -999,6 +1474,22 @@ export default function OfficerProfile() {
           </View>
         </SafeAreaView>
       </View>
+
+      {/* ======================================
+          PASSWORD SUCCESS MODAL
+      ====================================== */}
+
+      <SuccessModal
+        visible={passwordSuccessVisible}
+        title="Password Updated"
+        message="Your password has been updated successfully."
+        buttonText="OK"
+        onClose={handlePasswordSuccessClose}
+      />
+
+      {/* ======================================
+          LOGOUT MODAL
+      ====================================== */}
 
       <LogoutModal
         visible={logoutVisible}

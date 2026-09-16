@@ -30,47 +30,28 @@ import { styles } from "./student-profile.styles";
 
 type Student = {
   id: number;
-
   student_id: string;
-
   username: string;
-
   first_name: string;
-
   middle_name: string | null;
-
   last_name: string;
-
   full_name: string;
-
   email: string | null;
-
   contact_number: string | null;
-
   grade_level: string | null;
-
   section: string | null;
-
   account_status: string;
-
   profile_picture_uri: string | null;
 };
 
 type Fine = {
   id: number;
-
   fine_reference?: string;
-
   violation_name: string;
-
   amount: number;
-
   issued_at: string;
-
   created_at: string | null;
-
   status: string;
-
   officer_name: string;
 };
 
@@ -81,9 +62,7 @@ type StudentProfileResponse = {
 
   totals: {
     totalFines: number;
-
     outstandingBalance: number;
-
     totalPaid: number;
   };
 
@@ -127,7 +106,13 @@ export default function StudentProfile() {
 
   const [profileImageFailed, setProfileImageFailed] = useState(false);
 
+  // QR
   const [qrVisible, setQrVisible] = useState(false);
+
+  // FINE INFORMATION MODAL
+  const [selectedFine, setSelectedFine] = useState<Fine | null>(null);
+
+  const [fineModalVisible, setFineModalVisible] = useState(false);
 
   // ==========================================
   // NAVIGATION
@@ -136,57 +121,43 @@ export default function StudentProfile() {
   const navItems = [
     {
       label: "Dashboard",
-
       route: "/admin/dashboard",
-
       icon: require("../../../../assets/icons/dashboard.png"),
     },
 
     {
       label: "Students",
-
       route: "/admin/students",
-
       icon: require("../../../../assets/icons/students.png"),
     },
 
     {
       label: "Fines",
-
       route: "/admin/fines",
-
       icon: require("../../../../assets/icons/fines.png"),
     },
 
     {
       label: "QR Scanner",
-
       route: "/admin/qr-scanner",
-
       icon: require("../../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
       label: "Reports",
-
       route: "/admin/reports",
-
       icon: require("../../../../assets/icons/reports.png"),
     },
 
     {
       label: "Settings",
-
       route: "/admin/settings",
-
       icon: require("../../../../assets/icons/settings.png"),
     },
 
     {
       label: "Officers",
-
       route: "/admin/officers",
-
       icon: require("../../../../assets/icons/officers.png"),
     },
   ];
@@ -200,7 +171,7 @@ export default function StudentProfile() {
       return;
     }
 
-    loadStudent();
+    void loadStudent();
   }, [studentId]);
 
   const loadStudent = async () => {
@@ -258,7 +229,7 @@ export default function StudentProfile() {
   };
 
   // ==========================================
-  // EDIT
+  // EDIT STUDENT
   // ==========================================
 
   const handleEdit = () => {
@@ -286,10 +257,32 @@ export default function StudentProfile() {
   };
 
   // ==========================================
-  // OPEN FINE
+  // FINE INFORMATION MODAL
   // ==========================================
 
-  const handleFinePress = (fineId: number) => {
+  const handleFinePress = (fine: Fine) => {
+    setSelectedFine(fine);
+
+    setFineModalVisible(true);
+  };
+
+  const handleCloseFineModal = () => {
+    setFineModalVisible(false);
+
+    setSelectedFine(null);
+  };
+
+  const handleManageFine = () => {
+    if (!selectedFine) {
+      return;
+    }
+
+    const fineId = selectedFine.id;
+
+    setFineModalVisible(false);
+
+    setSelectedFine(null);
+
     router.push(`/admin/fines/${fineId}` as any);
   };
 
@@ -312,7 +305,7 @@ export default function StudentProfile() {
       const confirmed = window.confirm("Are you sure you want to log out?");
 
       if (confirmed) {
-        performLogout();
+        void performLogout();
       }
 
       return;
@@ -326,16 +319,13 @@ export default function StudentProfile() {
       [
         {
           text: "Cancel",
-
           style: "cancel",
         },
 
         {
           text: "Log Out",
-
           style: "destructive",
-
-          onPress: performLogout,
+          onPress: () => void performLogout(),
         },
       ],
     );
@@ -369,7 +359,10 @@ export default function StudentProfile() {
         <View style={styles.centerState}>
           <Text style={styles.errorText}>{error || "Student not found."}</Text>
 
-          <TouchableOpacity style={styles.retryButton} onPress={loadStudent}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => void loadStudent()}
+          >
             <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -407,6 +400,16 @@ export default function StudentProfile() {
     // ======================================
 
     const qrValue = `SMARTFINE_STUDENT:${student.student_id}`;
+
+    // ======================================
+    // SELECTED FINE STATUS
+    // ======================================
+
+    const selectedFineStatus = String(selectedFine?.status || "").toUpperCase();
+
+    const selectedFinePaid = selectedFineStatus === "PAID";
+
+    const selectedFineCancelled = selectedFineStatus === "CANCELLED";
 
     return (
       <>
@@ -614,8 +617,10 @@ export default function StudentProfile() {
                     <TouchableOpacity
                       key={fine.id}
                       style={styles.historyRow}
-                      activeOpacity={0.7}
-                      onPress={() => handleFinePress(fine.id)}
+                      activeOpacity={0.65}
+                      onPress={() => handleFinePress(fine)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`View ${fine.violation_name} fine information`}
                     >
                       <Text
                         style={[
@@ -677,6 +682,164 @@ export default function StudentProfile() {
             </View>
           </ScrollView>
         </View>
+
+        {/* ==================================
+            FINE INFORMATION MODAL
+        ================================== */}
+
+        <Modal
+          visible={fineModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleCloseFineModal}
+        >
+          <View style={styles.modalOverlay}>
+            <Pressable
+              style={styles.modalBackdrop}
+              onPress={handleCloseFineModal}
+            />
+
+            <View
+              style={[styles.fineModal, isCompact && styles.fineModalCompact]}
+            >
+              {/* HEADER */}
+
+              <View style={styles.fineModalHeader}>
+                <View style={styles.fineModalTitleArea}>
+                  <Text style={styles.fineModalTitle}>
+                    Fine Information
+                    {selectedFine?.fine_reference
+                      ? ` #${selectedFine.fine_reference}`
+                      : ""}
+                  </Text>
+
+                  <Text style={styles.fineModalSubtitle}>
+                    Student fine record details
+                  </Text>
+                </View>
+
+                {selectedFine && (
+                  <View
+                    style={[
+                      styles.statusBadge,
+
+                      selectedFinePaid ? styles.paidBadge : styles.unpaidBadge,
+
+                      selectedFineCancelled && styles.cancelledBadge,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+
+                        selectedFinePaid
+                          ? styles.paidBadgeText
+                          : styles.unpaidBadgeText,
+
+                        selectedFineCancelled && styles.cancelledBadgeText,
+                      ]}
+                    >
+                      {formatFineStatus(selectedFineStatus)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* DIVIDER */}
+
+              <View style={styles.fineModalDivider} />
+
+              {/* DETAILS */}
+
+              {selectedFine && (
+                <ScrollView
+                  style={styles.fineModalScroll}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.fineDetailRows}>
+                    <View style={styles.fineDetailRow}>
+                      <Text style={styles.fineDetailLabel}>Student</Text>
+
+                      <Text style={styles.fineDetailValue}>
+                        {student.full_name} ({student.student_id})
+                      </Text>
+                    </View>
+
+                    <View style={styles.fineDetailRow}>
+                      <Text style={styles.fineDetailLabel}>
+                        Grade / Section
+                      </Text>
+
+                      <Text style={styles.fineDetailValue}>{gradeSection}</Text>
+                    </View>
+
+                    <View style={styles.fineDetailRow}>
+                      <Text style={styles.fineDetailLabel}>Violation Type</Text>
+
+                      <Text style={styles.fineDetailValue}>
+                        {selectedFine.violation_name}
+                      </Text>
+                    </View>
+
+                    <View style={styles.fineDetailRow}>
+                      <Text style={styles.fineDetailLabel}>Amount</Text>
+
+                      <Text style={styles.fineDetailAmount}>
+                        ₱{Number(selectedFine.amount || 0).toFixed(2)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.fineDetailRow}>
+                      <Text style={styles.fineDetailLabel}>Date Issued</Text>
+
+                      <Text style={styles.fineDetailValue}>
+                        {formatRecordedDate(
+                          selectedFine.created_at || selectedFine.issued_at,
+                        )}
+                      </Text>
+                    </View>
+
+                    <View style={styles.fineDetailRow}>
+                      <Text style={styles.fineDetailLabel}>Issued By</Text>
+
+                      <Text style={styles.fineDetailValue}>
+                        {selectedFine.officer_name || "Unknown"}
+                      </Text>
+                    </View>
+
+                    <View style={styles.fineDetailRow}>
+                      <Text style={styles.fineDetailLabel}>Status</Text>
+
+                      <Text style={styles.fineDetailValue}>
+                        {formatFineStatus(selectedFineStatus)}
+                      </Text>
+                    </View>
+                  </View>
+                </ScrollView>
+              )}
+
+              {/* ACTIONS */}
+
+              <View style={styles.fineModalActions}>
+                <TouchableOpacity
+                  style={styles.fineCloseButton}
+                  onPress={handleCloseFineModal}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.fineCloseButtonText}>Close</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.fineManageButton}
+                  onPress={handleManageFine}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.fineManageButtonText}>Manage Fine</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* ==================================
             QR MODAL
@@ -747,7 +910,9 @@ export default function StudentProfile() {
               <View style={styles.qrNoteBox}>
                 <Text style={styles.qrNoteTitle}>SmartFine Student QR</Text>
 
-                <Text style={styles.qrNoteText}></Text>
+                <Text style={styles.qrNoteText}>
+                  Use this QR code to identify this student within SmartFine.
+                </Text>
               </View>
 
               {/* CLOSE */}
@@ -936,10 +1101,10 @@ function formatRecordedDate(value: string) {
   // It represents UTC time.
   // Adding "Z" allows JavaScript to convert it
   // correctly to the device/browser local time.
+
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(trimmedValue)) {
     normalized = `${trimmedValue.replace(" ", "T")}Z`;
   } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedValue)) {
-    // Fallback for older date-only values.
     normalized = `${trimmedValue}T00:00:00`;
   }
 
@@ -951,15 +1116,10 @@ function formatRecordedDate(value: string) {
 
   return date.toLocaleString("en-US", {
     month: "short",
-
     day: "numeric",
-
     year: "numeric",
-
     hour: "numeric",
-
     minute: "2-digit",
-
     hour12: true,
   });
 }

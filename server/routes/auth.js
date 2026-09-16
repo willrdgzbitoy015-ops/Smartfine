@@ -18,11 +18,8 @@ const JWT_SECRET = "REMOVED";
 // ==========================================
 
 const PASSWORD_RESET_CODE_EXPIRY_MINUTES = 10;
-
 const PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 10;
-
 const PASSWORD_RESET_RESEND_SECONDS = 60;
-
 const MAX_PASSWORD_RESET_ATTEMPTS = 5;
 
 // Temporary password reset challenges.
@@ -55,20 +52,81 @@ if (!fs.existsSync(adminProfileDirectory)) {
 // LOGIN SECURITY SETTINGS
 // ==========================================
 
-const MAX_LOGIN_ATTEMPTS = 5;
+// Requirement:
+// Account locks after 3 unsuccessful
+// password attempts.
+const MAX_LOGIN_ATTEMPTS = 3;
 
 // Lockout progression:
 // 1st lock = 3 minutes
 // 2nd lock = 5 minutes
 // 3rd lock = 15 minutes
 // 4th+ lock = 30 minutes
-
 const LOCKOUT_DURATIONS = [3, 5, 15, 30];
 
 function getLockoutMinutes(lockoutCount) {
   const index = Math.min(lockoutCount, LOCKOUT_DURATIONS.length - 1);
 
   return LOCKOUT_DURATIONS[index];
+}
+
+// ==========================================
+// PASSWORD POLICY VALIDATION
+//
+// Requirements:
+// - Minimum 8 characters
+// - At least 1 lowercase letter
+// - At least 1 uppercase letter
+// - At least 1 number
+// - At least 1 special character
+// ==========================================
+
+function validatePasswordPolicy(password) {
+  const value = String(password || "");
+
+  if (value.length < 8) {
+    return {
+      valid: false,
+      code: "PASSWORD_TOO_SHORT",
+      message: "Password must contain at least 8 characters.",
+    };
+  }
+
+  if (!/[a-z]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_LOWERCASE_REQUIRED",
+      message: "Password must contain at least one lowercase letter.",
+    };
+  }
+
+  if (!/[A-Z]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_UPPERCASE_REQUIRED",
+      message: "Password must contain at least one uppercase letter.",
+    };
+  }
+
+  if (!/[0-9]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_NUMBER_REQUIRED",
+      message: "Password must contain at least one number.",
+    };
+  }
+
+  if (!/[^A-Za-z0-9\s]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
+      message: "Password must contain at least one special character.",
+    };
+  }
+
+  return {
+    valid: true,
+  };
 }
 
 // ==========================================
@@ -149,10 +207,9 @@ function maskEmail(email) {
 // FIND USER FOR PASSWORD RESET
 //
 // Supports:
-//
-// Username
-// Student Number
-// Officer Employee Number
+// - Username
+// - Student Number
+// - Officer Employee Number
 // ==========================================
 
 function findPasswordResetUser(identifier) {
@@ -165,34 +222,22 @@ function findPasswordResetUser(identifier) {
         u.id,
         u.username,
         u.student_number,
-
         u.first_name,
         u.middle_name,
         u.last_name,
-
         u.email,
-
         u.password_hash,
-
         u.role,
-
         u.account_status,
-
         fo.employee_number
 
       FROM users u
 
       LEFT JOIN fines_officers fo
-        ON
-          fo.user_id =
-          u.id
+        ON fo.user_id = u.id
 
       WHERE
-
-        LOWER(
-          u.username
-        ) =
-        LOWER(?)
+        LOWER(u.username) = LOWER(?)
 
         OR
 
@@ -201,8 +246,7 @@ function findPasswordResetUser(identifier) {
             u.student_number,
             ''
           )
-        ) =
-        LOWER(?)
+        ) = LOWER(?)
 
         OR
 
@@ -211,11 +255,10 @@ function findPasswordResetUser(identifier) {
             fo.employee_number,
             ''
           )
-        ) =
-        LOWER(?)
+        ) = LOWER(?)
 
       LIMIT 1
-    `,
+      `,
     )
     .get(normalized, normalized, normalized);
 }
@@ -240,7 +283,6 @@ function createPasswordResetTransporter() {
 
     auth: {
       user: emailUser,
-
       pass: emailPassword,
     },
   });
@@ -285,66 +327,65 @@ async function sendPasswordResetCode(user, verificationCode) {
       `SmartFine`,
 
     html: `
-        <div
+      <div
+        style="
+          font-family: Arial, sans-serif;
+          max-width: 520px;
+          margin: auto;
+          color: #123266;
+        "
+      >
+        <h2
           style="
-            font-family: Arial, sans-serif;
-            max-width: 520px;
-            margin: auto;
-            color: #123266;
+            color: #173A73;
+            margin-bottom: 20px;
           "
         >
-          <h2
-            style="
-              color: #173A73;
-              margin-bottom: 20px;
-            "
-          >
-            SmartFine
-          </h2>
+          SmartFine
+        </h2>
 
-          <p>
-            Hello
-            ${fullName || user.username},
-          </p>
+        <p>
+          Hello ${fullName || user.username},
+        </p>
 
-          <p>
-            Use the verification code below
-            to reset your SmartFine password.
-          </p>
+        <p>
+          Use the verification code below
+          to reset your SmartFine password.
+        </p>
 
-          <div
-            style="
-              margin: 24px 0;
-              padding: 18px;
-              background: #F1F4F8;
-              border-radius: 8px;
-              text-align: center;
-              font-size: 32px;
-              font-weight: bold;
-              letter-spacing: 8px;
-              color: #173A73;
-            "
-          >
-            ${verificationCode}
-          </div>
-
-          <p>
-            This verification code expires
-            in ${PASSWORD_RESET_CODE_EXPIRY_MINUTES}
-            minutes.
-          </p>
-
-          <p>
-            If you did not request a password
-            reset, you can safely ignore this
-            email.
-          </p>
-
-          <p>
-            SmartFine
-          </p>
+        <div
+          style="
+            margin: 24px 0;
+            padding: 18px;
+            background: #F1F4F8;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: #173A73;
+          "
+        >
+          ${verificationCode}
         </div>
-      `,
+
+        <p>
+          This verification code expires
+          in ${PASSWORD_RESET_CODE_EXPIRY_MINUTES}
+          minutes.
+        </p>
+
+        <p>
+          If you did not request a password
+          reset, you can safely ignore this
+          email.
+        </p>
+
+        <p>
+          SmartFine
+        </p>
+      </div>
+    `,
   });
 }
 
@@ -359,7 +400,9 @@ function authenticateToken(req, res, next) {
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
+
         code: "AUTH_REQUIRED",
+
         message: "Authentication is required.",
       });
     }
@@ -374,7 +417,9 @@ function authenticateToken(req, res, next) {
   } catch (error) {
     return res.status(401).json({
       success: false,
+
       code: "INVALID_TOKEN",
+
       message: "Your session is invalid or has expired.",
     });
   }
@@ -390,7 +435,9 @@ function requireAdmin(req, res, next) {
   if (role !== "ADMIN") {
     return res.status(403).json({
       success: false,
+
       code: "ADMIN_REQUIRED",
+
       message: "Administrator access is required.",
     });
   }
@@ -420,10 +467,13 @@ function getCurrentUser(userId) {
         profile_picture_uri,
         created_at,
         updated_at
+
       FROM users
+
       WHERE id = ?
+
       LIMIT 1
-    `,
+      `,
     )
     .get(userId);
 }
@@ -586,25 +636,42 @@ function uploadProfilePicture(req, res, next) {
 
 // ==========================================
 // LOGIN ROUTE
+//
+// POST /api/auth/login
+//
+// Lockout:
+// 3 unsuccessful attempts trigger lockout.
 // ==========================================
 
-router.post("/login", async (req, res) => {
-  try {
-    const { username, password } = req.body;
+router.post(
+  "/login",
 
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
+  async (req, res) => {
+    try {
+      const { username, password } = req.body;
 
-        code: "MISSING_CREDENTIALS",
+      // ====================================
+      // REQUIRED CREDENTIALS
+      // ====================================
 
-        message: "Username and password are required.",
-      });
-    }
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
 
-    const normalizedUsername = String(username).trim();
+          code: "MISSING_CREDENTIALS",
 
-    const statement = db.prepare(`
+          message: "Username and password are required.",
+        });
+      }
+
+      const normalizedUsername = String(username).trim();
+
+      // ====================================
+      // FIND ACCOUNT
+      // ====================================
+
+      const statement = db.prepare(
+        `
           SELECT
             id,
             username,
@@ -621,241 +688,297 @@ router.post("/login", async (req, res) => {
             failed_login_attempts,
             locked_until,
             lockout_count
+
           FROM users
+
           WHERE username = ?
-        `);
+          `,
+      );
 
-    const user = statement.get(normalizedUsername);
+      const user = statement.get(normalizedUsername);
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-
-        code: "INVALID_CREDENTIALS",
-
-        message: "Invalid username or password.",
-      });
-    }
-
-    const accountStatus = String(user.account_status || "").toUpperCase();
-
-    if (accountStatus === "DEACTIVATED") {
-      return res.status(403).json({
-        success: false,
-
-        code: "ACCOUNT_DEACTIVATED",
-
-        message:
-          "This account has been deactivated. Please contact the SmartFine administrator.",
-      });
-    }
-
-    if (accountStatus !== "ACTIVE") {
-      return res.status(403).json({
-        success: false,
-
-        code: "ACCOUNT_UNAVAILABLE",
-
-        message:
-          "This account is currently unavailable. Please contact the SmartFine administrator.",
-      });
-    }
-
-    if (user.locked_until) {
-      const lockedUntilTime = new Date(user.locked_until).getTime();
-
-      const currentTime = Date.now();
-
-      if (!Number.isNaN(lockedUntilTime) && lockedUntilTime > currentTime) {
-        const remainingMilliseconds = lockedUntilTime - currentTime;
-
-        const remainingSeconds = Math.max(
-          1,
-          Math.ceil(remainingMilliseconds / 1000),
-        );
-
-        const remainingMinutes = Math.max(
-          1,
-          Math.ceil(remainingMilliseconds / 60000),
-        );
-
-        return res.status(423).json({
+      if (!user) {
+        return res.status(401).json({
           success: false,
 
-          code: "ACCOUNT_LOCKED",
+          code: "INVALID_CREDENTIALS",
 
-          message:
-            `This account is temporarily locked. ` +
-            `Please try again in approximately ${remainingMinutes} minute(s).`,
-
-          locked: true,
-
-          retryAfterSeconds: remainingSeconds,
-
-          retryAfterMinutes: remainingMinutes,
-
-          lockedUntil: user.locked_until,
+          message: "Invalid username or password.",
         });
       }
 
-      db.prepare(
-        `
-          UPDATE users
-          SET
-            locked_until = NULL,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `,
-      ).run(user.id);
-    }
+      // ====================================
+      // ACCOUNT STATUS
+      // ====================================
 
-    const passwordMatches = await bcrypt.compare(password, user.password_hash);
+      const accountStatus = String(user.account_status || "").toUpperCase();
 
-    if (!passwordMatches) {
-      const currentAttempts = Number(user.failed_login_attempts) || 0;
+      if (accountStatus === "DEACTIVATED") {
+        return res.status(403).json({
+          success: false,
 
-      const newAttempts = currentAttempts + 1;
+          code: "ACCOUNT_DEACTIVATED",
 
-      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
-        const currentLockoutCount = Number(user.lockout_count) || 0;
+          message:
+            "This account has been deactivated. Please contact the SmartFine administrator.",
+        });
+      }
 
-        const lockoutMinutes = getLockoutMinutes(currentLockoutCount);
+      if (accountStatus !== "ACTIVE") {
+        return res.status(403).json({
+          success: false,
 
-        const newLockoutCount = currentLockoutCount + 1;
+          code: "ACCOUNT_UNAVAILABLE",
 
-        const lockedUntil = new Date(
-          Date.now() + lockoutMinutes * 60 * 1000,
-        ).toISOString();
+          message:
+            "This account is currently unavailable. Please contact the SmartFine administrator.",
+        });
+      }
+
+      // ====================================
+      // CHECK CURRENT LOCKOUT
+      // ====================================
+
+      if (user.locked_until) {
+        const lockedUntilTime = new Date(user.locked_until).getTime();
+
+        const currentTime = Date.now();
+
+        if (!Number.isNaN(lockedUntilTime) && lockedUntilTime > currentTime) {
+          const remainingMilliseconds = lockedUntilTime - currentTime;
+
+          const remainingSeconds = Math.max(
+            1,
+            Math.ceil(remainingMilliseconds / 1000),
+          );
+
+          const remainingMinutes = Math.max(
+            1,
+            Math.ceil(remainingMilliseconds / 60000),
+          );
+
+          return res.status(423).json({
+            success: false,
+
+            code: "ACCOUNT_LOCKED",
+
+            message:
+              `This account is temporarily locked. ` +
+              `Please try again in approximately ${remainingMinutes} minute(s).`,
+
+            locked: true,
+
+            retryAfterSeconds: remainingSeconds,
+
+            retryAfterMinutes: remainingMinutes,
+
+            lockedUntil: user.locked_until,
+          });
+        }
+
+        // Lockout period expired.
 
         db.prepare(
           `
+          UPDATE users
+
+          SET
+            locked_until = NULL,
+            updated_at = CURRENT_TIMESTAMP
+
+          WHERE id = ?
+          `,
+        ).run(user.id);
+      }
+
+      // ====================================
+      // CHECK PASSWORD
+      // ====================================
+
+      const passwordMatches = await bcrypt.compare(
+        password,
+        user.password_hash,
+      );
+
+      // ====================================
+      // WRONG PASSWORD
+      // ====================================
+
+      if (!passwordMatches) {
+        const currentAttempts = Number(user.failed_login_attempts) || 0;
+
+        const newAttempts = currentAttempts + 1;
+
+        // ==================================
+        // LOCK AFTER 3RD FAILED ATTEMPT
+        // ==================================
+
+        if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+          const currentLockoutCount = Number(user.lockout_count) || 0;
+
+          const lockoutMinutes = getLockoutMinutes(currentLockoutCount);
+
+          const newLockoutCount = currentLockoutCount + 1;
+
+          const lockedUntil = new Date(
+            Date.now() + lockoutMinutes * 60 * 1000,
+          ).toISOString();
+
+          db.prepare(
+            `
             UPDATE users
+
             SET
               failed_login_attempts = 0,
               locked_until = ?,
               lockout_count = ?,
               updated_at = CURRENT_TIMESTAMP
+
             WHERE id = ?
-          `,
-        ).run(lockedUntil, newLockoutCount, user.id);
+            `,
+          ).run(lockedUntil, newLockoutCount, user.id);
 
-        console.log(
-          `Account ${user.username} locked for ${lockoutMinutes} minute(s). Lockout count: ${newLockoutCount}`,
-        );
+          console.log(
+            `Account ${user.username} locked for ${lockoutMinutes} minute(s). Lockout count: ${newLockoutCount}`,
+          );
 
-        return res.status(423).json({
-          success: false,
+          return res.status(423).json({
+            success: false,
 
-          code: "ACCOUNT_LOCKED",
+            code: "ACCOUNT_LOCKED",
 
-          message:
-            `Too many failed login attempts. ` +
-            `Your account has been temporarily locked for ${lockoutMinutes} minute(s).`,
+            message:
+              `Too many failed login attempts. ` +
+              `Your account has been temporarily locked for ${lockoutMinutes} minute(s).`,
 
-          locked: true,
+            locked: true,
 
-          lockoutMinutes,
+            lockoutMinutes,
 
-          lockoutCount: newLockoutCount,
+            lockoutCount: newLockoutCount,
 
-          lockedUntil,
-        });
-      }
+            lockedUntil,
+          });
+        }
 
-      db.prepare(
-        `
+        // ==================================
+        // SAVE FAILED ATTEMPTS
+        // ==================================
+
+        db.prepare(
+          `
           UPDATE users
+
           SET
             failed_login_attempts = ?,
             updated_at = CURRENT_TIMESTAMP
+
           WHERE id = ?
-        `,
-      ).run(newAttempts, user.id);
+          `,
+        ).run(newAttempts, user.id);
 
-      const attemptsRemaining = MAX_LOGIN_ATTEMPTS - newAttempts;
+        const attemptsRemaining = MAX_LOGIN_ATTEMPTS - newAttempts;
 
-      console.log(
-        `Failed login for ${user.username}. ${attemptsRemaining} attempt(s) remaining.`,
-      );
+        console.log(
+          `Failed login for ${user.username}. ${attemptsRemaining} attempt(s) remaining.`,
+        );
 
-      return res.status(401).json({
-        success: false,
+        return res.status(401).json({
+          success: false,
 
-        code: "INVALID_CREDENTIALS",
+          code: "INVALID_CREDENTIALS",
 
-        message: "Invalid username or password.",
+          message: "Invalid username or password.",
 
-        attemptsRemaining,
-      });
-    }
+          attemptsRemaining,
+        });
+      }
 
-    db.prepare(
-      `
+      // ====================================
+      // SUCCESSFUL LOGIN
+      //
+      // Clear previous failed attempts and
+      // lockout history.
+      // ====================================
+
+      db.prepare(
+        `
         UPDATE users
+
         SET
           failed_login_attempts = 0,
           locked_until = NULL,
           lockout_count = 0,
           updated_at = CURRENT_TIMESTAMP
+
         WHERE id = ?
-      `,
-    ).run(user.id);
+        `,
+      ).run(user.id);
 
-    const token = jwt.sign(
-      {
-        userId: user.id,
+      // ====================================
+      // TOKEN
+      // ====================================
 
-        username: user.username,
+      const token = jwt.sign(
+        {
+          userId: user.id,
 
-        role: user.role,
-      },
+          username: user.username,
 
-      JWT_SECRET,
+          role: user.role,
+        },
 
-      {
-        expiresIn: "8h",
-      },
-    );
+        JWT_SECRET,
 
-    return res.json({
-      success: true,
+        {
+          expiresIn: "8h",
+        },
+      );
 
-      message: "Login successful.",
+      // ====================================
+      // LOGIN SUCCESS
+      // ====================================
 
-      token,
+      return res.json({
+        success: true,
 
-      user: {
-        id: user.id,
+        message: "Login successful.",
 
-        username: user.username,
+        token,
 
-        firstName: user.first_name,
+        user: {
+          id: user.id,
 
-        middleName: user.middle_name,
+          username: user.username,
 
-        lastName: user.last_name,
+          firstName: user.first_name,
 
-        email: user.email,
+          middleName: user.middle_name,
 
-        contactNumber: user.contact_number,
+          lastName: user.last_name,
 
-        profilePictureUri: user.profile_picture_uri,
+          email: user.email,
 
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
+          contactNumber: user.contact_number,
 
-    return res.status(500).json({
-      success: false,
+          profilePictureUri: user.profile_picture_uri,
 
-      code: "SERVER_ERROR",
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error("Login error:", error);
 
-      message: "Internal server error.",
-    });
-  }
-});
+      return res.status(500).json({
+        success: false,
+
+        code: "SERVER_ERROR",
+
+        message: "Internal server error.",
+      });
+    }
+  },
+);
 
 // ==========================================
 // REQUEST PASSWORD RESET CODE
@@ -1031,19 +1154,19 @@ router.post(
       const user = db
         .prepare(
           `
-            SELECT
-              id,
-              username,
-              first_name,
-              middle_name,
-              last_name,
-              email
+          SELECT
+            id,
+            username,
+            first_name,
+            middle_name,
+            last_name,
+            email
 
-            FROM users
+          FROM users
 
-            WHERE id = ?
+          WHERE id = ?
 
-            LIMIT 1
+          LIMIT 1
           `,
         )
         .get(challenge.userId);
@@ -1239,6 +1362,14 @@ router.post(
 // RESET PASSWORD
 //
 // POST /api/auth/forgot-password/reset
+//
+// Password requirements:
+// - Minimum 8 characters
+// - Lowercase
+// - Uppercase
+// - Number
+// - Special character
+// - Confirmation must match
 // ==========================================
 
 router.post(
@@ -1255,6 +1386,10 @@ router.post(
       const newPassword = String(req.body.newPassword || "");
 
       const confirmPassword = String(req.body.confirmPassword || "");
+
+      // ====================================
+      // RESET AUTHORIZATION
+      // ====================================
 
       if (!challengeId || !resetToken) {
         return res.status(400).json({
@@ -1303,6 +1438,10 @@ router.post(
         });
       }
 
+      // ====================================
+      // REQUIRED PASSWORD FIELDS
+      // ====================================
+
       if (!newPassword || !confirmPassword) {
         return res.status(400).json({
           success: false,
@@ -1312,6 +1451,10 @@ router.post(
           message: "New password and confirmation are required.",
         });
       }
+
+      // ====================================
+      // CONFIRM PASSWORD
+      // ====================================
 
       if (newPassword !== confirmPassword) {
         return res.status(400).json({
@@ -1323,58 +1466,38 @@ router.post(
         });
       }
 
-      if (newPassword.length < 8) {
+      // ====================================
+      // PASSWORD POLICY
+      // ====================================
+
+      const passwordValidation = validatePasswordPolicy(newPassword);
+
+      if (!passwordValidation.valid) {
         return res.status(400).json({
           success: false,
 
-          code: "PASSWORD_TOO_SHORT",
+          code: passwordValidation.code,
 
-          message: "Password must contain at least 8 characters.",
+          message: passwordValidation.message,
         });
       }
 
-      if (!/[A-Za-z]/.test(newPassword)) {
-        return res.status(400).json({
-          success: false,
-
-          code: "PASSWORD_LETTER_REQUIRED",
-
-          message: "Password must contain at least one letter.",
-        });
-      }
-
-      if (!/[0-9]/.test(newPassword)) {
-        return res.status(400).json({
-          success: false,
-
-          code: "PASSWORD_NUMBER_REQUIRED",
-
-          message: "Password must contain at least one number.",
-        });
-      }
-
-      if (!/[^A-Za-z0-9\s]/.test(newPassword)) {
-        return res.status(400).json({
-          success: false,
-
-          code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
-
-          message: "Password must contain at least one special character.",
-        });
-      }
+      // ====================================
+      // FIND USER
+      // ====================================
 
       const user = db
         .prepare(
           `
-            SELECT
-              id,
-              password_hash
+          SELECT
+            id,
+            password_hash
 
-            FROM users
+          FROM users
 
-            WHERE id = ?
+          WHERE id = ?
 
-            LIMIT 1
+          LIMIT 1
           `,
         )
         .get(challenge.userId);
@@ -1390,6 +1513,10 @@ router.post(
           message: "The SmartFine account could not be found.",
         });
       }
+
+      // ====================================
+      // PREVENT SAME PASSWORD
+      // ====================================
 
       const samePassword = await bcrypt.compare(
         newPassword,
@@ -1407,25 +1534,24 @@ router.post(
         });
       }
 
+      // ====================================
+      // HASH AND SAVE PASSWORD
+      // ====================================
+
       const passwordHash = await bcrypt.hash(newPassword, 10);
 
       db.prepare(
         `
-          UPDATE users
+        UPDATE users
 
-          SET
-            password_hash = ?,
+        SET
+          password_hash = ?,
+          failed_login_attempts = 0,
+          locked_until = NULL,
+          lockout_count = 0,
+          updated_at = CURRENT_TIMESTAMP
 
-            failed_login_attempts = 0,
-
-            locked_until = NULL,
-
-            lockout_count = 0,
-
-            updated_at =
-              CURRENT_TIMESTAMP
-
-          WHERE id = ?
+        WHERE id = ?
         `,
       ).run(passwordHash, user.id);
 
@@ -1533,6 +1659,10 @@ router.put(
         req.body.contactNumber ?? currentUser.contact_number ?? "",
       ).trim();
 
+      // ====================================
+      // USERNAME
+      // ====================================
+
       if (!username) {
         return res.status(400).json({
           success: false,
@@ -1542,6 +1672,10 @@ router.put(
           message: "Username is required.",
         });
       }
+
+      // ====================================
+      // EMAIL
+      // ====================================
 
       if (!email) {
         return res.status(400).json({
@@ -1553,15 +1687,25 @@ router.put(
         });
       }
 
+      // ====================================
+      // DUPLICATE USERNAME
+      // ====================================
+
       const usernameOwner = db
         .prepare(
           `
-          SELECT id
+          SELECT
+            id
+
           FROM users
-          WHERE LOWER(username) = LOWER(?)
+
+          WHERE
+            LOWER(username) = LOWER(?)
+
             AND id <> ?
+
           LIMIT 1
-        `,
+          `,
         )
         .get(username, userId);
 
@@ -1575,15 +1719,25 @@ router.put(
         });
       }
 
+      // ====================================
+      // DUPLICATE EMAIL
+      // ====================================
+
       const emailOwner = db
         .prepare(
           `
-          SELECT id
+          SELECT
+            id
+
           FROM users
-          WHERE LOWER(email) = LOWER(?)
+
+          WHERE
+            LOWER(email) = LOWER(?)
+
             AND id <> ?
+
           LIMIT 1
-        `,
+          `,
         )
         .get(email, userId);
 
@@ -1597,16 +1751,22 @@ router.put(
         });
       }
 
+      // ====================================
+      // UPDATE ADMIN
+      // ====================================
+
       db.prepare(
         `
         UPDATE users
+
         SET
           username = ?,
           email = ?,
           contact_number = ?,
           updated_at = CURRENT_TIMESTAMP
+
         WHERE id = ?
-      `,
+        `,
       ).run(username, email, contactNumber || null, userId);
 
       const updatedUser = getCurrentUser(userId);
@@ -1636,6 +1796,16 @@ router.put(
 // CHANGE CURRENT ADMIN PASSWORD
 //
 // PUT /api/auth/me/password
+//
+// Requirements:
+// - Current password
+// - New password
+// - Confirm password
+// - Minimum 8 characters
+// - Lowercase
+// - Uppercase
+// - Number
+// - Special character
 // ==========================================
 
 router.put(
@@ -1649,6 +1819,10 @@ router.put(
     try {
       const { currentPassword, newPassword, confirmPassword } = req.body;
 
+      // ====================================
+      // REQUIRED FIELDS
+      // ====================================
+
       if (!currentPassword || !newPassword || !confirmPassword) {
         return res.status(400).json({
           success: false,
@@ -1660,15 +1834,9 @@ router.put(
         });
       }
 
-      if (String(newPassword).length < 8) {
-        return res.status(400).json({
-          success: false,
-
-          code: "PASSWORD_TOO_SHORT",
-
-          message: "New password must contain at least 8 characters.",
-        });
-      }
+      // ====================================
+      // CONFIRM PASSWORD
+      // ====================================
 
       if (newPassword !== confirmPassword) {
         return res.status(400).json({
@@ -1680,16 +1848,39 @@ router.put(
         });
       }
 
+      // ====================================
+      // PASSWORD POLICY
+      // ====================================
+
+      const passwordValidation = validatePasswordPolicy(newPassword);
+
+      if (!passwordValidation.valid) {
+        return res.status(400).json({
+          success: false,
+
+          code: passwordValidation.code,
+
+          message: passwordValidation.message,
+        });
+      }
+
+      // ====================================
+      // GET ADMIN
+      // ====================================
+
       const user = db
         .prepare(
           `
           SELECT
             id,
             password_hash
+
           FROM users
+
           WHERE id = ?
+
           LIMIT 1
-        `,
+          `,
         )
         .get(req.authUser.userId);
 
@@ -1703,6 +1894,10 @@ router.put(
         });
       }
 
+      // ====================================
+      // CURRENT PASSWORD
+      // ====================================
+
       const matches = await bcrypt.compare(currentPassword, user.password_hash);
 
       if (!matches) {
@@ -1714,6 +1909,10 @@ router.put(
           message: "Current password is incorrect.",
         });
       }
+
+      // ====================================
+      // SAME PASSWORD
+      // ====================================
 
       const sameAsCurrent = await bcrypt.compare(
         newPassword,
@@ -1730,16 +1929,22 @@ router.put(
         });
       }
 
+      // ====================================
+      // SAVE NEW PASSWORD
+      // ====================================
+
       const passwordHash = await bcrypt.hash(newPassword, 10);
 
       db.prepare(
         `
         UPDATE users
+
         SET
           password_hash = ?,
           updated_at = CURRENT_TIMESTAMP
+
         WHERE id = ?
-      `,
+        `,
       ).run(passwordHash, user.id);
 
       return res.json({
@@ -1811,11 +2016,13 @@ router.post(
       db.prepare(
         `
         UPDATE users
+
         SET
           profile_picture_uri = ?,
           updated_at = CURRENT_TIMESTAMP
+
         WHERE id = ?
-      `,
+        `,
       ).run(newProfilePictureUri, userId);
 
       removeAdminProfileFile(currentUser.profile_picture_uri);
@@ -1887,11 +2094,13 @@ router.delete(
       db.prepare(
         `
         UPDATE users
+
         SET
           profile_picture_uri = NULL,
           updated_at = CURRENT_TIMESTAMP
+
         WHERE id = ?
-      `,
+        `,
       ).run(userId);
 
       removeAdminProfileFile(oldProfilePicture);
@@ -1921,130 +2130,261 @@ router.delete(
 
 // ==========================================
 // FINES OFFICER DASHBOARD
+//
 // GET /api/auth/officer-dashboard
 // ==========================================
 
-router.get("/officer-dashboard", authenticateToken, (req, res) => {
-  try {
-    const userId = Number(req.authUser?.userId);
+router.get(
+  "/officer-dashboard",
 
-    if (!Number.isSafeInteger(userId) || userId <= 0) {
-      return res.status(401).json({
+  authenticateToken,
+
+  (req, res) => {
+    try {
+      const userId = Number(req.authUser?.userId);
+
+      // ====================================
+      // VALID USER ID
+      // ====================================
+
+      if (!Number.isSafeInteger(userId) || userId <= 0) {
+        return res.status(401).json({
+          success: false,
+
+          message: "Your session is invalid. Please log in again.",
+        });
+      }
+
+      // ====================================
+      // LOAD OFFICER ACCOUNT
+      // ====================================
+
+      const officer = getCurrentUser(userId);
+
+      if (!officer) {
+        return res.status(401).json({
+          success: false,
+
+          message: "Your account could not be found.",
+        });
+      }
+
+      // ====================================
+      // OFFICER ACCESS CHECK
+      // ====================================
+
+      if (
+        String(officer.role || "").toUpperCase() !== "FINES_OFFICER" ||
+        String(officer.account_status || "").toUpperCase() !== "ACTIVE"
+      ) {
+        return res.status(403).json({
+          success: false,
+
+          message: "An active Fines Officer account is required.",
+        });
+      }
+
+      // ====================================
+      // TOTAL STUDENTS
+      // ====================================
+
+      const students = db
+        .prepare(
+          `
+          SELECT
+            COUNT(*) AS total
+
+          FROM users
+
+          WHERE
+            role = 'STUDENT'
+
+            AND username NOT GLOB
+              '__archived_student_*'
+          `,
+        )
+        .get();
+
+      // ====================================
+      // OFFICER FINE TOTALS
+      //
+      // Today's amount uses Philippine time.
+      // ====================================
+
+      const totals = db
+        .prepare(
+          `
+          SELECT
+            COUNT(*) AS finesRecorded,
+
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    DATE(
+                      COALESCE(
+                        issued_at,
+                        created_at
+                      ),
+                      '+8 hours'
+                    )
+                    =
+                    DATE(
+                      'now',
+                      '+8 hours'
+                    )
+
+                  THEN
+                    amount_centavos
+
+                  ELSE
+                    0
+                END
+              ),
+              0
+            ) AS todayAmountCentavos
+
+          FROM fines
+
+          WHERE
+            recorded_by = ?
+
+            AND cancelled_at IS NULL
+
+            AND UPPER(
+              COALESCE(
+                fine_status,
+                'UNPAID'
+              )
+            ) != 'CANCELLED'
+          `,
+        )
+        .get(userId);
+
+      // ====================================
+      // OFFICER ACTIVITIES
+      //
+      // Return the complete valid activity
+      // history for this officer.
+      //
+      // The mobile dashboard displays only
+      // the latest 3 activities.
+      //
+      // "View all activities" uses the full
+      // list returned by this endpoint.
+      // ====================================
+
+      const activities = db
+        .prepare(
+          `
+          SELECT
+            f.id,
+
+            TRIM(
+              COALESCE(
+                u.first_name,
+                ''
+              )
+              || ' ' ||
+              COALESCE(
+                u.middle_name || ' ',
+                ''
+              )
+              ||
+              COALESCE(
+                u.last_name,
+                ''
+              )
+            ) AS studentName,
+
+            u.profile_picture_uri
+              AS profilePictureUri,
+
+            vt.violation_name
+              AS violationName,
+
+            f.amount_centavos
+              AS amountCentavos,
+
+            COALESCE(
+              f.issued_at,
+              f.created_at
+            ) AS recordedAt
+
+          FROM fines f
+
+          INNER JOIN users u
+            ON u.id = f.student_id
+
+          LEFT JOIN violation_types vt
+            ON vt.id = f.violation_type_id
+
+          WHERE
+            f.recorded_by = ?
+
+            AND f.cancelled_at IS NULL
+
+            AND UPPER(
+              COALESCE(
+                f.fine_status,
+                'UNPAID'
+              )
+            ) != 'CANCELLED'
+
+          ORDER BY
+            DATETIME(
+              COALESCE(
+                f.issued_at,
+                f.created_at
+              )
+            ) DESC,
+
+            f.id DESC
+          `,
+        )
+        .all(userId);
+
+      // ====================================
+      // RESPONSE
+      // ====================================
+
+      return res.json({
+        success: true,
+
+        user: formatUser(officer),
+
+        stats: {
+          totalStudents: Number(students?.total || 0),
+
+          finesRecorded: Number(totals?.finesRecorded || 0),
+
+          todayAmountCentavos: Number(totals?.todayAmountCentavos || 0),
+        },
+
+        activities: activities.map((activity) => ({
+          ...activity,
+
+          id: Number(activity.id),
+
+          amountCentavos: Number(activity.amountCentavos || 0),
+        })),
+      });
+    } catch (error) {
+      console.error("Officer dashboard error:", error);
+
+      return res.status(500).json({
         success: false,
-        message: "Your session is invalid. Please log in again.",
+
+        message: "Failed to load the officer dashboard.",
       });
     }
+  },
+);
 
-    const officer = getCurrentUser(userId);
-
-    if (!officer) {
-      return res.status(401).json({
-        success: false,
-        message: "Your account could not be found.",
-      });
-    }
-
-    if (
-      String(officer.role).toUpperCase() !== "FINES_OFFICER" ||
-      String(officer.account_status).toUpperCase() !== "ACTIVE"
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "An active Fines Officer account is required.",
-      });
-    }
-
-    // Total students, excluding archived student accounts.
-    const students = db
-      .prepare(
-        `
-      SELECT COUNT(*) AS total
-      FROM users
-      WHERE role = 'STUDENT'
-        AND username NOT GLOB '__archived_student_*'
-    `,
-      )
-      .get();
-
-    // Only fines recorded by the logged-in officer.
-    // Today's amount uses Philippine time.
-    const totals = db
-      .prepare(
-        `
-      SELECT
-        COUNT(*) AS finesRecorded,
-        COALESCE(
-          SUM(
-            CASE
-              WHEN DATE(
-                COALESCE(issued_at, created_at),
-                '+8 hours'
-              ) = DATE('now', '+8 hours')
-              THEN amount_centavos
-              ELSE 0
-            END
-          ),
-          0
-        ) AS todayAmountCentavos
-      FROM fines
-      WHERE recorded_by = ?
-        AND cancelled_at IS NULL
-        AND UPPER(COALESCE(fine_status, 'UNPAID')) != 'CANCELLED'
-    `,
-      )
-      .get(userId);
-
-    const activities = db
-      .prepare(
-        `
-      SELECT
-        f.id,
-        TRIM(
-          COALESCE(u.first_name, '') || ' ' ||
-          COALESCE(u.middle_name || ' ', '') ||
-          COALESCE(u.last_name, '')
-        ) AS studentName,
-        u.profile_picture_uri AS profilePictureUri,
-        vt.violation_name AS violationName,
-        f.amount_centavos AS amountCentavos,
-        COALESCE(f.issued_at, f.created_at) AS recordedAt
-      FROM fines f
-      JOIN users u ON u.id = f.student_id
-      LEFT JOIN violation_types vt ON vt.id = f.violation_type_id
-      WHERE f.recorded_by = ?
-        AND f.cancelled_at IS NULL
-        AND UPPER(COALESCE(f.fine_status, 'UNPAID')) != 'CANCELLED'
-      ORDER BY
-        DATETIME(COALESCE(f.issued_at, f.created_at)) DESC,
-        f.id DESC
-      LIMIT 5
-    `,
-      )
-      .all(userId);
-
-    return res.json({
-      success: true,
-      user: formatUser(officer),
-      stats: {
-        totalStudents: Number(students.total),
-        finesRecorded: Number(totals.finesRecorded),
-        todayAmountCentavos: Number(totals.todayAmountCentavos),
-      },
-      activities: activities.map((activity) => ({
-        ...activity,
-        id: Number(activity.id),
-        amountCentavos: Number(activity.amountCentavos),
-      })),
-    });
-  } catch (error) {
-    console.error("Officer dashboard error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to load the officer dashboard.",
-    });
-  }
-});
+// ==========================================
+// EXPORTS
+// ==========================================
 
 module.exports = router;
+
 module.exports.authenticateToken = authenticateToken;

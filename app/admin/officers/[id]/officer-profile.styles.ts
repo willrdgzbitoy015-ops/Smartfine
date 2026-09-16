@@ -106,7 +106,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 14,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   logoutButton: {
@@ -126,7 +126,7 @@ export const styles = StyleSheet.create({
   logoutText: {
     color: COLORS.white,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -160,7 +160,7 @@ export const styles = StyleSheet.create({
   },
 
   // ==========================================
-  // MOBILE NAV
+  // MOBILE NAVIGATION
   // ==========================================
 
   mobileNav: {
@@ -188,7 +188,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   mobileNavTextActive: {
@@ -196,7 +196,7 @@ export const styles = StyleSheet.create({
   },
 
   // ==========================================
-  // PAGE HEADER / BACK ICON
+  // PAGE HEADER
   // ==========================================
 
   pageHeader: {
@@ -242,7 +242,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 20,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     flexShrink: 1,
   },
@@ -263,6 +263,8 @@ export const styles = StyleSheet.create({
     fontSize: 12,
 
     lineHeight: 18,
+
+    fontFamily: "Poppins_400Regular",
   },
 
   // ==========================================
@@ -364,7 +366,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 27,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   avatarTextCompact: {
@@ -388,7 +390,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 23,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   officerNameCompact: {
@@ -400,13 +402,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_600SemiBold",
 
     marginTop: 4,
   },
 
   // ==========================================
-  // PROFILE ACTIONS
+  // PROFILE ACTION BUTTONS
   // ==========================================
 
   profileActions: {
@@ -437,29 +439,51 @@ export const styles = StyleSheet.create({
     minWidth: 130,
   },
 
+  // ==========================================
+  // EDIT INFORMATION BUTTON
+  // ==========================================
+
   editButton: {
-    minWidth: 150,
+    minWidth: 170,
 
     minHeight: 44,
 
-    backgroundColor: COLORS.navy,
+    backgroundColor: COLORS.white,
+
+    borderWidth: 1,
+
+    borderColor: COLORS.navy,
 
     borderRadius: 8,
+
+    flexDirection: "row",
 
     alignItems: "center",
 
     justifyContent: "center",
 
+    gap: 8,
+
     paddingHorizontal: 18,
   },
 
+  editButtonIcon: {
+    width: 19,
+
+    height: 19,
+  },
+
   editButtonText: {
-    color: COLORS.white,
+    color: COLORS.text,
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
   },
+
+  // ==========================================
+  // DELETE OFFICER BUTTON
+  // ==========================================
 
   deleteButton: {
     minWidth: 150,
@@ -486,11 +510,11 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
-  // STATUS
+  // ACCOUNT STATUS
   // ==========================================
 
   statusBadge: {
@@ -520,7 +544,7 @@ export const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   activeStatusText: {
@@ -544,7 +568,7 @@ export const styles = StyleSheet.create({
   },
 
   // ==========================================
-  // DETAILS
+  // OFFICER DETAILS
   // ==========================================
 
   detailsGrid: {
@@ -580,7 +604,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_500Medium",
 
     marginBottom: 6,
   },
@@ -590,7 +614,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_400Regular",
 
     flexShrink: 1,
   },
@@ -600,7 +624,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 13,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
 
     flexShrink: 1,
   },
@@ -674,7 +698,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_500Medium",
 
     marginBottom: 8,
 
@@ -686,7 +710,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 27,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   summaryValueGreen: {
@@ -694,11 +718,11 @@ export const styles = StyleSheet.create({
 
     fontSize: 27,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
-  // HISTORY
+  // RECENT FINES CARD
   // ==========================================
 
   historyCard: {
@@ -742,7 +766,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 17,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   historySubtitle: {
@@ -750,8 +774,14 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
+    fontFamily: "Poppins_400Regular",
+
     marginTop: 4,
   },
+
+  // ==========================================
+  // HISTORY TABLE
+  // ==========================================
 
   historyTable: {
     minWidth: 1000,
@@ -774,7 +804,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
 
     textTransform: "uppercase",
   },
@@ -800,11 +830,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
+    fontFamily: "Poppins_400Regular",
+
     paddingRight: 10,
   },
 
   // ==========================================
-  // COLUMNS
+  // TABLE COLUMNS
   // ==========================================
 
   referenceColumn: {
@@ -835,10 +867,14 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  // ==========================================
+  // HISTORY CONTENT
+  // ==========================================
+
   referenceText: {
     color: COLORS.navy,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
 
     textDecorationLine: "underline",
   },
@@ -848,7 +884,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_500Medium",
   },
 
   studentNumber: {
@@ -856,13 +892,15 @@ export const styles = StyleSheet.create({
 
     fontSize: 9,
 
+    fontFamily: "Poppins_300Light",
+
     marginTop: 3,
   },
 
   amountText: {
     color: COLORS.navy,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -886,7 +924,7 @@ export const styles = StyleSheet.create({
   fineStatusText: {
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -906,9 +944,295 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
+    fontFamily: "Poppins_400Regular",
+
     textAlign: "center",
 
     paddingHorizontal: 20,
+  },
+
+  // ==========================================
+  // FINE INFORMATION POPUP BACKDROP
+  // ==========================================
+
+  fineModalBackdrop: {
+    flex: 1,
+
+    backgroundColor: "rgba(0, 0, 0, 0.48)",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    paddingHorizontal: 20,
+
+    paddingVertical: 30,
+  },
+
+  // ==========================================
+  // FINE INFORMATION POPUP
+  // ==========================================
+
+  fineModalCard: {
+    width: "100%",
+
+    maxWidth: 470,
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 16,
+
+    paddingHorizontal: 26,
+
+    paddingTop: 24,
+
+    paddingBottom: 26,
+
+    shadowColor: "#000000",
+
+    shadowOpacity: 0.2,
+
+    shadowRadius: 15,
+
+    shadowOffset: {
+      width: 0,
+
+      height: 8,
+    },
+
+    elevation: 15,
+  },
+
+  fineModalCardCompact: {
+    paddingHorizontal: 18,
+
+    paddingTop: 20,
+
+    paddingBottom: 20,
+  },
+
+  // ==========================================
+  // FINE POPUP HEADER
+  // ==========================================
+
+  fineModalHeader: {
+    width: "100%",
+
+    flexDirection: "row",
+
+    alignItems: "flex-start",
+
+    justifyContent: "space-between",
+
+    gap: 16,
+  },
+
+  fineModalHeaderText: {
+    flex: 1,
+  },
+
+  fineModalTitle: {
+    color: COLORS.text,
+
+    fontSize: 19,
+
+    fontFamily: "Poppins_700Bold",
+  },
+
+  fineModalSubtitle: {
+    color: COLORS.muted,
+
+    fontSize: 10,
+
+    lineHeight: 16,
+
+    fontFamily: "Poppins_400Regular",
+
+    marginTop: 3,
+  },
+
+  // ==========================================
+  // POPUP X BUTTON
+  // ==========================================
+
+  fineModalCloseIconButton: {
+    width: 34,
+
+    height: 34,
+
+    borderRadius: 17,
+
+    backgroundColor: "#F1F3F6",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    flexShrink: 0,
+  },
+
+  fineModalCloseIcon: {
+    color: COLORS.text,
+
+    fontSize: 24,
+
+    lineHeight: 27,
+
+    fontFamily: "Poppins_500Medium",
+  },
+
+  // ==========================================
+  // FINE REFERENCE
+  // ==========================================
+
+  fineReferenceBox: {
+    marginTop: 20,
+
+    backgroundColor: "#F4F7FB",
+
+    borderRadius: 10,
+
+    paddingHorizontal: 16,
+
+    paddingVertical: 13,
+  },
+
+  fineReferenceLabel: {
+    color: COLORS.muted,
+
+    fontSize: 9,
+
+    fontFamily: "Poppins_500Medium",
+  },
+
+  fineReferenceValue: {
+    color: COLORS.navy,
+
+    fontSize: 16,
+
+    fontFamily: "Poppins_700Bold",
+
+    marginTop: 3,
+  },
+
+  // ==========================================
+  // MODAL DIVIDER
+  // ==========================================
+
+  fineModalDivider: {
+    height: 1,
+
+    backgroundColor: "#E4E7EB",
+
+    marginVertical: 18,
+  },
+
+  // ==========================================
+  // MODAL DETAILS
+  // ==========================================
+
+  fineModalDetails: {
+    width: "100%",
+
+    gap: 14,
+  },
+
+  fineModalRow: {
+    width: "100%",
+
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent: "space-between",
+
+    gap: 18,
+  },
+
+  fineModalLabel: {
+    width: 105,
+
+    color: COLORS.muted,
+
+    fontSize: 11,
+
+    fontFamily: "Poppins_500Medium",
+  },
+
+  fineModalValue: {
+    flex: 1,
+
+    color: "#333333",
+
+    fontSize: 11,
+
+    fontFamily: "Poppins_400Regular",
+
+    textAlign: "right",
+  },
+
+  fineModalAmount: {
+    flex: 1,
+
+    color: COLORS.navy,
+
+    fontSize: 13,
+
+    fontFamily: "Poppins_700Bold",
+
+    textAlign: "right",
+  },
+
+  // ==========================================
+  // MODAL STATUS
+  // ==========================================
+
+  fineModalStatusBadge: {
+    minWidth: 82,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    paddingHorizontal: 12,
+
+    paddingVertical: 6,
+
+    borderRadius: 20,
+  },
+
+  fineModalStatusText: {
+    fontSize: 10,
+
+    fontFamily: "Poppins_600SemiBold",
+  },
+
+  // ==========================================
+  // MODAL CLOSE BUTTON
+  // ==========================================
+
+  fineModalCloseButton: {
+    width: "100%",
+
+    minHeight: 44,
+
+    marginTop: 24,
+
+    backgroundColor: COLORS.navy,
+
+    borderRadius: 8,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  fineModalCloseButtonText: {
+    color: COLORS.white,
+
+    fontSize: 12,
+
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -940,6 +1264,8 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
+    fontFamily: "Poppins_400Regular",
+
     marginTop: 12,
   },
 
@@ -947,6 +1273,8 @@ export const styles = StyleSheet.create({
     color: COLORS.red,
 
     fontSize: 12,
+
+    fontFamily: "Poppins_400Regular",
 
     textAlign: "center",
 
@@ -968,7 +1296,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_600SemiBold",
   },
 });
 

@@ -71,6 +71,65 @@ function getValidOfficerId(value) {
 }
 
 // ==========================================
+// PASSWORD POLICY
+//
+// Requirements:
+// - Minimum 8 characters
+// - At least 1 lowercase letter
+// - At least 1 uppercase letter
+// - At least 1 number
+// - At least 1 special character
+// ==========================================
+
+function validatePasswordPolicy(password) {
+  const value = String(password || "");
+
+  if (value.length < 8) {
+    return {
+      valid: false,
+      code: "PASSWORD_TOO_SHORT",
+      message: "Password must contain at least 8 characters.",
+    };
+  }
+
+  if (!/[a-z]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_LOWERCASE_REQUIRED",
+      message: "Password must contain at least one lowercase letter.",
+    };
+  }
+
+  if (!/[A-Z]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_UPPERCASE_REQUIRED",
+      message: "Password must contain at least one uppercase letter.",
+    };
+  }
+
+  if (!/[0-9]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_NUMBER_REQUIRED",
+      message: "Password must contain at least one number.",
+    };
+  }
+
+  if (!/[^A-Za-z0-9\s]/.test(value)) {
+    return {
+      valid: false,
+      code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
+      message: "Password must contain at least one special character.",
+    };
+  }
+
+  return {
+    valid: true,
+  };
+}
+
+// ==========================================
 // FIND ACTIVE / VISIBLE OFFICER PROFILE
 // ==========================================
 
@@ -389,8 +448,6 @@ router.get("/next-id", (req, res) => {
 // ==========================================
 // GET ALL OFFICERS
 // GET /api/officers
-//
-// Archived officers are excluded.
 // ==========================================
 
 router.get("/", (req, res) => {
@@ -452,26 +509,17 @@ router.get("/", (req, res) => {
 
           GROUP BY
             u.id,
-
             fo.id,
-
             fo.employee_number,
-
             u.username,
-
             u.first_name,
             u.middle_name,
             u.last_name,
-
             u.email,
             u.contact_number,
-
             u.profile_picture_uri,
-
             fo.assigned_area,
-
             u.account_status,
-
             fo.created_at,
             fo.updated_at
 
@@ -503,6 +551,8 @@ router.get("/", (req, res) => {
 // ==========================================
 // CREATE OFFICER
 // POST /api/officers
+//
+// Password policy is enforced here too.
 // ==========================================
 
 router.post("/", async (req, res) => {
@@ -754,47 +804,18 @@ router.post("/", async (req, res) => {
     }
 
     // ====================================
-    // PASSWORD
+    // PASSWORD POLICY
     // ====================================
 
-    if (passwordValue.length < 8) {
+    const passwordValidation = validatePasswordPolicy(passwordValue);
+
+    if (!passwordValidation.valid) {
       return res.status(400).json({
         success: false,
 
-        code: "WEAK_PASSWORD",
+        code: passwordValidation.code,
 
-        message: "Password must contain at least 8 characters.",
-      });
-    }
-
-    if (!/[A-Za-z]/.test(passwordValue)) {
-      return res.status(400).json({
-        success: false,
-
-        code: "PASSWORD_LETTER_REQUIRED",
-
-        message: "Password must contain at least one letter.",
-      });
-    }
-
-    if (!/[0-9]/.test(passwordValue)) {
-      return res.status(400).json({
-        success: false,
-
-        code: "PASSWORD_NUMBER_REQUIRED",
-
-        message: "Password must contain at least one number.",
-      });
-    }
-
-    if (!/[^A-Za-z0-9\s]/.test(passwordValue)) {
-      return res.status(400).json({
-        success: false,
-
-        code: "PASSWORD_SPECIAL_REQUIRED",
-
-        message:
-          "Password must contain at least one special character such as !, @, #, $, %, or &.",
+        message: passwordValidation.message,
       });
     }
 
@@ -1013,7 +1034,6 @@ router.post("/", async (req, res) => {
 
 // ==========================================
 // UPLOAD / CHANGE OFFICER PROFILE PICTURE
-// POST /api/officers/:id/profile-picture
 // ==========================================
 
 router.post(
@@ -1067,20 +1087,20 @@ router.post(
 
       db.prepare(
         `
-          UPDATE users
+        UPDATE users
 
-          SET
-            profile_picture_uri = ?,
+        SET
+          profile_picture_uri = ?,
 
-            updated_at =
-              CURRENT_TIMESTAMP
+          updated_at =
+            CURRENT_TIMESTAMP
 
-          WHERE
-            id = ?
+        WHERE
+          id = ?
 
-            AND role =
-              'FINES_OFFICER'
-          `,
+          AND role =
+            'FINES_OFFICER'
+        `,
       ).run(
         newProfilePictureUri,
 
@@ -1127,7 +1147,6 @@ router.post(
 
 // ==========================================
 // REMOVE OFFICER PROFILE PICTURE
-// DELETE /api/officers/:id/profile-picture
 // ==========================================
 
 router.delete("/:id/profile-picture", (req, res) => {
@@ -1160,21 +1179,21 @@ router.delete("/:id/profile-picture", (req, res) => {
 
     db.prepare(
       `
-          UPDATE users
+        UPDATE users
 
-          SET
-            profile_picture_uri =
-              NULL,
+        SET
+          profile_picture_uri =
+            NULL,
 
-            updated_at =
-              CURRENT_TIMESTAMP
+          updated_at =
+            CURRENT_TIMESTAMP
 
-          WHERE
-            id = ?
+        WHERE
+          id = ?
 
-            AND role =
-              'FINES_OFFICER'
-          `,
+          AND role =
+            'FINES_OFFICER'
+        `,
     ).run(officerId);
 
     if (oldProfilePictureUri) {
@@ -1211,16 +1230,6 @@ router.delete("/:id/profile-picture", (req, res) => {
 
 // ==========================================
 // GET SINGLE OFFICER
-// GET /api/officers/:id
-//
-// FIX:
-// Active Fine Records now excludes:
-// - paid fines
-// - cancelled fines
-// - waived fines
-//
-// Recent fine status also uses paid_at
-// and cancelled_at as source of truth.
 // ==========================================
 
 router.get("/:id", (req, res) => {
@@ -1304,10 +1313,6 @@ router.get("/:id", (req, res) => {
       });
     }
 
-    // ====================================
-    // FINE STATISTICS
-    // ====================================
-
     const fineStats = db
       .prepare(
         `
@@ -1352,10 +1357,6 @@ router.get("/:id", (req, res) => {
             `,
       )
       .get(officerId);
-
-    // ====================================
-    // RECENT FINES
-    // ====================================
 
     const recentFines = db
       .prepare(
@@ -1491,9 +1492,8 @@ router.get("/:id", (req, res) => {
 // UPDATE OFFICER
 // PUT /api/officers/:id
 //
-// Requires an active Admin account.
-// Employee number and picture are preserved.
-// Blank password fields preserve password.
+// Password change remains optional.
+// If changed, Confirm Password is required.
 // ==========================================
 
 router.put(
@@ -1547,10 +1547,6 @@ router.put(
         accountStatus,
       } = req.body;
 
-      // ====================================
-      // REQUIRED
-      // ====================================
-
       if (
         !username ||
         !firstName ||
@@ -1567,10 +1563,6 @@ router.put(
           message: "Please complete all required officer information.",
         });
       }
-
-      // ====================================
-      // NORMALIZE
-      // ====================================
 
       const normalizedUsername = String(username).trim().toLowerCase();
 
@@ -1615,7 +1607,7 @@ router.put(
       }
 
       // ====================================
-      // NAME
+      // NAMES
       // ====================================
 
       if (normalizedFirstName.length < 2) {
@@ -1775,7 +1767,7 @@ router.put(
       }
 
       // ====================================
-      // OPTIONAL PASSWORD
+      // OPTIONAL PASSWORD CHANGE
       // ====================================
 
       const newPassword = req.body.newPassword ?? "";
@@ -1800,6 +1792,24 @@ router.put(
       let newPasswordHash = null;
 
       if (passwordChanged) {
+        // ==================================
+        // BOTH PASSWORD FIELDS REQUIRED
+        // ==================================
+
+        if (!newPassword || !confirmPassword) {
+          return res.status(400).json({
+            success: false,
+
+            code: "PASSWORD_FIELDS_REQUIRED",
+
+            message: "New password and confirmation are required.",
+          });
+        }
+
+        // ==================================
+        // CONFIRM PASSWORD
+        // ==================================
+
         if (newPassword !== confirmPassword) {
           return res.status(400).json({
             success: false,
@@ -1810,19 +1820,19 @@ router.put(
           });
         }
 
-        if (
-          newPassword.length < 8 ||
-          !/[A-Za-z]/.test(newPassword) ||
-          !/[0-9]/.test(newPassword) ||
-          !/[^A-Za-z0-9\s]/.test(newPassword)
-        ) {
+        // ==================================
+        // PASSWORD POLICY
+        // ==================================
+
+        const passwordValidation = validatePasswordPolicy(newPassword);
+
+        if (!passwordValidation.valid) {
           return res.status(400).json({
             success: false,
 
-            code: "WEAK_PASSWORD",
+            code: passwordValidation.code,
 
-            message:
-              "Password must contain at least 8 characters, a letter, a number, and a special character.",
+            message: passwordValidation.message,
           });
         }
 
@@ -1911,36 +1921,32 @@ router.put(
           throw new Error("The officer profile could not be updated.");
         }
 
-        // ==================================
-        // OPTIONAL PASSWORD
-        // ==================================
-
         if (newPasswordHash !== null) {
           db.prepare(
             `
-              UPDATE users
+            UPDATE users
 
-              SET
-                password_hash = ?,
+            SET
+              password_hash = ?,
 
-                failed_login_attempts =
-                  0,
+              failed_login_attempts =
+                0,
 
-                locked_until =
-                  NULL,
+              locked_until =
+                NULL,
 
-                lockout_count =
-                  0,
+              lockout_count =
+                0,
 
-                updated_at =
-                  CURRENT_TIMESTAMP
+              updated_at =
+                CURRENT_TIMESTAMP
 
-              WHERE
-                id = ?
+            WHERE
+              id = ?
 
-                AND role =
-                  'FINES_OFFICER'
-              `,
+              AND role =
+                'FINES_OFFICER'
+            `,
           ).run(
             newPasswordHash,
 
@@ -1958,10 +1964,6 @@ router.put(
 
         throw transactionError;
       }
-
-      // ====================================
-      // SUCCESS
-      // ====================================
 
       const fullName = formatName(
         normalizedFirstName,
@@ -2029,6 +2031,8 @@ router.put(
         code: "UPDATE_OFFICER_ERROR",
 
         message: "Failed to update officer information.",
+
+        error: error.message,
       });
     }
   },
@@ -2036,31 +2040,11 @@ router.put(
 
 // ==========================================
 // DELETE / ARCHIVE OFFICER
-// DELETE /api/officers/:id
-//
-// RULES:
-//
-// ACTIVE:
-// Cannot be removed.
-//
-// INACTIVE + unresolved fine:
-// Cannot be removed.
-//
-// INACTIVE + only resolved fine history:
-// Archive officer but preserve users.id
-// so fines.recorded_by remains valid.
-//
-// INACTIVE + no fine history:
-// Permanently delete officer.
 // ==========================================
 
 router.delete("/:id", (req, res) => {
   try {
     const officerId = getValidOfficerId(req.params.id);
-
-    // ====================================
-    // ID
-    // ====================================
 
     if (officerId === null) {
       return res.status(400).json({
@@ -2071,10 +2055,6 @@ router.delete("/:id", (req, res) => {
         message: "Invalid officer ID.",
       });
     }
-
-    // ====================================
-    // OFFICER
-    // ====================================
 
     const officer = findOfficerById(officerId);
 
@@ -2088,10 +2068,6 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ====================================
-    // MUST BE INACTIVE
-    // ====================================
-
     const status = String(officer.account_status || "").toUpperCase();
 
     if (status !== "INACTIVE") {
@@ -2104,10 +2080,6 @@ router.delete("/:id", (req, res) => {
           "Active officers cannot be removed. Edit the officer and set the account status to Inactive first.",
       });
     }
-
-    // ====================================
-    // CHECK UNRESOLVED FINES
-    // ====================================
 
     const activeFineResult = db
       .prepare(
@@ -2158,10 +2130,6 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ====================================
-    // COUNT ALL HISTORICAL FINES
-    // ====================================
-
     const fineResult = db
       .prepare(
         `
@@ -2177,12 +2145,6 @@ router.delete("/:id", (req, res) => {
       .get(officerId);
 
     const fineCount = Number(fineResult?.total || 0);
-
-    // ====================================
-    // HAS HISTORY
-    //
-    // ARCHIVE INSTEAD OF DELETE.
-    // ====================================
 
     if (fineCount > 0) {
       const archiveTimestamp = Date.now();
@@ -2235,10 +2197,6 @@ router.delete("/:id", (req, res) => {
         });
       }
 
-      // ==================================
-      // DELETE OLD PROFILE FILE
-      // ==================================
-
       if (officer.profile_picture_uri) {
         deleteOfficerProfileFile(officer.profile_picture_uri);
       }
@@ -2270,12 +2228,6 @@ router.delete("/:id", (req, res) => {
         },
       });
     }
-
-    // ====================================
-    // NO FINE HISTORY
-    //
-    // SAFE TO PERMANENTLY DELETE.
-    // ====================================
 
     const result = db
       .prepare(

@@ -224,6 +224,75 @@ function formatName(firstName, middleName, lastName) {
 }
 
 // ==========================================
+// PASSWORD POLICY
+//
+// Requirements:
+// - Minimum 8 characters
+// - At least 1 lowercase letter
+// - At least 1 uppercase letter
+// - At least 1 number
+// - At least 1 special character
+// ==========================================
+
+function validatePasswordPolicy(password) {
+  const value = String(password || "");
+
+  if (value.length < 8) {
+    return {
+      valid: false,
+
+      code: "PASSWORD_TOO_SHORT",
+
+      message: "Password must contain at least 8 characters.",
+    };
+  }
+
+  if (!/[a-z]/.test(value)) {
+    return {
+      valid: false,
+
+      code: "PASSWORD_LOWERCASE_REQUIRED",
+
+      message: "Password must contain at least one lowercase letter.",
+    };
+  }
+
+  if (!/[A-Z]/.test(value)) {
+    return {
+      valid: false,
+
+      code: "PASSWORD_UPPERCASE_REQUIRED",
+
+      message: "Password must contain at least one uppercase letter.",
+    };
+  }
+
+  if (!/[0-9]/.test(value)) {
+    return {
+      valid: false,
+
+      code: "PASSWORD_NUMBER_REQUIRED",
+
+      message: "Password must contain at least one number.",
+    };
+  }
+
+  if (!/[^A-Za-z0-9\s]/.test(value)) {
+    return {
+      valid: false,
+
+      code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
+
+      message: "Password must contain at least one special character.",
+    };
+  }
+
+  return {
+    valid: true,
+  };
+}
+
+// ==========================================
 // GET NEXT STUDENT ID
 //
 // GET /api/students/next-id
@@ -395,7 +464,7 @@ router.get("/", (req, res) => {
             ORDER BY
               u.last_name ASC,
               u.first_name ASC
-          `,
+            `,
       )
       .all();
 
@@ -439,13 +508,14 @@ router.post("/", async (req, res) => {
       section,
 
       password,
+      confirmPassword,
 
       accountStatus,
     } = req.body;
 
-    // ======================================
+    // ====================================
     // REQUIRED FIELDS
-    // ======================================
+    // ====================================
 
     if (
       !firstName ||
@@ -454,7 +524,8 @@ router.post("/", async (req, res) => {
       !contactNumber ||
       !gradeLevel ||
       !section ||
-      !password
+      !password ||
+      !confirmPassword
     ) {
       return res.status(400).json({
         success: false,
@@ -465,9 +536,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // NORMALIZE
-    // ======================================
+    // ====================================
 
     const normalizedFirstName = String(firstName).trim();
 
@@ -487,9 +558,9 @@ router.post("/", async (req, res) => {
 
     const passwordValue = String(password);
 
-    // ======================================
+    // ====================================
     // USERNAME
-    // ======================================
+    // ====================================
 
     const suggestedUsername = generateSuggestedUsername(
       normalizedFirstName,
@@ -532,9 +603,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // DUPLICATE USERNAME
-    // ======================================
+    // ====================================
 
     const existingUsername = db
       .prepare(
@@ -548,7 +619,7 @@ router.post("/", async (req, res) => {
               LOWER(username)
                 =
               LOWER(?)
-          `,
+            `,
       )
       .get(normalizedUsername);
 
@@ -563,9 +634,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // EMAIL
-    // ======================================
+    // ====================================
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -591,7 +662,7 @@ router.post("/", async (req, res) => {
               LOWER(email)
                 =
               LOWER(?)
-          `,
+            `,
       )
       .get(normalizedEmail);
 
@@ -605,9 +676,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // CONTACT NUMBER
-    // ======================================
+    // ====================================
 
     if (!/^[0-9]+$/.test(normalizedContactNumber)) {
       return res.status(400).json({
@@ -632,60 +703,41 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ======================================
-    // PASSWORD
-    // ======================================
+    // ====================================
+    // CONFIRM PASSWORD
+    // ====================================
 
-    if (passwordValue.length < 8) {
+    const confirmPasswordValue = String(confirmPassword);
+
+    if (passwordValue !== confirmPasswordValue) {
       return res.status(400).json({
         success: false,
 
-        code: "WEAK_PASSWORD",
+        code: "PASSWORD_MISMATCH",
 
-        message: "Password must contain at least 8 characters.",
+        message: "Password and Confirm Password do not match.",
       });
     }
 
-    const hasLetter = /[A-Za-z]/.test(passwordValue);
+    // ====================================
+    // PASSWORD POLICY
+    // ====================================
 
-    const hasNumber = /[0-9]/.test(passwordValue);
+    const passwordValidation = validatePasswordPolicy(passwordValue);
 
-    const hasSpecialCharacter = /[^A-Za-z0-9\s]/.test(passwordValue);
-
-    if (!hasLetter) {
+    if (!passwordValidation.valid) {
       return res.status(400).json({
         success: false,
 
-        code: "PASSWORD_LETTER_REQUIRED",
+        code: passwordValidation.code,
 
-        message: "Password must contain at least one letter.",
+        message: passwordValidation.message,
       });
     }
 
-    if (!hasNumber) {
-      return res.status(400).json({
-        success: false,
-
-        code: "PASSWORD_NUMBER_REQUIRED",
-
-        message: "Password must contain at least one number.",
-      });
-    }
-
-    if (!hasSpecialCharacter) {
-      return res.status(400).json({
-        success: false,
-
-        code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
-
-        message:
-          "Password must contain at least one special character such as !, @, #, $, %, or &.",
-      });
-    }
-
-    // ======================================
+    // ====================================
     // ACCOUNT STATUS
-    // ======================================
+    // ====================================
 
     if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
       return res.status(400).json({
@@ -697,9 +749,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // GENERATE STUDENT ID
-    // ======================================
+    // ====================================
 
     const generatedStudentId = generateNextStudentId();
 
@@ -713,7 +765,7 @@ router.post("/", async (req, res) => {
 
             WHERE
               student_number = ?
-          `,
+            `,
       )
       .get(generatedStudentId);
 
@@ -727,15 +779,15 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // HASH PASSWORD
-    // ======================================
+    // ====================================
 
     const passwordHash = await bcrypt.hash(passwordValue, 10);
 
-    // ======================================
+    // ====================================
     // CREATE STUDENT
-    // ======================================
+    // ====================================
 
     const result = db
       .prepare(
@@ -785,7 +837,7 @@ router.post("/", async (req, res) => {
 
               NULL
             )
-          `,
+            `,
       )
       .run(
         generatedStudentId,
@@ -808,9 +860,9 @@ router.post("/", async (req, res) => {
 
     const createdStudentId = Number(result.lastInsertRowid);
 
-    // ======================================
+    // ====================================
     // SUCCESS
-    // ======================================
+    // ====================================
 
     return res.status(201).json({
       success: true,
@@ -946,7 +998,7 @@ router.post("/:id/profile-picture", (req, res) => {
                   AND
                   username NOT LIKE
                     '__archived_student_%'
-              `,
+                `,
         )
         .get(studentId);
 
@@ -980,7 +1032,7 @@ router.post("/:id/profile-picture", (req, res) => {
                 AND
                 role =
                   'STUDENT'
-            `,
+              `,
       ).run(profilePictureUri, studentId);
 
       if (student.profile_picture_uri) {
@@ -1068,7 +1120,7 @@ router.delete("/:id/profile-picture", (req, res) => {
               AND
               username NOT LIKE
                 '__archived_student_%'
-          `,
+            `,
       )
       .get(studentId);
 
@@ -1109,7 +1161,7 @@ router.delete("/:id/profile-picture", (req, res) => {
             AND
             role =
               'STUDENT'
-        `,
+          `,
     ).run(studentId);
 
     deleteProfilePictureFile(student.profile_picture_uri);
@@ -1202,7 +1254,7 @@ router.get("/:id", (req, res) => {
               AND
               username NOT LIKE
                 '__archived_student_%'
-          `,
+            `,
       )
       .get(studentId);
 
@@ -1319,7 +1371,7 @@ router.get("/:id", (req, res) => {
 
             WHERE
               student_id = ?
-          `,
+            `,
       )
       .get(studentId);
 
@@ -1451,7 +1503,7 @@ router.get("/:id", (req, res) => {
               f.id DESC
 
             LIMIT 50
-          `,
+            `,
       )
       .all(studentId);
 
@@ -1487,9 +1539,13 @@ router.get("/:id", (req, res) => {
 // UPDATE STUDENT
 //
 // PUT /api/students/:id
+//
+// Password change is optional.
+// If either password field is used, both are
+// required and the full password policy applies.
 // ==========================================
 
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const studentId = Number(req.params.id);
 
@@ -1528,7 +1584,7 @@ router.put("/:id", (req, res) => {
               AND
               username NOT LIKE
                 '__archived_student_%'
-          `,
+            `,
       )
       .get(studentId);
 
@@ -1558,6 +1614,10 @@ router.put("/:id", (req, res) => {
       accountStatus,
     } = req.body;
 
+    // ====================================
+    // REQUIRED FIELDS
+    // ====================================
+
     if (
       !username ||
       !firstName ||
@@ -1576,6 +1636,10 @@ router.put("/:id", (req, res) => {
       });
     }
 
+    // ====================================
+    // NORMALIZE
+    // ====================================
+
     const normalizedUsername = String(username).trim().toLowerCase();
 
     const normalizedFirstName = String(firstName).trim();
@@ -1593,6 +1657,10 @@ router.put("/:id", (req, res) => {
     const normalizedSection = String(section).trim();
 
     const normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
+
+    // ====================================
+    // USERNAME
+    // ====================================
 
     const usernamePattern = /^[a-z0-9]+$/;
 
@@ -1631,7 +1699,7 @@ router.put("/:id", (req, res) => {
 
               AND
               id != ?
-          `,
+            `,
       )
       .get(normalizedUsername, studentId);
 
@@ -1644,6 +1712,10 @@ router.put("/:id", (req, res) => {
         message: "This username is already being used by another account.",
       });
     }
+
+    // ====================================
+    // EMAIL
+    // ====================================
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -1672,7 +1744,7 @@ router.put("/:id", (req, res) => {
 
               AND
               id != ?
-          `,
+            `,
       )
       .get(normalizedEmail, studentId);
 
@@ -1685,6 +1757,10 @@ router.put("/:id", (req, res) => {
         message: "This email address is already being used by another account.",
       });
     }
+
+    // ====================================
+    // CONTACT NUMBER
+    // ====================================
 
     if (!/^[0-9]+$/.test(normalizedContactNumber)) {
       return res.status(400).json({
@@ -1709,6 +1785,10 @@ router.put("/:id", (req, res) => {
       });
     }
 
+    // ====================================
+    // ACCOUNT STATUS
+    // ====================================
+
     if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
       return res.status(400).json({
         success: false,
@@ -1719,69 +1799,193 @@ router.put("/:id", (req, res) => {
       });
     }
 
-    const result = db
-      .prepare(
-        `
-            UPDATE users
+    // ====================================
+    // OPTIONAL PASSWORD CHANGE
+    // ====================================
 
-            SET
-              username = ?,
+    const newPassword = req.body.newPassword ?? "";
 
-              first_name = ?,
-              middle_name = ?,
-              last_name = ?,
+    const confirmPassword = req.body.confirmPassword ?? "";
 
-              email = ?,
-              contact_number = ?,
-
-              grade_level = ?,
-              section = ?,
-
-              account_status = ?,
-
-              updated_at =
-                CURRENT_TIMESTAMP
-
-            WHERE
-              id = ?
-
-              AND
-              role =
-                'STUDENT'
-          `,
-      )
-      .run(
-        normalizedUsername,
-
-        normalizedFirstName,
-        normalizedMiddleName,
-        normalizedLastName,
-
-        normalizedEmail,
-        normalizedContactNumber,
-
-        normalizedGradeLevel,
-        normalizedSection,
-
-        normalizedStatus,
-
-        studentId,
-      );
-
-    if (Number(result.changes) === 0) {
-      return res.status(404).json({
+    if (
+      typeof newPassword !== "string" ||
+      typeof confirmPassword !== "string"
+    ) {
+      return res.status(400).json({
         success: false,
 
-        code: "STUDENT_NOT_UPDATED",
+        code: "INVALID_PASSWORD_FIELDS",
 
-        message: "Student information could not be updated.",
+        message: "Password fields must contain text.",
       });
     }
+
+    const passwordChanged = newPassword !== "" || confirmPassword !== "";
+
+    let newPasswordHash = null;
+
+    if (passwordChanged) {
+      // ==================================
+      // BOTH PASSWORD FIELDS REQUIRED
+      // ==================================
+
+      if (!newPassword || !confirmPassword) {
+        return res.status(400).json({
+          success: false,
+
+          code: "PASSWORD_FIELDS_REQUIRED",
+
+          message: "New password and confirmation are required.",
+        });
+      }
+
+      // ==================================
+      // CONFIRM PASSWORD
+      // ==================================
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({
+          success: false,
+
+          code: "PASSWORD_MISMATCH",
+
+          message: "New password and confirmation do not match.",
+        });
+      }
+
+      // ==================================
+      // PASSWORD POLICY
+      // ==================================
+
+      const passwordValidation = validatePasswordPolicy(newPassword);
+
+      if (!passwordValidation.valid) {
+        return res.status(400).json({
+          success: false,
+
+          code: passwordValidation.code,
+
+          message: passwordValidation.message,
+        });
+      }
+
+      newPasswordHash = await bcrypt.hash(newPassword, 10);
+    }
+
+    // ====================================
+    // UPDATE TRANSACTION
+    // ====================================
+
+    try {
+      db.exec("BEGIN TRANSACTION;");
+
+      const result = db
+        .prepare(
+          `
+              UPDATE users
+
+              SET
+                username = ?,
+
+                first_name = ?,
+                middle_name = ?,
+                last_name = ?,
+
+                email = ?,
+                contact_number = ?,
+
+                grade_level = ?,
+                section = ?,
+
+                account_status = ?,
+
+                updated_at =
+                  CURRENT_TIMESTAMP
+
+              WHERE
+                id = ?
+
+                AND
+                role =
+                  'STUDENT'
+              `,
+        )
+        .run(
+          normalizedUsername,
+
+          normalizedFirstName,
+          normalizedMiddleName,
+          normalizedLastName,
+
+          normalizedEmail,
+          normalizedContactNumber,
+
+          normalizedGradeLevel,
+          normalizedSection,
+
+          normalizedStatus,
+
+          studentId,
+        );
+
+      if (Number(result.changes) === 0) {
+        throw new Error("Student information could not be updated.");
+      }
+
+      // ==================================
+      // OPTIONAL PASSWORD UPDATE
+      // ==================================
+
+      if (newPasswordHash !== null) {
+        db.prepare(
+          `
+              UPDATE users
+
+              SET
+                password_hash = ?,
+
+                failed_login_attempts = 0,
+
+                locked_until = NULL,
+
+                lockout_count = 0,
+
+                updated_at =
+                  CURRENT_TIMESTAMP
+
+              WHERE
+                id = ?
+
+                AND
+                role =
+                  'STUDENT'
+              `,
+        ).run(newPasswordHash, studentId);
+      }
+
+      db.exec("COMMIT;");
+    } catch (transactionError) {
+      try {
+        db.exec("ROLLBACK;");
+      } catch (rollbackError) {
+        console.error("Student update rollback error:", rollbackError);
+      }
+
+      throw transactionError;
+    }
+
+    // ====================================
+    // SUCCESS
+    // ====================================
 
     return res.json({
       success: true,
 
-      message: "Student information updated successfully.",
+      message: passwordChanged
+        ? "Student information and password updated successfully."
+        : "Student information updated successfully.",
+
+      passwordChanged,
 
       student: {
         id: existingStudent.id,
@@ -1855,9 +2059,9 @@ router.delete("/:id", (req, res) => {
   try {
     const studentId = Number(req.params.id);
 
-    // ======================================
+    // ====================================
     // VALIDATE ID
-    // ======================================
+    // ====================================
 
     if (!Number.isInteger(studentId) || studentId <= 0) {
       return res.status(400).json({
@@ -1869,9 +2073,9 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // FIND STUDENT
-    // ======================================
+    // ====================================
 
     const student = db
       .prepare(
@@ -1904,7 +2108,7 @@ router.delete("/:id", (req, res) => {
               AND
               username NOT LIKE
                 '__archived_student_%'
-          `,
+            `,
       )
       .get(studentId);
 
@@ -1918,9 +2122,9 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // STUDENT MUST BE INACTIVE
-    // ======================================
+    // ====================================
 
     const accountStatus = String(student.account_status || "").toUpperCase();
 
@@ -1938,9 +2142,9 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // CHECK UNPAID / PENDING FINES
-    // ======================================
+    // ====================================
 
     const outstandingFineResult = db
       .prepare(
@@ -1978,7 +2182,7 @@ router.delete("/:id", (req, res) => {
                 'CANCELLED',
                 'WAIVED'
               )
-          `,
+            `,
       )
       .get(studentId);
 
@@ -1987,9 +2191,9 @@ router.delete("/:id", (req, res) => {
     const outstandingBalance =
       Number(outstandingFineResult?.total_centavos || 0) / 100;
 
-    // ======================================
+    // ====================================
     // BLOCK DELETE IF BALANCE REMAINS
-    // ======================================
+    // ====================================
 
     if (outstandingFineCount > 0 || outstandingBalance > 0) {
       return res.status(409).json({
@@ -2009,9 +2213,9 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // COUNT ALL FINE HISTORY
-    // ======================================
+    // ====================================
 
     const fineResult = db
       .prepare(
@@ -2023,15 +2227,15 @@ router.delete("/:id", (req, res) => {
 
             WHERE
               student_id = ?
-          `,
+            `,
       )
       .get(studentId);
 
     const fineCount = Number(fineResult?.total || 0);
 
-    // ======================================
+    // ====================================
     // COUNT ALL PAYMENT HISTORY
-    // ======================================
+    // ====================================
 
     const paymentResult = db
       .prepare(
@@ -2043,18 +2247,18 @@ router.delete("/:id", (req, res) => {
 
             WHERE
               student_id = ?
-          `,
+            `,
       )
       .get(studentId);
 
     const paymentCount = Number(paymentResult?.total || 0);
 
-    // ======================================
+    // ====================================
     // HAS HISTORICAL RECORDS
     //
     // Archive instead of physically
     // deleting the user row.
-    // ======================================
+    // ====================================
 
     if (fineCount > 0 || paymentCount > 0) {
       const archiveTimestamp = Date.now();
@@ -2088,7 +2292,7 @@ router.delete("/:id", (req, res) => {
                 AND
                 role =
                   'STUDENT'
-            `,
+              `,
         )
         .run(archivedUsername, archivedEmail, studentId);
 
@@ -2102,17 +2306,17 @@ router.delete("/:id", (req, res) => {
         });
       }
 
-      // ====================================
+      // ==================================
       // REMOVE PROFILE PICTURE FILE
-      // ====================================
+      // ==================================
 
       if (student.profile_picture_uri) {
         deleteProfilePictureFile(student.profile_picture_uri);
       }
 
-      // ====================================
+      // ==================================
       // ARCHIVE SUCCESS
-      // ====================================
+      // ==================================
 
       return res.json({
         success: true,
@@ -2144,11 +2348,11 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // NO FINES OR PAYMENTS
     //
     // SAFE TO HARD DELETE
-    // ======================================
+    // ====================================
 
     const deleteResult = db
       .prepare(
@@ -2161,7 +2365,7 @@ router.delete("/:id", (req, res) => {
               AND
               role =
                 'STUDENT'
-          `,
+            `,
       )
       .run(studentId);
 
@@ -2175,17 +2379,17 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ======================================
+    // ====================================
     // REMOVE PROFILE PICTURE FILE
-    // ======================================
+    // ====================================
 
     if (student.profile_picture_uri) {
       deleteProfilePictureFile(student.profile_picture_uri);
     }
 
-    // ======================================
+    // ====================================
     // HARD DELETE SUCCESS
-    // ======================================
+    // ====================================
 
     return res.json({
       success: true,

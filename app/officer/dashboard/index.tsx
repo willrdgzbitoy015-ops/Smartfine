@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
@@ -28,55 +29,38 @@ import { useResponsiveStyles } from "./dashboard-styles";
 
 type Officer = {
   id: number;
-
   fullName: string;
-
   username: string;
-
   profilePictureUri: string | null;
 };
 
 type DashboardStats = {
   totalStudents: number;
-
   finesRecorded: number;
-
   todayAmountCentavos: number;
 };
 
 type FineActivity = {
   id: number;
-
   studentName: string;
-
   profilePictureUri: string | null;
-
   violationName: string | null;
-
   amountCentavos: number;
-
   recordedAt: string | null;
 };
 
 type DashboardResponse = {
   success: boolean;
-
   message?: string;
-
   user?: Officer;
-
   stats?: DashboardStats;
-
   activities?: FineActivity[];
 };
 
 type NavigationItem = {
   label: string;
-
   icon: any;
-
   route: string | null;
-
   enabled: boolean;
 };
 
@@ -94,25 +78,19 @@ const icons = {
   profile: require("../../../assets/icons/user.png"),
 
   records: require("../../../assets/icons/reports.png"),
+
+  back: require("../../../assets/icons/back_icon.png"),
 };
 
 // ==========================================
 // MOBILE NAVIGATION
-//
-// Home and Scan are currently working.
-//
-// Students, Profile, and Records will be
-// enabled when those Officer pages are built.
 // ==========================================
 
 const navigationItems: NavigationItem[] = [
   {
     label: "Home",
-
     icon: icons.home,
-
     route: "/officer/dashboard",
-
     enabled: true,
   },
 
@@ -125,11 +103,8 @@ const navigationItems: NavigationItem[] = [
 
   {
     label: "Scan",
-
     icon: icons.scan,
-
     route: "/officer/qr-scanner",
-
     enabled: true,
   },
 
@@ -142,11 +117,8 @@ const navigationItems: NavigationItem[] = [
 
   {
     label: "Records",
-
     icon: icons.records,
-
     route: "/officer/records",
-
     enabled: true,
   },
 ];
@@ -190,7 +162,6 @@ function initials(name: string): string {
 function money(centavos: number): string {
   return `₱ ${Number(centavos / 100).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
-
     maximumFractionDigits: 2,
   })}`;
 }
@@ -206,9 +177,7 @@ function recordedDate(value: string | null): Date | null {
 
   let normalized = value.trim();
 
-  // ========================================
-  // SQLITE CURRENT_TIMESTAMP IS UTC
-  // ========================================
+  // SQLite CURRENT_TIMESTAMP is UTC.
 
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
     normalized = normalized.replace(" ", "T") + "Z";
@@ -225,11 +194,8 @@ function dateLabel(value: string | null): string {
   return date
     ? date.toLocaleDateString("en-PH", {
         month: "short",
-
         day: "numeric",
-
         year: "numeric",
-
         timeZone: "Asia/Manila",
       })
     : "Date unavailable";
@@ -241,11 +207,8 @@ function timeLabel(value: string | null): string {
   return date
     ? date.toLocaleTimeString("en-PH", {
         hour: "numeric",
-
         minute: "2-digit",
-
         hour12: true,
-
         timeZone: "Asia/Manila",
       })
     : "—";
@@ -257,9 +220,7 @@ function timeLabel(value: string | null): string {
 
 function Avatar({
   uri,
-
   name,
-
   large = false,
 }: {
   uri: string | null | undefined;
@@ -269,6 +230,7 @@ function Avatar({
   large?: boolean;
 }) {
   const styles = useResponsiveStyles();
+
   const [failed, setFailed] = useState(false);
 
   const url = imageUrl(uri);
@@ -299,12 +261,47 @@ function Avatar({
 }
 
 // ==========================================
+// ACTIVITY CARD
+// ==========================================
+
+function ActivityCard({ activity }: { activity: FineActivity }) {
+  const styles = useResponsiveStyles();
+
+  return (
+    <View style={styles.activityCard}>
+      <Avatar uri={activity.profilePictureUri} name={activity.studentName} />
+
+      <View style={styles.activityInfo}>
+        <Text style={styles.studentName}>
+          {activity.studentName || "Student"}
+        </Text>
+
+        <Text style={styles.activityDescription}>New fine recorded</Text>
+
+        <Text style={styles.violation}>{activity.violationName || "Fine"}</Text>
+
+        <Text style={styles.timestamp}>{dateLabel(activity.recordedAt)}</Text>
+      </View>
+
+      <View style={styles.activityAmountArea}>
+        <Text style={styles.activityAmount}>
+          {money(activity.amountCentavos)}
+        </Text>
+
+        <Text style={styles.timestamp}>{timeLabel(activity.recordedAt)}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ==========================================
 // FINES OFFICER DASHBOARD
 // MOBILE PHONE VIEW ONLY
 // ==========================================
 
 export default function OfficerDashboard() {
   const styles = useResponsiveStyles();
+
   const router = useRouter();
 
   // ========================================
@@ -320,6 +317,12 @@ export default function OfficerDashboard() {
   const [accessDenied, setAccessDenied] = useState(false);
 
   const requestRef = useRef<AbortController | null>(null);
+
+  // ========================================
+  // ALL ACTIVITIES MODAL
+  // ========================================
+
+  const [showAllActivities, setShowAllActivities] = useState(false);
 
   // ========================================
   // LOAD DASHBOARD
@@ -451,6 +454,11 @@ export default function OfficerDashboard() {
 
   const activities = data?.activities ?? [];
 
+  // Only the newest three appear on
+  // the main dashboard.
+
+  const recentActivities = activities.slice(0, 3);
+
   const officerName = officer?.fullName || officer?.username || "Fines Officer";
 
   // ========================================
@@ -461,11 +469,8 @@ export default function OfficerDashboard() {
     try {
       await AsyncStorage.multiRemove([
         "token",
-
         "userEmail",
-
         "userId",
-
         "userRole",
       ]);
 
@@ -480,27 +485,15 @@ export default function OfficerDashboard() {
   // ========================================
 
   const handleNavigation = (item: NavigationItem) => {
-    // ======================================
-    // DISABLED / FUTURE PAGE
-    // ======================================
-
     if (!item.enabled) {
       return;
     }
-
-    // ======================================
-    // HOME
-    // ======================================
 
     if (item.label === "Home") {
       void loadDashboard();
 
       return;
     }
-
-    // ======================================
-    // OTHER ACTIVE ROUTES
-    // ======================================
 
     if (item.route) {
       router.push(item.route as any);
@@ -516,6 +509,10 @@ export default function OfficerDashboard() {
       <StatusBar style="dark" />
 
       <View style={styles.phone}>
+        {/* =================================
+            DASHBOARD CONTENT
+        ================================= */}
+
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
@@ -571,7 +568,6 @@ export default function OfficerDashboard() {
                     void loadDashboard();
                   }
                 }}
-                accessibilityRole="button"
               >
                 <Text style={styles.retryText}>
                   {accessDenied ? "Back to Login" : "Try Again"}
@@ -642,42 +638,24 @@ export default function OfficerDashboard() {
             </View>
           ) : null}
 
-          {activities.map((activity) => (
-            <View key={activity.id} style={styles.activityCard}>
-              <Avatar
-                uri={activity.profilePictureUri}
-                name={activity.studentName}
-              />
-
-              <View style={styles.activityInfo}>
-                <Text style={styles.studentName}>
-                  {activity.studentName || "Student"}
-                </Text>
-
-                <Text style={styles.activityDescription}>
-                  New fine recorded
-                </Text>
-
-                <Text style={styles.violation}>
-                  {activity.violationName || "Fine"}
-                </Text>
-
-                <Text style={styles.timestamp}>
-                  {dateLabel(activity.recordedAt)}
-                </Text>
-              </View>
-
-              <View style={styles.activityAmountArea}>
-                <Text style={styles.activityAmount}>
-                  {money(activity.amountCentavos)}
-                </Text>
-
-                <Text style={styles.timestamp}>
-                  {timeLabel(activity.recordedAt)}
-                </Text>
-              </View>
-            </View>
+          {recentActivities.map((activity) => (
+            <ActivityCard key={activity.id} activity={activity} />
           ))}
+
+          {/* =================================
+              VIEW ALL ACTIVITIES
+          ================================= */}
+
+          {activities.length > 3 && (
+            <TouchableOpacity
+              style={styles.viewAllButton}
+              onPress={() => setShowAllActivities(true)}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+            >
+              <Text style={styles.viewAllText}>View all activities</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
 
         {/* =================================
@@ -745,6 +723,74 @@ export default function OfficerDashboard() {
           </View>
         </SafeAreaView>
       </View>
+
+      {/* ======================================
+          ALL ACTIVITIES MODAL
+      ====================================== */}
+
+      <Modal
+        visible={showAllActivities}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShowAllActivities(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <SafeAreaView style={styles.modalCard}>
+            {/* MODAL HEADER */}
+
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.modalBackButton}
+                onPress={() => setShowAllActivities(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close all activities"
+              >
+                <Image
+                  source={icons.back}
+                  style={styles.modalBackIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+
+              <View style={styles.modalTitleArea}>
+                <Text style={styles.modalTitle}>All Activities</Text>
+
+                <Text style={styles.modalSubtitle}>
+                  {activities.length.toLocaleString("en-PH")}{" "}
+                  {activities.length === 1
+                    ? "recorded activity"
+                    : "recorded activities"}
+                </Text>
+              </View>
+
+              <View style={styles.modalHeaderSpacer} />
+            </View>
+
+            {/* MODAL ACTIVITIES */}
+
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {activities.length === 0 ? (
+                <View style={styles.modalEmptyPanel}>
+                  <Text style={styles.emptyTitle}>No activities yet</Text>
+
+                  <Text style={styles.helper}>
+                    Recorded fines will appear here.
+                  </Text>
+                </View>
+              ) : (
+                activities.map((activity) => (
+                  <ActivityCard key={activity.id} activity={activity} />
+                ))
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

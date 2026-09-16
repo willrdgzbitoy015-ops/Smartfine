@@ -64,6 +64,34 @@ type NavItem = {
 };
 
 // ==========================================
+// PASSWORD POLICY
+// ==========================================
+
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return "Password must contain at least 8 characters.";
+  }
+
+  if (!/[a-z]/.test(password)) {
+    return "Password must contain at least one lowercase letter.";
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    return "Password must contain at least one uppercase letter.";
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return "Password must contain at least one number.";
+  }
+
+  if (!/[^A-Za-z0-9\s]/.test(password)) {
+    return "Password must contain at least one special character.";
+  }
+
+  return null;
+}
+
+// ==========================================
 // EDIT STUDENT SCREEN
 // ==========================================
 
@@ -130,6 +158,18 @@ export default function EditStudent() {
   const [email, setEmail] = useState("");
 
   const [accountActive, setAccountActive] = useState(true);
+
+  // ==========================================
+  // OPTIONAL PASSWORD CHANGE
+  // ==========================================
+
+  const [newPassword, setNewPassword] = useState("");
+
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // ==========================================
   // SCREEN STATE
@@ -298,6 +338,14 @@ export default function EditStudent() {
       setAccountActive(
         String(student.account_status || "").toUpperCase() === "ACTIVE",
       );
+
+      setNewPassword("");
+
+      setConfirmPassword("");
+
+      setShowNewPassword(false);
+
+      setShowConfirmPassword(false);
     } catch (error) {
       console.error("Load student error:", error);
 
@@ -656,12 +704,36 @@ export default function EditStudent() {
       return;
     }
 
+    // ======================================
+    // OPTIONAL PASSWORD CHANGE
+    // ======================================
+
+    const changingPassword = newPassword !== "" || confirmPassword !== "";
+
+    if (changingPassword) {
+      if (!newPassword || !confirmPassword) {
+        setErrorMessage("New password and confirmation are required.");
+
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        setErrorMessage("New password and confirmation do not match.");
+
+        return;
+      }
+
+      const passwordError = validatePassword(newPassword);
+
+      if (passwordError) {
+        setErrorMessage(passwordError);
+
+        return;
+      }
+    }
+
     try {
       setSaving(true);
-
-      // Remember whether the user selected
-      // a new profile picture before the
-      // upload resets selectedProfilePicture.
 
       const hadNewProfilePicture = Boolean(selectedProfilePicture);
 
@@ -692,6 +764,10 @@ export default function EditStudent() {
             section: section.trim(),
 
             accountStatus: accountActive ? "ACTIVE" : "INACTIVE",
+
+            newPassword,
+
+            confirmPassword,
           }),
         },
       );
@@ -705,6 +781,16 @@ export default function EditStudent() {
 
         return;
       }
+
+      const passwordChanged = changingPassword && data.passwordChanged === true;
+
+      setNewPassword("");
+
+      setConfirmPassword("");
+
+      setShowNewPassword(false);
+
+      setShowConfirmPassword(false);
 
       // ======================================
       // PROFILE PICTURE UPLOAD
@@ -727,7 +813,7 @@ export default function EditStudent() {
       // SUCCESS
       // ======================================
 
-      showSuccess(hadNewProfilePicture);
+      showSuccess(hadNewProfilePicture, passwordChanged);
     } catch (error) {
       console.error("Update student error:", error);
 
@@ -741,10 +827,20 @@ export default function EditStudent() {
   // FULL SUCCESS
   // ==========================================
 
-  const showSuccess = (profilePictureUpdated: boolean) => {
-    const message = profilePictureUpdated
-      ? "Student information and profile picture updated successfully."
-      : "Student information updated successfully.";
+  const showSuccess = (
+    profilePictureUpdated: boolean,
+    passwordChanged: boolean,
+  ) => {
+    let message = "Student information updated successfully.";
+
+    if (passwordChanged && profilePictureUpdated) {
+      message =
+        "Student information, password, and profile picture updated successfully.";
+    } else if (passwordChanged) {
+      message = "Student information and password updated successfully.";
+    } else if (profilePictureUpdated) {
+      message = "Student information and profile picture updated successfully.";
+    }
 
     setSuccessMessage(message);
 
@@ -986,25 +1082,15 @@ export default function EditStudent() {
           <View
             style={{
               width: "100%",
-
               maxWidth: 1100,
-
               alignSelf: "center",
-
               backgroundColor: "#FFFFFF",
-
               borderRadius: 15,
-
               padding: 24,
-
               marginBottom: 22,
-
               flexDirection: "row",
-
               flexWrap: "wrap",
-
               alignItems: "center",
-
               gap: 22,
             }}
           >
@@ -1015,11 +1101,8 @@ export default function EditStudent() {
                 }}
                 style={{
                   width: 110,
-
                   height: 110,
-
                   borderRadius: 55,
-
                   backgroundColor: "#E8E8E8",
                 }}
                 resizeMode="cover"
@@ -1028,24 +1111,17 @@ export default function EditStudent() {
               <View
                 style={{
                   width: 110,
-
                   height: 110,
-
                   borderRadius: 55,
-
                   backgroundColor: "#173A73",
-
                   alignItems: "center",
-
                   justifyContent: "center",
                 }}
               >
                 <Text
                   style={{
                     color: "#FFFFFF",
-
                     fontSize: 30,
-
                     fontWeight: "800",
                   }}
                 >
@@ -1057,18 +1133,14 @@ export default function EditStudent() {
             <View
               style={{
                 flex: 1,
-
                 minWidth: 240,
               }}
             >
               <Text
                 style={{
                   color: "#123266",
-
                   fontSize: 18,
-
                   fontWeight: "800",
-
                   marginBottom: 5,
                 }}
               >
@@ -1078,11 +1150,8 @@ export default function EditStudent() {
               <Text
                 style={{
                   color: "#8C939F",
-
                   fontSize: 11,
-
                   lineHeight: 17,
-
                   marginBottom: 15,
                 }}
               >
@@ -1093,11 +1162,8 @@ export default function EditStudent() {
                 <Text
                   style={{
                     color: "#45B94F",
-
                     fontSize: 11,
-
                     fontWeight: "700",
-
                     marginBottom: 12,
                   }}
                 >
@@ -1108,28 +1174,19 @@ export default function EditStudent() {
               <View
                 style={{
                   flexDirection: "row",
-
                   flexWrap: "wrap",
-
                   gap: 10,
                 }}
               >
                 <TouchableOpacity
                   style={{
                     minWidth: 170,
-
                     height: 42,
-
                     borderRadius: 8,
-
                     backgroundColor: "#173A73",
-
                     alignItems: "center",
-
                     justifyContent: "center",
-
                     paddingHorizontal: 16,
-
                     opacity: saving || removingPicture ? 0.5 : 1,
                   }}
                   onPress={handlePickProfilePicture}
@@ -1138,9 +1195,7 @@ export default function EditStudent() {
                   <Text
                     style={{
                       color: "#FFFFFF",
-
                       fontSize: 11,
-
                       fontWeight: "800",
                     }}
                   >
@@ -1154,21 +1209,13 @@ export default function EditStudent() {
                   <TouchableOpacity
                     style={{
                       minWidth: 150,
-
                       height: 42,
-
                       borderRadius: 8,
-
                       borderWidth: 1,
-
                       borderColor: "#173A73",
-
                       backgroundColor: "#FFFFFF",
-
                       alignItems: "center",
-
                       justifyContent: "center",
-
                       paddingHorizontal: 16,
                     }}
                     onPress={handleCancelSelectedPicture}
@@ -1177,9 +1224,7 @@ export default function EditStudent() {
                     <Text
                       style={{
                         color: "#173A73",
-
                         fontSize: 11,
-
                         fontWeight: "800",
                       }}
                     >
@@ -1192,19 +1237,12 @@ export default function EditStudent() {
                   <TouchableOpacity
                     style={{
                       minWidth: 170,
-
                       height: 42,
-
                       borderRadius: 8,
-
                       backgroundColor: "#D32F2F",
-
                       alignItems: "center",
-
                       justifyContent: "center",
-
                       paddingHorizontal: 16,
-
                       opacity: removingPicture ? 0.5 : 1,
                     }}
                     onPress={handleRemoveProfilePicture}
@@ -1216,9 +1254,7 @@ export default function EditStudent() {
                       <Text
                         style={{
                           color: "#FFFFFF",
-
                           fontSize: 11,
-
                           fontWeight: "800",
                         }}
                       >
@@ -1360,6 +1396,10 @@ export default function EditStudent() {
               />
             </View>
 
+            {/* ==================================
+                ACCOUNT INFORMATION
+            ================================== */}
+
             <View style={styles.formCard}>
               <Text style={styles.cardTitle}>Account Information</Text>
 
@@ -1377,6 +1417,10 @@ export default function EditStudent() {
               <Text style={styles.note}>
                 Username is editable and is used by the student when logging in.
               </Text>
+
+              {/* ==================================
+                  ACCOUNT STATUS
+              ================================== */}
 
               <View style={styles.statusCard}>
                 <View>
@@ -1419,13 +1463,156 @@ export default function EditStudent() {
                 fine and payment records are preserved.
               </Text>
 
+              {/* ==================================
+                  CHANGE PASSWORD
+              ================================== */}
+
               <View style={styles.securityBox}>
-                <Text style={styles.securityTitle}>Password</Text>
+                <Text style={styles.securityTitle}>Change Password</Text>
 
                 <Text style={styles.securityText}>
-                  Password is not changed from this screen. Password reset will
-                  be handled separately for security.
+                  Optional. Leave both fields blank to keep the current
+                  password.
                 </Text>
+
+                {/* NEW PASSWORD */}
+
+                <Text style={styles.label}>New Password</Text>
+
+                <View
+                  style={{
+                    width: "100%",
+                    position: "relative",
+                  }}
+                >
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        paddingRight: 52,
+                      },
+                    ]}
+                    value={newPassword}
+                    onChangeText={(text) => {
+                      setNewPassword(text);
+
+                      clearError();
+                    }}
+                    placeholder="Enter new password"
+                    placeholderTextColor="#8C939F"
+                    secureTextEntry={!showNewPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!saving}
+                  />
+
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      right: 14,
+                      top: 0,
+                      bottom: 0,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 32,
+                    }}
+                    onPress={() => setShowNewPassword((current) => !current)}
+                    disabled={saving}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showNewPassword
+                        ? "Hide new password"
+                        : "Show new password"
+                    }
+                  >
+                    <Image
+                      source={
+                        showNewPassword
+                          ? require("../../../../../assets/icons/hide.png")
+                          : require("../../../../../assets/icons/view.png")
+                      }
+                      style={{
+                        width: 20,
+                        height: 20,
+                      }}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.note}>
+                  Minimum 8 characters with uppercase, lowercase, number, and
+                  special character.
+                </Text>
+
+                {/* CONFIRM NEW PASSWORD */}
+
+                <Text style={styles.label}>Confirm New Password</Text>
+
+                <View
+                  style={{
+                    width: "100%",
+                    position: "relative",
+                  }}
+                >
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        paddingRight: 52,
+                      },
+                    ]}
+                    value={confirmPassword}
+                    onChangeText={(text) => {
+                      setConfirmPassword(text);
+
+                      clearError();
+                    }}
+                    placeholder="Re-enter new password"
+                    placeholderTextColor="#8C939F"
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!saving}
+                  />
+
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      right: 14,
+                      top: 0,
+                      bottom: 0,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 32,
+                    }}
+                    onPress={() =>
+                      setShowConfirmPassword((current) => !current)
+                    }
+                    disabled={saving}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showConfirmPassword
+                        ? "Hide confirm password"
+                        : "Show confirm password"
+                    }
+                  >
+                    <Image
+                      source={
+                        showConfirmPassword
+                          ? require("../../../../../assets/icons/hide.png")
+                          : require("../../../../../assets/icons/view.png")
+                      }
+                      style={{
+                        width: 20,
+                        height: 20,
+                      }}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
