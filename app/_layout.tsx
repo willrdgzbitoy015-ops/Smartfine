@@ -13,9 +13,9 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { StatusBar } from "expo-status-bar";
 
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import "react-native-reanimated";
 
@@ -27,9 +27,15 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 // ==========================================
 
 SplashScreen.preventAutoHideAsync().catch(() => {
-  // Ignore if the splash is already controlled
+  // Ignore if splash is already controlled
   // by the current development environment.
 });
+
+// ==========================================
+// SPLASH DURATION
+// ==========================================
+
+const CUSTOM_SPLASH_DURATION = 3000;
 
 // ==========================================
 // ROOT LAYOUT
@@ -40,7 +46,15 @@ export default function RootLayout() {
 
   const { isLoading } = useAuth();
 
+  // ========================================
+  // CUSTOM SPLASH
+  // ========================================
+
   const [showAppSplash, setShowAppSplash] = useState(true);
+
+  const [progress, setProgress] = useState(0);
+
+  const splashStartedRef = useRef(false);
 
   // ========================================
   // FONTS
@@ -67,25 +81,63 @@ export default function RootLayout() {
   }, [fontError]);
 
   // ========================================
-  // SMARTFINE SPLASH TIMER
+  // SMARTFINE 3-SECOND SPLASH
   // ========================================
 
   useEffect(() => {
-    if (!fontsLoaded || isLoading || fontError) {
+    // Wait until application resources
+    // are ready before showing the custom
+    // SmartFine splash.
+
+    if (!fontsLoaded || isLoading || fontError || splashStartedRef.current) {
       return;
     }
 
-    // Hide the native splash.
-    // Our React SmartFine loading screen
-    // will immediately appear underneath.
+    splashStartedRef.current = true;
+
+    // ======================================
+    // HIDE NATIVE EXPO SPLASH
+    // ======================================
+
     SplashScreen.hideAsync().catch(() => {});
 
-    const timer = setTimeout(() => {
+    // ======================================
+    // START CUSTOM PROGRESS
+    // ======================================
+
+    const startedAt = Date.now();
+
+    setProgress(0);
+
+    const progressTimer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+
+      const percentage = Math.min(
+        100,
+        Math.round((elapsed / CUSTOM_SPLASH_DURATION) * 100),
+      );
+
+      setProgress(percentage);
+
+      if (percentage >= 100) {
+        clearInterval(progressTimer);
+      }
+    }, 30);
+
+    // ======================================
+    // FINISH AFTER 3 SECONDS
+    // ======================================
+
+    const finishTimer = setTimeout(() => {
+      setProgress(100);
+
       setShowAppSplash(false);
-    }, 1500);
+    }, CUSTOM_SPLASH_DURATION);
 
     return () => {
-      clearTimeout(timer);
+      clearInterval(progressTimer);
+
+      clearTimeout(finishTimer);
     };
   }, [fontsLoaded, isLoading, fontError]);
 
@@ -114,7 +166,7 @@ export default function RootLayout() {
   }
 
   // ========================================
-  // CUSTOM SMARTFINE LOADING SCREEN
+  // CUSTOM SMARTFINE SPLASH
   // ========================================
 
   if (showAppSplash) {
@@ -123,22 +175,56 @@ export default function RootLayout() {
         <StatusBar style="light" />
 
         <View style={styles.splashContent}>
+          {/* =================================
+              SMARTFINE LOGO
+          ================================= */}
+
           <Image
             source={require("../assets/branding/smartfineNoBG.png")}
             style={styles.logo}
             resizeMode="contain"
           />
 
+          {/* =================================
+              DESCRIPTION
+          ================================= */}
+
           <Text style={styles.subtitle}>
             Student Fines Monitoring and Management System
           </Text>
 
-          <View style={styles.loadingArea}>
-            <ActivityIndicator size="small" color="#8ED000" />
+          {/* =================================
+              PROGRESS BAR
+          ================================= */}
 
-            <Text style={styles.loadingText}>Loading SmartFine...</Text>
+          <View style={styles.loadingArea}>
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+
+                  {
+                    width: `${progress}%`,
+                  },
+                ]}
+              />
+            </View>
+
+            {/* =================================
+                PROGRESS INFORMATION
+            ================================= */}
+
+            <View style={styles.progressInfo}>
+              <Text style={styles.loadingText}>Loading SmartFine...</Text>
+
+              <Text style={styles.percentageText}>{progress}%</Text>
+            </View>
           </View>
         </View>
+
+        {/* =================================
+            FOOTER
+        ================================= */}
 
         <Text style={styles.footerText}>SmartFine</Text>
       </View>
@@ -193,6 +279,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  // ======================================
+  // LOGO
+  // ======================================
+
   logo: {
     width: 250,
 
@@ -200,6 +290,10 @@ const styles = StyleSheet.create({
 
     marginBottom: 24,
   },
+
+  // ======================================
+  // SUBTITLE
+  // ======================================
 
   subtitle: {
     maxWidth: 320,
@@ -217,16 +311,60 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
 
+  // ======================================
+  // LOADING AREA
+  // ======================================
+
   loadingArea: {
+    width: "100%",
+
+    maxWidth: 320,
+
+    marginTop: 48,
+  },
+
+  // ======================================
+  // PROGRESS TRACK
+  // ======================================
+
+  progressTrack: {
+    width: "100%",
+
+    height: 9,
+
+    backgroundColor: "rgba(255,255,255,0.22)",
+
+    borderRadius: 20,
+
+    overflow: "hidden",
+  },
+
+  // ======================================
+  // PROGRESS FILL
+  // ======================================
+
+  progressFill: {
+    height: "100%",
+
+    backgroundColor: "#16E564",
+
+    borderRadius: 20,
+  },
+
+  // ======================================
+  // PROGRESS INFO
+  // ======================================
+
+  progressInfo: {
+    width: "100%",
+
     flexDirection: "row",
 
     alignItems: "center",
 
-    justifyContent: "center",
+    justifyContent: "space-between",
 
-    marginTop: 38,
-
-    gap: 12,
+    marginTop: 10,
   },
 
   loadingText: {
@@ -234,10 +372,22 @@ const styles = StyleSheet.create({
 
     fontFamily: "Poppins_300Light",
 
-    fontSize: 13,
+    fontSize: 12,
 
     opacity: 0.82,
   },
+
+  percentageText: {
+    color: "#FFFFFF",
+
+    fontFamily: "Poppins_600SemiBold",
+
+    fontSize: 12,
+  },
+
+  // ======================================
+  // FOOTER
+  // ======================================
 
   footerText: {
     position: "absolute",

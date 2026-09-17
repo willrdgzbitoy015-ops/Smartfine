@@ -22,13 +22,6 @@ const PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = 10;
 const PASSWORD_RESET_RESEND_SECONDS = 60;
 const MAX_PASSWORD_RESET_ATTEMPTS = 5;
 
-// Temporary password reset challenges.
-//
-// These are intentionally stored only in
-// server memory for now.
-//
-// Restarting the backend clears all pending
-// password reset requests.
 const passwordResetChallenges = new Map();
 
 // ==========================================
@@ -52,33 +45,28 @@ if (!fs.existsSync(adminProfileDirectory)) {
 // LOGIN SECURITY SETTINGS
 // ==========================================
 
-// Requirement:
-// Account locks after 3 unsuccessful
-// password attempts.
+// Lock after 3 consecutive failed attempts.
 const MAX_LOGIN_ATTEMPTS = 3;
 
-// Lockout progression:
-// 1st lock = 3 minutes
-// 2nd lock = 5 minutes
-// 3rd lock = 15 minutes
-// 4th+ lock = 30 minutes
-const LOCKOUT_DURATIONS = [3, 5, 15, 30];
+// Progressive lockout:
+//
+// First lockout  = 30 seconds
+// Second lockout = 1 minute
+// Third lockout  = 3 minutes
+// Fourth+        = 5 minutes
+const LOCKOUT_DURATIONS_SECONDS = [30, 60, 180, 300];
 
-function getLockoutMinutes(lockoutCount) {
-  const index = Math.min(lockoutCount, LOCKOUT_DURATIONS.length - 1);
+function getLockoutSeconds(lockoutCount) {
+  const index = Math.min(
+    Math.max(0, Number(lockoutCount) || 0),
+    LOCKOUT_DURATIONS_SECONDS.length - 1,
+  );
 
-  return LOCKOUT_DURATIONS[index];
+  return LOCKOUT_DURATIONS_SECONDS[index];
 }
 
 // ==========================================
 // PASSWORD POLICY VALIDATION
-//
-// Requirements:
-// - Minimum 8 characters
-// - At least 1 lowercase letter
-// - At least 1 uppercase letter
-// - At least 1 number
-// - At least 1 special character
 // ==========================================
 
 function validatePasswordPolicy(password) {
@@ -138,7 +126,6 @@ function cleanupPasswordResetChallenges() {
 
   for (const [challengeId, challenge] of passwordResetChallenges.entries()) {
     const codeExpiry = Number(challenge.codeExpiresAt || 0);
-
     const resetExpiry = Number(challenge.resetExpiresAt || 0);
 
     const finalExpiry = Math.max(codeExpiry, resetExpiry);
@@ -205,11 +192,6 @@ function maskEmail(email) {
 
 // ==========================================
 // FIND USER FOR PASSWORD RESET
-//
-// Supports:
-// - Username
-// - Student Number
-// - Officer Employee Number
 // ==========================================
 
 function findPasswordResetUser(identifier) {
@@ -239,18 +221,14 @@ function findPasswordResetUser(identifier) {
       WHERE
         LOWER(u.username) = LOWER(?)
 
-        OR
-
-        LOWER(
+        OR LOWER(
           COALESCE(
             u.student_number,
             ''
           )
         ) = LOWER(?)
 
-        OR
-
-        LOWER(
+        OR LOWER(
           COALESCE(
             fo.employee_number,
             ''
@@ -400,9 +378,7 @@ function authenticateToken(req, res, next) {
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-
         code: "AUTH_REQUIRED",
-
         message: "Authentication is required.",
       });
     }
@@ -417,9 +393,7 @@ function authenticateToken(req, res, next) {
   } catch (error) {
     return res.status(401).json({
       success: false,
-
       code: "INVALID_TOKEN",
-
       message: "Your session is invalid or has expired.",
     });
   }
@@ -435,9 +409,7 @@ function requireAdmin(req, res, next) {
   if (role !== "ADMIN") {
     return res.status(403).json({
       success: false,
-
       code: "ADMIN_REQUIRED",
-
       message: "Administrator access is required.",
     });
   }
@@ -604,18 +576,14 @@ function uploadProfilePicture(req, res, next) {
       if (error.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({
           success: false,
-
           code: "FILE_TOO_LARGE",
-
           message: "Profile picture must be 5MB or smaller.",
         });
       }
 
       return res.status(400).json({
         success: false,
-
         code: "UPLOAD_ERROR",
-
         message: error.message,
       });
     }
@@ -623,9 +591,7 @@ function uploadProfilePicture(req, res, next) {
     if (error) {
       return res.status(400).json({
         success: false,
-
         code: "INVALID_IMAGE",
-
         message: error.message,
       });
     }
@@ -638,9 +604,6 @@ function uploadProfilePicture(req, res, next) {
 // LOGIN ROUTE
 //
 // POST /api/auth/login
-//
-// Lockout:
-// 3 unsuccessful attempts trigger lockout.
 // ==========================================
 
 router.post(
@@ -657,9 +620,7 @@ router.post(
       if (!username || !password) {
         return res.status(400).json({
           success: false,
-
           code: "MISSING_CREDENTIALS",
-
           message: "Username and password are required.",
         });
       }
@@ -692,6 +653,8 @@ router.post(
           FROM users
 
           WHERE username = ?
+
+          LIMIT 1
           `,
       );
 
@@ -700,9 +663,7 @@ router.post(
       if (!user) {
         return res.status(401).json({
           success: false,
-
           code: "INVALID_CREDENTIALS",
-
           message: "Invalid username or password.",
         });
       }
@@ -716,9 +677,7 @@ router.post(
       if (accountStatus === "DEACTIVATED") {
         return res.status(403).json({
           success: false,
-
           code: "ACCOUNT_DEACTIVATED",
-
           message:
             "This account has been deactivated. Please contact the SmartFine administrator.",
         });
@@ -727,9 +686,7 @@ router.post(
       if (accountStatus !== "ACTIVE") {
         return res.status(403).json({
           success: false,
-
           code: "ACCOUNT_UNAVAILABLE",
-
           message:
             "This account is currently unavailable. Please contact the SmartFine administrator.",
         });
@@ -752,31 +709,26 @@ router.post(
             Math.ceil(remainingMilliseconds / 1000),
           );
 
-          const remainingMinutes = Math.max(
-            1,
-            Math.ceil(remainingMilliseconds / 60000),
-          );
-
           return res.status(423).json({
             success: false,
-
             code: "ACCOUNT_LOCKED",
 
             message:
-              `This account is temporarily locked. ` +
-              `Please try again in approximately ${remainingMinutes} minute(s).`,
+              "Too many failed login attempts. This account is temporarily locked.",
 
             locked: true,
 
             retryAfterSeconds: remainingSeconds,
 
-            retryAfterMinutes: remainingMinutes,
+            lockoutCount: Number(user.lockout_count) || 0,
 
             lockedUntil: user.locked_until,
           });
         }
 
-        // Lockout period expired.
+        // Lockout expired.
+        // Keep lockout_count so the next
+        // lockout becomes longer.
 
         db.prepare(
           `
@@ -810,18 +762,18 @@ router.post(
         const newAttempts = currentAttempts + 1;
 
         // ==================================
-        // LOCK AFTER 3RD FAILED ATTEMPT
+        // LOCK AFTER THIRD FAILED ATTEMPT
         // ==================================
 
         if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
           const currentLockoutCount = Number(user.lockout_count) || 0;
 
-          const lockoutMinutes = getLockoutMinutes(currentLockoutCount);
+          const lockoutSeconds = getLockoutSeconds(currentLockoutCount);
 
           const newLockoutCount = currentLockoutCount + 1;
 
           const lockedUntil = new Date(
-            Date.now() + lockoutMinutes * 60 * 1000,
+            Date.now() + lockoutSeconds * 1000,
           ).toISOString();
 
           db.prepare(
@@ -839,21 +791,19 @@ router.post(
           ).run(lockedUntil, newLockoutCount, user.id);
 
           console.log(
-            `Account ${user.username} locked for ${lockoutMinutes} minute(s). Lockout count: ${newLockoutCount}`,
+            `Account ${user.username} locked for ${lockoutSeconds} second(s). Lockout count: ${newLockoutCount}`,
           );
 
           return res.status(423).json({
             success: false,
-
             code: "ACCOUNT_LOCKED",
 
             message:
-              `Too many failed login attempts. ` +
-              `Your account has been temporarily locked for ${lockoutMinutes} minute(s).`,
+              "Too many failed login attempts. This account is temporarily locked.",
 
             locked: true,
 
-            lockoutMinutes,
+            retryAfterSeconds: lockoutSeconds,
 
             lockoutCount: newLockoutCount,
 
@@ -862,7 +812,7 @@ router.post(
         }
 
         // ==================================
-        // SAVE FAILED ATTEMPTS
+        // SAVE FAILED ATTEMPT
         // ==================================
 
         db.prepare(
@@ -885,11 +835,8 @@ router.post(
 
         return res.status(401).json({
           success: false,
-
           code: "INVALID_CREDENTIALS",
-
           message: "Invalid username or password.",
-
           attemptsRemaining,
         });
       }
@@ -897,8 +844,7 @@ router.post(
       // ====================================
       // SUCCESSFUL LOGIN
       //
-      // Clear previous failed attempts and
-      // lockout history.
+      // Reset all failed-login history.
       // ====================================
 
       db.prepare(
@@ -922,9 +868,7 @@ router.post(
       const token = jwt.sign(
         {
           userId: user.id,
-
           username: user.username,
-
           role: user.role,
         },
 
@@ -935,13 +879,8 @@ router.post(
         },
       );
 
-      // ====================================
-      // LOGIN SUCCESS
-      // ====================================
-
       return res.json({
         success: true,
-
         message: "Login successful.",
 
         token,
@@ -971,9 +910,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
-
         code: "SERVER_ERROR",
-
         message: "Internal server error.",
       });
     }
@@ -982,8 +919,6 @@ router.post(
 
 // ==========================================
 // REQUEST PASSWORD RESET CODE
-//
-// POST /api/auth/forgot-password/request
 // ==========================================
 
 router.post(
@@ -998,9 +933,7 @@ router.post(
       if (!identifier) {
         return res.status(400).json({
           success: false,
-
           code: "IDENTIFIER_REQUIRED",
-
           message: "Please enter your ID or username.",
         });
       }
@@ -1010,9 +943,7 @@ router.post(
       if (!user) {
         return res.status(404).json({
           success: false,
-
           code: "ACCOUNT_NOT_FOUND",
-
           message: "No SmartFine account was found using that ID or username.",
         });
       }
@@ -1022,9 +953,7 @@ router.post(
       if (accountStatus !== "ACTIVE") {
         return res.status(403).json({
           success: false,
-
           code: "ACCOUNT_UNAVAILABLE",
-
           message:
             "This account is currently unavailable. Please contact the SmartFine administrator.",
         });
@@ -1033,9 +962,7 @@ router.post(
       if (!user.email) {
         return res.status(400).json({
           success: false,
-
           code: "EMAIL_NOT_FOUND",
-
           message: "This account does not have a registered email address.",
         });
       }
@@ -1070,7 +997,6 @@ router.post(
 
       return res.json({
         success: true,
-
         message: "Verification code sent successfully.",
 
         challengeId,
@@ -1087,18 +1013,14 @@ router.post(
       if (error.code === "EMAIL_NOT_CONFIGURED") {
         return res.status(503).json({
           success: false,
-
           code: "EMAIL_NOT_CONFIGURED",
-
           message: "Password reset email service is not configured yet.",
         });
       }
 
       return res.status(500).json({
         success: false,
-
         code: "PASSWORD_RESET_REQUEST_ERROR",
-
         message: "Failed to send the password reset verification code.",
       });
     }
@@ -1107,8 +1029,6 @@ router.post(
 
 // ==========================================
 // RESEND PASSWORD RESET CODE
-//
-// POST /api/auth/forgot-password/resend
 // ==========================================
 
 router.post(
@@ -1125,9 +1045,7 @@ router.post(
       if (!challenge) {
         return res.status(400).json({
           success: false,
-
           code: "RESET_REQUEST_EXPIRED",
-
           message:
             "Your password reset request has expired. Please start again.",
         });
@@ -1142,11 +1060,8 @@ router.post(
 
         return res.status(429).json({
           success: false,
-
           code: "RESEND_TOO_SOON",
-
           message: `Please wait ${retryAfterSeconds} second(s) before requesting another code.`,
-
           retryAfterSeconds,
         });
       }
@@ -1176,9 +1091,7 @@ router.post(
 
         return res.status(404).json({
           success: false,
-
           code: "ACCOUNT_NOT_FOUND",
-
           message: "The SmartFine account could not be found.",
         });
       }
@@ -1209,7 +1122,6 @@ router.post(
 
       return res.json({
         success: true,
-
         message: "A new verification code has been sent.",
 
         maskedEmail: maskEmail(user.email),
@@ -1223,9 +1135,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
-
         code: "PASSWORD_RESET_RESEND_ERROR",
-
         message: "Failed to resend the verification code.",
       });
     }
@@ -1234,8 +1144,6 @@ router.post(
 
 // ==========================================
 // VERIFY PASSWORD RESET CODE
-//
-// POST /api/auth/forgot-password/verify
 // ==========================================
 
 router.post(
@@ -1252,9 +1160,7 @@ router.post(
       if (!challengeId || !/^[0-9]{6}$/.test(code)) {
         return res.status(400).json({
           success: false,
-
           code: "INVALID_CODE_FORMAT",
-
           message: "Please enter the complete 6-digit verification code.",
         });
       }
@@ -1264,9 +1170,7 @@ router.post(
       if (!challenge) {
         return res.status(400).json({
           success: false,
-
           code: "RESET_REQUEST_EXPIRED",
-
           message:
             "Your password reset request has expired. Please start again.",
         });
@@ -1277,9 +1181,7 @@ router.post(
 
         return res.status(400).json({
           success: false,
-
           code: "CODE_EXPIRED",
-
           message:
             "The verification code has expired. Please request a new code.",
         });
@@ -1300,9 +1202,7 @@ router.post(
 
           return res.status(400).json({
             success: false,
-
             code: "TOO_MANY_CODE_ATTEMPTS",
-
             message:
               "Too many incorrect verification attempts. Please start the password reset again.",
           });
@@ -1312,11 +1212,8 @@ router.post(
 
         return res.status(400).json({
           success: false,
-
           code: "INVALID_CODE",
-
           message: "The verification code is incorrect.",
-
           attemptsRemaining,
         });
       }
@@ -1337,11 +1234,8 @@ router.post(
 
       return res.json({
         success: true,
-
         message: "Verification successful.",
-
         resetToken,
-
         expiresInSeconds: PASSWORD_RESET_TOKEN_EXPIRY_MINUTES * 60,
       });
     } catch (error) {
@@ -1349,9 +1243,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
-
         code: "PASSWORD_RESET_VERIFY_ERROR",
-
         message: "Failed to verify the password reset code.",
       });
     }
@@ -1360,16 +1252,6 @@ router.post(
 
 // ==========================================
 // RESET PASSWORD
-//
-// POST /api/auth/forgot-password/reset
-//
-// Password requirements:
-// - Minimum 8 characters
-// - Lowercase
-// - Uppercase
-// - Number
-// - Special character
-// - Confirmation must match
 // ==========================================
 
 router.post(
@@ -1387,16 +1269,10 @@ router.post(
 
       const confirmPassword = String(req.body.confirmPassword || "");
 
-      // ====================================
-      // RESET AUTHORIZATION
-      // ====================================
-
       if (!challengeId || !resetToken) {
         return res.status(400).json({
           success: false,
-
           code: "RESET_AUTH_REQUIRED",
-
           message: "Password reset verification is required.",
         });
       }
@@ -1406,9 +1282,7 @@ router.post(
       if (!challenge || !challenge.verified) {
         return res.status(400).json({
           success: false,
-
           code: "RESET_REQUEST_EXPIRED",
-
           message: "Your password reset session is invalid or expired.",
         });
       }
@@ -1418,9 +1292,7 @@ router.post(
 
         return res.status(400).json({
           success: false,
-
           code: "RESET_TOKEN_EXPIRED",
-
           message:
             "Your password reset session has expired. Please start again.",
         });
@@ -1431,60 +1303,36 @@ router.post(
       if (suppliedTokenHash !== challenge.resetTokenHash) {
         return res.status(403).json({
           success: false,
-
           code: "INVALID_RESET_TOKEN",
-
           message: "Password reset authorization is invalid.",
         });
       }
 
-      // ====================================
-      // REQUIRED PASSWORD FIELDS
-      // ====================================
-
       if (!newPassword || !confirmPassword) {
         return res.status(400).json({
           success: false,
-
           code: "PASSWORD_FIELDS_REQUIRED",
-
           message: "New password and confirmation are required.",
         });
       }
 
-      // ====================================
-      // CONFIRM PASSWORD
-      // ====================================
-
       if (newPassword !== confirmPassword) {
         return res.status(400).json({
           success: false,
-
           code: "PASSWORD_MISMATCH",
-
           message: "New password and confirmation do not match.",
         });
       }
-
-      // ====================================
-      // PASSWORD POLICY
-      // ====================================
 
       const passwordValidation = validatePasswordPolicy(newPassword);
 
       if (!passwordValidation.valid) {
         return res.status(400).json({
           success: false,
-
           code: passwordValidation.code,
-
           message: passwordValidation.message,
         });
       }
-
-      // ====================================
-      // FIND USER
-      // ====================================
 
       const user = db
         .prepare(
@@ -1507,16 +1355,10 @@ router.post(
 
         return res.status(404).json({
           success: false,
-
           code: "USER_NOT_FOUND",
-
           message: "The SmartFine account could not be found.",
         });
       }
-
-      // ====================================
-      // PREVENT SAME PASSWORD
-      // ====================================
 
       const samePassword = await bcrypt.compare(
         newPassword,
@@ -1526,17 +1368,11 @@ router.post(
       if (samePassword) {
         return res.status(400).json({
           success: false,
-
           code: "SAME_PASSWORD",
-
           message:
             "Your new password must be different from your current password.",
         });
       }
-
-      // ====================================
-      // HASH AND SAVE PASSWORD
-      // ====================================
 
       const passwordHash = await bcrypt.hash(newPassword, 10);
 
@@ -1559,7 +1395,6 @@ router.post(
 
       return res.json({
         success: true,
-
         message: "Password reset successfully.",
       });
     } catch (error) {
@@ -1567,9 +1402,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
-
         code: "PASSWORD_RESET_ERROR",
-
         message: "Failed to reset the password.",
       });
     }
@@ -1578,8 +1411,6 @@ router.post(
 
 // ==========================================
 // GET CURRENT ADMIN ACCOUNT
-//
-// GET /api/auth/me
 // ==========================================
 
 router.get(
@@ -1596,16 +1427,13 @@ router.get(
       if (!user) {
         return res.status(404).json({
           success: false,
-
           code: "USER_NOT_FOUND",
-
           message: "Administrator account not found.",
         });
       }
 
       return res.json({
         success: true,
-
         user: formatUser(user),
       });
     } catch (error) {
@@ -1613,9 +1441,7 @@ router.get(
 
       return res.status(500).json({
         success: false,
-
         code: "SERVER_ERROR",
-
         message: "Failed to load administrator account.",
       });
     }
@@ -1624,8 +1450,6 @@ router.get(
 
 // ==========================================
 // UPDATE CURRENT ADMIN ACCOUNT
-//
-// PUT /api/auth/me
 // ==========================================
 
 router.put(
@@ -1644,9 +1468,7 @@ router.put(
       if (!currentUser) {
         return res.status(404).json({
           success: false,
-
           code: "USER_NOT_FOUND",
-
           message: "Administrator account not found.",
         });
       }
@@ -1659,43 +1481,26 @@ router.put(
         req.body.contactNumber ?? currentUser.contact_number ?? "",
       ).trim();
 
-      // ====================================
-      // USERNAME
-      // ====================================
-
       if (!username) {
         return res.status(400).json({
           success: false,
-
           code: "USERNAME_REQUIRED",
-
           message: "Username is required.",
         });
       }
 
-      // ====================================
-      // EMAIL
-      // ====================================
-
       if (!email) {
         return res.status(400).json({
           success: false,
-
           code: "EMAIL_REQUIRED",
-
           message: "Email address is required.",
         });
       }
 
-      // ====================================
-      // DUPLICATE USERNAME
-      // ====================================
-
       const usernameOwner = db
         .prepare(
           `
-          SELECT
-            id
+          SELECT id
 
           FROM users
 
@@ -1712,22 +1517,15 @@ router.put(
       if (usernameOwner) {
         return res.status(409).json({
           success: false,
-
           code: "USERNAME_EXISTS",
-
           message: "That username is already being used.",
         });
       }
 
-      // ====================================
-      // DUPLICATE EMAIL
-      // ====================================
-
       const emailOwner = db
         .prepare(
           `
-          SELECT
-            id
+          SELECT id
 
           FROM users
 
@@ -1744,16 +1542,10 @@ router.put(
       if (emailOwner) {
         return res.status(409).json({
           success: false,
-
           code: "EMAIL_EXISTS",
-
           message: "That email address is already being used.",
         });
       }
-
-      // ====================================
-      // UPDATE ADMIN
-      // ====================================
 
       db.prepare(
         `
@@ -1773,9 +1565,7 @@ router.put(
 
       return res.json({
         success: true,
-
         message: "Account settings updated successfully.",
-
         user: formatUser(updatedUser),
       });
     } catch (error) {
@@ -1783,9 +1573,7 @@ router.put(
 
       return res.status(500).json({
         success: false,
-
         code: "SERVER_ERROR",
-
         message: "Failed to update account settings.",
       });
     }
@@ -1794,18 +1582,6 @@ router.put(
 
 // ==========================================
 // CHANGE CURRENT ADMIN PASSWORD
-//
-// PUT /api/auth/me/password
-//
-// Requirements:
-// - Current password
-// - New password
-// - Confirm password
-// - Minimum 8 characters
-// - Lowercase
-// - Uppercase
-// - Number
-// - Special character
 // ==========================================
 
 router.put(
@@ -1819,54 +1595,32 @@ router.put(
     try {
       const { currentPassword, newPassword, confirmPassword } = req.body;
 
-      // ====================================
-      // REQUIRED FIELDS
-      // ====================================
-
       if (!currentPassword || !newPassword || !confirmPassword) {
         return res.status(400).json({
           success: false,
-
           code: "PASSWORD_FIELDS_REQUIRED",
-
           message:
             "Current password, new password, and password confirmation are required.",
         });
       }
 
-      // ====================================
-      // CONFIRM PASSWORD
-      // ====================================
-
       if (newPassword !== confirmPassword) {
         return res.status(400).json({
           success: false,
-
           code: "PASSWORD_MISMATCH",
-
           message: "New password and confirmation do not match.",
         });
       }
-
-      // ====================================
-      // PASSWORD POLICY
-      // ====================================
 
       const passwordValidation = validatePasswordPolicy(newPassword);
 
       if (!passwordValidation.valid) {
         return res.status(400).json({
           success: false,
-
           code: passwordValidation.code,
-
           message: passwordValidation.message,
         });
       }
-
-      // ====================================
-      // GET ADMIN
-      // ====================================
 
       const user = db
         .prepare(
@@ -1887,32 +1641,20 @@ router.put(
       if (!user) {
         return res.status(404).json({
           success: false,
-
           code: "USER_NOT_FOUND",
-
           message: "Administrator account not found.",
         });
       }
-
-      // ====================================
-      // CURRENT PASSWORD
-      // ====================================
 
       const matches = await bcrypt.compare(currentPassword, user.password_hash);
 
       if (!matches) {
         return res.status(401).json({
           success: false,
-
           code: "CURRENT_PASSWORD_INCORRECT",
-
           message: "Current password is incorrect.",
         });
       }
-
-      // ====================================
-      // SAME PASSWORD
-      // ====================================
 
       const sameAsCurrent = await bcrypt.compare(
         newPassword,
@@ -1922,16 +1664,10 @@ router.put(
       if (sameAsCurrent) {
         return res.status(400).json({
           success: false,
-
           code: "SAME_PASSWORD",
-
           message: "New password must be different from your current password.",
         });
       }
-
-      // ====================================
-      // SAVE NEW PASSWORD
-      // ====================================
 
       const passwordHash = await bcrypt.hash(newPassword, 10);
 
@@ -1949,7 +1685,6 @@ router.put(
 
       return res.json({
         success: true,
-
         message: "Password changed successfully.",
       });
     } catch (error) {
@@ -1957,9 +1692,7 @@ router.put(
 
       return res.status(500).json({
         success: false,
-
         code: "SERVER_ERROR",
-
         message: "Failed to change password.",
       });
     }
@@ -1968,8 +1701,6 @@ router.put(
 
 // ==========================================
 // UPLOAD / CHANGE ADMIN PROFILE PICTURE
-//
-// POST /api/auth/me/profile-picture
 // ==========================================
 
 router.post(
@@ -1986,9 +1717,7 @@ router.post(
       if (!req.file) {
         return res.status(400).json({
           success: false,
-
           code: "PROFILE_PICTURE_REQUIRED",
-
           message: "Please select a profile picture.",
         });
       }
@@ -2004,9 +1733,7 @@ router.post(
 
         return res.status(404).json({
           success: false,
-
           code: "USER_NOT_FOUND",
-
           message: "Administrator account not found.",
         });
       }
@@ -2031,11 +1758,8 @@ router.post(
 
       return res.json({
         success: true,
-
         message: "Profile picture updated successfully.",
-
         profilePictureUri: newProfilePictureUri,
-
         user: formatUser(updatedUser),
       });
     } catch (error) {
@@ -2051,9 +1775,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
-
         code: "PROFILE_UPLOAD_ERROR",
-
         message: "Failed to update profile picture.",
       });
     }
@@ -2062,8 +1784,6 @@ router.post(
 
 // ==========================================
 // REMOVE ADMIN PROFILE PICTURE
-//
-// DELETE /api/auth/me/profile-picture
 // ==========================================
 
 router.delete(
@@ -2082,9 +1802,7 @@ router.delete(
       if (!currentUser) {
         return res.status(404).json({
           success: false,
-
           code: "USER_NOT_FOUND",
-
           message: "Administrator account not found.",
         });
       }
@@ -2109,9 +1827,7 @@ router.delete(
 
       return res.json({
         success: true,
-
         message: "Profile picture removed successfully.",
-
         user: formatUser(updatedUser),
       });
     } catch (error) {
@@ -2119,9 +1835,7 @@ router.delete(
 
       return res.status(500).json({
         success: false,
-
         code: "PROFILE_REMOVE_ERROR",
-
         message: "Failed to remove profile picture.",
       });
     }
@@ -2130,8 +1844,6 @@ router.delete(
 
 // ==========================================
 // FINES OFFICER DASHBOARD
-//
-// GET /api/auth/officer-dashboard
 // ==========================================
 
 router.get(
@@ -2143,35 +1855,21 @@ router.get(
     try {
       const userId = Number(req.authUser?.userId);
 
-      // ====================================
-      // VALID USER ID
-      // ====================================
-
       if (!Number.isSafeInteger(userId) || userId <= 0) {
         return res.status(401).json({
           success: false,
-
           message: "Your session is invalid. Please log in again.",
         });
       }
-
-      // ====================================
-      // LOAD OFFICER ACCOUNT
-      // ====================================
 
       const officer = getCurrentUser(userId);
 
       if (!officer) {
         return res.status(401).json({
           success: false,
-
           message: "Your account could not be found.",
         });
       }
-
-      // ====================================
-      // OFFICER ACCESS CHECK
-      // ====================================
 
       if (
         String(officer.role || "").toUpperCase() !== "FINES_OFFICER" ||
@@ -2179,14 +1877,9 @@ router.get(
       ) {
         return res.status(403).json({
           success: false,
-
           message: "An active Fines Officer account is required.",
         });
       }
-
-      // ====================================
-      // TOTAL STUDENTS
-      // ====================================
 
       const students = db
         .prepare(
@@ -2204,12 +1897,6 @@ router.get(
           `,
         )
         .get();
-
-      // ====================================
-      // OFFICER FINE TOTALS
-      //
-      // Today's amount uses Philippine time.
-      // ====================================
 
       const totals = db
         .prepare(
@@ -2261,19 +1948,6 @@ router.get(
         )
         .get(userId);
 
-      // ====================================
-      // OFFICER ACTIVITIES
-      //
-      // Return the complete valid activity
-      // history for this officer.
-      //
-      // The mobile dashboard displays only
-      // the latest 3 activities.
-      //
-      // "View all activities" uses the full
-      // list returned by this endpoint.
-      // ====================================
-
       const activities = db
         .prepare(
           `
@@ -2317,12 +1991,14 @@ router.get(
             ON u.id = f.student_id
 
           LEFT JOIN violation_types vt
-            ON vt.id = f.violation_type_id
+            ON vt.id =
+              f.violation_type_id
 
           WHERE
             f.recorded_by = ?
 
-            AND f.cancelled_at IS NULL
+            AND
+            f.cancelled_at IS NULL
 
             AND UPPER(
               COALESCE(
@@ -2343,10 +2019,6 @@ router.get(
           `,
         )
         .all(userId);
-
-      // ====================================
-      // RESPONSE
-      // ====================================
 
       return res.json({
         success: true,
@@ -2374,7 +2046,6 @@ router.get(
 
       return res.status(500).json({
         success: false,
-
         message: "Failed to load the officer dashboard.",
       });
     }

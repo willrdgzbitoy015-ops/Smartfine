@@ -71,6 +71,14 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
 
   // ==========================================
+  // LOGIN LOCKOUT
+  // ==========================================
+
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+
+  const [lockedUsername, setLockedUsername] = useState("");
+
+  // ==========================================
   // PASSWORD RESET
   // ==========================================
 
@@ -115,14 +123,40 @@ export default function LoginScreen() {
 
   const [errorMessage, setErrorMessage] = useState("");
 
+  const [errorPersistent, setErrorPersistent] = useState(false);
+
+  const [errorHideDelay, setErrorHideDelay] = useState(5000);
+
+  // ==========================================
+  // CURRENT LOCK STATE
+  // ==========================================
+
+  const currentUsername = username.trim().toLowerCase();
+
+  const isCurrentAccountLocked =
+    lockoutSeconds > 0 &&
+    Boolean(lockedUsername) &&
+    currentUsername === lockedUsername.toLowerCase();
+
   // ==========================================
   // SHOW ERROR
   // ==========================================
 
-  const showError = (title: string, message: string) => {
+  const showError = (
+    title: string,
+    message: string,
+    options?: {
+      persistent?: boolean;
+      hideAfter?: number;
+    },
+  ) => {
     setErrorTitle(title);
 
     setErrorMessage(message);
+
+    setErrorPersistent(Boolean(options?.persistent));
+
+    setErrorHideDelay(options?.hideAfter ?? 5000);
   };
 
   // ==========================================
@@ -133,25 +167,96 @@ export default function LoginScreen() {
     setErrorTitle("");
 
     setErrorMessage("");
+
+    setErrorPersistent(false);
+
+    setErrorHideDelay(5000);
   };
 
   // ==========================================
-  // AUTO-HIDE ERROR
+  // AUTO-HIDE TRANSIENT ERROR
   // ==========================================
 
   useEffect(() => {
-    if (!errorMessage) {
+    if (!errorMessage || errorPersistent) {
       return;
     }
 
     const timer = setTimeout(() => {
       clearError();
-    }, 5000);
+    }, errorHideDelay);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [errorMessage]);
+  }, [errorMessage, errorPersistent, errorHideDelay]);
+
+  // ==========================================
+  // LOGIN LOCKOUT COUNTDOWN
+  // ==========================================
+
+  useEffect(() => {
+    if (lockoutSeconds <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setLockoutSeconds((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [lockoutSeconds]);
+
+  // ==========================================
+  // KEEP LOCKOUT ERROR VISIBLE
+  // ==========================================
+
+  useEffect(() => {
+    if (isCurrentAccountLocked) {
+      setErrorTitle("Account Temporarily Locked");
+
+      setErrorMessage(
+        "Too many failed login attempts. This account is temporarily locked.",
+      );
+
+      setErrorPersistent(true);
+
+      return;
+    }
+
+    if (
+      errorTitle === "Account Temporarily Locked" &&
+      !isCurrentAccountLocked
+    ) {
+      clearError();
+    }
+  }, [username, lockoutSeconds, lockedUsername]);
+
+  // ==========================================
+  // LOCKOUT FINISHED
+  // ==========================================
+
+  useEffect(() => {
+    if (lockoutSeconds !== 0 || !lockedUsername) {
+      return;
+    }
+
+    setLockedUsername("");
+
+    if (errorTitle === "Account Temporarily Locked") {
+      clearError();
+    }
+
+    const timer = setTimeout(() => {
+      passwordRef.current?.focus();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [lockoutSeconds, lockedUsername]);
 
   // ==========================================
   // RESEND COUNTDOWN
@@ -170,6 +275,23 @@ export default function LoginScreen() {
       clearInterval(timer);
     };
   }, [resendCountdown]);
+
+  // ==========================================
+  // COUNTDOWN FORMAT
+  // ==========================================
+
+  const formatLockoutTime = (totalSeconds: number) => {
+    const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+
+    const minutes = Math.floor(safeSeconds / 60);
+
+    const seconds = safeSeconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+      2,
+      "0",
+    )}`;
+  };
 
   // ==========================================
   // SAFE API RESPONSE
@@ -249,12 +371,39 @@ export default function LoginScreen() {
   // ==========================================
 
   const handleLogin = async () => {
+    // ======================================
+    // LOCAL LOCK CHECK
+    // ======================================
+
+    if (isCurrentAccountLocked) {
+      showError(
+        "Account Temporarily Locked",
+
+        "Too many failed login attempts. This account is temporarily locked.",
+
+        {
+          persistent: true,
+        },
+      );
+
+      return;
+    }
+
     clearError();
+
+    // ======================================
+    // REQUIRED FIELDS
+    // ======================================
 
     if (!username.trim() || !password.trim()) {
       showError(
         "Missing Information",
+
         "Please enter your ID/Username and password.",
+
+        {
+          hideAfter: 1000,
+        },
       );
 
       return;
@@ -279,42 +428,58 @@ export default function LoginScreen() {
 
       console.log("Username:", username.trim());
 
-      const response = await fetch(loginUrl, {
-        method: "POST",
+      const response = await fetch(
+        loginUrl,
 
-        headers: {
-          "Content-Type": "application/json",
+        {
+          method: "POST",
 
-          Accept: "application/json",
+          headers: {
+            "Content-Type": "application/json",
+
+            Accept: "application/json",
+          },
+
+          body: JSON.stringify({
+            username: username.trim(),
+
+            password,
+          }),
         },
-
-        body: JSON.stringify({
-          username: username.trim(),
-
-          password,
-        }),
-      });
+      );
 
       const data = await readApiResponse(response);
 
       console.log("Login response:", data);
 
-      // ======================================
+      // ====================================
       // LOGIN FAILED
-      // ======================================
+      // ====================================
 
       if (!response.ok || !data.success) {
+        // ================================
+        // INVALID CREDENTIALS
+        // ================================
+
         if (data.code === "INVALID_CREDENTIALS") {
-          let message = data.message || "Invalid username or password.";
+          let message = "The username or password is incorrect.";
 
           if (typeof data.attemptsRemaining === "number") {
             const attemptWord =
               data.attemptsRemaining === 1 ? "attempt" : "attempts";
 
-            message += `\n${data.attemptsRemaining} ${attemptWord} remaining before temporary lockout.`;
+            message += `\n${data.attemptsRemaining} ${attemptWord} remaining.`;
           }
 
-          showError("Login Failed", message);
+          showError(
+            "Incorrect Login",
+
+            message,
+
+            {
+              hideAfter: 1000,
+            },
+          );
 
           setPassword("");
 
@@ -325,17 +490,35 @@ export default function LoginScreen() {
           return;
         }
 
+        // ================================
+        // ACCOUNT LOCKED
+        // ================================
+
         if (data.code === "ACCOUNT_LOCKED") {
+          const seconds = Math.max(1, Number(data.retryAfterSeconds || 30));
+
+          setLockedUsername(username.trim());
+
+          setLockoutSeconds(seconds);
+
           showError(
             "Account Temporarily Locked",
 
-            data.message || "This account is temporarily locked.",
+            "Too many failed login attempts. This account is temporarily locked.",
+
+            {
+              persistent: true,
+            },
           );
 
           setPassword("");
 
           return;
         }
+
+        // ================================
+        // DEACTIVATED
+        // ================================
 
         if (data.code === "ACCOUNT_DEACTIVATED") {
           showError(
@@ -343,12 +526,20 @@ export default function LoginScreen() {
 
             data.message ||
               "This account has been deactivated. Please contact the SmartFine administrator.",
+
+            {
+              hideAfter: 1000,
+            },
           );
 
           setPassword("");
 
           return;
         }
+
+        // ================================
+        // UNAVAILABLE
+        // ================================
 
         if (data.code === "ACCOUNT_UNAVAILABLE") {
           showError(
@@ -356,6 +547,10 @@ export default function LoginScreen() {
 
             data.message ||
               "This account is currently unavailable. Please contact the SmartFine administrator.",
+
+            {
+              hideAfter: 1000,
+            },
           );
 
           setPassword("");
@@ -363,11 +558,19 @@ export default function LoginScreen() {
           return;
         }
 
+        // ================================
+        // MISSING CREDENTIALS
+        // ================================
+
         if (data.code === "MISSING_CREDENTIALS") {
           showError(
             "Missing Information",
 
             data.message || "Username and password are required.",
+
+            {
+              hideAfter: 1000,
+            },
           );
 
           return;
@@ -377,20 +580,28 @@ export default function LoginScreen() {
           "Login Failed",
 
           data.message || "Unable to log in. Please try again.",
+
+          {
+            hideAfter: 1000,
+          },
         );
 
         return;
       }
 
-      // ======================================
+      // ====================================
       // VALIDATE RESPONSE
-      // ======================================
+      // ====================================
 
       if (!data.user || !data.user.role) {
         showError(
           "Login Error",
 
           "The server did not return a valid user role.",
+
+          {
+            hideAfter: 1000,
+          },
         );
 
         return;
@@ -401,24 +612,32 @@ export default function LoginScreen() {
           "Login Error",
 
           "The server did not return a valid login token.",
+
+          {
+            hideAfter: 1000,
+          },
         );
 
         return;
       }
 
-      // ======================================
+      // ====================================
       // LOGIN SUCCESS
-      // ======================================
+      // ====================================
 
       clearError();
+
+      setLockoutSeconds(0);
+
+      setLockedUsername("");
 
       await saveLoginSession(data);
 
       const role = String(data.user.role).toUpperCase();
 
-      // ======================================
+      // ====================================
       // ROLE REDIRECTION
-      // ======================================
+      // ====================================
 
       if (role === "ADMIN") {
         router.replace("/admin/dashboard");
@@ -434,7 +653,15 @@ export default function LoginScreen() {
           "userRole",
         ]);
 
-        showError("Login Error", `Unknown user role: ${role}`);
+        showError(
+          "Login Error",
+
+          `Unknown user role: ${role}`,
+
+          {
+            hideAfter: 1000,
+          },
+        );
       }
     } catch (error) {
       console.error("SMARTFINE LOGIN CONNECTION ERROR:", error);
@@ -443,6 +670,10 @@ export default function LoginScreen() {
         "Connection Error",
 
         "Could not connect to the SmartFine server. Please check your backend server, network connection, and ngrok tunnel.",
+
+        {
+          hideAfter: 1000,
+        },
       );
     } finally {
       setLoading(false);
@@ -509,8 +740,6 @@ export default function LoginScreen() {
 
       const data = await readApiResponse(response);
 
-      console.log("Password reset request response:", data);
-
       if (!response.ok || !data.success) {
         showError(
           "Password Reset",
@@ -558,10 +787,6 @@ export default function LoginScreen() {
 
     const digits = text.replace(/\D/g, "");
 
-    // ======================================
-    // EMPTY CURRENT BOX
-    // ======================================
-
     if (!digits) {
       const updated = [...verificationCode];
 
@@ -571,10 +796,6 @@ export default function LoginScreen() {
 
       return;
     }
-
-    // ======================================
-    // PASTE MULTIPLE DIGITS
-    // ======================================
 
     if (digits.length > 1) {
       const updated = [...verificationCode];
@@ -605,10 +826,6 @@ export default function LoginScreen() {
 
       return;
     }
-
-    // ======================================
-    // SINGLE DIGIT
-    // ======================================
 
     const updated = [...verificationCode];
 
@@ -693,15 +910,12 @@ export default function LoginScreen() {
 
           body: JSON.stringify({
             challengeId,
-
             code,
           }),
         },
       );
 
       const data = await readApiResponse(response);
-
-      console.log("Verification response:", data);
 
       if (!response.ok || !data.success) {
         showError(
@@ -779,8 +993,6 @@ export default function LoginScreen() {
 
       const data = await readApiResponse(response);
 
-      console.log("Resend verification response:", data);
-
       if (!response.ok || !data.success) {
         if (typeof data.retryAfterSeconds === "number") {
           setResendCountdown(data.retryAfterSeconds);
@@ -848,11 +1060,21 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!/[A-Za-z]/.test(newPassword)) {
+    if (!/[A-Z]/.test(newPassword)) {
       showError(
         "Invalid Password",
 
-        "Password must contain at least one letter.",
+        "Password must contain at least one uppercase letter.",
+      );
+
+      return;
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      showError(
+        "Invalid Password",
+
+        "Password must contain at least one lowercase letter.",
       );
 
       return;
@@ -909,19 +1131,14 @@ export default function LoginScreen() {
 
           body: JSON.stringify({
             challengeId,
-
             resetToken,
-
             newPassword,
-
             confirmPassword,
           }),
         },
       );
 
       const data = await readApiResponse(response);
-
-      console.log("Password reset response:", data);
 
       if (!response.ok || !data.success) {
         showError(
@@ -996,11 +1213,30 @@ export default function LoginScreen() {
       return null;
     }
 
+    const locked =
+      errorTitle === "Account Temporarily Locked" && isCurrentAccountLocked;
+
     return (
-      <View style={styles.errorBox}>
-        <Text style={styles.errorTitle}>{errorTitle}</Text>
+      <View style={[styles.errorBox, locked && styles.lockoutErrorBox]}>
+        <View style={styles.errorHeaderRow}>
+          <Text style={styles.errorTitle}>{errorTitle}</Text>
+
+          {locked && (
+            <View style={styles.timerBadge}>
+              <Text style={styles.timerBadgeText}>
+                {formatLockoutTime(lockoutSeconds)}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <Text style={styles.errorMessage}>{errorMessage}</Text>
+
+        {locked && (
+          <Text style={styles.lockoutHelper}>
+            Try again when the timer reaches 00:00.
+          </Text>
+        )}
       </View>
     );
   };
@@ -1031,7 +1267,16 @@ export default function LoginScreen() {
           onChangeText={(text) => {
             setUsername(text);
 
-            clearError();
+            const normalized = text.trim().toLowerCase();
+
+            const stillLocked =
+              lockoutSeconds > 0 &&
+              Boolean(lockedUsername) &&
+              normalized === lockedUsername.toLowerCase();
+
+            if (!stillLocked) {
+              clearError();
+            }
           }}
           autoCapitalize="none"
           autoCorrect={false}
@@ -1040,7 +1285,9 @@ export default function LoginScreen() {
           returnKeyType="next"
           blurOnSubmit={false}
           onSubmitEditing={() => {
-            passwordRef.current?.focus();
+            if (!isCurrentAccountLocked) {
+              passwordRef.current?.focus();
+            }
           }}
         />
       </View>
@@ -1059,19 +1306,25 @@ export default function LoginScreen() {
         <TextInput
           ref={passwordRef}
           style={styles.passwordInput}
-          placeholder="Enter your password"
+          placeholder={
+            isCurrentAccountLocked
+              ? "Account temporarily locked"
+              : "Enter your password"
+          }
           placeholderTextColor="#6E6E6E"
           value={password}
           onChangeText={(text) => {
             setPassword(text);
 
-            clearError();
+            if (!isCurrentAccountLocked) {
+              clearError();
+            }
           }}
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="password"
-          editable={!loading}
+          editable={!loading && !isCurrentAccountLocked}
           onSubmitEditing={handleLogin}
           returnKeyType="done"
         />
@@ -1079,7 +1332,7 @@ export default function LoginScreen() {
         <TouchableOpacity
           style={styles.eyeButton}
           onPress={() => setShowPassword((current) => !current)}
-          disabled={loading}
+          disabled={loading || isCurrentAccountLocked}
           activeOpacity={0.7}
         >
           <Image
@@ -1124,15 +1377,23 @@ export default function LoginScreen() {
       {/* LOGIN BUTTON */}
 
       <TouchableOpacity
-        style={[styles.loginButton, loading && styles.disabledButton]}
+        style={[
+          styles.loginButton,
+
+          (loading || isCurrentAccountLocked) && styles.disabledButton,
+        ]}
         onPress={handleLogin}
-        disabled={loading}
+        disabled={loading || isCurrentAccountLocked}
         activeOpacity={0.85}
       >
         {loading ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Text style={styles.loginButtonText}>LOGIN</Text>
+          <Text style={styles.loginButtonText}>
+            {isCurrentAccountLocked
+              ? `LOCKED · ${formatLockoutTime(lockoutSeconds)}`
+              : "LOGIN"}
+          </Text>
         )}
       </TouchableOpacity>
     </>
@@ -1220,10 +1481,6 @@ export default function LoginScreen() {
 
       <Text style={styles.maskedEmailText}>{maskedEmail}</Text>
 
-      {/* =====================================
-          6-DIGIT OTP INPUT
-      ====================================== */}
-
       <View style={styles.otpRow}>
         {verificationCode.map((digit, index) => (
           <TextInput
@@ -1283,7 +1540,6 @@ export default function LoginScreen() {
       <TouchableOpacity
         style={[
           styles.recoveryButton,
-
           styles.verifyButton,
 
           loading && styles.disabledButton,
@@ -1321,8 +1577,6 @@ export default function LoginScreen() {
       </Text>
 
       <View style={styles.passwordFieldCard}>
-        {/* NEW PASSWORD */}
-
         <Text style={styles.fieldLabel}>New Password</Text>
 
         <View style={styles.passwordRecoveryInput}>
@@ -1365,8 +1619,6 @@ export default function LoginScreen() {
             />
           </TouchableOpacity>
         </View>
-
-        {/* CONFIRM PASSWORD */}
 
         <Text style={[styles.fieldLabel, styles.confirmLabel]}>
           Confirm Password
@@ -1412,7 +1664,7 @@ export default function LoginScreen() {
       </View>
 
       <Text style={styles.passwordHelper}>
-        At least 8 characters, including a letter, number, and special
+        Minimum 8 characters with uppercase, lowercase, number, and special
         character.
       </Text>
 
@@ -1511,9 +1763,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* =====================================
-            BRAND
-        ====================================== */}
+        {/* BRAND */}
 
         <View
           style={[
@@ -1545,9 +1795,7 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        {/* =====================================
-            LOGIN / RECOVERY CONTENT
-        ====================================== */}
+        {/* LOGIN / RECOVERY */}
 
         <View
           style={[
@@ -1556,10 +1804,6 @@ export default function LoginScreen() {
             isTablet ? styles.loginTablet : styles.loginPhone,
           ]}
         >
-          {/* =================================
-              TABLET / WEB
-          ================================= */}
-
           {isTablet && (
             <View style={styles.loginCardTablet}>
               {screenMode !== "success" && (
@@ -1586,10 +1830,6 @@ export default function LoginScreen() {
             </View>
           )}
 
-          {/* =================================
-              PHONE
-          ================================= */}
-
           {!isTablet && (
             <>
               {screenMode === "login" ? (
@@ -1607,10 +1847,6 @@ export default function LoginScreen() {
               )}
             </>
           )}
-
-          {/* =================================
-              SECURITY TEXT
-          ================================= */}
 
           {screenMode === "login" && (
             <Text
@@ -1634,69 +1870,40 @@ export default function LoginScreen() {
 // ==========================================
 
 const styles = StyleSheet.create({
-  // ========================================
-  // SCREEN
-  // ========================================
-
   screen: {
     flex: 1,
-
     backgroundColor: "#173568",
   },
 
   scrollView: {
     flex: 1,
-
     backgroundColor: "#173568",
   },
 
   container: {
     flexGrow: 1,
-
     backgroundColor: "#173568",
   },
 
-  // ========================================
-  // TABLET
-  // ========================================
-
   tabletContainer: {
     minHeight: "100%",
-
     flexDirection: "row",
-
     alignItems: "center",
-
     justifyContent: "center",
-
     paddingHorizontal: 50,
-
     paddingVertical: 35,
   },
 
-  // ========================================
-  // PHONE
-  // ========================================
-
   phoneContainer: {
     minHeight: "100%",
-
     alignItems: "center",
-
     paddingHorizontal: 20,
-
     paddingTop: 52,
-
     paddingBottom: 35,
   },
 
-  // ========================================
-  // BRAND SECTION
-  // ========================================
-
   brandSection: {
     alignItems: "center",
-
     justifyContent: "center",
   },
 
@@ -1706,7 +1913,6 @@ const styles = StyleSheet.create({
 
   brandPhone: {
     width: "100%",
-
     marginBottom: 21,
   },
 
@@ -1716,57 +1922,41 @@ const styles = StyleSheet.create({
 
   brandLogoTablet: {
     width: 330,
-
     height: 175,
   },
 
   brandLogoPhone: {
     width: 300,
-
     height: 185,
-
     marginBottom: -22,
   },
 
   tagline: {
     color: "#FFFFFF",
-
     textAlign: "center",
   },
 
   taglineTablet: {
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 18,
-
-    fontWeight: "700",
-
     lineHeight: 24,
   },
 
   taglinePhone: {
     width: "100%",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
-
-    fontWeight: "400",
-
     lineHeight: 18,
-
     marginTop: 0,
   },
 
-  // ========================================
-  // LOGIN SECTION
-  // ========================================
-
   loginSection: {
     alignItems: "center",
-
     justifyContent: "center",
   },
 
   loginTablet: {
     flex: 1,
-
     paddingHorizontal: 20,
   },
 
@@ -1774,329 +1964,236 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 
-  // ========================================
-  // MOBILE TITLES
-  // ========================================
-
   welcomeTextPhone: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 23,
-
-    fontWeight: "800",
-
     textAlign: "center",
-
     marginTop: 0,
   },
 
   loginTitlePhone: {
     color: "#16E564",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 20,
-
-    fontWeight: "700",
-
     textAlign: "center",
-
     marginTop: 20,
-
     marginBottom: 20,
   },
-
-  // ========================================
-  // PHONE LOGIN CARD
-  // ========================================
 
   loginCardPhone: {
     width: "86%",
-
     maxWidth: 340,
-
     backgroundColor: "#425D89",
-
     borderRadius: 10,
-
     paddingHorizontal: 19,
-
     paddingTop: 22,
-
     paddingBottom: 30,
-
     alignItems: "center",
-
     shadowColor: "#000000",
-
     shadowOffset: {
       width: 0,
-
       height: 4,
     },
-
     shadowOpacity: 0.14,
-
     shadowRadius: 8,
-
     elevation: 6,
   },
 
-  // ========================================
-  // TABLET LOGIN CARD
-  // ========================================
-
   loginCardTablet: {
     width: "100%",
-
     maxWidth: 440,
-
     backgroundColor: "#425D89",
-
     borderRadius: 14,
-
     paddingHorizontal: 46,
-
     paddingTop: 38,
-
     paddingBottom: 42,
-
     alignItems: "center",
-
     shadowColor: "#000000",
-
     shadowOffset: {
       width: 0,
-
       height: 6,
     },
-
     shadowOpacity: 0.2,
-
     shadowRadius: 12,
-
     elevation: 8,
   },
 
-  // ========================================
-  // TABLET SMALL LOGO
-  // ========================================
-
   smallLogoBox: {
     width: 110,
-
     height: 110,
-
     borderRadius: 24,
-
     backgroundColor: "#082947",
-
     alignItems: "center",
-
     justifyContent: "center",
-
     marginBottom: 20,
-
     overflow: "hidden",
   },
 
   smallLogo: {
     width: 72,
-
     height: 72,
   },
 
   welcomeTextTablet: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 26,
-
-    fontWeight: "800",
-
     textAlign: "center",
   },
 
   loginTitleTablet: {
     color: "#16E564",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 19,
-
-    fontWeight: "800",
-
     textAlign: "center",
-
     marginTop: 3,
-
     marginBottom: 24,
   },
 
-  // ========================================
-  // LOGIN INPUTS
-  // ========================================
-
   inputContainer: {
     width: "100%",
-
     height: 43,
-
     backgroundColor: "#FFFFFF",
-
     borderRadius: 6,
-
     flexDirection: "row",
-
     alignItems: "center",
-
     marginBottom: 29,
-
     overflow: "hidden",
   },
 
   iconContainer: {
     width: 47,
-
     height: "100%",
-
     alignItems: "center",
-
     justifyContent: "center",
   },
 
   userIcon: {
     width: 28,
-
     height: 28,
   },
 
   lockIcon: {
     width: 23,
-
     height: 23,
   },
 
   input: {
     flex: 1,
-
     height: "100%",
-
     color: "#222222",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
-
-    fontWeight: "400",
-
     paddingHorizontal: 4,
-
     paddingRight: 12,
   },
 
   passwordInput: {
     flex: 1,
-
     height: "100%",
-
     color: "#222222",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
-
-    fontWeight: "400",
-
     paddingHorizontal: 4,
   },
 
   eyeButton: {
     width: 43,
-
     height: "100%",
-
     alignItems: "center",
-
     justifyContent: "center",
   },
 
   eyeIcon: {
     width: 23,
-
     height: 23,
   },
 
-  // ========================================
-  // ERROR
-  // ========================================
-
   errorBox: {
     width: "100%",
-
     backgroundColor: "#FFF1F1",
-
     borderWidth: 1,
-
     borderColor: "#E15252",
-
     borderRadius: 6,
-
     paddingHorizontal: 10,
-
     paddingVertical: 8,
-
     marginBottom: 14,
   },
 
-  errorTitle: {
-    color: "#B42318",
+  lockoutErrorBox: {
+    backgroundColor: "#FFF7E8",
+    borderColor: "#E8A323",
+  },
 
-    fontSize: 12,
-
-    fontWeight: "700",
-
+  errorHeaderRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
     marginBottom: 2,
+  },
+
+  errorTitle: {
+    flex: 1,
+    color: "#B42318",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 12,
   },
 
   errorMessage: {
     color: "#B42318",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
-
-    fontWeight: "400",
-
     lineHeight: 16,
   },
 
-  // ========================================
-  // LOGIN OPTIONS
-  // ========================================
+  timerBadge: {
+    minWidth: 58,
+    minHeight: 24,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: "#173A73",
+  },
+
+  timerBadgeText: {
+    color: "#FFFFFF",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 11,
+  },
+
+  lockoutHelper: {
+    color: "#875600",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 9,
+    lineHeight: 13,
+    marginTop: 5,
+  },
 
   optionsRow: {
     width: "100%",
-
     flexDirection: "row",
-
     alignItems: "center",
-
     justifyContent: "space-between",
-
     marginTop: -10,
-
     marginBottom: 42,
   },
 
   rememberRow: {
     flexDirection: "row",
-
     alignItems: "center",
   },
 
   checkbox: {
     width: 12,
-
     height: 12,
-
     backgroundColor: "#FFFFFF",
-
     borderRadius: 2,
-
     alignItems: "center",
-
     justifyContent: "center",
-
     marginRight: 6,
   },
 
@@ -2106,43 +2203,28 @@ const styles = StyleSheet.create({
 
   checkmark: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 9,
-
-    fontWeight: "800",
   },
 
   rememberText: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_500Medium",
     fontSize: 10,
-
-    fontWeight: "500",
   },
 
   forgotText: {
     color: "#18E968",
-
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 10,
-
-    fontWeight: "600",
   },
-
-  // ========================================
-  // LOGIN BUTTON
-  // ========================================
 
   loginButton: {
     width: "100%",
-
     height: 33,
-
     backgroundColor: "#4CB94F",
-
     borderRadius: 4,
-
     alignItems: "center",
-
     justifyContent: "center",
   },
 
@@ -2152,289 +2234,179 @@ const styles = StyleSheet.create({
 
   loginButtonText: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 12,
-
-    fontWeight: "800",
   },
-
-  // ========================================
-  // SECURITY TEXT
-  // ========================================
 
   securityText: {
     color: "#C6D2E5",
-
+    fontFamily: "Poppins_300Light",
     fontSize: 10,
-
     textAlign: "center",
-
     marginTop: 15,
   },
 
   securityTextPhone: {
     marginTop: 18,
-
     fontSize: 9,
   },
 
-  // ========================================
-  // RECOVERY PHONE
-  // ========================================
-
   recoveryPhoneContainer: {
     width: "86%",
-
     maxWidth: 340,
-
     alignSelf: "center",
-
     alignItems: "center",
-
     paddingTop: 0,
   },
 
   recoveryTitle: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 18,
-
-    fontWeight: "800",
-
     textAlign: "center",
-
     marginTop: 0,
-
     marginBottom: 8,
   },
 
   recoveryDescription: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
-
-    fontWeight: "400",
-
     lineHeight: 15,
-
     textAlign: "center",
-
     marginBottom: 4,
   },
 
   maskedEmailText: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_300Light",
     fontSize: 10,
-
-    fontWeight: "300",
-
     textAlign: "center",
-
     marginBottom: 24,
   },
 
-  // ========================================
-  // RECOVERY FIELD CARD
-  // ========================================
-
   recoveryFieldCard: {
     width: "100%",
-
     backgroundColor: "#425D89",
-
     borderRadius: 7,
-
     paddingHorizontal: 12,
-
     paddingVertical: 10,
-
     marginTop: 24,
-
     marginBottom: 14,
   },
 
   fieldLabel: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_500Medium",
     fontSize: 9,
-
-    fontWeight: "500",
-
     marginBottom: 5,
   },
 
   recoveryInputContainer: {
     width: "100%",
-
     height: 39,
-
     backgroundColor: "#FFFFFF",
-
     borderRadius: 4,
-
     flexDirection: "row",
-
     alignItems: "center",
   },
 
   recoveryInputIcon: {
     width: 20,
-
     height: 20,
-
     marginLeft: 8,
-
     marginRight: 8,
   },
 
   recoveryInput: {
     flex: 1,
-
     height: "100%",
-
     color: "#222222",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
-
-    fontWeight: "400",
-
     paddingRight: 10,
   },
 
-  // ========================================
-  // RECOVERY BUTTON
-  // ========================================
-
   recoveryButton: {
     width: "100%",
-
     minHeight: 34,
-
     backgroundColor: "#4CB94F",
-
     borderRadius: 4,
-
     alignItems: "center",
-
     justifyContent: "center",
-
     marginTop: 4,
-
     paddingHorizontal: 10,
   },
 
   recoveryButtonText: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 10,
-
-    fontWeight: "600",
   },
 
   backToLoginButton: {
     paddingVertical: 14,
-
     paddingHorizontal: 10,
   },
 
   backToLoginText: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_500Medium",
     fontSize: 9,
-
-    fontWeight: "500",
-
     textAlign: "center",
   },
 
-  // ========================================
-  // OTP
-  // ========================================
-
   otpRow: {
     width: "100%",
-
     flexDirection: "row",
-
     alignItems: "center",
-
     justifyContent: "space-between",
-
     marginTop: 24,
-
     marginBottom: 24,
   },
 
   otpInput: {
     width: "14%",
-
     minWidth: 38,
-
     maxWidth: 48,
-
     height: 52,
-
     backgroundColor: "#5B7098",
-
     borderWidth: 2,
-
     borderColor: "#6D83AA",
-
     borderRadius: 7,
-
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 21,
-
-    fontWeight: "700",
-
     textAlign: "center",
-
     padding: 0,
-
     shadowColor: "#000000",
-
     shadowOffset: {
       width: 0,
-
       height: 2,
     },
-
     shadowOpacity: 0.1,
-
     shadowRadius: 3,
-
     elevation: 2,
   },
 
   otpInputFilled: {
     backgroundColor: "#647DA8",
-
     borderColor: "#56C85C",
   },
 
   didNotReceiveText: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
-
-    fontWeight: "400",
-
     textAlign: "center",
-
     marginTop: 2,
   },
 
   resendText: {
     color: "#16E564",
-
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 10,
-
-    fontWeight: "600",
-
     textAlign: "center",
-
     marginTop: 7,
   },
 
@@ -2446,23 +2418,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 
-  // ========================================
-  // PASSWORD RESET
-  // ========================================
-
   passwordFieldCard: {
     width: "100%",
-
     backgroundColor: "#425D89",
-
     borderRadius: 7,
-
     paddingHorizontal: 12,
-
     paddingVertical: 12,
-
     marginTop: 22,
-
     marginBottom: 10,
   },
 
@@ -2472,117 +2434,77 @@ const styles = StyleSheet.create({
 
   passwordRecoveryInput: {
     width: "100%",
-
     height: 39,
-
     backgroundColor: "#FFFFFF",
-
     borderRadius: 4,
-
     flexDirection: "row",
-
     alignItems: "center",
   },
 
   passwordRecoveryTextInput: {
     flex: 1,
-
     height: "100%",
-
     color: "#222222",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
-
-    fontWeight: "400",
-
     paddingHorizontal: 10,
   },
 
   recoveryEyeButton: {
     width: 40,
-
     height: "100%",
-
     alignItems: "center",
-
     justifyContent: "center",
   },
 
   recoveryEyeIcon: {
     width: 18,
-
     height: 18,
   },
 
   passwordHelper: {
     width: "100%",
-
     color: "#C6D2E5",
-
+    fontFamily: "Poppins_300Light",
     fontSize: 8,
-
-    fontWeight: "300",
-
     lineHeight: 12,
-
     marginBottom: 10,
   },
 
-  // ========================================
-  // SUCCESS
-  // ========================================
-
   successContent: {
     width: "100%",
-
     alignItems: "center",
-
     paddingTop: 10,
   },
 
   successIcon: {
     width: 110,
-
     height: 110,
-
     marginBottom: 24,
   },
 
   successTitle: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_700Bold",
     fontSize: 19,
-
-    fontWeight: "800",
-
     textAlign: "center",
   },
 
   successSubtitle: {
     color: "#16E564",
-
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 15,
-
-    fontWeight: "600",
-
     textAlign: "center",
-
     marginTop: 2,
   },
 
   successDescription: {
     color: "#FFFFFF",
-
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
-
-    fontWeight: "400",
-
     lineHeight: 15,
-
     textAlign: "center",
-
     marginTop: 26,
-
     marginBottom: 30,
   },
 
