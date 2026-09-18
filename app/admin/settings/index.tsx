@@ -37,9 +37,7 @@ import { styles } from "./settings.styles";
 
 type NavItem = {
   label: string;
-
   route: string;
-
   icon?: any;
 };
 
@@ -49,15 +47,12 @@ type AdminUser = {
   username: string | null;
 
   firstName: string | null;
-
   middleName: string | null;
-
   lastName: string | null;
 
   fullName: string | null;
 
   email: string | null;
-
   contactNumber: string | null;
 
   role: string | null;
@@ -69,7 +64,6 @@ type AdminUser = {
   profilePictureUri: string | null;
 
   createdAt: string | null;
-
   updatedAt: string | null;
 };
 
@@ -85,6 +79,22 @@ type SystemSettings = {
   updatedAt: string | null;
 };
 
+type FineType = {
+  id: number;
+
+  violation_code: string;
+
+  violation_name: string;
+
+  description: string | null;
+
+  amount_centavos: number;
+
+  amount: number;
+
+  is_active: number;
+};
+
 type MeResponse = {
   success: boolean;
 
@@ -97,6 +107,18 @@ type SystemSettingsResponse = {
   success: boolean;
 
   settings?: SystemSettings;
+
+  message?: string;
+};
+
+type FineTypesResponse = {
+  success: boolean;
+
+  violations?: FineType[];
+
+  violation?: FineType;
+
+  nextCode?: string;
 
   message?: string;
 };
@@ -128,9 +150,9 @@ export default function AdminSettings() {
 
   const isWide = width >= 1050;
 
-  // ==========================================
+  // ========================================
   // SUCCESS MODAL
-  // ==========================================
+  // ========================================
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -138,9 +160,9 @@ export default function AdminSettings() {
 
   const [successMessage, setSuccessMessage] = useState("");
 
-  // ==========================================
+  // ========================================
   // WARNING MODAL
-  // ==========================================
+  // ========================================
 
   const [showWarningModal, setShowWarningModal] = useState(false);
 
@@ -148,29 +170,29 @@ export default function AdminSettings() {
 
   const [warningMessage, setWarningMessage] = useState("");
 
-  // ==========================================
+  // ========================================
   // LOGOUT MODAL
-  // ==========================================
+  // ========================================
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  // ==========================================
-  // REMOVE PHOTO MODAL
-  // ==========================================
+  // ========================================
+  // REMOVE PHOTO
+  // ========================================
 
   const [showRemovePhotoModal, setShowRemovePhotoModal] = useState(false);
 
-  // ==========================================
+  // ========================================
   // ADMIN
-  // ==========================================
+  // ========================================
 
   const [admin, setAdmin] = useState<AdminUser | null>(null);
 
-  // ==========================================
+  // ========================================
   // ACCOUNT SETTINGS
-  // ==========================================
+  // ========================================
 
   const [username, setUsername] = useState("");
 
@@ -178,9 +200,9 @@ export default function AdminSettings() {
 
   const [contactNumber, setContactNumber] = useState("");
 
-  // ==========================================
+  // ========================================
   // PASSWORD
-  // ==========================================
+  // ========================================
 
   const [currentPassword, setCurrentPassword] = useState("");
 
@@ -190,9 +212,9 @@ export default function AdminSettings() {
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
-  // ==========================================
+  // ========================================
   // SYSTEM SETTINGS
-  // ==========================================
+  // ========================================
 
   const [schoolName, setSchoolName] = useState("");
 
@@ -200,9 +222,43 @@ export default function AdminSettings() {
 
   const [systemName, setSystemName] = useState("SmartFine");
 
-  // ==========================================
+  // ========================================
+  // FINE TYPES
+  // ========================================
+
+  const [fineTypes, setFineTypes] = useState<FineType[]>([]);
+
+  const [fineTypesLoading, setFineTypesLoading] = useState(false);
+
+  const [fineTypesError, setFineTypesError] = useState("");
+
+  const [showFineTypeForm, setShowFineTypeForm] = useState(false);
+
+  const [editingFineTypeId, setEditingFineTypeId] = useState<number | null>(
+    null,
+  );
+
+  const [fineCode, setFineCode] = useState("");
+
+  const [nextFineCode, setNextFineCode] = useState("V001");
+
+  const [fineName, setFineName] = useState("");
+
+  const [fineDescription, setFineDescription] = useState("");
+
+  const [fineAmount, setFineAmount] = useState("");
+
+  const [fineActive, setFineActive] = useState(true);
+
+  const [savingFineType, setSavingFineType] = useState(false);
+
+  const [changingFineStatusId, setChangingFineStatusId] = useState<
+    number | null
+  >(null);
+
+  // ========================================
   // PAGE STATE
-  // ==========================================
+  // ========================================
 
   const [loading, setLoading] = useState(true);
 
@@ -220,9 +276,9 @@ export default function AdminSettings() {
 
   const [pageError, setPageError] = useState("");
 
-  // ==========================================
-  // CUSTOM MESSAGE
-  // ==========================================
+  // ========================================
+  // MESSAGE
+  // ========================================
 
   const showMessage = (title: string, message: string) => {
     if (String(title).trim().toUpperCase() === "SUCCESS") {
@@ -242,9 +298,9 @@ export default function AdminSettings() {
     setShowWarningModal(true);
   };
 
-  // ==========================================
+  // ========================================
   // NAVIGATION
-  // ==========================================
+  // ========================================
 
   const navItems: NavItem[] = [
     {
@@ -304,17 +360,17 @@ export default function AdminSettings() {
     },
   ];
 
-  // ==========================================
-  // GET JWT TOKEN
-  // ==========================================
+  // ========================================
+  // TOKEN
+  // ========================================
 
   const getStoredToken = async () => {
     return AsyncStorage.getItem("token");
   };
 
-  // ==========================================
+  // ========================================
   // AUTHENTICATED FETCH
-  // ==========================================
+  // ========================================
 
   const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
     const token = await getStoredToken();
@@ -334,9 +390,59 @@ export default function AdminSettings() {
     });
   };
 
-  // ==========================================
-  // LOAD SETTINGS PAGE
-  // ==========================================
+  // ========================================
+  // LOAD FINE TYPES
+  // ========================================
+
+  const loadFineTypes = async (showWarning = false) => {
+    try {
+      setFineTypesLoading(true);
+
+      setFineTypesError("");
+
+      const response = await authenticatedFetch(
+        `${API_BASE}/api/fines/maintenance/violation-types`,
+      );
+
+      const data: FineTypesResponse = await response.json();
+
+      if (!response.ok || !data.success) {
+        const message = data.message || "Failed to load fine types.";
+
+        setFineTypesError(message);
+
+        if (showWarning) {
+          showMessage("Fine Types", message);
+        }
+
+        return;
+      }
+
+      const loadedFineTypes = data.violations || [];
+
+      setFineTypes(loadedFineTypes);
+
+      setNextFineCode(
+        data.nextCode || getNextFineCodeFromTypes(loadedFineTypes),
+      );
+    } catch (error) {
+      console.error("Load fine types error:", error);
+
+      const message = "Could not load Fine Types Maintenance.";
+
+      setFineTypesError(message);
+
+      if (showWarning) {
+        showMessage("Connection Error", message);
+      }
+    } finally {
+      setFineTypesLoading(false);
+    }
+  };
+
+  // ========================================
+  // LOAD SETTINGS
+  // ========================================
 
   const loadSettings = useCallback(async () => {
     try {
@@ -353,10 +459,6 @@ export default function AdminSettings() {
 
         return;
       }
-
-      // ====================================
-      // LOAD ADMIN + SYSTEM SETTINGS
-      // ====================================
 
       const [adminResponse, settingsResponse] = await Promise.all([
         fetch(`${API_BASE}/api/auth/me`, {
@@ -377,14 +479,6 @@ export default function AdminSettings() {
       const settingsData: SystemSettingsResponse =
         await settingsResponse.json();
 
-      console.log("Admin settings response:", adminData);
-
-      console.log("System settings response:", settingsData);
-
-      // ====================================
-      // ADMIN ERROR
-      // ====================================
-
       if (!adminResponse.ok || !adminData.success || !adminData.user) {
         setPageError(
           adminData.message || "Failed to load administrator account.",
@@ -392,10 +486,6 @@ export default function AdminSettings() {
 
         return;
       }
-
-      // ====================================
-      // SYSTEM SETTINGS ERROR
-      // ====================================
 
       if (
         !settingsResponse.ok ||
@@ -407,9 +497,9 @@ export default function AdminSettings() {
         return;
       }
 
-      // ====================================
+      // ==================================
       // ADMIN
-      // ====================================
+      // ==================================
 
       setAdmin(adminData.user);
 
@@ -419,9 +509,9 @@ export default function AdminSettings() {
 
       setContactNumber(adminData.user.contactNumber || "");
 
-      // ====================================
-      // SYSTEM SETTINGS
-      // ====================================
+      // ==================================
+      // SYSTEM
+      // ==================================
 
       setSchoolName(settingsData.settings.schoolName || "");
 
@@ -430,6 +520,12 @@ export default function AdminSettings() {
       setSystemName(settingsData.settings.systemName || "SmartFine");
 
       setImageFailed(false);
+
+      // ==================================
+      // FINE TYPES
+      // ==================================
+
+      await loadFineTypes(false);
     } catch (error) {
       console.error("Load settings error:", error);
 
@@ -449,9 +545,9 @@ export default function AdminSettings() {
     loadSettings();
   }, [loadSettings]);
 
-  // ==========================================
-  // SAVE ACCOUNT SETTINGS
-  // ==========================================
+  // ========================================
+  // SAVE ACCOUNT
+  // ========================================
 
   const handleSaveAccount = async () => {
     const cleanedUsername = username.trim();
@@ -525,6 +621,7 @@ export default function AdminSettings() {
 
         await AsyncStorage.setItem(
           "userEmail",
+
           data.user.email || data.user.username || "",
         );
       }
@@ -545,9 +642,9 @@ export default function AdminSettings() {
     }
   };
 
-  // ==========================================
+  // ========================================
   // CHANGE PASSWORD
-  // ==========================================
+  // ========================================
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -560,6 +657,20 @@ export default function AdminSettings() {
       showMessage(
         "Validation",
         "New password must contain at least 8 characters.",
+      );
+
+      return;
+    }
+
+    if (
+      !/[a-z]/.test(newPassword) ||
+      !/[A-Z]/.test(newPassword) ||
+      !/[0-9]/.test(newPassword) ||
+      !/[^A-Za-z0-9\s]/.test(newPassword)
+    ) {
+      showMessage(
+        "Validation",
+        "New password must contain uppercase, lowercase, number, and special character.",
       );
 
       return;
@@ -625,9 +736,9 @@ export default function AdminSettings() {
     }
   };
 
-  // ==========================================
+  // ========================================
   // SAVE SYSTEM SETTINGS
-  // ==========================================
+  // ========================================
 
   const handleSaveSystemSettings = async () => {
     const cleanedSchoolName = schoolName.trim();
@@ -705,9 +816,219 @@ export default function AdminSettings() {
     }
   };
 
-  // ==========================================
-  // CHOOSE PROFILE PICTURE
-  // ==========================================
+  // ========================================
+  // RESET FINE TYPE FORM
+  // ========================================
+
+  const resetFineTypeForm = () => {
+    setEditingFineTypeId(null);
+
+    setFineCode("");
+
+    setFineName("");
+
+    setFineDescription("");
+
+    setFineAmount("");
+
+    setFineActive(true);
+
+    setShowFineTypeForm(false);
+  };
+
+  // ========================================
+  // ADD FINE TYPE
+  // ========================================
+
+  const handleAddFineType = () => {
+    setEditingFineTypeId(null);
+
+    setFineCode(nextFineCode || getNextFineCodeFromTypes(fineTypes));
+
+    setFineName("");
+
+    setFineDescription("");
+
+    setFineAmount("");
+
+    setFineActive(true);
+
+    setShowFineTypeForm(true);
+  };
+
+  // ========================================
+  // EDIT FINE TYPE
+  // ========================================
+
+  const handleEditFineType = (fineType: FineType) => {
+    setEditingFineTypeId(fineType.id);
+
+    setFineCode(fineType.violation_code || "");
+
+    setFineName(fineType.violation_name || "");
+
+    setFineDescription(fineType.description || "");
+
+    setFineAmount(
+      Number(fineType.amount || Number(fineType.amount_centavos) / 100).toFixed(
+        2,
+      ),
+    );
+
+    setFineActive(Number(fineType.is_active) === 1);
+
+    setShowFineTypeForm(true);
+  };
+
+  // ========================================
+  // SAVE FINE TYPE
+  // ========================================
+
+  const handleSaveFineType = async () => {
+    const cleanedName = fineName.trim();
+
+    const cleanedDescription = fineDescription.trim();
+
+    const amount = Number(fineAmount);
+
+    if (!cleanedName) {
+      showMessage("Validation", "Fine type name is required.");
+
+      return;
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showMessage("Validation", "Fine amount must be greater than zero.");
+
+      return;
+    }
+
+    try {
+      setSavingFineType(true);
+
+      const isEditing = editingFineTypeId !== null;
+
+      const url = isEditing
+        ? `${API_BASE}/api/fines/maintenance/violation-types/${editingFineTypeId}`
+        : `${API_BASE}/api/fines/maintenance/violation-types`;
+
+      const response = await authenticatedFetch(url, {
+        method: isEditing ? "PUT" : "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          violationName: cleanedName,
+
+          description: cleanedDescription,
+
+          amount,
+
+          isActive: fineActive,
+        }),
+      });
+
+      const data: FineTypesResponse = await response.json();
+
+      if (!response.ok || !data.success) {
+        showMessage(
+          isEditing ? "Unable to Update" : "Unable to Add",
+
+          data.message || "Failed to save the fine type.",
+        );
+
+        return;
+      }
+
+      if (data.nextCode) {
+        setNextFineCode(data.nextCode);
+      }
+
+      resetFineTypeForm();
+
+      await loadFineTypes(false);
+
+      showMessage(
+        "Success",
+
+        data.message ||
+          (isEditing
+            ? "Fine type updated successfully."
+            : "Fine type added successfully."),
+      );
+    } catch (error) {
+      console.error("Save fine type error:", error);
+
+      showMessage("Connection Error", "Could not save the fine type.");
+    } finally {
+      setSavingFineType(false);
+    }
+  };
+
+  // ========================================
+  // ACTIVATE / DEACTIVATE FINE TYPE
+  // ========================================
+
+  const handleToggleFineTypeStatus = async (fineType: FineType) => {
+    try {
+      setChangingFineStatusId(fineType.id);
+
+      const currentlyActive = Number(fineType.is_active) === 1;
+
+      const response = await authenticatedFetch(
+        `${API_BASE}/api/fines/maintenance/violation-types/${fineType.id}/status`,
+        {
+          method: "PATCH",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            isActive: !currentlyActive,
+          }),
+        },
+      );
+
+      const data: FineTypesResponse = await response.json();
+
+      if (!response.ok || !data.success) {
+        showMessage(
+          "Unable to Update Status",
+          data.message || "Failed to update the fine type status.",
+        );
+
+        return;
+      }
+
+      if (data.nextCode) {
+        setNextFineCode(data.nextCode);
+      }
+
+      await loadFineTypes(false);
+
+      showMessage(
+        "Success",
+
+        data.message ||
+          (currentlyActive
+            ? "Fine type deactivated successfully."
+            : "Fine type activated successfully."),
+      );
+    } catch (error) {
+      console.error("Update fine type status error:", error);
+
+      showMessage("Connection Error", "Could not update the fine type status.");
+    } finally {
+      setChangingFineStatusId(null);
+    }
+  };
+
+  // ========================================
+  // CHOOSE PHOTO
+  // ========================================
 
   const handleChoosePhoto = async () => {
     try {
@@ -747,9 +1068,9 @@ export default function AdminSettings() {
     }
   };
 
-  // ==========================================
+  // ========================================
   // UPLOAD PROFILE PICTURE
-  // ==========================================
+  // ========================================
 
   const uploadProfilePicture = async (asset: ImagePicker.ImagePickerAsset) => {
     try {
@@ -767,46 +1088,66 @@ export default function AdminSettings() {
       }
 
       const formData = new FormData();
+
       const filename = createImageFilename(asset);
+
       if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
         throw new Error("Profile picture must be 5 MB or smaller.");
       }
+
       if (Platform.OS === "web") {
         let blob: Blob | undefined = asset.file;
+
         if (!blob) {
           const imageResponse = await fetch(asset.uri);
-          if (!imageResponse.ok)
+
+          if (!imageResponse.ok) {
             throw new Error("Unable to read the selected photo.");
+          }
+
           blob = await imageResponse.blob();
         }
-        if (!blob) throw new Error("Please select the photo again.");
+
+        if (!blob) {
+          throw new Error("Please select the photo again.");
+        }
+
         if (blob.size > 5 * 1024 * 1024) {
           throw new Error("Profile picture must be 5 MB or smaller.");
         }
+
         formData.append("profilePicture", blob, filename);
       } else {
         const file = new ExpoFile(asset.uri);
+
         if (!file.exists || file.size === 0) {
           throw new Error(
             "The selected photo could not be read. Please select it again.",
           );
         }
+
         if (file.size > 5 * 1024 * 1024) {
           throw new Error("Profile picture must be 5 MB or smaller.");
         }
+
         formData.append("profilePicture", file, filename);
       }
 
       const uploadFetch = Platform.OS === "web" ? fetch : expoFetch;
+
       const response = await uploadFetch(
         `${API_BASE}/api/auth/me/profile-picture`,
         {
           method: "POST",
+
           headers: {
             Accept: "application/json",
+
             Authorization: `Bearer ${token}`,
+
             "ngrok-skip-browser-warning": "true",
           },
+
           body: formData,
         },
       );
@@ -839,6 +1180,7 @@ export default function AdminSettings() {
 
       showMessage(
         "Upload Failed",
+
         error instanceof Error
           ? error.message
           : "Could not upload the profile picture.",
@@ -848,9 +1190,9 @@ export default function AdminSettings() {
     }
   };
 
-  // ==========================================
+  // ========================================
   // REMOVE PROFILE PICTURE
-  // ==========================================
+  // ========================================
 
   const performRemovePhoto = async () => {
     try {
@@ -870,6 +1212,7 @@ export default function AdminSettings() {
 
         showMessage(
           "Unable to Remove Photo",
+
           data.message || "Failed to remove profile picture.",
         );
 
@@ -901,10 +1244,6 @@ export default function AdminSettings() {
     }
   };
 
-  // ==========================================
-  // OPEN REMOVE PHOTO MODAL
-  // ==========================================
-
   const handleRemovePhoto = () => {
     if (!admin?.profilePictureUri) {
       return;
@@ -912,10 +1251,6 @@ export default function AdminSettings() {
 
     setShowRemovePhotoModal(true);
   };
-
-  // ==========================================
-  // CANCEL REMOVE PHOTO
-  // ==========================================
 
   const handleCancelRemovePhoto = () => {
     if (removingPhoto) {
@@ -925,25 +1260,21 @@ export default function AdminSettings() {
     setShowRemovePhotoModal(false);
   };
 
-  // ==========================================
-  // NAVIGATION
-  // ==========================================
+  // ========================================
+  // NAVIGATION HANDLER
+  // ========================================
 
   const handleNavigation = (item: NavItem) => {
     router.push(item.route as any);
   };
 
-  // ==========================================
-  // OPEN LOGOUT MODAL
-  // ==========================================
+  // ========================================
+  // LOGOUT
+  // ========================================
 
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
-
-  // ==========================================
-  // CANCEL LOGOUT
-  // ==========================================
 
   const handleCancelLogout = () => {
     if (logoutLoading) {
@@ -952,10 +1283,6 @@ export default function AdminSettings() {
 
     setShowLogoutModal(false);
   };
-
-  // ==========================================
-  // PERFORM LOGOUT
-  // ==========================================
 
   const performLogout = async () => {
     try {
@@ -981,21 +1308,21 @@ export default function AdminSettings() {
     }
   };
 
-  // ==========================================
-  // PROFILE DISPLAY
-  // ==========================================
+  // ========================================
+  // PROFILE
+  // ========================================
 
   const profilePictureUrl = getProfilePictureUrl(admin?.profilePictureUri);
 
   const initials = getInitials(admin);
 
-  // ==========================================
+  // ========================================
   // UI
-  // ==========================================
+  // ========================================
 
   return (
     <View style={styles.screen}>
-      {/* ======================================
+      {/* =====================================
           SIDEBAR
       ====================================== */}
 
@@ -1044,7 +1371,7 @@ export default function AdminSettings() {
         </View>
       )}
 
-      {/* ======================================
+      {/* =====================================
           MAIN
       ====================================== */}
 
@@ -1052,10 +1379,9 @@ export default function AdminSettings() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {/* ==================================
-              MOBILE NAV
-          ================================== */}
+          {/* MOBILE NAV */}
 
           {!isTablet && (
             <ScrollView
@@ -1091,21 +1417,18 @@ export default function AdminSettings() {
             </ScrollView>
           )}
 
-          {/* ==================================
+          {/* =================================
               HEADER
-          ================================== */}
+          ================================= */}
 
           <View style={styles.pageHeader}>
             <Text style={styles.pageTitle}>Settings</Text>
 
             <Text style={styles.pageSubtitle}>
-              Manage your administrator account and SmartFine system preferences
+              Manage your administrator account, system preferences, and fine
+              types
             </Text>
           </View>
-
-          {/* ==================================
-              LOADING
-          ================================== */}
 
           {loading ? (
             <View style={styles.centerState}>
@@ -1134,9 +1457,9 @@ export default function AdminSettings() {
                 !isWide && styles.settingsLayoutStacked,
               ]}
             >
-              {/* ==================================
-                  PROFILE CARD
-              ================================== */}
+              {/* =============================
+                  PROFILE
+              ============================== */}
 
               <View
                 style={[
@@ -1145,8 +1468,6 @@ export default function AdminSettings() {
                   !isWide && styles.profileCardStacked,
                 ]}
               >
-                {/* PROFILE PICTURE */}
-
                 <View style={styles.avatarWrapper}>
                   {profilePictureUrl && !imageFailed ? (
                     <Image
@@ -1163,13 +1484,10 @@ export default function AdminSettings() {
                     </View>
                   )}
 
-                  {/* EDIT PROFILE ICON */}
-
                   <TouchableOpacity
                     style={styles.cameraButton}
                     onPress={handleChoosePhoto}
                     disabled={uploadingPhoto || removingPhoto}
-                    activeOpacity={0.8}
                   >
                     {uploadingPhoto ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1178,7 +1496,6 @@ export default function AdminSettings() {
                         source={require("../../../assets/icons/edit-image.png")}
                         style={{
                           width: 18,
-
                           height: 18,
                         }}
                         resizeMode="contain"
@@ -1186,8 +1503,6 @@ export default function AdminSettings() {
                     )}
                   </TouchableOpacity>
                 </View>
-
-                {/* PROFILE INFORMATION */}
 
                 <Text style={styles.profileName}>
                   {admin?.fullName || "System Administrator"}
@@ -1216,8 +1531,6 @@ export default function AdminSettings() {
                     {admin?.email || "Not provided"}
                   </Text>
                 </View>
-
-                {/* PHOTO ACTIONS */}
 
                 <View style={styles.photoActions}>
                   <TouchableOpacity
@@ -1250,14 +1563,14 @@ export default function AdminSettings() {
                 </Text>
               </View>
 
-              {/* ==================================
+              {/* =============================
                   RIGHT COLUMN
-              ================================== */}
+              ============================== */}
 
               <View style={styles.rightColumn}>
-                {/* ==================================
+                {/* =============================
                     ACCOUNT SETTINGS
-                ================================== */}
+                ============================== */}
 
                 <View>
                   <Text style={styles.sectionTitle}>Account Settings</Text>
@@ -1335,9 +1648,9 @@ export default function AdminSettings() {
                   </View>
                 </View>
 
-                {/* ==================================
-                    PASSWORD & SECURITY
-                ================================== */}
+                {/* =============================
+                    PASSWORD
+                ============================== */}
 
                 <View>
                   <Text style={styles.sectionTitle}>Password & Security</Text>
@@ -1453,6 +1766,491 @@ export default function AdminSettings() {
                 </View>
 
                 {/* ==================================
+                    FINE TYPES MAINTENANCE
+                ================================== */}
+
+                <View>
+                  <View style={styles.fineTypesSectionHeader}>
+                    <View style={styles.fineTypesSectionHeading}>
+                      <Text
+                        style={[
+                          styles.sectionTitle,
+                          styles.fineTypesSectionTitle,
+                        ]}
+                      >
+                        Fine Types Maintenance
+                      </Text>
+
+                      <Text style={styles.fineTypesDescription}>
+                        Manage the violation types and official fine amounts
+                        used when recording new fines.
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.addFineTypeButton}
+                      onPress={handleAddFineType}
+                      disabled={savingFineType}
+                    >
+                      <Text style={styles.addFineTypeButtonText}>
+                        + Add Fine Type
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.settingsCard}>
+                    {/* =============================
+                        ADD / EDIT FORM
+                    ============================== */}
+
+                    {showFineTypeForm && (
+                      <View style={styles.fineTypeForm}>
+                        <View style={styles.fineTypeFormHeader}>
+                          <View>
+                            <Text style={styles.fineTypeFormTitle}>
+                              {editingFineTypeId
+                                ? "Edit Fine Type"
+                                : "Add Fine Type"}
+                            </Text>
+
+                            <Text style={styles.fineTypeFormSubtitle}>
+                              The amount configured here will be used
+                              automatically for future fines.
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.formRow}>
+                          {/* =========================
+                              AUTOMATIC FINE CODE
+                          ========================== */}
+
+                          <View style={styles.formField}>
+                            <Text style={styles.inputLabel}>Fine Code</Text>
+
+                            <TextInput
+                              value={fineCode}
+                              editable={false}
+                              selectTextOnFocus={false}
+                              placeholder="Automatically generated"
+                              placeholderTextColor="#A0A7B2"
+                              style={[styles.input, styles.readOnlyInput]}
+                            />
+
+                            <Text
+                              style={[
+                                styles.fineTypeFormSubtitle,
+                                {
+                                  marginTop: 6,
+                                },
+                              ]}
+                            >
+                              {editingFineTypeId
+                                ? "Fine codes are permanent and cannot be changed."
+                                : "SmartFine automatically assigns the next fine code."}
+                            </Text>
+                          </View>
+
+                          {/* FINE TYPE */}
+
+                          <View style={styles.formField}>
+                            <Text style={styles.inputLabel}>Fine Type *</Text>
+
+                            <TextInput
+                              value={fineName}
+                              onChangeText={setFineName}
+                              placeholder="Example: Unauthorized Gadget Use"
+                              placeholderTextColor="#A0A7B2"
+                              style={styles.input}
+                              maxLength={120}
+                            />
+                          </View>
+                        </View>
+
+                        <View style={styles.formRow}>
+                          {/* AMOUNT */}
+
+                          <View style={styles.formField}>
+                            <Text style={styles.inputLabel}>Fine Amount *</Text>
+
+                            <View style={styles.amountInputContainer}>
+                              <Text style={styles.amountPeso}>₱</Text>
+
+                              <TextInput
+                                value={fineAmount}
+                                onChangeText={(value) => {
+                                  let cleaned = value.replace(/[^0-9.]/g, "");
+
+                                  const firstDot = cleaned.indexOf(".");
+
+                                  if (firstDot !== -1) {
+                                    cleaned =
+                                      cleaned.substring(0, firstDot + 1) +
+                                      cleaned
+                                        .substring(firstDot + 1)
+                                        .replace(/\./g, "");
+                                  }
+
+                                  setFineAmount(cleaned);
+                                }}
+                                placeholder="0.00"
+                                placeholderTextColor="#A0A7B2"
+                                style={styles.amountInput}
+                                keyboardType="decimal-pad"
+                              />
+                            </View>
+                          </View>
+
+                          {/* STATUS */}
+
+                          <View style={styles.formField}>
+                            <Text style={styles.inputLabel}>Status</Text>
+
+                            <View style={styles.statusSelector}>
+                              <TouchableOpacity
+                                style={[
+                                  styles.statusSelectorButton,
+
+                                  fineActive &&
+                                    styles.statusSelectorButtonActive,
+                                ]}
+                                onPress={() => setFineActive(true)}
+                              >
+                                <Text
+                                  style={[
+                                    styles.statusSelectorText,
+
+                                    fineActive &&
+                                      styles.statusSelectorTextActive,
+                                  ]}
+                                >
+                                  Active
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[
+                                  styles.statusSelectorButton,
+
+                                  !fineActive &&
+                                    styles.statusSelectorButtonInactive,
+                                ]}
+                                onPress={() => setFineActive(false)}
+                              >
+                                <Text
+                                  style={[
+                                    styles.statusSelectorText,
+
+                                    !fineActive &&
+                                      styles.statusSelectorTextInactive,
+                                  ]}
+                                >
+                                  Inactive
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* DESCRIPTION */}
+
+                        <View style={styles.fineDescriptionField}>
+                          <Text style={styles.inputLabel}>Description</Text>
+
+                          <TextInput
+                            value={fineDescription}
+                            onChangeText={setFineDescription}
+                            placeholder="Optional description of the violation"
+                            placeholderTextColor="#A0A7B2"
+                            style={styles.fineDescriptionInput}
+                            multiline
+                            maxLength={500}
+                            textAlignVertical="top"
+                          />
+                        </View>
+
+                        {/* FORM ACTIONS */}
+
+                        <View style={styles.fineTypeFormActions}>
+                          <TouchableOpacity
+                            style={styles.cancelButton}
+                            onPress={resetFineTypeForm}
+                            disabled={savingFineType}
+                          >
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.primaryButton}
+                            onPress={handleSaveFineType}
+                            disabled={savingFineType}
+                          >
+                            {savingFineType ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <Text style={styles.primaryButtonText}>
+                                {editingFineTypeId
+                                  ? "Save Changes"
+                                  : "Add Fine Type"}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* =============================
+                        INFO
+                    ============================== */}
+
+                    <View style={styles.fineTypeNotice}>
+                      <Text style={styles.systemNoticeIcon}>i</Text>
+
+                      <Text style={styles.fineTypeNoticeText}>
+                        Only Active fine types are available when recording new
+                        fines. Existing fine records keep their original saved
+                        amount even if the official amount changes later.
+                      </Text>
+                    </View>
+
+                    {/* =============================
+                        LOADING / ERROR / TABLE
+                    ============================== */}
+
+                    {fineTypesLoading ? (
+                      <View style={styles.fineTypesLoading}>
+                        <ActivityIndicator size="small" color="#173A73" />
+
+                        <Text style={styles.fineTypesLoadingText}>
+                          Loading fine types...
+                        </Text>
+                      </View>
+                    ) : fineTypesError ? (
+                      <View style={styles.fineTypesErrorBox}>
+                        <Text style={styles.fineTypesErrorText}>
+                          {fineTypesError}
+                        </Text>
+
+                        <TouchableOpacity
+                          style={styles.fineTypesRetryButton}
+                          onPress={() => loadFineTypes(true)}
+                        >
+                          <Text style={styles.fineTypesRetryText}>
+                            Try Again
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                      >
+                        <View style={styles.fineTypesTable}>
+                          {/* HEADER */}
+
+                          <View style={styles.fineTypesTableHeader}>
+                            <Text
+                              style={[
+                                styles.fineTypesHeaderText,
+                                styles.fineCodeColumn,
+                              ]}
+                            >
+                              Code
+                            </Text>
+
+                            <Text
+                              style={[
+                                styles.fineTypesHeaderText,
+                                styles.fineNameColumn,
+                              ]}
+                            >
+                              Fine Type
+                            </Text>
+
+                            <Text
+                              style={[
+                                styles.fineTypesHeaderText,
+                                styles.fineAmountColumn,
+                              ]}
+                            >
+                              Amount
+                            </Text>
+
+                            <Text
+                              style={[
+                                styles.fineTypesHeaderText,
+                                styles.fineStatusColumn,
+                              ]}
+                            >
+                              Status
+                            </Text>
+
+                            <Text
+                              style={[
+                                styles.fineTypesHeaderText,
+                                styles.fineActionColumn,
+                              ]}
+                            >
+                              Actions
+                            </Text>
+                          </View>
+
+                          {/* ROWS */}
+
+                          {fineTypes.length === 0 ? (
+                            <View style={styles.fineTypesEmpty}>
+                              <Text style={styles.fineTypesEmptyTitle}>
+                                No fine types found
+                              </Text>
+
+                              <Text style={styles.fineTypesEmptyText}>
+                                Add your first fine type to begin using it in
+                                SmartFine.
+                              </Text>
+                            </View>
+                          ) : (
+                            fineTypes.map((fineType) => {
+                              const active = Number(fineType.is_active) === 1;
+
+                              const changingStatus =
+                                changingFineStatusId === fineType.id;
+
+                              return (
+                                <View
+                                  key={fineType.id}
+                                  style={styles.fineTypesTableRow}
+                                >
+                                  {/* CODE */}
+
+                                  <View style={styles.fineCodeColumn}>
+                                    <Text style={styles.fineCodeText}>
+                                      {fineType.violation_code}
+                                    </Text>
+                                  </View>
+
+                                  {/* NAME */}
+
+                                  <View style={styles.fineNameColumn}>
+                                    <Text style={styles.fineNameText}>
+                                      {fineType.violation_name}
+                                    </Text>
+
+                                    {fineType.description ? (
+                                      <Text
+                                        numberOfLines={2}
+                                        style={styles.fineDescriptionText}
+                                      >
+                                        {fineType.description}
+                                      </Text>
+                                    ) : null}
+                                  </View>
+
+                                  {/* AMOUNT */}
+
+                                  <View style={styles.fineAmountColumn}>
+                                    <Text style={styles.fineAmountText}>
+                                      ₱
+                                      {Number(
+                                        fineType.amount ??
+                                          Number(fineType.amount_centavos) /
+                                            100,
+                                      ).toFixed(2)}
+                                    </Text>
+                                  </View>
+
+                                  {/* STATUS */}
+
+                                  <View style={styles.fineStatusColumn}>
+                                    <View
+                                      style={[
+                                        styles.fineStatusBadge,
+
+                                        active
+                                          ? styles.fineStatusActiveBadge
+                                          : styles.fineStatusInactiveBadge,
+                                      ]}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.fineStatusText,
+
+                                          active
+                                            ? styles.fineStatusActiveText
+                                            : styles.fineStatusInactiveText,
+                                        ]}
+                                      >
+                                        {active ? "Active" : "Inactive"}
+                                      </Text>
+                                    </View>
+                                  </View>
+
+                                  {/* ACTIONS */}
+
+                                  <View style={styles.fineActionColumn}>
+                                    <View style={styles.fineActionButtons}>
+                                      <TouchableOpacity
+                                        style={styles.editFineTypeButton}
+                                        onPress={() =>
+                                          handleEditFineType(fineType)
+                                        }
+                                        disabled={
+                                          changingStatus || savingFineType
+                                        }
+                                      >
+                                        <Text style={styles.editFineTypeText}>
+                                          Edit
+                                        </Text>
+                                      </TouchableOpacity>
+
+                                      <TouchableOpacity
+                                        style={[
+                                          styles.fineStatusActionButton,
+
+                                          active
+                                            ? styles.deactivateFineTypeButton
+                                            : styles.activateFineTypeButton,
+                                        ]}
+                                        onPress={() =>
+                                          handleToggleFineTypeStatus(fineType)
+                                        }
+                                        disabled={
+                                          changingStatus || savingFineType
+                                        }
+                                      >
+                                        {changingStatus ? (
+                                          <ActivityIndicator
+                                            size="small"
+                                            color={
+                                              active ? "#D32F2F" : "#2E9D43"
+                                            }
+                                          />
+                                        ) : (
+                                          <Text
+                                            style={[
+                                              styles.fineStatusActionText,
+
+                                              active
+                                                ? styles.deactivateFineTypeText
+                                                : styles.activateFineTypeText,
+                                            ]}
+                                          >
+                                            {active ? "Deactivate" : "Activate"}
+                                          </Text>
+                                        )}
+                                      </TouchableOpacity>
+                                    </View>
+                                  </View>
+                                </View>
+                              );
+                            })
+                          )}
+                        </View>
+                      </ScrollView>
+                    )}
+                  </View>
+                </View>
+
+                {/* ==================================
                     SYSTEM SETTINGS
                 ================================== */}
 
@@ -1550,8 +2348,8 @@ export default function AdminSettings() {
         </ScrollView>
       </View>
 
-      {/* ======================================
-          REMOVE PHOTO MODAL
+      {/* =====================================
+          REMOVE PHOTO
       ====================================== */}
 
       <DeleteModal
@@ -1563,8 +2361,8 @@ export default function AdminSettings() {
         onConfirm={performRemovePhoto}
       />
 
-      {/* ======================================
-          SUCCESS MODAL
+      {/* =====================================
+          SUCCESS
       ====================================== */}
 
       <SuccessModal
@@ -1577,8 +2375,8 @@ export default function AdminSettings() {
         }}
       />
 
-      {/* ======================================
-          WARNING MODAL
+      {/* =====================================
+          WARNING
       ====================================== */}
 
       <WarningModal
@@ -1591,8 +2389,8 @@ export default function AdminSettings() {
         }}
       />
 
-      {/* ======================================
-          LOGOUT MODAL
+      {/* =====================================
+          LOGOUT
       ====================================== */}
 
       <LogoutModal
@@ -1685,6 +2483,37 @@ function getMimeType(uri: string) {
   }
 
   return "image/jpeg";
+}
+
+// ==========================================
+// NEXT FINE CODE FALLBACK
+//
+// Backend is still the final authority.
+// This is only used if nextCode is not
+// included in the response.
+// ==========================================
+
+function getNextFineCodeFromTypes(fineTypes: FineType[]) {
+  let highestNumber = 0;
+
+  for (const fineType of fineTypes) {
+    const match = String(fineType.violation_code || "")
+      .trim()
+      .toUpperCase()
+      .match(/^V(\d+)$/);
+
+    if (!match) {
+      continue;
+    }
+
+    const numericPart = Number(match[1]);
+
+    if (Number.isSafeInteger(numericPart) && numericPart > highestNumber) {
+      highestNumber = numericPart;
+    }
+  }
+
+  return `V${String(highestNumber + 1).padStart(3, "0")}`;
 }
 
 // ==========================================

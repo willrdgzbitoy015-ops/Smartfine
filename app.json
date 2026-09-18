@@ -3,36 +3,26 @@
     "name": "SmartFine",
     "slug": "SmartFine",
     "version": "1.0.0",
-
     "orientation": "portrait",
-
     "icon": "./assets/branding/smartfine-logo.png",
-
     "scheme": "smartfine",
-
     "userInterfaceStyle": "automatic",
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/smartfine-logo.png",
         "backgroundColor": "#173A73"
       },
-
       "predictiveBackGestureEnabled": false
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/branding/smartfine-logo.png"
     },
-
     "plugins": [
       "expo-router",
-
       [
         "expo-splash-screen",
         {
@@ -40,20 +30,18 @@
           "imageWidth": 240,
           "resizeMode": "contain",
           "backgroundColor": "#173A73",
-
           "dark": {
             "image": "./assets/branding/smartfineNoBG.png",
             "backgroundColor": "#173A73"
           }
         }
       ],
-
       "expo-font",
       "expo-image",
       "expo-web-browser",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-sharing"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

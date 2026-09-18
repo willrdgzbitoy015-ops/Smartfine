@@ -31,6 +31,25 @@ function isArchivedUsername(username) {
 }
 
 // ==========================================
+// BULK IMPORT DEFAULT PASSWORD
+// ==========================================
+
+const DEFAULT_STUDENT_PASSWORD = "Smartfine@2026";
+
+// ==========================================
+// ALLOWED GRADE LEVELS
+// ==========================================
+
+const ALLOWED_GRADE_LEVELS = [
+  "Grade 7",
+  "Grade 8",
+  "Grade 9",
+  "Grade 10",
+  "Grade 11",
+  "Grade 12",
+];
+
+// ==========================================
 // PROFILE PICTURE UPLOAD DIRECTORY
 // ==========================================
 
@@ -221,6 +240,27 @@ function generateSuggestedUsername(firstName, lastName) {
 
 function formatName(firstName, middleName, lastName) {
   return [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
+}
+
+// ==========================================
+// NORMALIZE IMPORT CONTACT NUMBER
+// ==========================================
+
+function normalizeImportContactNumber(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^'+/, "")
+    .replace(/[\s()+-]/g, "");
+}
+
+// ==========================================
+// SCIENTIFIC NOTATION CHECK
+// ==========================================
+
+function isScientificNotation(value) {
+  return /^[+-]?(?:\d+\.?\d*|\.\d+)[eE][+-]?\d+$/.test(
+    String(value || "").trim(),
+  );
 }
 
 // ==========================================
@@ -912,6 +952,601 @@ router.post("/", async (req, res) => {
       code: "CREATE_STUDENT_ERROR",
 
       message: "Failed to create student account.",
+
+      error: error.message,
+    });
+  }
+});
+
+// ==========================================
+// BULK IMPORT STUDENTS
+//
+// POST /api/students/bulk-import
+//
+// Rules:
+// - CSV Student ID becomes student_number
+// - CSV Student ID also becomes username
+// - Password = Smartfine@2026
+// - Password stored as bcrypt hash
+// - Role = STUDENT
+// - Account Status = ACTIVE
+// - Grade and Section are supplied by Admin
+// - Backend validates all rows again
+// - All rows are inserted in one transaction
+// ==========================================
+
+router.post("/bulk-import", async (req, res) => {
+  try {
+    const { gradeLevel, section, students } = req.body;
+
+    // ====================================
+    // NORMALIZE CLASS INFORMATION
+    // ====================================
+
+    const normalizedGradeLevel = String(gradeLevel || "").trim();
+
+    const normalizedSection = String(section || "").trim();
+
+    // ====================================
+    // GRADE / SECTION REQUIRED
+    // ====================================
+
+    if (!normalizedGradeLevel || !normalizedSection) {
+      return res.status(400).json({
+        success: false,
+
+        code: "IMPORT_CLASS_REQUIRED",
+
+        message: "Grade Level and Section are required.",
+      });
+    }
+
+    // ====================================
+    // VALID GRADE LEVEL
+    // ====================================
+
+    if (!ALLOWED_GRADE_LEVELS.includes(normalizedGradeLevel)) {
+      return res.status(400).json({
+        success: false,
+
+        code: "INVALID_GRADE_LEVEL",
+
+        message: "Grade Level must be Grade 7 through Grade 12.",
+      });
+    }
+
+    // ====================================
+    // STUDENTS REQUIRED
+    // ====================================
+
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({
+        success: false,
+
+        code: "IMPORT_STUDENTS_REQUIRED",
+
+        message: "No student records were provided for import.",
+      });
+    }
+
+    // ====================================
+    // SAFETY LIMIT
+    // ====================================
+
+    if (students.length > 2000) {
+      return res.status(400).json({
+        success: false,
+
+        code: "IMPORT_TOO_LARGE",
+
+        message: "A maximum of 2,000 students may be imported at one time.",
+      });
+    }
+
+    // ====================================
+    // DEFAULT PASSWORD CHECK
+    // ====================================
+
+    const defaultPasswordValidation = validatePasswordPolicy(
+      DEFAULT_STUDENT_PASSWORD,
+    );
+
+    if (!defaultPasswordValidation.valid) {
+      return res.status(500).json({
+        success: false,
+
+        code: "DEFAULT_PASSWORD_INVALID",
+
+        message:
+          "The configured default student password does not meet the SmartFine password policy.",
+      });
+    }
+
+    // ====================================
+    // CURRENT IMPORT TRACKING
+    // ====================================
+
+    const requestStudentNumbers = new Set();
+
+    const requestEmails = new Set();
+
+    const validatedStudents = [];
+
+    const errors = [];
+
+    // ====================================
+    // VALIDATE EACH STUDENT
+    // ====================================
+
+    for (let index = 0; index < students.length; index += 1) {
+      const student = students[index] || {};
+
+      const rowNumber = Number(student.rowNumber) || index + 1;
+
+      const studentNumber = String(student.studentNumber || "").trim();
+
+      const firstName = String(student.firstName || "").trim();
+
+      const middleName = student.middleName
+        ? String(student.middleName).trim()
+        : null;
+
+      const lastName = String(student.lastName || "").trim();
+
+      const email = String(student.email || "")
+        .trim()
+        .toLowerCase();
+
+      const rawContactNumber = String(student.contactNumber || "").trim();
+
+      const contactNumber = normalizeImportContactNumber(rawContactNumber);
+
+      // ==================================
+      // EXAMPLE ROW PROTECTION
+      // ==================================
+
+      if (studentNumber.toUpperCase() === "EXAMPLE") {
+        continue;
+      }
+
+      const studentErrors = [];
+
+      // ==================================
+      // REQUIRED FIELDS
+      // ==================================
+
+      if (!studentNumber) {
+        studentErrors.push("Student ID Number is required.");
+      }
+
+      if (!firstName) {
+        studentErrors.push("First Name is required.");
+      }
+
+      if (!lastName) {
+        studentErrors.push("Last Name is required.");
+      }
+
+      if (!email) {
+        studentErrors.push("Email is required.");
+      }
+
+      if (!contactNumber) {
+        studentErrors.push("Contact Number is required.");
+      }
+
+      // ==================================
+      // STUDENT ID FORMAT
+      // ==================================
+
+      if (studentNumber && !/^[A-Za-z0-9_-]+$/.test(studentNumber)) {
+        studentErrors.push(
+          "Student ID Number may contain letters, numbers, hyphens, and underscores only.",
+        );
+      }
+
+      // ==================================
+      // EMAIL VALIDATION
+      // ==================================
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        studentErrors.push("Invalid email address.");
+      }
+
+      // ==================================
+      // SCIENTIFIC NOTATION PROTECTION
+      // ==================================
+
+      if (rawContactNumber && isScientificNotation(rawContactNumber)) {
+        studentErrors.push(
+          "Contact Number appears to be in scientific notation. Format the Excel Contact Number column as Text and re-enter the phone number.",
+        );
+      } else {
+        // ==================================
+        // CONTACT NUMBER
+        // ==================================
+
+        if (contactNumber && !/^[0-9]+$/.test(contactNumber)) {
+          studentErrors.push("Contact Number must contain numbers only.");
+        }
+
+        if (
+          contactNumber &&
+          (contactNumber.length < 10 || contactNumber.length > 15)
+        ) {
+          studentErrors.push("Contact Number must contain 10 to 15 digits.");
+        }
+      }
+
+      // ==================================
+      // USERNAME
+      //
+      // Username = Student ID Number
+      // ==================================
+
+      const username = studentNumber;
+
+      const studentNumberKey = studentNumber.toLowerCase();
+
+      const emailKey = email.toLowerCase();
+
+      // ==================================
+      // DUPLICATE WITHIN THIS IMPORT
+      // ==================================
+
+      if (studentNumberKey && requestStudentNumbers.has(studentNumberKey)) {
+        studentErrors.push("Duplicate Student ID Number inside this import.");
+      }
+
+      if (emailKey && requestEmails.has(emailKey)) {
+        studentErrors.push("Duplicate Email inside this import.");
+      }
+
+      // ==================================
+      // DATABASE DUPLICATE STUDENT NUMBER
+      // ==================================
+
+      if (studentNumber) {
+        const existingStudentNumber = db
+          .prepare(
+            `
+              SELECT
+                id
+
+              FROM users
+
+              WHERE
+                LOWER(
+                  COALESCE(
+                    student_number,
+                    ''
+                  )
+                )
+                  =
+                LOWER(?)
+            `,
+          )
+          .get(studentNumber);
+
+        if (existingStudentNumber) {
+          studentErrors.push("Student ID Number already exists.");
+        }
+      }
+
+      // ==================================
+      // DATABASE DUPLICATE USERNAME
+      // ==================================
+
+      if (username) {
+        const existingUsername = db
+          .prepare(
+            `
+              SELECT
+                id
+
+              FROM users
+
+              WHERE
+                LOWER(username)
+                  =
+                LOWER(?)
+            `,
+          )
+          .get(username);
+
+        if (existingUsername) {
+          studentErrors.push("Username already exists.");
+        }
+      }
+
+      // ==================================
+      // DATABASE DUPLICATE EMAIL
+      // ==================================
+
+      if (email) {
+        const existingEmail = db
+          .prepare(
+            `
+              SELECT
+                id
+
+              FROM users
+
+              WHERE
+                LOWER(email)
+                  =
+                LOWER(?)
+            `,
+          )
+          .get(email);
+
+        if (existingEmail) {
+          studentErrors.push("Email address already exists.");
+        }
+      }
+
+      // ==================================
+      // VALIDATION FAILED
+      // ==================================
+
+      if (studentErrors.length > 0) {
+        errors.push({
+          rowNumber,
+
+          studentNumber,
+
+          name: formatName(firstName, middleName, lastName),
+
+          errors: studentErrors,
+        });
+
+        continue;
+      }
+
+      // ==================================
+      // MARK VALUES AS USED
+      // ==================================
+
+      requestStudentNumbers.add(studentNumberKey);
+
+      requestEmails.add(emailKey);
+
+      // ==================================
+      // READY FOR DATABASE INSERT
+      // ==================================
+
+      validatedStudents.push({
+        rowNumber,
+
+        studentNumber,
+
+        username,
+
+        firstName,
+
+        middleName,
+
+        lastName,
+
+        email,
+
+        contactNumber,
+      });
+    }
+
+    // ====================================
+    // BACKEND VALIDATION FAILED
+    //
+    // No accounts are inserted if any row
+    // fails backend validation.
+    // ====================================
+
+    if (errors.length > 0) {
+      return res.status(409).json({
+        success: false,
+
+        code: "IMPORT_VALIDATION_FAILED",
+
+        message:
+          "Some student records failed backend validation. No student accounts were created.",
+
+        validCount: validatedStudents.length,
+
+        invalidCount: errors.length,
+
+        errors,
+      });
+    }
+
+    // ====================================
+    // NO VALID STUDENTS
+    // ====================================
+
+    if (validatedStudents.length === 0) {
+      return res.status(400).json({
+        success: false,
+
+        code: "NO_VALID_IMPORT_RECORDS",
+
+        message: "No valid student records are available for import.",
+      });
+    }
+
+    // ====================================
+    // HASH SHARED DEFAULT PASSWORD
+    //
+    // Only the hash is saved to SQLite.
+    // ====================================
+
+    const defaultPasswordHash = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10);
+
+    // ====================================
+    // PREPARE INSERT
+    // ====================================
+
+    const insertStudent = db.prepare(
+      `
+        INSERT INTO users (
+          student_number,
+          username,
+
+          first_name,
+          middle_name,
+          last_name,
+
+          email,
+          contact_number,
+
+          password_hash,
+
+          role,
+
+          account_status,
+
+          grade_level,
+          section,
+
+          profile_picture_uri
+        )
+
+        VALUES (
+          ?,
+          ?,
+
+          ?,
+          ?,
+          ?,
+
+          ?,
+          ?,
+
+          ?,
+
+          'STUDENT',
+
+          'ACTIVE',
+
+          ?,
+          ?,
+
+          NULL
+        )
+      `,
+    );
+
+    const importedStudents = [];
+
+    // ====================================
+    // DATABASE TRANSACTION
+    // ====================================
+
+    try {
+      db.exec("BEGIN TRANSACTION;");
+
+      for (const student of validatedStudents) {
+        const result = insertStudent.run(
+          student.studentNumber,
+          student.username,
+
+          student.firstName,
+          student.middleName,
+          student.lastName,
+
+          student.email,
+          student.contactNumber,
+
+          defaultPasswordHash,
+
+          normalizedGradeLevel,
+          normalizedSection,
+        );
+
+        importedStudents.push({
+          id: Number(result.lastInsertRowid),
+
+          studentId: student.studentNumber,
+
+          username: student.username,
+
+          firstName: student.firstName,
+
+          middleName: student.middleName,
+
+          lastName: student.lastName,
+
+          fullName: formatName(
+            student.firstName,
+            student.middleName,
+            student.lastName,
+          ),
+
+          email: student.email,
+
+          contactNumber: student.contactNumber,
+
+          gradeLevel: normalizedGradeLevel,
+
+          section: normalizedSection,
+
+          accountStatus: "ACTIVE",
+
+          role: "STUDENT",
+        });
+      }
+
+      db.exec("COMMIT;");
+    } catch (transactionError) {
+      try {
+        db.exec("ROLLBACK;");
+      } catch (rollbackError) {
+        console.error("Bulk student import rollback error:", rollbackError);
+      }
+
+      throw transactionError;
+    }
+
+    // ====================================
+    // SUCCESS
+    // ====================================
+
+    return res.status(201).json({
+      success: true,
+
+      code: "BULK_STUDENT_IMPORT_SUCCESS",
+
+      message: `${importedStudents.length} student account${
+        importedStudents.length === 1 ? "" : "s"
+      } imported successfully.`,
+
+      importedCount: importedStudents.length,
+
+      class: {
+        gradeLevel: normalizedGradeLevel,
+
+        section: normalizedSection,
+      },
+
+      accountSetup: {
+        username: "Student ID Number",
+
+        defaultPassword: DEFAULT_STUDENT_PASSWORD,
+
+        role: "STUDENT",
+
+        accountStatus: "ACTIVE",
+      },
+
+      students: importedStudents,
+    });
+  } catch (error) {
+    console.error("Bulk student import error:", error);
+
+    return res.status(500).json({
+      success: false,
+
+      code: "BULK_STUDENT_IMPORT_ERROR",
+
+      message: "Failed to import student accounts.",
 
       error: error.message,
     });

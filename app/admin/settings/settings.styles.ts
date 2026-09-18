@@ -229,7 +229,7 @@ export const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#a8bee1",
+    backgroundColor: "#A8BEE1",
     borderWidth: 3,
     borderColor: "#FFFFFF",
     alignItems: "center",
@@ -507,6 +507,451 @@ export const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 9,
     marginTop: 3,
+  },
+
+  // ========================================
+  // FINE TYPES HEADER
+  // ========================================
+
+  fineTypesSectionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 9,
+  },
+
+  fineTypesSectionHeading: {
+    flex: 1,
+    minWidth: 240,
+  },
+
+  fineTypesSectionTitle: {
+    marginBottom: 3,
+  },
+
+  fineTypesDescription: {
+    color: "#7E8794",
+    fontSize: 9,
+    lineHeight: 15,
+    marginLeft: 14,
+  },
+
+  addFineTypeButton: {
+    minHeight: 40,
+    borderRadius: 7,
+    backgroundColor: "#45B94F",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 17,
+  },
+
+  addFineTypeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+
+  // ========================================
+  // FINE TYPE FORM
+  // ========================================
+
+  fineTypeForm: {
+    width: "100%",
+    backgroundColor: "#F7F9FC",
+    borderWidth: 1,
+    borderColor: "#DDE4EE",
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    marginBottom: 18,
+  },
+
+  fineTypeFormHeader: {
+    marginBottom: 17,
+  },
+
+  fineTypeFormTitle: {
+    color: "#123266",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  fineTypeFormSubtitle: {
+    color: "#7E8794",
+    fontSize: 9,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+
+  fineDescriptionField: {
+    marginBottom: 17,
+  },
+
+  fineDescriptionInput: {
+    width: "100%",
+    minHeight: 86,
+    borderWidth: 1,
+    borderColor: "#D8DEE8",
+    borderRadius: 7,
+    backgroundColor: "#FFFFFF",
+    color: "#333840",
+    fontSize: 11,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+  },
+
+  fineTypeFormActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+    gap: 9,
+  },
+
+  // ========================================
+  // AMOUNT
+  // ========================================
+
+  amountInputContainer: {
+    width: "100%",
+    height: 43,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D8DEE8",
+    borderRadius: 7,
+    backgroundColor: "#F5F7FA",
+    overflow: "hidden",
+  },
+
+  amountPeso: {
+    color: "#173A73",
+    fontSize: 13,
+    fontWeight: "800",
+    marginLeft: 13,
+    marginRight: 5,
+  },
+
+  amountInput: {
+    flex: 1,
+    height: "100%",
+    color: "#333840",
+    fontSize: 11,
+    paddingRight: 13,
+    outlineStyle: "none",
+  } as any,
+
+  // ========================================
+  // STATUS SELECTOR
+  // ========================================
+
+  statusSelector: {
+    height: 43,
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#D8DEE8",
+    borderRadius: 7,
+    backgroundColor: "#F5F7FA",
+    overflow: "hidden",
+  },
+
+  statusSelectorButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5F7FA",
+  },
+
+  statusSelectorButtonActive: {
+    backgroundColor: "#45B94F",
+  },
+
+  statusSelectorButtonInactive: {
+    backgroundColor: "#D32F2F",
+  },
+
+  statusSelectorText: {
+    color: "#7E8794",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+
+  statusSelectorTextActive: {
+    color: "#FFFFFF",
+  },
+
+  statusSelectorTextInactive: {
+    color: "#FFFFFF",
+  },
+
+  // ========================================
+  // FINE TYPE NOTICE
+  // ========================================
+
+  fineTypeNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 7,
+    backgroundColor: "#EEF3FA",
+    marginBottom: 18,
+  },
+
+  fineTypeNoticeText: {
+    flex: 1,
+    color: "#536780",
+    fontSize: 9,
+    lineHeight: 14,
+  },
+
+  // ========================================
+  // FINE TYPES TABLE
+  // ========================================
+
+  fineTypesTable: {
+    width: "100%",
+    minWidth: 780,
+    borderWidth: 1,
+    borderColor: "#E1E5EB",
+    borderRadius: 9,
+    overflow: "hidden",
+  },
+
+  fineTypesTableHeader: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#173A73",
+  },
+
+  fineTypesHeaderText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
+    paddingHorizontal: 12,
+  },
+
+  fineTypesTableRow: {
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E7E9ED",
+  },
+
+  fineCodeColumn: {
+    width: 100,
+    paddingHorizontal: 12,
+  },
+
+  fineNameColumn: {
+    width: 255,
+    paddingHorizontal: 12,
+  },
+
+  fineAmountColumn: {
+    width: 125,
+    paddingHorizontal: 12,
+  },
+
+  fineStatusColumn: {
+    width: 115,
+    paddingHorizontal: 12,
+  },
+
+  fineActionColumn: {
+    flex: 1,
+    minWidth: 185,
+    paddingHorizontal: 12,
+  },
+
+  fineCodeText: {
+    color: "#173A73",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+
+  fineNameText: {
+    color: "#30353D",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+
+  fineDescriptionText: {
+    color: "#8C939F",
+    fontSize: 8,
+    lineHeight: 12,
+    marginTop: 3,
+  },
+
+  fineAmountText: {
+    color: "#123266",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  // ========================================
+  // STATUS BADGE
+  // ========================================
+
+  fineStatusBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+
+  fineStatusActiveBadge: {
+    backgroundColor: "#E7F8EA",
+  },
+
+  fineStatusInactiveBadge: {
+    backgroundColor: "#FFEAEA",
+  },
+
+  fineStatusText: {
+    fontSize: 8,
+    fontWeight: "800",
+  },
+
+  fineStatusActiveText: {
+    color: "#2E9D43",
+  },
+
+  fineStatusInactiveText: {
+    color: "#D32F2F",
+  },
+
+  // ========================================
+  // FINE ACTIONS
+  // ========================================
+
+  fineActionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  editFineTypeButton: {
+    minWidth: 60,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#173A73",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+
+  editFineTypeText: {
+    color: "#173A73",
+    fontSize: 8,
+    fontWeight: "800",
+  },
+
+  fineStatusActionButton: {
+    minWidth: 90,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+
+  deactivateFineTypeButton: {
+    borderColor: "#D32F2F",
+    backgroundColor: "#FFFFFF",
+  },
+
+  activateFineTypeButton: {
+    borderColor: "#45B94F",
+    backgroundColor: "#FFFFFF",
+  },
+
+  fineStatusActionText: {
+    fontSize: 8,
+    fontWeight: "800",
+  },
+
+  deactivateFineTypeText: {
+    color: "#D32F2F",
+  },
+
+  activateFineTypeText: {
+    color: "#2E9D43",
+  },
+
+  // ========================================
+  // FINE TYPES STATES
+  // ========================================
+
+  fineTypesLoading: {
+    minHeight: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  fineTypesLoadingText: {
+    color: "#7E8794",
+    fontSize: 9,
+    marginTop: 9,
+  },
+
+  fineTypesErrorBox: {
+    minHeight: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF4F4",
+    borderRadius: 8,
+    padding: 16,
+  },
+
+  fineTypesErrorText: {
+    color: "#B42318",
+    fontSize: 9,
+    textAlign: "center",
+  },
+
+  fineTypesRetryButton: {
+    minWidth: 90,
+    height: 32,
+    marginTop: 10,
+    borderRadius: 6,
+    backgroundColor: "#173A73",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  fineTypesRetryText: {
+    color: "#FFFFFF",
+    fontSize: 8,
+    fontWeight: "800",
+  },
+
+  fineTypesEmpty: {
+    minHeight: 120,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+
+  fineTypesEmptyTitle: {
+    color: "#123266",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  fineTypesEmptyText: {
+    color: "#8C939F",
+    fontSize: 9,
+    marginTop: 4,
+    textAlign: "center",
   },
 
   // ========================================
