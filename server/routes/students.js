@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
+const ExcelJS = require("exceljs");
 
 const fs = require("fs");
 const path = require("path");
@@ -8,20 +9,12 @@ const path = require("path");
 const router = express.Router();
 
 const db = require("../database/database");
+const { authenticateToken } = require("./auth");
 
 console.log("students.js loaded");
 
 // ==========================================
 // ARCHIVED STUDENT MARKER
-// ==========================================
-//
-// We keep archived students in the users
-// table so old fines/payments still have a
-// valid student_id reference.
-//
-// Archived students are hidden from the
-// Students Directory and cannot be edited
-// through normal student routes.
 // ==========================================
 
 const ARCHIVED_USERNAME_PREFIX = "__archived_student_";
@@ -50,7 +43,578 @@ const ALLOWED_GRADE_LEVELS = [
 ];
 
 // ==========================================
-// PROFILE PICTURE UPLOAD DIRECTORY
+// ADMIN ONLY
+// ==========================================
+
+function requireAdmin(req, res, next) {
+  const role = String(req.authUser?.role || "")
+    .trim()
+    .toUpperCase();
+
+  if (role !== "ADMIN") {
+    return res.status(403).json({
+      success: false,
+      code: "ADMIN_REQUIRED",
+      message: "Only an administrator can perform this action.",
+    });
+  }
+
+  next();
+}
+
+// ==========================================
+// SAFE EXPORT FILENAME
+// ==========================================
+
+function makeSafeExportFileName(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+// ==========================================
+// IMPORT TEMPLATE / FILE HELPERS
+// ==========================================
+
+function normalizeImportHeader(value) {
+  return String(value || "")
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+function parseImportClassInformation(value) {
+  const className = String(value || "")
+    .trim()
+    .replace(/^Class:\s*/i, "")
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ");
+
+  const match = className.match(/^Grade\s+(7|8|9|10|11|12)\s*-\s*(.+)$/i);
+
+  if (!match) {
+    throw new Error(
+      'Invalid class format. Expected something like "Grade 8 - Ponkan" or "Grade 12 - TVL ICT - Pagatpat".',
+    );
+  }
+
+  const gradeLevel = `Grade ${match[1]}`;
+
+  const classPart = String(match[2] || "").trim();
+
+  if (!classPart) {
+    throw new Error("The student file does not contain a Section.");
+  }
+
+  if (gradeLevel === "Grade 11" || gradeLevel === "Grade 12") {
+    const strandMatch = classPart.match(/^(STEM|ABM|TVL)\b\s*(.*)$/i);
+
+    if (!strandMatch) {
+      throw new Error(
+        `${gradeLevel} must include a valid Strand: STEM, ABM, or TVL.`,
+      );
+    }
+
+    const strand = String(strandMatch[1]).toUpperCase();
+
+    const section = String(strandMatch[2] || "")
+      .replace(/^\s*-\s*/, "")
+      .trim();
+
+    if (!section) {
+      throw new Error(`${gradeLevel} must include a Section after the Strand.`);
+    }
+
+    return {
+      gradeLevel,
+      strand,
+      section,
+      databaseSection: `${strand} ${section}`.trim(),
+      displayName: `${gradeLevel} - ${strand} ${section}`.trim(),
+    };
+  }
+
+  return {
+    gradeLevel,
+    strand: "",
+    section: classPart,
+    databaseSection: classPart,
+    displayName: `${gradeLevel} - ${classPart}`,
+  };
+}
+
+function parseCsvRows(text) {
+  const rows = [];
+
+  let row = [];
+  let cell = "";
+  let insideQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+
+    if (character === '"') {
+      if (insideQuotes && text[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+
+      continue;
+    }
+
+    if (character === "," && !insideQuotes) {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !insideQuotes) {
+      if (character === "\r" && text[index + 1] === "\n") {
+        index += 1;
+      }
+
+      row.push(cell.trim());
+
+      const containsValue = row.some(
+        (value) => String(value || "").trim() !== "",
+      );
+
+      if (containsValue) {
+        rows.push(row);
+      }
+
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += character;
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell.trim());
+
+    const containsValue = row.some(
+      (value) => String(value || "").trim() !== "",
+    );
+
+    if (containsValue) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+function findImportColumns(headers) {
+  const normalizedHeaders = headers.map(normalizeImportHeader);
+
+  function findColumn(aliases) {
+    for (const alias of aliases) {
+      const index = normalizedHeaders.indexOf(alias);
+
+      if (index >= 0) {
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
+  const columns = {
+    studentNumber: findColumn([
+      "student_id",
+      "student_id_number",
+      "student_number",
+    ]),
+
+    firstName: findColumn(["first_name"]),
+
+    middleName: findColumn(["middle_name"]),
+
+    lastName: findColumn(["last_name"]),
+
+    email: findColumn(["email"]),
+
+    contactNumber: findColumn([
+      "contact_number",
+      "contact_no",
+      "phone",
+      "phone_number",
+    ]),
+  };
+
+  const missing = [];
+
+  if (columns.studentNumber < 0) {
+    missing.push("Student ID");
+  }
+
+  if (columns.firstName < 0) {
+    missing.push("First Name");
+  }
+
+  if (columns.middleName < 0) {
+    missing.push("Middle Name");
+  }
+
+  if (columns.lastName < 0) {
+    missing.push("Last Name");
+  }
+
+  if (columns.email < 0) {
+    missing.push("Email");
+  }
+
+  if (columns.contactNumber < 0) {
+    missing.push("Contact Number");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required student file column(s): ${missing.join(", ")}.`,
+    );
+  }
+
+  return columns;
+}
+
+function getExcelCellText(cell) {
+  if (!cell) {
+    return "";
+  }
+
+  const text = String(cell.text ?? "").trim();
+
+  if (text) {
+    return text;
+  }
+
+  if (cell.value === null || cell.value === undefined) {
+    return "";
+  }
+
+  if (typeof cell.value === "object") {
+    if (cell.value.text) {
+      return String(cell.value.text).trim();
+    }
+
+    if (Array.isArray(cell.value.richText)) {
+      return cell.value.richText
+        .map((part) => String(part.text || ""))
+        .join("")
+        .trim();
+    }
+
+    if (cell.value.result !== undefined) {
+      return String(cell.value.result).trim();
+    }
+  }
+
+  return String(cell.value).trim();
+}
+
+function parseCsvStudentImport(buffer) {
+  const rawText = buffer.toString("utf8").replace(/^\uFEFF/, "");
+
+  const rows = parseCsvRows(rawText);
+
+  if (rows.length < 3) {
+    throw new Error(
+      "Invalid CSV format. Please use the official SmartFine student template.",
+    );
+  }
+
+  let className = "";
+
+  const firstLabel = String(rows[0]?.[0] || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+  if (
+    firstLabel === "grade and section:" ||
+    firstLabel === "grade and section"
+  ) {
+    className = String(rows[0]?.[1] || "").trim();
+  } else {
+    for (const row of rows.slice(0, 10)) {
+      for (const value of row) {
+        const text = String(value || "").trim();
+
+        if (/^Class:\s*Grade\s+/i.test(text)) {
+          className = text.replace(/^Class:\s*/i, "").trim();
+          break;
+        }
+      }
+
+      if (className) {
+        break;
+      }
+    }
+  }
+
+  if (!className) {
+    throw new Error(
+      "The CSV does not contain valid Grade and Section information.",
+    );
+  }
+
+  const parsedClass = parseImportClassInformation(className);
+
+  let headerRowIndex = -1;
+  let columns = null;
+
+  for (let index = 0; index < Math.min(rows.length, 20); index += 1) {
+    try {
+      const candidateColumns = findImportColumns(rows[index]);
+
+      headerRowIndex = index;
+      columns = candidateColumns;
+      break;
+    } catch (error) {
+      // Keep searching.
+    }
+  }
+
+  if (headerRowIndex < 0 || !columns) {
+    throw new Error(
+      "Could not find the SmartFine student column headings in the CSV.",
+    );
+  }
+
+  const students = [];
+
+  for (let index = headerRowIndex + 1; index < rows.length; index += 1) {
+    const row = rows[index];
+
+    const getValue = (columnIndex) => {
+      if (columnIndex < 0) {
+        return "";
+      }
+
+      return String(row[columnIndex] || "").trim();
+    };
+
+    const studentNumber = getValue(columns.studentNumber);
+
+    const firstName = getValue(columns.firstName);
+
+    const middleName = getValue(columns.middleName);
+
+    const lastName = getValue(columns.lastName);
+
+    const email = getValue(columns.email).toLowerCase();
+
+    const contactNumber = normalizeImportContactNumber(
+      getValue(columns.contactNumber),
+    );
+
+    const hasAnyValue = [
+      studentNumber,
+      firstName,
+      middleName,
+      lastName,
+      email,
+      contactNumber,
+    ].some((value) => String(value || "").trim() !== "");
+
+    if (!hasAnyValue) {
+      continue;
+    }
+
+    if (studentNumber.toUpperCase() === "EXAMPLE") {
+      continue;
+    }
+
+    students.push({
+      rowNumber: index + 1,
+      studentNumber,
+      firstName,
+      middleName,
+      lastName,
+      email,
+      contactNumber,
+    });
+  }
+
+  if (students.length === 0) {
+    throw new Error("The CSV does not contain any real student records.");
+  }
+
+  return {
+    fileType: "CSV",
+    class: parsedClass,
+    students,
+  };
+}
+
+async function parseExcelStudentImport(buffer) {
+  const workbook = new ExcelJS.Workbook();
+
+  await workbook.xlsx.load(buffer);
+
+  const worksheet = workbook.worksheets[0];
+
+  if (!worksheet) {
+    throw new Error("The Excel file does not contain a worksheet.");
+  }
+
+  let className = "";
+
+  for (
+    let rowNumber = 1;
+    rowNumber <= Math.min(worksheet.rowCount, 15);
+    rowNumber += 1
+  ) {
+    const row = worksheet.getRow(rowNumber);
+
+    for (
+      let columnNumber = 1;
+      columnNumber <= Math.max(row.cellCount, 6);
+      columnNumber += 1
+    ) {
+      const text = getExcelCellText(row.getCell(columnNumber));
+
+      if (/^Class:\s*Grade\s+/i.test(text)) {
+        className = text.replace(/^Class:\s*/i, "").trim();
+        break;
+      }
+
+      if (/^(Grade and section:|Grade and section)$/i.test(text)) {
+        const nextCellText = getExcelCellText(row.getCell(columnNumber + 1));
+
+        if (nextCellText) {
+          className = nextCellText;
+          break;
+        }
+      }
+    }
+
+    if (className) {
+      break;
+    }
+  }
+
+  if (!className) {
+    throw new Error(
+      "The Excel file does not contain valid Grade and Section information.",
+    );
+  }
+
+  const parsedClass = parseImportClassInformation(className);
+
+  let headerRowNumber = -1;
+  let columns = null;
+
+  for (
+    let rowNumber = 1;
+    rowNumber <= Math.min(worksheet.rowCount, 25);
+    rowNumber += 1
+  ) {
+    const row = worksheet.getRow(rowNumber);
+
+    const values = [];
+
+    for (
+      let columnNumber = 1;
+      columnNumber <= Math.max(row.cellCount, 6);
+      columnNumber += 1
+    ) {
+      values.push(getExcelCellText(row.getCell(columnNumber)));
+    }
+
+    try {
+      const candidateColumns = findImportColumns(values);
+
+      headerRowNumber = rowNumber;
+      columns = candidateColumns;
+      break;
+    } catch (error) {
+      // Keep searching.
+    }
+  }
+
+  if (headerRowNumber < 0 || !columns) {
+    throw new Error(
+      "Could not find the SmartFine student column headings in the Excel file.",
+    );
+  }
+
+  const students = [];
+
+  for (
+    let rowNumber = headerRowNumber + 1;
+    rowNumber <= worksheet.rowCount;
+    rowNumber += 1
+  ) {
+    const row = worksheet.getRow(rowNumber);
+
+    const getValue = (zeroBasedColumnIndex) =>
+      getExcelCellText(row.getCell(zeroBasedColumnIndex + 1));
+
+    const studentNumber = getValue(columns.studentNumber);
+
+    const firstName = getValue(columns.firstName);
+
+    const middleName = getValue(columns.middleName);
+
+    const lastName = getValue(columns.lastName);
+
+    const email = getValue(columns.email).toLowerCase();
+
+    const contactNumber = normalizeImportContactNumber(
+      getValue(columns.contactNumber),
+    );
+
+    const hasAnyValue = [
+      studentNumber,
+      firstName,
+      middleName,
+      lastName,
+      email,
+      contactNumber,
+    ].some((value) => String(value || "").trim() !== "");
+
+    if (!hasAnyValue) {
+      continue;
+    }
+
+    if (studentNumber.toUpperCase() === "EXAMPLE") {
+      continue;
+    }
+
+    students.push({
+      rowNumber,
+      studentNumber,
+      firstName,
+      middleName,
+      lastName,
+      email,
+      contactNumber,
+    });
+  }
+
+  if (students.length === 0) {
+    throw new Error(
+      "The Excel file does not contain any real student records.",
+    );
+  }
+
+  return {
+    fileType: "XLSX",
+    class: parsedClass,
+    students,
+  };
+}
+
+// ==========================================
+// PROFILE PICTURE DIRECTORY
 // ==========================================
 
 const studentProfileUploadDirectory = path.join(
@@ -59,10 +623,6 @@ const studentProfileUploadDirectory = path.join(
   "uploads",
   "student-profiles",
 );
-
-// ==========================================
-// CREATE DIRECTORY IF IT DOES NOT EXIST
-// ==========================================
 
 if (!fs.existsSync(studentProfileUploadDirectory)) {
   fs.mkdirSync(studentProfileUploadDirectory, {
@@ -99,7 +659,6 @@ function profilePictureFilter(req, file, callback) {
 
   if (allowedTypes.includes(file.mimetype)) {
     callback(null, true);
-
     return;
   }
 
@@ -117,6 +676,41 @@ const uploadProfilePicture = multer({
 
   limits: {
     fileSize: 5 * 1024 * 1024,
+  },
+});
+
+// ==========================================
+// STUDENT IMPORT FILE UPLOAD
+//
+// Used for previewing SmartFine .xlsx / .csv
+// teacher files before the existing bulk
+// import route creates accounts.
+// ==========================================
+
+function studentImportFileFilter(req, file, callback) {
+  const extension = path.extname(file.originalname || "").toLowerCase();
+
+  const allowedExtensions = [".xlsx", ".csv"];
+
+  if (allowedExtensions.includes(extension)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(
+    new Error(
+      "Only SmartFine Excel (.xlsx) and CSV (.csv) student files are allowed.",
+    ),
+  );
+}
+
+const uploadStudentImportFile = multer({
+  storage: multer.memoryStorage(),
+
+  fileFilter: studentImportFileFilter,
+
+  limits: {
+    fileSize: 10 * 1024 * 1024,
   },
 });
 
@@ -180,19 +774,14 @@ function generateNextStudentId() {
   const latestStudent = db
     .prepare(
       `
-        SELECT
-          student_number
-
-        FROM users
-
-        WHERE
-          role = 'STUDENT'
-          AND student_number LIKE ?
-
-        ORDER BY
-          student_number DESC
-
-        LIMIT 1
+      SELECT
+        student_number
+      FROM users
+      WHERE
+        role = 'STUDENT'
+        AND student_number LIKE ?
+      ORDER BY student_number DESC
+      LIMIT 1
       `,
     )
     .get(`${currentYear}-%`);
@@ -207,31 +796,227 @@ function generateNextStudentId() {
 
   const nextNumber = lastNumber + 1;
 
-  const formattedNumber = String(nextNumber).padStart(4, "0");
-
-  return `${currentYear}-${formattedNumber}`;
+  return `${currentYear}-${String(nextNumber).padStart(4, "0")}`;
 }
 
 // ==========================================
-// GENERATE SUGGESTED USERNAME
+// STUDENT USERNAME HELPERS
+//
+// Will Rodriguez -> willrodriguez
+//
+// Duplicate:
+// willrodriguez2
+// willrodriguez3
 // ==========================================
 
-function generateSuggestedUsername(firstName, lastName) {
-  const cleanFirstName = String(firstName || "")
+function normalizeUsernamePart(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+}
 
-  const cleanLastName = String(lastName || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+function generateSuggestedUsername(firstName, lastName) {
+  const cleanFirstName = normalizeUsernamePart(firstName);
+
+  const cleanLastName = normalizeUsernamePart(lastName);
 
   if (!cleanFirstName || !cleanLastName) {
     return "";
   }
 
-  return cleanFirstName.charAt(0) + cleanLastName;
+  return `${cleanFirstName}${cleanLastName}`;
+}
+
+// ==========================================
+// CHECK USERNAME AGAINST ALL USERS
+// ==========================================
+
+function usernameExists(username, excludeUserId = null) {
+  if (!username) {
+    return false;
+  }
+
+  if (Number.isInteger(Number(excludeUserId)) && Number(excludeUserId) > 0) {
+    return Boolean(
+      db
+        .prepare(
+          `
+          SELECT id
+          FROM users
+          WHERE
+            LOWER(username) = LOWER(?)
+            AND id != ?
+          LIMIT 1
+          `,
+        )
+        .get(username, Number(excludeUserId)),
+    );
+  }
+
+  return Boolean(
+    db
+      .prepare(
+        `
+        SELECT id
+        FROM users
+        WHERE
+          LOWER(username) = LOWER(?)
+        LIMIT 1
+        `,
+      )
+      .get(username),
+  );
+}
+
+// ==========================================
+// GENERATE UNIQUE STUDENT USERNAME
+// ==========================================
+
+function generateUniqueStudentUsername(
+  firstName,
+  lastName,
+  reservedUsernames = new Set(),
+  excludeUserId = null,
+) {
+  let baseUsername = generateSuggestedUsername(firstName, lastName);
+
+  if (!baseUsername) {
+    const fallbackId =
+      Number.isInteger(Number(excludeUserId)) && Number(excludeUserId) > 0
+        ? Number(excludeUserId)
+        : Date.now();
+
+    baseUsername = `student${fallbackId}`;
+  }
+
+  let candidate = baseUsername;
+
+  let suffix = 2;
+
+  while (
+    reservedUsernames.has(candidate.toLowerCase()) ||
+    usernameExists(candidate, excludeUserId)
+  ) {
+    candidate = `${baseUsername}${suffix}`;
+
+    suffix += 1;
+  }
+
+  reservedUsernames.add(candidate.toLowerCase());
+
+  return candidate;
+}
+
+// ==========================================
+// MIGRATE OLD NUMERIC USERNAMES
+// ==========================================
+
+function migrateLegacyStudentUsernames(gradeLevel, section) {
+  const normalizedGradeLevel = String(gradeLevel || "").trim();
+
+  const normalizedSection = String(section || "").trim();
+
+  if (!normalizedGradeLevel || !normalizedSection) {
+    return [];
+  }
+
+  const legacyStudents = db
+    .prepare(
+      `
+      SELECT
+        id,
+        student_number,
+        username,
+        first_name,
+        last_name
+      FROM users
+      WHERE
+        role = 'STUDENT'
+        AND username NOT LIKE
+          '__archived_student_%'
+        AND TRIM(grade_level) = ?
+        AND LOWER(TRIM(section))
+          = LOWER(TRIM(?))
+        AND LOWER(
+          TRIM(
+            COALESCE(username, '')
+          )
+        )
+          =
+        LOWER(
+          TRIM(
+            COALESCE(
+              student_number,
+              ''
+            )
+          )
+        )
+      ORDER BY id ASC
+      `,
+    )
+    .all(normalizedGradeLevel, normalizedSection);
+
+  if (legacyStudents.length === 0) {
+    return [];
+  }
+
+  const migrated = [];
+
+  const reservedUsernames = new Set();
+
+  try {
+    db.exec("BEGIN TRANSACTION;");
+
+    for (const student of legacyStudents) {
+      const newUsername = generateUniqueStudentUsername(
+        student.first_name,
+        student.last_name,
+        reservedUsernames,
+        student.id,
+      );
+
+      db.prepare(
+        `
+        UPDATE users
+        SET
+          username = ?,
+          updated_at =
+            CURRENT_TIMESTAMP
+        WHERE
+          id = ?
+          AND role = 'STUDENT'
+        `,
+      ).run(newUsername, student.id);
+
+      migrated.push({
+        id: student.id,
+
+        studentNumber: student.student_number,
+
+        oldUsername: student.username,
+
+        username: newUsername,
+      });
+    }
+
+    db.exec("COMMIT;");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK;");
+    } catch (rollbackError) {
+      console.error(
+        "Legacy student username migration rollback error:",
+        rollbackError,
+      );
+    }
+
+    throw error;
+  }
+
+  return migrated;
 }
 
 // ==========================================
@@ -265,13 +1050,6 @@ function isScientificNotation(value) {
 
 // ==========================================
 // PASSWORD POLICY
-//
-// Requirements:
-// - Minimum 8 characters
-// - At least 1 lowercase letter
-// - At least 1 uppercase letter
-// - At least 1 number
-// - At least 1 special character
 // ==========================================
 
 function validatePasswordPolicy(password) {
@@ -280,9 +1058,7 @@ function validatePasswordPolicy(password) {
   if (value.length < 8) {
     return {
       valid: false,
-
       code: "PASSWORD_TOO_SHORT",
-
       message: "Password must contain at least 8 characters.",
     };
   }
@@ -290,9 +1066,7 @@ function validatePasswordPolicy(password) {
   if (!/[a-z]/.test(value)) {
     return {
       valid: false,
-
       code: "PASSWORD_LOWERCASE_REQUIRED",
-
       message: "Password must contain at least one lowercase letter.",
     };
   }
@@ -300,9 +1074,7 @@ function validatePasswordPolicy(password) {
   if (!/[A-Z]/.test(value)) {
     return {
       valid: false,
-
       code: "PASSWORD_UPPERCASE_REQUIRED",
-
       message: "Password must contain at least one uppercase letter.",
     };
   }
@@ -310,9 +1082,7 @@ function validatePasswordPolicy(password) {
   if (!/[0-9]/.test(value)) {
     return {
       valid: false,
-
       code: "PASSWORD_NUMBER_REQUIRED",
-
       message: "Password must contain at least one number.",
     };
   }
@@ -320,9 +1090,7 @@ function validatePasswordPolicy(password) {
   if (!/[^A-Za-z0-9\s]/.test(value)) {
     return {
       valid: false,
-
       code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
-
       message: "Password must contain at least one special character.",
     };
   }
@@ -334,8 +1102,6 @@ function validatePasswordPolicy(password) {
 
 // ==========================================
 // GET NEXT STUDENT ID
-//
-// GET /api/students/next-id
 // ==========================================
 
 router.get("/next-id", (req, res) => {
@@ -344,7 +1110,6 @@ router.get("/next-id", (req, res) => {
 
     return res.json({
       success: true,
-
       studentId,
     });
   } catch (error) {
@@ -352,9 +1117,7 @@ router.get("/next-id", (req, res) => {
 
     return res.status(500).json({
       success: false,
-
       message: "Failed to generate Student ID.",
-
       error: error.message,
     });
   }
@@ -362,8 +1125,6 @@ router.get("/next-id", (req, res) => {
 
 // ==========================================
 // GET ALL STUDENTS
-//
-// GET /api/students
 // ==========================================
 
 router.get("/", (req, res) => {
@@ -371,146 +1132,120 @@ router.get("/", (req, res) => {
     const students = db
       .prepare(
         `
-            SELECT
-              u.id,
+        SELECT
+          u.id,
 
-              COALESCE(
-                u.student_number,
-                u.username
-              ) AS student_id,
+          COALESCE(
+            u.student_number,
+            u.username
+          ) AS student_id,
 
-              u.username,
+          u.username,
 
-              u.first_name,
-              u.middle_name,
-              u.last_name,
+          u.first_name,
+          u.middle_name,
+          u.last_name,
 
-              TRIM(
-                u.first_name || ' ' ||
-                COALESCE(
-                  u.middle_name || ' ',
-                  ''
-                ) ||
-                u.last_name
-              ) AS full_name,
+          TRIM(
+            u.first_name || ' ' ||
+            COALESCE(
+              u.middle_name || ' ',
+              ''
+            ) ||
+            u.last_name
+          ) AS full_name,
 
-              u.email,
-              u.contact_number,
+          u.email,
+          u.contact_number,
 
-              u.grade_level,
-              u.section,
+          u.grade_level,
+          u.section,
 
-              u.account_status,
+          u.account_status,
 
-              u.profile_picture_uri,
+          u.profile_picture_uri,
 
-              COALESCE(
-                SUM(
-                  CASE
-                    WHEN
-                      f.id IS NOT NULL
+          COALESCE(
+            SUM(
+              CASE
+                WHEN
+                  f.id IS NOT NULL
+                  AND f.cancelled_at IS NULL
+                  AND UPPER(
+                    COALESCE(
+                      f.fine_status,
+                      'UNPAID'
+                    )
+                  ) != 'CANCELLED'
+                THEN f.amount_centavos
+                ELSE 0
+              END
+            ),
+            0
+          ) / 100.0
+            AS total_fines,
 
-                      AND
-                      f.cancelled_at
-                        IS NULL
+          COALESCE(
+            SUM(
+              CASE
+                WHEN
+                  f.id IS NOT NULL
+                  AND f.cancelled_at IS NULL
+                  AND f.paid_at IS NULL
+                  AND UPPER(
+                    COALESCE(
+                      f.fine_status,
+                      'UNPAID'
+                    )
+                  )
+                  NOT IN (
+                    'PAID',
+                    'CANCELLED',
+                    'WAIVED'
+                  )
+                THEN f.amount_centavos
+                ELSE 0
+              END
+            ),
+            0
+          ) / 100.0
+            AS outstanding_balance
 
-                      AND
-                      UPPER(
-                        COALESCE(
-                          f.fine_status,
-                          'UNPAID'
-                        )
-                      ) !=
-                        'CANCELLED'
+        FROM users u
 
-                    THEN
-                      f.amount_centavos
+        LEFT JOIN fines f
+          ON f.student_id =
+            u.id
 
-                    ELSE
-                      0
-                  END
-                ),
-                0
-              ) / 100.0
-                AS total_fines,
+        WHERE
+          u.role = 'STUDENT'
+          AND
+          u.username NOT LIKE
+            '__archived_student_%'
 
-              COALESCE(
-                SUM(
-                  CASE
-                    WHEN
-                      f.id IS NOT NULL
+        GROUP BY
+          u.id,
+          u.student_number,
+          u.username,
+          u.first_name,
+          u.middle_name,
+          u.last_name,
+          u.email,
+          u.contact_number,
+          u.grade_level,
+          u.section,
+          u.account_status,
+          u.profile_picture_uri
 
-                      AND
-                      f.cancelled_at
-                        IS NULL
-
-                      AND
-                      f.paid_at
-                        IS NULL
-
-                      AND
-                      UPPER(
-                        COALESCE(
-                          f.fine_status,
-                          'UNPAID'
-                        )
-                      )
-                        NOT IN (
-                          'PAID',
-                          'CANCELLED',
-                          'WAIVED'
-                        )
-
-                    THEN
-                      f.amount_centavos
-
-                    ELSE
-                      0
-                  END
-                ),
-                0
-              ) / 100.0
-                AS outstanding_balance
-
-            FROM users u
-
-            LEFT JOIN fines f
-              ON
-                f.student_id =
-                u.id
-
-            WHERE
-              u.role =
-                'STUDENT'
-
-              AND
-              u.username NOT LIKE
-                '__archived_student_%'
-
-            GROUP BY
-              u.id,
-              u.student_number,
-              u.username,
-              u.first_name,
-              u.middle_name,
-              u.last_name,
-              u.email,
-              u.contact_number,
-              u.grade_level,
-              u.section,
-              u.account_status,
-              u.profile_picture_uri
-
-            ORDER BY
-              u.last_name ASC,
-              u.first_name ASC
-            `,
+        ORDER BY
+          u.last_name ASC,
+          u.first_name ASC
+        `,
       )
       .all();
 
     return res.json({
       success: true,
-
       students,
     });
   } catch (error) {
@@ -518,25 +1253,1293 @@ router.get("/", (req, res) => {
 
     return res.status(500).json({
       success: false,
-
       message: "Failed to load students.",
-
       error: error.message,
     });
   }
 });
 
 // ==========================================
-// CREATE STUDENT
+// DOWNLOAD STYLED STUDENT IMPORT TEMPLATE
 //
-// POST /api/students
+// GET /api/students/import-template
+// ==========================================
+
+router.get(
+  "/import-template",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const gradeLevel = String(req.query.gradeLevel || "").trim();
+
+      const section = String(req.query.section || "").trim();
+
+      if (!gradeLevel || !section) {
+        return res.status(400).json({
+          success: false,
+          code: "IMPORT_TEMPLATE_CLASS_REQUIRED",
+          message:
+            "Please select both Grade Level and Section before downloading the template.",
+        });
+      }
+
+      if (!ALLOWED_GRADE_LEVELS.includes(gradeLevel)) {
+        return res.status(400).json({
+          success: false,
+          code: "INVALID_GRADE_LEVEL",
+          message: "Grade Level must be Grade 7 through Grade 12.",
+        });
+      }
+
+      const className = `${gradeLevel} - ${section}`;
+
+      const workbook = new ExcelJS.Workbook();
+
+      workbook.creator = "SmartFine";
+
+      workbook.lastModifiedBy = "SmartFine";
+
+      workbook.created = new Date();
+
+      workbook.modified = new Date();
+
+      const worksheet = workbook.addWorksheet("Student Import", {
+        views: [
+          {
+            state: "frozen",
+            ySplit: 7,
+          },
+        ],
+      });
+
+      // ====================================
+      // COLUMN WIDTHS
+      // ====================================
+
+      worksheet.columns = [
+        {
+          key: "studentId",
+          width: 20,
+        },
+
+        {
+          key: "firstName",
+          width: 22,
+        },
+
+        {
+          key: "middleName",
+          width: 22,
+        },
+
+        {
+          key: "lastName",
+          width: 24,
+        },
+
+        {
+          key: "email",
+          width: 36,
+        },
+
+        {
+          key: "contactNumber",
+          width: 22,
+        },
+      ];
+
+      // ====================================
+      // TITLE
+      // ====================================
+
+      worksheet.mergeCells("A1:F1");
+
+      const titleCell = worksheet.getCell("A1");
+
+      titleCell.value = "SMARTFINE STUDENT IMPORT TEMPLATE";
+
+      titleCell.font = {
+        bold: true,
+        size: 18,
+        color: {
+          argb: "FFFFFFFF",
+        },
+      };
+
+      titleCell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+
+      titleCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FF173A73",
+        },
+      };
+
+      worksheet.getRow(1).height = 30;
+
+      // ====================================
+      // CLASS
+      // ====================================
+
+      worksheet.mergeCells("A2:F2");
+
+      const classCell = worksheet.getCell("A2");
+
+      classCell.value = `Class: ${className}`;
+
+      classCell.font = {
+        bold: true,
+        size: 12,
+        color: {
+          argb: "FF123266",
+        },
+      };
+
+      classCell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+      };
+
+      worksheet.getRow(2).height = 22;
+
+      // ====================================
+      // TEACHER NOTICE
+      // ====================================
+
+      worksheet.mergeCells("A3:F3");
+
+      const noticeCell = worksheet.getCell("A3");
+
+      noticeCell.value =
+        "For completion by the assigned teacher only. Do not change the class information or column headings.";
+
+      noticeCell.font = {
+        italic: true,
+        size: 10,
+        color: {
+          argb: "FFD32F2F",
+        },
+      };
+
+      noticeCell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+
+      worksheet.getRow(3).height = 24;
+
+      // ====================================
+      // USERNAME RULE
+      // ====================================
+
+      worksheet.mergeCells("A4:F4");
+
+      const usernameRuleCell = worksheet.getCell("A4");
+
+      usernameRuleCell.value =
+        "SmartFine automatically creates the login Username from First Name + Last Name in lowercase without spaces. Duplicate names receive a number suffix.";
+
+      usernameRuleCell.font = {
+        size: 10,
+        color: {
+          argb: "FF52647A",
+        },
+      };
+
+      usernameRuleCell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+
+      worksheet.getRow(4).height = 30;
+
+      // ====================================
+      // REQUIRED FIELDS NOTE
+      // ====================================
+
+      worksheet.mergeCells("A5:F5");
+
+      const requiredFieldsCell = worksheet.getCell("A5");
+
+      requiredFieldsCell.value =
+        "Required: Student ID, First Name, Last Name, Email, and Contact Number. Middle Name is optional. Enter real students beginning on Row 9.";
+
+      requiredFieldsCell.font = {
+        italic: true,
+        size: 9,
+        color: {
+          argb: "FF7A7F87",
+        },
+      };
+
+      requiredFieldsCell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+
+      worksheet.getRow(5).height = 28;
+
+      // ====================================
+      // SPACING
+      // ====================================
+
+      worksheet.getRow(6).height = 8;
+
+      // ====================================
+      // TABLE HEADER
+      // ====================================
+
+      const headerRow = worksheet.getRow(7);
+
+      const headers = [
+        "Student ID",
+        "First Name",
+        "Middle Name",
+        "Last Name",
+        "Email",
+        "Contact Number",
+      ];
+
+      headers.forEach((header, index) => {
+        const cell = headerRow.getCell(index + 1);
+
+        cell.value = header;
+
+        cell.font = {
+          bold: true,
+          color: {
+            argb: "FFFFFFFF",
+          },
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FF173A73",
+          },
+        };
+
+        cell.alignment = {
+          horizontal: "center",
+          vertical: "middle",
+          wrapText: true,
+        };
+
+        cell.border = {
+          top: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+
+          left: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+
+          bottom: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+
+          right: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+        };
+      });
+
+      headerRow.height = 26;
+
+      // ====================================
+      // EXAMPLE ROW
+      // ====================================
+
+      const exampleRow = worksheet.getRow(8);
+
+      exampleRow.values = [
+        "EXAMPLE",
+        "Juan",
+        "Santos",
+        "Dela Cruz",
+        "juan@example.com",
+        "09XXXXXXXXX",
+      ];
+
+      exampleRow.height = 28;
+
+      exampleRow.eachCell((cell, columnNumber) => {
+        cell.font = {
+          italic: true,
+          color: {
+            argb: "FF7A5A00",
+          },
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FFFFF4E5",
+          },
+        };
+
+        cell.alignment = {
+          vertical: "middle",
+
+          horizontal:
+            columnNumber === 1 || columnNumber === 6 ? "center" : "left",
+
+          wrapText: true,
+        };
+
+        cell.border = {
+          top: {
+            style: "thin",
+            color: {
+              argb: "FFE3E7ED",
+            },
+          },
+
+          left: {
+            style: "thin",
+            color: {
+              argb: "FFE3E7ED",
+            },
+          },
+
+          bottom: {
+            style: "thin",
+            color: {
+              argb: "FFE3E7ED",
+            },
+          },
+
+          right: {
+            style: "thin",
+            color: {
+              argb: "FFE3E7ED",
+            },
+          },
+        };
+      });
+
+      // ====================================
+      // EMPTY TEACHER ENTRY ROWS
+      // ====================================
+
+      for (let rowNumber = 9; rowNumber <= 108; rowNumber += 1) {
+        const row = worksheet.getRow(rowNumber);
+
+        row.values = ["", "", "", "", "", ""];
+
+        row.height = 24;
+
+        row.eachCell(
+          {
+            includeEmpty: true,
+          },
+          (cell, columnNumber) => {
+            cell.alignment = {
+              vertical: "middle",
+
+              horizontal:
+                columnNumber === 1 || columnNumber === 6 ? "center" : "left",
+
+              wrapText: false,
+            };
+
+            cell.border = {
+              top: {
+                style: "thin",
+                color: {
+                  argb: "FFE3E7ED",
+                },
+              },
+
+              left: {
+                style: "thin",
+                color: {
+                  argb: "FFE3E7ED",
+                },
+              },
+
+              bottom: {
+                style: "thin",
+                color: {
+                  argb: "FFE3E7ED",
+                },
+              },
+
+              right: {
+                style: "thin",
+                color: {
+                  argb: "FFE3E7ED",
+                },
+              },
+            };
+
+            if ((rowNumber - 9) % 2 === 1) {
+              cell.fill = {
+                type: "pattern",
+                pattern: "solid",
+                fgColor: {
+                  argb: "FFF7F9FC",
+                },
+              };
+            }
+          },
+        );
+      }
+
+      // ====================================
+      // STUDENT ID / PHONE AS TEXT
+      // ====================================
+
+      for (let rowNumber = 8; rowNumber <= 108; rowNumber += 1) {
+        worksheet.getCell(`A${rowNumber}`).numFmt = "@";
+
+        worksheet.getCell(`F${rowNumber}`).numFmt = "@";
+      }
+
+      // ====================================
+      // FILTER
+      // ====================================
+
+      worksheet.autoFilter = {
+        from: "A7",
+        to: "F7",
+      };
+
+      // ====================================
+      // PRINT SETTINGS
+      // ====================================
+
+      worksheet.pageSetup = {
+        orientation: "landscape",
+
+        fitToPage: true,
+
+        fitToWidth: 1,
+
+        fitToHeight: 0,
+
+        paperSize: 9,
+
+        margins: {
+          left: 0.25,
+
+          right: 0.25,
+
+          top: 0.5,
+
+          bottom: 0.5,
+
+          header: 0.2,
+
+          footer: 0.2,
+        },
+      };
+
+      worksheet.headerFooter.oddFooter =
+        "&CSmartFine Student Import Template - Teacher Copy";
+
+      const workbookBuffer = await workbook.xlsx.writeBuffer();
+
+      const safeGrade = makeSafeExportFileName(gradeLevel);
+
+      const safeSection = makeSafeExportFileName(section);
+
+      const fileName = `SmartFine_${safeGrade}_${safeSection}_Student_Import_Template.xlsx`;
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`,
+      );
+
+      res.setHeader(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, private",
+      );
+
+      res.setHeader("Pragma", "no-cache");
+
+      return res.send(Buffer.from(workbookBuffer));
+    } catch (error) {
+      console.error("Download student import template error:", error);
+
+      return res.status(500).json({
+        success: false,
+
+        code: "STUDENT_IMPORT_TEMPLATE_ERROR",
+
+        message: "Failed to create the SmartFine student import template.",
+
+        error: error.message,
+      });
+    }
+  },
+);
+
+// ==========================================
+// PARSE STUDENT IMPORT FILE
+//
+// POST /api/students/parse-import-file
+//
+// multipart/form-data:
+//
+// studentFile = .xlsx or .csv
+//
+// Reads file only.
+// Does NOT create student accounts.
+// ==========================================
+
+router.post(
+  "/parse-import-file",
+  authenticateToken,
+  requireAdmin,
+  (req, res) => {
+    uploadStudentImportFile.single("studentFile")(
+      req,
+      res,
+      async (uploadError) => {
+        if (uploadError) {
+          console.error("Student import file upload error:", uploadError);
+
+          let message =
+            uploadError.message || "Failed to upload the student import file.";
+
+          if (uploadError.code === "LIMIT_FILE_SIZE") {
+            message = "The student import file must not exceed 10 MB.";
+          }
+
+          return res.status(400).json({
+            success: false,
+
+            code: "STUDENT_IMPORT_FILE_UPLOAD_ERROR",
+
+            message,
+          });
+        }
+
+        try {
+          if (!req.file || !req.file.buffer) {
+            return res.status(400).json({
+              success: false,
+
+              code: "STUDENT_IMPORT_FILE_REQUIRED",
+
+              message:
+                "Please choose a SmartFine Excel (.xlsx) or CSV (.csv) student file.",
+            });
+          }
+
+          const extension = path
+            .extname(req.file.originalname || "")
+            .toLowerCase();
+
+          let parsed;
+
+          if (extension === ".xlsx") {
+            parsed = await parseExcelStudentImport(req.file.buffer);
+          } else if (extension === ".csv") {
+            parsed = parseCsvStudentImport(req.file.buffer);
+          } else {
+            return res.status(400).json({
+              success: false,
+
+              code: "UNSUPPORTED_STUDENT_IMPORT_FILE",
+
+              message:
+                "Only SmartFine Excel (.xlsx) and CSV (.csv) student files are supported.",
+            });
+          }
+
+          return res.json({
+            success: true,
+
+            code: "STUDENT_IMPORT_FILE_PARSED",
+
+            message: `${parsed.students.length} student record${
+              parsed.students.length === 1 ? "" : "s"
+            } found in the file.`,
+
+            file: {
+              name: req.file.originalname,
+
+              type: parsed.fileType,
+            },
+
+            class: parsed.class,
+
+            studentCount: parsed.students.length,
+
+            students: parsed.students,
+          });
+        } catch (error) {
+          console.error("Parse student import file error:", error);
+
+          return res.status(400).json({
+            success: false,
+
+            code: "STUDENT_IMPORT_FILE_PARSE_ERROR",
+
+            message:
+              error.message ||
+              "Failed to read the SmartFine student import file.",
+          });
+        }
+      },
+    );
+  },
+);
+
+// ==========================================
+// MIGRATE LEGACY USERNAMES
+// ==========================================
+
+router.post(
+  "/migrate-usernames",
+  authenticateToken,
+  requireAdmin,
+  (req, res) => {
+    try {
+      const gradeLevel = String(req.body?.gradeLevel || "").trim();
+
+      const section = String(req.body?.section || "").trim();
+
+      if (!gradeLevel || !section) {
+        return res.status(400).json({
+          success: false,
+          code: "MIGRATION_CLASS_REQUIRED",
+          message: "Please select both Grade Level and Section.",
+        });
+      }
+
+      if (!ALLOWED_GRADE_LEVELS.includes(gradeLevel)) {
+        return res.status(400).json({
+          success: false,
+          code: "INVALID_GRADE_LEVEL",
+          message: "Grade Level must be Grade 7 through Grade 12.",
+        });
+      }
+
+      const migrated = migrateLegacyStudentUsernames(gradeLevel, section);
+
+      return res.json({
+        success: true,
+
+        code: "STUDENT_USERNAMES_MIGRATED",
+
+        message:
+          migrated.length > 0
+            ? `${migrated.length} legacy student username${
+                migrated.length === 1 ? "" : "s"
+              } updated successfully.`
+            : "No legacy student usernames needed updating.",
+
+        migratedCount: migrated.length,
+
+        students: migrated,
+      });
+    } catch (error) {
+      console.error("Migrate student usernames error:", error);
+
+      return res.status(500).json({
+        success: false,
+
+        code: "MIGRATE_STUDENT_USERNAMES_ERROR",
+
+        message: "Failed to update legacy student usernames.",
+
+        error: error.message,
+      });
+    }
+  },
+);
+
+// ==========================================
+// EXPORT STUDENT ACCOUNT SHEET
+// ==========================================
+
+router.get(
+  "/export-accounts",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const gradeLevel = String(req.query.gradeLevel || "").trim();
+
+      const section = String(req.query.section || "").trim();
+
+      if (!gradeLevel || !section) {
+        return res.status(400).json({
+          success: false,
+          code: "EXPORT_CLASS_REQUIRED",
+          message: "Please select both Grade Level and Section.",
+        });
+      }
+
+      if (!ALLOWED_GRADE_LEVELS.includes(gradeLevel)) {
+        return res.status(400).json({
+          success: false,
+          code: "INVALID_GRADE_LEVEL",
+          message: "Grade Level must be Grade 7 through Grade 12.",
+        });
+      }
+
+      const accounts = db
+        .prepare(
+          `
+          SELECT
+            id,
+            student_number,
+            username,
+
+            first_name,
+            middle_name,
+            last_name,
+
+            password_hash,
+
+            grade_level,
+            section
+
+          FROM users
+
+          WHERE
+            role = 'STUDENT'
+
+            AND
+            username NOT LIKE
+              '__archived_student_%'
+
+            AND
+            TRIM(grade_level) = ?
+
+            AND
+            LOWER(TRIM(section))
+              =
+            LOWER(TRIM(?))
+
+            AND
+            UPPER(
+              COALESCE(
+                account_status,
+                ''
+              )
+            ) = 'ACTIVE'
+
+          ORDER BY
+            last_name ASC,
+            first_name ASC,
+            middle_name ASC
+          `,
+        )
+        .all(gradeLevel, section);
+
+      if (accounts.length === 0) {
+        return res.status(404).json({
+          success: false,
+
+          code: "NO_STUDENT_ACCOUNTS_FOUND",
+
+          message: `No active student accounts were found for ${gradeLevel} - ${section}.`,
+        });
+      }
+
+      const defaultPasswordMatches = await Promise.all(
+        accounts.map((student) =>
+          student.password_hash
+            ? bcrypt.compare(
+                DEFAULT_STUDENT_PASSWORD,
+                String(student.password_hash),
+              )
+            : Promise.resolve(false),
+        ),
+      );
+
+      const workbook = new ExcelJS.Workbook();
+
+      workbook.creator = "SmartFine";
+
+      workbook.lastModifiedBy = "SmartFine";
+
+      workbook.created = new Date();
+
+      workbook.modified = new Date();
+
+      const worksheet = workbook.addWorksheet("Student Accounts", {
+        views: [
+          {
+            state: "frozen",
+            ySplit: 7,
+          },
+        ],
+      });
+
+      worksheet.columns = [
+        {
+          key: "number",
+          width: 8,
+        },
+
+        {
+          key: "studentId",
+          width: 20,
+        },
+
+        {
+          key: "studentName",
+          width: 34,
+        },
+
+        {
+          key: "username",
+          width: 24,
+        },
+
+        {
+          key: "initialPassword",
+          width: 24,
+        },
+
+        {
+          key: "gradeLevel",
+          width: 16,
+        },
+
+        {
+          key: "section",
+          width: 30,
+        },
+
+        {
+          key: "note",
+          width: 52,
+        },
+      ];
+
+      worksheet.mergeCells("A1:H1");
+
+      const titleCell = worksheet.getCell("A1");
+
+      titleCell.value = "SMARTFINE STUDENT ACCOUNT LIST";
+
+      titleCell.font = {
+        bold: true,
+        size: 18,
+        color: {
+          argb: "FFFFFFFF",
+        },
+      };
+
+      titleCell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+
+      titleCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FF173A73",
+        },
+      };
+
+      worksheet.getRow(1).height = 30;
+
+      worksheet.mergeCells("A2:H2");
+
+      const classCell = worksheet.getCell("A2");
+
+      classCell.value = `Class: ${gradeLevel} - ${section}`;
+
+      classCell.font = {
+        bold: true,
+        size: 12,
+        color: {
+          argb: "FF123266",
+        },
+      };
+
+      classCell.alignment = {
+        horizontal: "center",
+      };
+
+      worksheet.mergeCells("A3:H3");
+
+      const privacyCell = worksheet.getCell("A3");
+
+      privacyCell.value =
+        "For distribution by the assigned teacher only. Keep this file private.";
+
+      privacyCell.font = {
+        italic: true,
+        size: 10,
+        color: {
+          argb: "FFD32F2F",
+        },
+      };
+
+      privacyCell.alignment = {
+        horizontal: "center",
+      };
+
+      worksheet.mergeCells("A4:H4");
+
+      const accountRuleCell = worksheet.getCell("A4");
+
+      accountRuleCell.value = `Username = First Name + Last Name in lowercase without spaces. Duplicate names receive a number suffix. Initial Password = ${DEFAULT_STUDENT_PASSWORD}`;
+
+      accountRuleCell.font = {
+        size: 10,
+        color: {
+          argb: "FF52647A",
+        },
+      };
+
+      accountRuleCell.alignment = {
+        horizontal: "center",
+        wrapText: true,
+      };
+
+      worksheet.getRow(4).height = 28;
+
+      worksheet.mergeCells("A5:H5");
+
+      const passwordNoticeCell = worksheet.getCell("A5");
+
+      passwordNoticeCell.value =
+        "Important: The Initial Password is shown only while the account still uses Smartfine@2026. SmartFine never retrieves or exports a changed password.";
+
+      passwordNoticeCell.font = {
+        italic: true,
+        size: 9,
+        color: {
+          argb: "FF7A7F87",
+        },
+      };
+
+      passwordNoticeCell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+
+      worksheet.getRow(5).height = 28;
+
+      worksheet.getRow(6).height = 8;
+
+      const headerRow = worksheet.getRow(7);
+
+      const headers = [
+        "No.",
+        "Student ID",
+        "Student Name",
+        "Username",
+        "Initial Password",
+        "Grade Level",
+        "Section",
+        "Account Note",
+      ];
+
+      headers.forEach((header, index) => {
+        const cell = headerRow.getCell(index + 1);
+
+        cell.value = header;
+
+        cell.font = {
+          bold: true,
+          color: {
+            argb: "FFFFFFFF",
+          },
+        };
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: "FF173A73",
+          },
+        };
+
+        cell.alignment = {
+          horizontal: "center",
+          vertical: "middle",
+          wrapText: true,
+        };
+
+        cell.border = {
+          top: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+
+          left: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+
+          bottom: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+
+          right: {
+            style: "thin",
+            color: {
+              argb: "FFD8DEE8",
+            },
+          },
+        };
+      });
+
+      headerRow.height = 26;
+
+      accounts.forEach((student, index) => {
+        const studentNumber = String(student.student_number || "").trim();
+
+        const username = String(student.username || "").trim();
+
+        const stillUsesDefaultPassword = Boolean(defaultPasswordMatches[index]);
+
+        const initialPassword = stillUsesDefaultPassword
+          ? DEFAULT_STUDENT_PASSWORD
+          : "";
+
+        const accountNote = stillUsesDefaultPassword
+          ? "Initial password is currently valid. The student should change it after first login."
+          : "The password has already been changed or was set individually. SmartFine cannot retrieve the current password.";
+
+        const row = worksheet.addRow({
+          number: index + 1,
+
+          studentId: studentNumber || username,
+
+          studentName: formatName(
+            student.first_name,
+            student.middle_name,
+            student.last_name,
+          ),
+
+          username,
+
+          initialPassword,
+
+          gradeLevel: student.grade_level || "",
+
+          section: student.section || "",
+
+          note: accountNote,
+        });
+
+        row.height = 38;
+
+        row.eachCell((cell, columnNumber) => {
+          cell.alignment = {
+            vertical: "middle",
+
+            horizontal:
+              columnNumber === 1 || columnNumber === 6 ? "center" : "left",
+
+            wrapText: true,
+          };
+
+          cell.border = {
+            top: {
+              style: "thin",
+              color: {
+                argb: "FFE3E7ED",
+              },
+            },
+
+            left: {
+              style: "thin",
+              color: {
+                argb: "FFE3E7ED",
+              },
+            },
+
+            bottom: {
+              style: "thin",
+              color: {
+                argb: "FFE3E7ED",
+              },
+            },
+
+            right: {
+              style: "thin",
+              color: {
+                argb: "FFE3E7ED",
+              },
+            },
+          };
+
+          if (index % 2 === 1) {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: {
+                argb: "FFF7F9FC",
+              },
+            };
+          }
+        });
+
+        row.getCell(2).numFmt = "@";
+
+        const usernameCell = row.getCell(4);
+
+        usernameCell.numFmt = "@";
+
+        usernameCell.font = {
+          bold: true,
+          color: {
+            argb: "FF123266",
+          },
+        };
+
+        const passwordCell = row.getCell(5);
+
+        passwordCell.numFmt = "@";
+
+        if (stillUsesDefaultPassword) {
+          passwordCell.font = {
+            bold: true,
+            color: {
+              argb: "FF123266",
+            },
+          };
+
+          passwordCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: "FFEAF2FF",
+            },
+          };
+        } else {
+          passwordCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: {
+              argb: "FFFFF4E5",
+            },
+          };
+        }
+      });
+
+      worksheet.autoFilter = {
+        from: "A7",
+        to: "H7",
+      };
+
+      worksheet.pageSetup = {
+        orientation: "landscape",
+
+        fitToPage: true,
+
+        fitToWidth: 1,
+
+        fitToHeight: 0,
+
+        paperSize: 9,
+
+        margins: {
+          left: 0.25,
+
+          right: 0.25,
+
+          top: 0.5,
+
+          bottom: 0.5,
+
+          header: 0.2,
+
+          footer: 0.2,
+        },
+      };
+
+      worksheet.headerFooter.oddFooter =
+        "&CSmartFine Student Account List - Confidential";
+
+      const workbookBuffer = await workbook.xlsx.writeBuffer();
+
+      const safeGrade = makeSafeExportFileName(gradeLevel);
+
+      const safeSection = makeSafeExportFileName(section);
+
+      const fileName = `SmartFine_${safeGrade}_${safeSection}_Student_Accounts.xlsx`;
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`,
+      );
+
+      res.setHeader(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, private",
+      );
+
+      res.setHeader("Pragma", "no-cache");
+
+      return res.send(Buffer.from(workbookBuffer));
+    } catch (error) {
+      console.error("Export student accounts error:", error);
+
+      return res.status(500).json({
+        success: false,
+
+        code: "EXPORT_STUDENT_ACCOUNTS_ERROR",
+
+        message: "Failed to export student account sheet.",
+
+        error: error.message,
+      });
+    }
+  },
+);
+
+// ==========================================
+// CREATE STUDENT
 // ==========================================
 
 router.post("/", async (req, res) => {
   try {
     const {
-      username,
-
       firstName,
       middleName,
       lastName,
@@ -552,10 +2555,6 @@ router.post("/", async (req, res) => {
 
       accountStatus,
     } = req.body;
-
-    // ====================================
-    // REQUIRED FIELDS
-    // ====================================
 
     if (
       !firstName ||
@@ -576,10 +2575,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ====================================
-    // NORMALIZE
-    // ====================================
-
     const normalizedFirstName = String(firstName).trim();
 
     const normalizedMiddleName = middleName ? String(middleName).trim() : null;
@@ -598,85 +2593,10 @@ router.post("/", async (req, res) => {
 
     const passwordValue = String(password);
 
-    // ====================================
-    // USERNAME
-    // ====================================
-
-    const suggestedUsername = generateSuggestedUsername(
+    const normalizedUsername = generateUniqueStudentUsername(
       normalizedFirstName,
       normalizedLastName,
     );
-
-    const normalizedUsername = String(username || suggestedUsername)
-      .trim()
-      .toLowerCase();
-
-    if (!normalizedUsername) {
-      return res.status(400).json({
-        success: false,
-
-        code: "USERNAME_REQUIRED",
-
-        message: "Username is required.",
-      });
-    }
-
-    const usernamePattern = /^[a-z0-9]+$/;
-
-    if (!usernamePattern.test(normalizedUsername)) {
-      return res.status(400).json({
-        success: false,
-
-        code: "INVALID_USERNAME",
-
-        message: "Username may contain letters and numbers only.",
-      });
-    }
-
-    if (normalizedUsername.length < 3) {
-      return res.status(400).json({
-        success: false,
-
-        code: "INVALID_USERNAME",
-
-        message: "Username must contain at least 3 characters.",
-      });
-    }
-
-    // ====================================
-    // DUPLICATE USERNAME
-    // ====================================
-
-    const existingUsername = db
-      .prepare(
-        `
-            SELECT
-              id
-
-            FROM users
-
-            WHERE
-              LOWER(username)
-                =
-              LOWER(?)
-            `,
-      )
-      .get(normalizedUsername);
-
-    if (existingUsername) {
-      return res.status(409).json({
-        success: false,
-
-        code: "USERNAME_EXISTS",
-
-        message:
-          "This username is already being used. Please choose another username.",
-      });
-    }
-
-    // ====================================
-    // EMAIL
-    // ====================================
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -693,16 +2613,12 @@ router.post("/", async (req, res) => {
     const existingEmail = db
       .prepare(
         `
-            SELECT
-              id
-
-            FROM users
-
-            WHERE
-              LOWER(email)
-                =
-              LOWER(?)
-            `,
+          SELECT id
+          FROM users
+          WHERE
+            LOWER(email) =
+            LOWER(?)
+          `,
       )
       .get(normalizedEmail);
 
@@ -715,10 +2631,6 @@ router.post("/", async (req, res) => {
         message: "This email address is already being used.",
       });
     }
-
-    // ====================================
-    // CONTACT NUMBER
-    // ====================================
 
     if (!/^[0-9]+$/.test(normalizedContactNumber)) {
       return res.status(400).json({
@@ -743,13 +2655,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ====================================
-    // CONFIRM PASSWORD
-    // ====================================
-
-    const confirmPasswordValue = String(confirmPassword);
-
-    if (passwordValue !== confirmPasswordValue) {
+    if (passwordValue !== String(confirmPassword)) {
       return res.status(400).json({
         success: false,
 
@@ -758,10 +2664,6 @@ router.post("/", async (req, res) => {
         message: "Password and Confirm Password do not match.",
       });
     }
-
-    // ====================================
-    // PASSWORD POLICY
-    // ====================================
 
     const passwordValidation = validatePasswordPolicy(passwordValue);
 
@@ -775,10 +2677,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ====================================
-    // ACCOUNT STATUS
-    // ====================================
-
     if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
       return res.status(400).json({
         success: false,
@@ -789,20 +2687,13 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ====================================
-    // GENERATE STUDENT ID
-    // ====================================
-
     const generatedStudentId = generateNextStudentId();
 
     const existingStudentNumber = db
       .prepare(
         `
-            SELECT
-              id
-
+            SELECT id
             FROM users
-
             WHERE
               student_number = ?
             `,
@@ -819,65 +2710,55 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ====================================
-    // HASH PASSWORD
-    // ====================================
-
     const passwordHash = await bcrypt.hash(passwordValue, 10);
-
-    // ====================================
-    // CREATE STUDENT
-    // ====================================
 
     const result = db
       .prepare(
         `
-            INSERT INTO users (
-              student_number,
-              username,
+          INSERT INTO users (
+            student_number,
+            username,
 
-              first_name,
-              middle_name,
-              last_name,
+            first_name,
+            middle_name,
+            last_name,
 
-              email,
-              contact_number,
+            email,
+            contact_number,
 
-              password_hash,
+            password_hash,
 
-              role,
+            role,
+            account_status,
 
-              account_status,
+            grade_level,
+            section,
 
-              grade_level,
-              section,
+            profile_picture_uri
+          )
 
-              profile_picture_uri
-            )
+          VALUES (
+            ?,
+            ?,
 
-            VALUES (
-              ?,
-              ?,
+            ?,
+            ?,
+            ?,
 
-              ?,
-              ?,
-              ?,
+            ?,
+            ?,
 
-              ?,
-              ?,
+            ?,
 
-              ?,
+            'STUDENT',
+            ?,
 
-              'STUDENT',
+            ?,
+            ?,
 
-              ?,
-
-              ?,
-              ?,
-
-              NULL
-            )
-            `,
+            NULL
+          )
+          `,
       )
       .run(
         generatedStudentId,
@@ -898,19 +2779,13 @@ router.post("/", async (req, res) => {
         normalizedSection,
       );
 
-    const createdStudentId = Number(result.lastInsertRowid);
-
-    // ====================================
-    // SUCCESS
-    // ====================================
-
     return res.status(201).json({
       success: true,
 
       message: "Student account created successfully.",
 
       student: {
-        id: createdStudentId,
+        id: Number(result.lastInsertRowid),
 
         studentId: generatedStudentId,
 
@@ -960,36 +2835,15 @@ router.post("/", async (req, res) => {
 
 // ==========================================
 // BULK IMPORT STUDENTS
-//
-// POST /api/students/bulk-import
-//
-// Rules:
-// - CSV Student ID becomes student_number
-// - CSV Student ID also becomes username
-// - Password = Smartfine@2026
-// - Password stored as bcrypt hash
-// - Role = STUDENT
-// - Account Status = ACTIVE
-// - Grade and Section are supplied by Admin
-// - Backend validates all rows again
-// - All rows are inserted in one transaction
 // ==========================================
 
 router.post("/bulk-import", async (req, res) => {
   try {
     const { gradeLevel, section, students } = req.body;
 
-    // ====================================
-    // NORMALIZE CLASS INFORMATION
-    // ====================================
-
     const normalizedGradeLevel = String(gradeLevel || "").trim();
 
     const normalizedSection = String(section || "").trim();
-
-    // ====================================
-    // GRADE / SECTION REQUIRED
-    // ====================================
 
     if (!normalizedGradeLevel || !normalizedSection) {
       return res.status(400).json({
@@ -1001,10 +2855,6 @@ router.post("/bulk-import", async (req, res) => {
       });
     }
 
-    // ====================================
-    // VALID GRADE LEVEL
-    // ====================================
-
     if (!ALLOWED_GRADE_LEVELS.includes(normalizedGradeLevel)) {
       return res.status(400).json({
         success: false,
@@ -1014,10 +2864,6 @@ router.post("/bulk-import", async (req, res) => {
         message: "Grade Level must be Grade 7 through Grade 12.",
       });
     }
-
-    // ====================================
-    // STUDENTS REQUIRED
-    // ====================================
 
     if (!Array.isArray(students) || students.length === 0) {
       return res.status(400).json({
@@ -1029,10 +2875,6 @@ router.post("/bulk-import", async (req, res) => {
       });
     }
 
-    // ====================================
-    // SAFETY LIMIT
-    // ====================================
-
     if (students.length > 2000) {
       return res.status(400).json({
         success: false,
@@ -1042,10 +2884,6 @@ router.post("/bulk-import", async (req, res) => {
         message: "A maximum of 2,000 students may be imported at one time.",
       });
     }
-
-    // ====================================
-    // DEFAULT PASSWORD CHECK
-    // ====================================
 
     const defaultPasswordValidation = validatePasswordPolicy(
       DEFAULT_STUDENT_PASSWORD,
@@ -1062,21 +2900,15 @@ router.post("/bulk-import", async (req, res) => {
       });
     }
 
-    // ====================================
-    // CURRENT IMPORT TRACKING
-    // ====================================
-
     const requestStudentNumbers = new Set();
 
     const requestEmails = new Set();
 
+    const requestUsernames = new Set();
+
     const validatedStudents = [];
 
     const errors = [];
-
-    // ====================================
-    // VALIDATE EACH STUDENT
-    // ====================================
 
     for (let index = 0; index < students.length; index += 1) {
       const student = students[index] || {};
@@ -1101,19 +2933,11 @@ router.post("/bulk-import", async (req, res) => {
 
       const contactNumber = normalizeImportContactNumber(rawContactNumber);
 
-      // ==================================
-      // EXAMPLE ROW PROTECTION
-      // ==================================
-
       if (studentNumber.toUpperCase() === "EXAMPLE") {
         continue;
       }
 
       const studentErrors = [];
-
-      // ==================================
-      // REQUIRED FIELDS
-      // ==================================
 
       if (!studentNumber) {
         studentErrors.push("Student ID Number is required.");
@@ -1135,37 +2959,21 @@ router.post("/bulk-import", async (req, res) => {
         studentErrors.push("Contact Number is required.");
       }
 
-      // ==================================
-      // STUDENT ID FORMAT
-      // ==================================
-
       if (studentNumber && !/^[A-Za-z0-9_-]+$/.test(studentNumber)) {
         studentErrors.push(
           "Student ID Number may contain letters, numbers, hyphens, and underscores only.",
         );
       }
 
-      // ==================================
-      // EMAIL VALIDATION
-      // ==================================
-
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         studentErrors.push("Invalid email address.");
       }
-
-      // ==================================
-      // SCIENTIFIC NOTATION PROTECTION
-      // ==================================
 
       if (rawContactNumber && isScientificNotation(rawContactNumber)) {
         studentErrors.push(
           "Contact Number appears to be in scientific notation. Format the Excel Contact Number column as Text and re-enter the phone number.",
         );
       } else {
-        // ==================================
-        // CONTACT NUMBER
-        // ==================================
-
         if (contactNumber && !/^[0-9]+$/.test(contactNumber)) {
           studentErrors.push("Contact Number must contain numbers only.");
         }
@@ -1178,21 +2986,9 @@ router.post("/bulk-import", async (req, res) => {
         }
       }
 
-      // ==================================
-      // USERNAME
-      //
-      // Username = Student ID Number
-      // ==================================
-
-      const username = studentNumber;
-
       const studentNumberKey = studentNumber.toLowerCase();
 
       const emailKey = email.toLowerCase();
-
-      // ==================================
-      // DUPLICATE WITHIN THIS IMPORT
-      // ==================================
 
       if (studentNumberKey && requestStudentNumbers.has(studentNumberKey)) {
         studentErrors.push("Duplicate Student ID Number inside this import.");
@@ -1202,29 +2998,22 @@ router.post("/bulk-import", async (req, res) => {
         studentErrors.push("Duplicate Email inside this import.");
       }
 
-      // ==================================
-      // DATABASE DUPLICATE STUDENT NUMBER
-      // ==================================
-
       if (studentNumber) {
         const existingStudentNumber = db
           .prepare(
             `
-              SELECT
-                id
-
-              FROM users
-
-              WHERE
-                LOWER(
-                  COALESCE(
-                    student_number,
-                    ''
+                SELECT id
+                FROM users
+                WHERE
+                  LOWER(
+                    COALESCE(
+                      student_number,
+                      ''
+                    )
                   )
-                )
                   =
-                LOWER(?)
-            `,
+                  LOWER(?)
+                `,
           )
           .get(studentNumber);
 
@@ -1233,50 +3022,17 @@ router.post("/bulk-import", async (req, res) => {
         }
       }
 
-      // ==================================
-      // DATABASE DUPLICATE USERNAME
-      // ==================================
-
-      if (username) {
-        const existingUsername = db
-          .prepare(
-            `
-              SELECT
-                id
-
-              FROM users
-
-              WHERE
-                LOWER(username)
-                  =
-                LOWER(?)
-            `,
-          )
-          .get(username);
-
-        if (existingUsername) {
-          studentErrors.push("Username already exists.");
-        }
-      }
-
-      // ==================================
-      // DATABASE DUPLICATE EMAIL
-      // ==================================
-
       if (email) {
         const existingEmail = db
           .prepare(
             `
-              SELECT
-                id
-
-              FROM users
-
-              WHERE
-                LOWER(email)
+                SELECT id
+                FROM users
+                WHERE
+                  LOWER(email)
                   =
-                LOWER(?)
-            `,
+                  LOWER(?)
+                `,
           )
           .get(email);
 
@@ -1284,10 +3040,6 @@ router.post("/bulk-import", async (req, res) => {
           studentErrors.push("Email address already exists.");
         }
       }
-
-      // ==================================
-      // VALIDATION FAILED
-      // ==================================
 
       if (studentErrors.length > 0) {
         errors.push({
@@ -1303,17 +3055,15 @@ router.post("/bulk-import", async (req, res) => {
         continue;
       }
 
-      // ==================================
-      // MARK VALUES AS USED
-      // ==================================
+      const username = generateUniqueStudentUsername(
+        firstName,
+        lastName,
+        requestUsernames,
+      );
 
       requestStudentNumbers.add(studentNumberKey);
 
       requestEmails.add(emailKey);
-
-      // ==================================
-      // READY FOR DATABASE INSERT
-      // ==================================
 
       validatedStudents.push({
         rowNumber,
@@ -1334,13 +3084,6 @@ router.post("/bulk-import", async (req, res) => {
       });
     }
 
-    // ====================================
-    // BACKEND VALIDATION FAILED
-    //
-    // No accounts are inserted if any row
-    // fails backend validation.
-    // ====================================
-
     if (errors.length > 0) {
       return res.status(409).json({
         success: false,
@@ -1358,10 +3101,6 @@ router.post("/bulk-import", async (req, res) => {
       });
     }
 
-    // ====================================
-    // NO VALID STUDENTS
-    // ====================================
-
     if (validatedStudents.length === 0) {
       return res.status(400).json({
         success: false,
@@ -1372,73 +3111,57 @@ router.post("/bulk-import", async (req, res) => {
       });
     }
 
-    // ====================================
-    // HASH SHARED DEFAULT PASSWORD
-    //
-    // Only the hash is saved to SQLite.
-    // ====================================
-
     const defaultPasswordHash = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10);
-
-    // ====================================
-    // PREPARE INSERT
-    // ====================================
 
     const insertStudent = db.prepare(
       `
-        INSERT INTO users (
-          student_number,
-          username,
+          INSERT INTO users (
+            student_number,
+            username,
 
-          first_name,
-          middle_name,
-          last_name,
+            first_name,
+            middle_name,
+            last_name,
 
-          email,
-          contact_number,
+            email,
+            contact_number,
 
-          password_hash,
+            password_hash,
 
-          role,
+            role,
+            account_status,
 
-          account_status,
+            grade_level,
+            section,
 
-          grade_level,
-          section,
+            profile_picture_uri
+          )
 
-          profile_picture_uri
-        )
+          VALUES (
+            ?,
+            ?,
 
-        VALUES (
-          ?,
-          ?,
+            ?,
+            ?,
+            ?,
 
-          ?,
-          ?,
-          ?,
+            ?,
+            ?,
 
-          ?,
-          ?,
+            ?,
 
-          ?,
+            'STUDENT',
+            'ACTIVE',
 
-          'STUDENT',
+            ?,
+            ?,
 
-          'ACTIVE',
-
-          ?,
-          ?,
-
-          NULL
-        )
-      `,
+            NULL
+          )
+          `,
     );
 
     const importedStudents = [];
-
-    // ====================================
-    // DATABASE TRANSACTION
-    // ====================================
 
     try {
       db.exec("BEGIN TRANSACTION;");
@@ -1446,18 +3169,23 @@ router.post("/bulk-import", async (req, res) => {
       for (const student of validatedStudents) {
         const result = insertStudent.run(
           student.studentNumber,
+
           student.username,
 
           student.firstName,
+
           student.middleName,
+
           student.lastName,
 
           student.email,
+
           student.contactNumber,
 
           defaultPasswordHash,
 
           normalizedGradeLevel,
+
           normalizedSection,
         );
 
@@ -1505,10 +3233,6 @@ router.post("/bulk-import", async (req, res) => {
       throw transactionError;
     }
 
-    // ====================================
-    // SUCCESS
-    // ====================================
-
     return res.status(201).json({
       success: true,
 
@@ -1527,7 +3251,7 @@ router.post("/bulk-import", async (req, res) => {
       },
 
       accountSetup: {
-        username: "Student ID Number",
+        username: "First Name + Last Name (lowercase, no spaces, unique)",
 
         defaultPassword: DEFAULT_STUDENT_PASSWORD,
 
@@ -1554,9 +3278,7 @@ router.post("/bulk-import", async (req, res) => {
 });
 
 // ==========================================
-// UPLOAD / CHANGE PROFILE PICTURE
-//
-// POST /api/students/:id/profile-picture
+// UPLOAD PROFILE PICTURE
 // ==========================================
 
 router.post("/:id/profile-picture", (req, res) => {
@@ -1609,31 +3331,23 @@ router.post("/:id/profile-picture", (req, res) => {
       const student = db
         .prepare(
           `
-                SELECT
-                  id,
-
-                  student_number,
-                  username,
-
-                  first_name,
-                  middle_name,
-                  last_name,
-
-                  profile_picture_uri
-
-                FROM users
-
-                WHERE
-                  id = ?
-
-                  AND
-                  role =
-                    'STUDENT'
-
-                  AND
-                  username NOT LIKE
-                    '__archived_student_%'
-                `,
+              SELECT
+                id,
+                student_number,
+                username,
+                first_name,
+                middle_name,
+                last_name,
+                profile_picture_uri
+              FROM users
+              WHERE
+                id = ?
+                AND
+                role = 'STUDENT'
+                AND
+                username NOT LIKE
+                  '__archived_student_%'
+              `,
         )
         .get(studentId);
 
@@ -1653,21 +3367,15 @@ router.post("/:id/profile-picture", (req, res) => {
 
       db.prepare(
         `
-              UPDATE users
-
-              SET
-                profile_picture_uri = ?,
-
-                updated_at =
-                  CURRENT_TIMESTAMP
-
-              WHERE
-                id = ?
-
-                AND
-                role =
-                  'STUDENT'
-              `,
+            UPDATE users
+            SET
+              profile_picture_uri = ?,
+              updated_at =
+                CURRENT_TIMESTAMP
+            WHERE
+              id = ?
+              AND role = 'STUDENT'
+            `,
       ).run(profilePictureUri, studentId);
 
       if (student.profile_picture_uri) {
@@ -1717,8 +3425,6 @@ router.post("/:id/profile-picture", (req, res) => {
 
 // ==========================================
 // REMOVE PROFILE PICTURE
-//
-// DELETE /api/students/:id/profile-picture
 // ==========================================
 
 router.delete("/:id/profile-picture", (req, res) => {
@@ -1738,24 +3444,18 @@ router.delete("/:id/profile-picture", (req, res) => {
     const student = db
       .prepare(
         `
-            SELECT
-              id,
-              username,
-              profile_picture_uri
-
-            FROM users
-
-            WHERE
-              id = ?
-
-              AND
-              role =
-                'STUDENT'
-
-              AND
-              username NOT LIKE
-                '__archived_student_%'
-            `,
+          SELECT
+            id,
+            username,
+            profile_picture_uri
+          FROM users
+          WHERE
+            id = ?
+            AND role = 'STUDENT'
+            AND
+            username NOT LIKE
+              '__archived_student_%'
+          `,
       )
       .get(studentId);
 
@@ -1781,22 +3481,16 @@ router.delete("/:id/profile-picture", (req, res) => {
 
     db.prepare(
       `
-          UPDATE users
-
-          SET
-            profile_picture_uri =
-              NULL,
-
-            updated_at =
-              CURRENT_TIMESTAMP
-
-          WHERE
-            id = ?
-
-            AND
-            role =
-              'STUDENT'
-          `,
+        UPDATE users
+        SET
+          profile_picture_uri =
+            NULL,
+          updated_at =
+            CURRENT_TIMESTAMP
+        WHERE
+          id = ?
+          AND role = 'STUDENT'
+        `,
     ).run(studentId);
 
     deleteProfilePictureFile(student.profile_picture_uri);
@@ -1825,8 +3519,6 @@ router.delete("/:id/profile-picture", (req, res) => {
 
 // ==========================================
 // GET SINGLE STUDENT PROFILE
-//
-// GET /api/students/:id
 // ==========================================
 
 router.get("/:id", (req, res) => {
@@ -1844,52 +3536,47 @@ router.get("/:id", (req, res) => {
     const student = db
       .prepare(
         `
-            SELECT
-              id,
+          SELECT
+            id,
 
+            COALESCE(
+              student_number,
+              username
+            ) AS student_id,
+
+            username,
+
+            first_name,
+            middle_name,
+            last_name,
+
+            TRIM(
+              first_name || ' ' ||
               COALESCE(
-                student_number,
-                username
-              ) AS student_id,
+                middle_name || ' ',
+                ''
+              ) ||
+              last_name
+            ) AS full_name,
 
-              username,
+            email,
+            contact_number,
 
-              first_name,
-              middle_name,
-              last_name,
+            grade_level,
+            section,
 
-              TRIM(
-                first_name || ' ' ||
-                COALESCE(
-                  middle_name || ' ',
-                  ''
-                ) ||
-                last_name
-              ) AS full_name,
+            account_status,
+            profile_picture_uri
 
-              email,
-              contact_number,
+          FROM users
 
-              grade_level,
-              section,
-
-              account_status,
-
-              profile_picture_uri
-
-            FROM users
-
-            WHERE
-              id = ?
-
-              AND
-              role =
-                'STUDENT'
-
-              AND
-              username NOT LIKE
-                '__archived_student_%'
-            `,
+          WHERE
+            id = ?
+            AND role = 'STUDENT'
+            AND
+            username NOT LIKE
+              '__archived_student_%'
+          `,
       )
       .get(studentId);
 
@@ -1904,241 +3591,207 @@ router.get("/:id", (req, res) => {
     const totals = db
       .prepare(
         `
-            SELECT
+          SELECT
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    cancelled_at
+                      IS NULL
+                    AND
+                    UPPER(
+                      COALESCE(
+                        fine_status,
+                        'UNPAID'
+                      )
+                    ) !=
+                      'CANCELLED'
+                  THEN
+                    amount_centavos
+                  ELSE
+                    0
+                END
+              ),
+              0
+            ) / 100.0
+              AS total_fines,
 
-              COALESCE(
-                SUM(
-                  CASE
-                    WHEN
-                      cancelled_at
-                        IS NULL
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    cancelled_at
+                      IS NULL
+                    AND
+                    paid_at
+                      IS NULL
+                    AND
+                    UPPER(
+                      COALESCE(
+                        fine_status,
+                        'UNPAID'
+                      )
+                    )
+                    NOT IN (
+                      'PAID',
+                      'CANCELLED',
+                      'WAIVED'
+                    )
+                  THEN
+                    amount_centavos
+                  ELSE
+                    0
+                END
+              ),
+              0
+            ) / 100.0
+              AS outstanding_balance,
 
-                      AND
-                      UPPER(
-                        COALESCE(
-                          fine_status,
-                          'UNPAID'
-                        )
-                      ) !=
-                        'CANCELLED'
-
-                    THEN
-                      amount_centavos
-
-                    ELSE
-                      0
-                  END
-                ),
-                0
-              ) / 100.0
-                AS total_fines,
-
-              COALESCE(
-                SUM(
-                  CASE
-                    WHEN
-                      cancelled_at
-                        IS NULL
-
-                      AND
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    cancelled_at
+                      IS NULL
+                    AND
+                    (
                       paid_at
-                        IS NULL
-
-                      AND
+                        IS NOT NULL
+                      OR
                       UPPER(
                         COALESCE(
                           fine_status,
-                          'UNPAID'
+                          ''
                         )
-                      )
-                        NOT IN (
-                          'PAID',
-                          'CANCELLED',
-                          'WAIVED'
-                        )
+                      ) =
+                        'PAID'
+                    )
+                  THEN
+                    amount_centavos
+                  ELSE
+                    0
+                END
+              ),
+              0
+            ) / 100.0
+              AS total_paid
 
-                    THEN
-                      amount_centavos
-
-                    ELSE
-                      0
-                  END
-                ),
-                0
-              ) / 100.0
-                AS outstanding_balance,
-
-              COALESCE(
-                SUM(
-                  CASE
-                    WHEN
-                      cancelled_at
-                        IS NULL
-
-                      AND
-                      (
-                        paid_at
-                          IS NOT NULL
-
-                        OR
-
-                        UPPER(
-                          COALESCE(
-                            fine_status,
-                            ''
-                          )
-                        ) =
-                          'PAID'
-                      )
-
-                    THEN
-                      amount_centavos
-
-                    ELSE
-                      0
-                  END
-                ),
-                0
-              ) / 100.0
-                AS total_paid
-
-            FROM fines
-
-            WHERE
-              student_id = ?
-            `,
+          FROM fines
+          WHERE
+            student_id = ?
+          `,
       )
       .get(studentId);
 
     const fines = db
       .prepare(
         `
-            SELECT
-              f.id,
+          SELECT
+            f.id,
+            f.fine_reference,
+            vt.violation_name,
 
-              f.fine_reference,
+            f.amount_centavos
+              / 100.0
+              AS amount,
 
-              vt.violation_name,
+            f.remarks,
+            f.issued_at,
+            f.created_at,
+            f.paid_at,
+            f.cancelled_at,
+            f.cancellation_reason,
 
-              f.amount_centavos
-                / 100.0
-                AS amount,
-
-              f.remarks,
-
-              f.issued_at,
-
-              f.created_at,
-
-              f.paid_at,
-
-              f.cancelled_at,
-
-              f.cancellation_reason,
-
-              CASE
-
-                WHEN
-                  f.cancelled_at
-                    IS NOT NULL
-
-                  OR
-
-                  UPPER(
-                    COALESCE(
-                      f.fine_status,
-                      ''
-                    )
-                  ) =
-                    'CANCELLED'
-
-                THEN
-                  'CANCELLED'
-
-                WHEN
-                  f.paid_at
-                    IS NOT NULL
-
-                  OR
-
-                  UPPER(
-                    COALESCE(
-                      f.fine_status,
-                      ''
-                    )
-                  ) =
-                    'PAID'
-
-                THEN
-                  'PAID'
-
-                WHEN
-                  UPPER(
-                    COALESCE(
-                      f.fine_status,
-                      ''
-                    )
-                  ) =
-                    'WAIVED'
-
-                THEN
-                  'WAIVED'
-
-                WHEN
-                  UPPER(
-                    COALESCE(
-                      f.fine_status,
-                      ''
-                    )
-                  ) =
-                    'PENDING'
-
-                THEN
-                  'PENDING'
-
-                ELSE
-                  'UNPAID'
-
-              END AS status,
-
-              CASE
-                WHEN
-                  officer.id
-                    IS NOT NULL
-
-                THEN
-                  TRIM(
-                    officer.first_name
-                    || ' ' ||
-                    officer.last_name
+            CASE
+              WHEN
+                f.cancelled_at
+                  IS NOT NULL
+                OR
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
                   )
+                ) =
+                  'CANCELLED'
+              THEN
+                'CANCELLED'
 
-                ELSE
-                  'Unknown'
+              WHEN
+                f.paid_at
+                  IS NOT NULL
+                OR
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
+                  )
+                ) =
+                  'PAID'
+              THEN
+                'PAID'
 
-              END AS officer_name
+              WHEN
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
+                  )
+                ) =
+                  'WAIVED'
+              THEN
+                'WAIVED'
 
-            FROM fines f
+              WHEN
+                UPPER(
+                  COALESCE(
+                    f.fine_status,
+                    ''
+                  )
+                ) =
+                  'PENDING'
+              THEN
+                'PENDING'
 
-            JOIN violation_types vt
-              ON
-                vt.id =
-                f.violation_type_id
+              ELSE
+                'UNPAID'
+            END AS status,
 
-            LEFT JOIN users officer
-              ON
-                officer.id =
-                f.recorded_by
+            CASE
+              WHEN
+                officer.id
+                  IS NOT NULL
+              THEN
+                TRIM(
+                  officer.first_name
+                  || ' ' ||
+                  officer.last_name
+                )
+              ELSE
+                'Unknown'
+            END AS officer_name
 
-            WHERE
-              f.student_id = ?
+          FROM fines f
 
-            ORDER BY
-              f.created_at DESC,
-              f.id DESC
+          JOIN violation_types vt
+            ON
+              vt.id =
+              f.violation_type_id
 
-            LIMIT 50
-            `,
+          LEFT JOIN users officer
+            ON
+              officer.id =
+              f.recorded_by
+
+          WHERE
+            f.student_id = ?
+
+          ORDER BY
+            f.created_at DESC,
+            f.id DESC
+
+          LIMIT 50
+          `,
       )
       .all(studentId);
 
@@ -2172,12 +3825,6 @@ router.get("/:id", (req, res) => {
 
 // ==========================================
 // UPDATE STUDENT
-//
-// PUT /api/students/:id
-//
-// Password change is optional.
-// If either password field is used, both are
-// required and the full password policy applies.
 // ==========================================
 
 router.put("/:id", async (req, res) => {
@@ -2197,29 +3844,20 @@ router.put("/:id", async (req, res) => {
     const existingStudent = db
       .prepare(
         `
-            SELECT
-              id,
-
-              student_number,
-              username,
-
-              account_status,
-
-              profile_picture_uri
-
-            FROM users
-
-            WHERE
-              id = ?
-
-              AND
-              role =
-                'STUDENT'
-
-              AND
-              username NOT LIKE
-                '__archived_student_%'
-            `,
+          SELECT
+            id,
+            student_number,
+            username,
+            account_status,
+            profile_picture_uri
+          FROM users
+          WHERE
+            id = ?
+            AND role = 'STUDENT'
+            AND
+            username NOT LIKE
+              '__archived_student_%'
+          `,
       )
       .get(studentId);
 
@@ -2235,23 +3873,15 @@ router.put("/:id", async (req, res) => {
 
     const {
       username,
-
       firstName,
       middleName,
       lastName,
-
       email,
       contactNumber,
-
       gradeLevel,
       section,
-
       accountStatus,
     } = req.body;
-
-    // ====================================
-    // REQUIRED FIELDS
-    // ====================================
 
     if (
       !username ||
@@ -2271,10 +3901,6 @@ router.put("/:id", async (req, res) => {
       });
     }
 
-    // ====================================
-    // NORMALIZE
-    // ====================================
-
     const normalizedUsername = String(username).trim().toLowerCase();
 
     const normalizedFirstName = String(firstName).trim();
@@ -2293,13 +3919,7 @@ router.put("/:id", async (req, res) => {
 
     const normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
 
-    // ====================================
-    // USERNAME
-    // ====================================
-
-    const usernamePattern = /^[a-z0-9]+$/;
-
-    if (!usernamePattern.test(normalizedUsername)) {
+    if (!/^[a-z0-9]+$/.test(normalizedUsername)) {
       return res.status(400).json({
         success: false,
 
@@ -2322,18 +3942,12 @@ router.put("/:id", async (req, res) => {
     const duplicateUsername = db
       .prepare(
         `
-            SELECT
-              id
-
+            SELECT id
             FROM users
-
             WHERE
-              LOWER(username)
-                =
-              LOWER(?)
-
-              AND
-              id != ?
+              LOWER(username) =
+                LOWER(?)
+              AND id != ?
             `,
       )
       .get(normalizedUsername, studentId);
@@ -2348,13 +3962,7 @@ router.put("/:id", async (req, res) => {
       });
     }
 
-    // ====================================
-    // EMAIL
-    // ====================================
-
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailPattern.test(normalizedEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return res.status(400).json({
         success: false,
 
@@ -2367,18 +3975,12 @@ router.put("/:id", async (req, res) => {
     const duplicateEmail = db
       .prepare(
         `
-            SELECT
-              id
-
+            SELECT id
             FROM users
-
             WHERE
-              LOWER(email)
-                =
-              LOWER(?)
-
-              AND
-              id != ?
+              LOWER(email) =
+                LOWER(?)
+              AND id != ?
             `,
       )
       .get(normalizedEmail, studentId);
@@ -2392,10 +3994,6 @@ router.put("/:id", async (req, res) => {
         message: "This email address is already being used by another account.",
       });
     }
-
-    // ====================================
-    // CONTACT NUMBER
-    // ====================================
 
     if (!/^[0-9]+$/.test(normalizedContactNumber)) {
       return res.status(400).json({
@@ -2420,10 +4018,6 @@ router.put("/:id", async (req, res) => {
       });
     }
 
-    // ====================================
-    // ACCOUNT STATUS
-    // ====================================
-
     if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
       return res.status(400).json({
         success: false,
@@ -2433,10 +4027,6 @@ router.put("/:id", async (req, res) => {
         message: "Account status must be ACTIVE or INACTIVE.",
       });
     }
-
-    // ====================================
-    // OPTIONAL PASSWORD CHANGE
-    // ====================================
 
     const newPassword = req.body.newPassword ?? "";
 
@@ -2460,10 +4050,6 @@ router.put("/:id", async (req, res) => {
     let newPasswordHash = null;
 
     if (passwordChanged) {
-      // ==================================
-      // BOTH PASSWORD FIELDS REQUIRED
-      // ==================================
-
       if (!newPassword || !confirmPassword) {
         return res.status(400).json({
           success: false,
@@ -2474,10 +4060,6 @@ router.put("/:id", async (req, res) => {
         });
       }
 
-      // ==================================
-      // CONFIRM PASSWORD
-      // ==================================
-
       if (newPassword !== confirmPassword) {
         return res.status(400).json({
           success: false,
@@ -2487,10 +4069,6 @@ router.put("/:id", async (req, res) => {
           message: "New password and confirmation do not match.",
         });
       }
-
-      // ==================================
-      // PASSWORD POLICY
-      // ==================================
 
       const passwordValidation = validatePasswordPolicy(newPassword);
 
@@ -2507,43 +4085,35 @@ router.put("/:id", async (req, res) => {
       newPasswordHash = await bcrypt.hash(newPassword, 10);
     }
 
-    // ====================================
-    // UPDATE TRANSACTION
-    // ====================================
-
     try {
       db.exec("BEGIN TRANSACTION;");
 
       const result = db
         .prepare(
           `
-              UPDATE users
+            UPDATE users
+            SET
+              username = ?,
 
-              SET
-                username = ?,
+              first_name = ?,
+              middle_name = ?,
+              last_name = ?,
 
-                first_name = ?,
-                middle_name = ?,
-                last_name = ?,
+              email = ?,
+              contact_number = ?,
 
-                email = ?,
-                contact_number = ?,
+              grade_level = ?,
+              section = ?,
 
-                grade_level = ?,
-                section = ?,
+              account_status = ?,
 
-                account_status = ?,
+              updated_at =
+                CURRENT_TIMESTAMP
 
-                updated_at =
-                  CURRENT_TIMESTAMP
-
-              WHERE
-                id = ?
-
-                AND
-                role =
-                  'STUDENT'
-              `,
+            WHERE
+              id = ?
+              AND role = 'STUDENT'
+            `,
         )
         .run(
           normalizedUsername,
@@ -2567,34 +4137,21 @@ router.put("/:id", async (req, res) => {
         throw new Error("Student information could not be updated.");
       }
 
-      // ==================================
-      // OPTIONAL PASSWORD UPDATE
-      // ==================================
-
       if (newPasswordHash !== null) {
         db.prepare(
           `
-              UPDATE users
-
-              SET
-                password_hash = ?,
-
-                failed_login_attempts = 0,
-
-                locked_until = NULL,
-
-                lockout_count = 0,
-
-                updated_at =
-                  CURRENT_TIMESTAMP
-
-              WHERE
-                id = ?
-
-                AND
-                role =
-                  'STUDENT'
-              `,
+            UPDATE users
+            SET
+              password_hash = ?,
+              failed_login_attempts = 0,
+              locked_until = NULL,
+              lockout_count = 0,
+              updated_at =
+                CURRENT_TIMESTAMP
+            WHERE
+              id = ?
+              AND role = 'STUDENT'
+            `,
         ).run(newPasswordHash, studentId);
       }
 
@@ -2608,10 +4165,6 @@ router.put("/:id", async (req, res) => {
 
       throw transactionError;
     }
-
-    // ====================================
-    // SUCCESS
-    // ====================================
 
     return res.json({
       success: true,
@@ -2671,32 +4224,11 @@ router.put("/:id", async (req, res) => {
 
 // ==========================================
 // DELETE / ARCHIVE INACTIVE STUDENT
-//
-// DELETE /api/students/:id
-//
-// RULES:
-//
-// ACTIVE
-// -> cannot delete
-//
-// INACTIVE + unpaid/pending fine
-// -> cannot delete
-//
-// INACTIVE + ₱0 outstanding + history
-// -> archive student
-// -> preserve fines/payments
-//
-// INACTIVE + no history
-// -> permanently delete
 // ==========================================
 
 router.delete("/:id", (req, res) => {
   try {
     const studentId = Number(req.params.id);
-
-    // ====================================
-    // VALIDATE ID
-    // ====================================
 
     if (!Number.isInteger(studentId) || studentId <= 0) {
       return res.status(400).json({
@@ -2708,42 +4240,31 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ====================================
-    // FIND STUDENT
-    // ====================================
-
     const student = db
       .prepare(
         `
-            SELECT
-              id,
+          SELECT
+            id,
+            student_number,
+            username,
 
-              student_number,
-              username,
+            first_name,
+            middle_name,
+            last_name,
 
-              first_name,
-              middle_name,
-              last_name,
+            email,
+            account_status,
+            profile_picture_uri
 
-              email,
+          FROM users
 
-              account_status,
-
-              profile_picture_uri
-
-            FROM users
-
-            WHERE
-              id = ?
-
-              AND
-              role =
-                'STUDENT'
-
-              AND
-              username NOT LIKE
-                '__archived_student_%'
-            `,
+          WHERE
+            id = ?
+            AND role = 'STUDENT'
+            AND
+            username NOT LIKE
+              '__archived_student_%'
+          `,
       )
       .get(studentId);
 
@@ -2756,10 +4277,6 @@ router.delete("/:id", (req, res) => {
         message: "Student not found.",
       });
     }
-
-    // ====================================
-    // STUDENT MUST BE INACTIVE
-    // ====================================
 
     const accountStatus = String(student.account_status || "").toUpperCase();
 
@@ -2776,10 +4293,6 @@ router.delete("/:id", (req, res) => {
           "Active students cannot be deleted. Set the student account to Inactive first.",
       });
     }
-
-    // ====================================
-    // CHECK UNPAID / PENDING FINES
-    // ====================================
 
     const outstandingFineResult = db
       .prepare(
@@ -2798,13 +4311,10 @@ router.delete("/:id", (req, res) => {
 
             WHERE
               student_id = ?
-
               AND
               cancelled_at IS NULL
-
               AND
               paid_at IS NULL
-
               AND
               UPPER(
                 COALESCE(
@@ -2826,10 +4336,6 @@ router.delete("/:id", (req, res) => {
     const outstandingBalance =
       Number(outstandingFineResult?.total_centavos || 0) / 100;
 
-    // ====================================
-    // BLOCK DELETE IF BALANCE REMAINS
-    // ====================================
-
     if (outstandingFineCount > 0 || outstandingBalance > 0) {
       return res.status(409).json({
         success: false,
@@ -2848,52 +4354,29 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ====================================
-    // COUNT ALL FINE HISTORY
-    // ====================================
-
     const fineResult = db
       .prepare(
         `
-            SELECT
-              COUNT(*) AS total
-
-            FROM fines
-
-            WHERE
-              student_id = ?
-            `,
+          SELECT COUNT(*) AS total
+          FROM fines
+          WHERE student_id = ?
+          `,
       )
       .get(studentId);
 
     const fineCount = Number(fineResult?.total || 0);
 
-    // ====================================
-    // COUNT ALL PAYMENT HISTORY
-    // ====================================
-
     const paymentResult = db
       .prepare(
         `
-            SELECT
-              COUNT(*) AS total
-
-            FROM payments
-
-            WHERE
-              student_id = ?
-            `,
+          SELECT COUNT(*) AS total
+          FROM payments
+          WHERE student_id = ?
+          `,
       )
       .get(studentId);
 
     const paymentCount = Number(paymentResult?.total || 0);
-
-    // ====================================
-    // HAS HISTORICAL RECORDS
-    //
-    // Archive instead of physically
-    // deleting the user row.
-    // ====================================
 
     if (fineCount > 0 || paymentCount > 0) {
       const archiveTimestamp = Date.now();
@@ -2906,27 +4389,18 @@ router.delete("/:id", (req, res) => {
         .prepare(
           `
               UPDATE users
-
               SET
                 username = ?,
-
                 email = ?,
-
                 account_status =
                   'INACTIVE',
-
                 profile_picture_uri =
                   NULL,
-
                 updated_at =
                   CURRENT_TIMESTAMP
-
               WHERE
                 id = ?
-
-                AND
-                role =
-                  'STUDENT'
+                AND role = 'STUDENT'
               `,
         )
         .run(archivedUsername, archivedEmail, studentId);
@@ -2941,17 +4415,9 @@ router.delete("/:id", (req, res) => {
         });
       }
 
-      // ==================================
-      // REMOVE PROFILE PICTURE FILE
-      // ==================================
-
       if (student.profile_picture_uri) {
         deleteProfilePictureFile(student.profile_picture_uri);
       }
-
-      // ==================================
-      // ARCHIVE SUCCESS
-      // ==================================
 
       return res.json({
         success: true,
@@ -2983,23 +4449,13 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ====================================
-    // NO FINES OR PAYMENTS
-    //
-    // SAFE TO HARD DELETE
-    // ====================================
-
     const deleteResult = db
       .prepare(
         `
             DELETE FROM users
-
             WHERE
               id = ?
-
-              AND
-              role =
-                'STUDENT'
+              AND role = 'STUDENT'
             `,
       )
       .run(studentId);
@@ -3014,17 +4470,9 @@ router.delete("/:id", (req, res) => {
       });
     }
 
-    // ====================================
-    // REMOVE PROFILE PICTURE FILE
-    // ====================================
-
     if (student.profile_picture_uri) {
       deleteProfilePictureFile(student.profile_picture_uri);
     }
-
-    // ====================================
-    // HARD DELETE SUCCESS
-    // ====================================
 
     return res.json({
       success: true,
@@ -3063,5 +4511,9 @@ router.delete("/:id", (req, res) => {
     });
   }
 });
+
+// ==========================================
+// EXPORT
+// ==========================================
 
 module.exports = router;

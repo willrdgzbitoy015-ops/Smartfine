@@ -19,6 +19,8 @@ import * as Sharing from "expo-sharing";
 
 import { useRouter } from "expo-router";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { useAuth } from "@/hooks/use-auth";
 
 import DeleteModal from "@/components/deletationmodal";
@@ -84,18 +86,32 @@ type ImportPreviewRow = {
   issues: string[];
 };
 
-type CsvStudentRow = {
-  row: string[];
-
+type ParsedImportStudent = {
   rowNumber: number;
+
+  studentNumber: string;
+
+  firstName: string;
+
+  middleName?: string | null;
+
+  lastName: string;
+
+  email: string;
+
+  contactNumber: string;
 };
 
-type ParsedClassInformation = {
+type ParsedImportClass = {
   gradeLevel: string;
 
   strand: string;
 
   section: string;
+
+  databaseSection?: string;
+
+  displayName?: string;
 };
 
 // ==========================================
@@ -114,16 +130,8 @@ const GRADE_OPTIONS = [
 const STRAND_OPTIONS = ["STEM", "ABM", "TVL"];
 
 // ==========================================
-// CSV HELPERS
+// GENERAL HELPERS
 // ==========================================
-
-function normalizeHeader(value: string) {
-  return String(value || "")
-    .replace(/^\uFEFF/, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-}
 
 function makeSafeFileName(value: string) {
   return String(value || "")
@@ -131,21 +139,6 @@ function makeSafeFileName(value: string) {
     .replace(/[^a-zA-Z0-9_-]+/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "");
-}
-
-function escapeCsvValue(value: string) {
-  const text = String(value ?? "");
-
-  if (
-    text.includes(",") ||
-    text.includes('"') ||
-    text.includes("\n") ||
-    text.includes("\r")
-  ) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-
-  return text;
 }
 
 function normalizeContactNumber(value: string) {
@@ -159,137 +152,6 @@ function isScientificNotation(value: string) {
   return /^[+-]?(?:\d+\.?\d*|\.\d+)[eE][+-]?\d+$/.test(
     String(value || "").trim(),
   );
-}
-
-// ==========================================
-// PARSE CLASS FROM CSV
-// ==========================================
-
-function parseClassInformation(value: string): ParsedClassInformation {
-  const className = String(value || "")
-    .trim()
-    .replace(/[–—]/g, "-")
-    .replace(/\s+/g, " ");
-
-  const match = className.match(/^Grade\s+(7|8|9|10|11|12)\s*-\s*(.+)$/i);
-
-  if (!match) {
-    throw new Error(
-      'Invalid class format in the CSV. Example: "Grade 8 - Ponkan" or "Grade 12 - TVL ICT - Pagatpat".',
-    );
-  }
-
-  const gradeLevel = `Grade ${match[1]}`;
-
-  const classPart = String(match[2] || "").trim();
-
-  if (!classPart) {
-    throw new Error("The CSV does not contain a Section.");
-  }
-
-  if (gradeLevel === "Grade 11" || gradeLevel === "Grade 12") {
-    const strandMatch = classPart.match(/^(STEM|ABM|TVL)\b\s*(.*)$/i);
-
-    if (!strandMatch) {
-      throw new Error(
-        `${gradeLevel} must include a valid Strand: STEM, ABM, or TVL.`,
-      );
-    }
-
-    const strand = String(strandMatch[1]).toUpperCase();
-
-    const section = String(strandMatch[2] || "")
-      .replace(/^\s*-\s*/, "")
-      .trim();
-
-    if (!section) {
-      throw new Error(`${gradeLevel} must include a Section after the Strand.`);
-    }
-
-    return {
-      gradeLevel,
-      strand,
-      section,
-    };
-  }
-
-  return {
-    gradeLevel,
-    strand: "",
-    section: classPart,
-  };
-}
-
-// ==========================================
-// CSV PARSER
-// ==========================================
-
-function parseCsvText(text: string) {
-  const rows: string[][] = [];
-
-  let row: string[] = [];
-
-  let cell = "";
-
-  let insideQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-
-    if (character === '"') {
-      if (insideQuotes && text[index + 1] === '"') {
-        cell += '"';
-
-        index += 1;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-
-      continue;
-    }
-
-    if (character === "," && !insideQuotes) {
-      row.push(cell.trim());
-
-      cell = "";
-
-      continue;
-    }
-
-    if ((character === "\n" || character === "\r") && !insideQuotes) {
-      if (character === "\r" && text[index + 1] === "\n") {
-        index += 1;
-      }
-
-      row.push(cell.trim());
-
-      const containsValue = row.some((value) => String(value).trim() !== "");
-
-      if (containsValue) {
-        rows.push(row);
-      }
-
-      row = [];
-
-      cell = "";
-
-      continue;
-    }
-
-    cell += character;
-  }
-
-  if (cell.length > 0 || row.length > 0) {
-    row.push(cell.trim());
-
-    const containsValue = row.some((value) => String(value).trim() !== "");
-
-    if (containsValue) {
-      rows.push(row);
-    }
-  }
-
-  return rows;
 }
 
 // ==========================================
@@ -348,6 +210,12 @@ export default function StudentsDirectory() {
   // ========================================
 
   const [search, setSearch] = useState("");
+
+  // ========================================
+  // EXPORT STUDENT ACCOUNTS
+  // ========================================
+
+  const [exportLoading, setExportLoading] = useState(false);
 
   // ========================================
   // FILTERS
@@ -688,6 +556,175 @@ export default function StudentsDirectory() {
   };
 
   // ========================================
+  // EXPORT STUDENT ACCOUNTS
+  // ========================================
+
+  const handleExportStudentAccounts = async () => {
+    if (selectedGrade === "ALL") {
+      setWarningTitle("Select Grade Level");
+
+      setWarningMessage(
+        "Please select a specific Grade Level before exporting student accounts.",
+      );
+
+      setShowWarningModal(true);
+
+      return;
+    }
+
+    if (selectedSection === "ALL") {
+      setWarningTitle("Select Section");
+
+      setWarningMessage(
+        "Please select a specific Section before exporting student accounts.",
+      );
+
+      setShowWarningModal(true);
+
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        setWarningTitle("Session Error");
+
+        setWarningMessage(
+          "Your administrator session could not be found. Please log in again.",
+        );
+
+        setShowWarningModal(true);
+
+        return;
+      }
+
+      const query =
+        `gradeLevel=${encodeURIComponent(selectedGrade)}` +
+        `&section=${encodeURIComponent(selectedSection)}`;
+
+      const exportUrl = `${API_BASE}/api/students/export-accounts?${query}`;
+
+      // ==================================
+      // WEB
+      // ==================================
+
+      if (Platform.OS === "web") {
+        const response = await fetch(exportUrl, {
+          method: "GET",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const contentType = response.headers.get("content-type") || "";
+
+          let message = "Failed to export student accounts.";
+
+          if (contentType.includes("application/json")) {
+            const data = await response.json();
+
+            message = data.message || message;
+          }
+
+          throw new Error(message);
+        }
+
+        const blob = await response.blob();
+
+        const disposition = response.headers.get("content-disposition");
+
+        let fileName = `SmartFine_${makeSafeFileName(
+          selectedGrade,
+        )}_${makeSafeFileName(selectedSection)}_Student_Accounts.xlsx`;
+
+        if (disposition) {
+          const match = disposition.match(/filename="?([^"]+)"?/i);
+
+          if (match?.[1]) {
+            fileName = match[1];
+          }
+        }
+
+        const url = URL.createObjectURL(blob);
+
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+
+        anchor.download = fileName;
+
+        document.body.appendChild(anchor);
+
+        anchor.click();
+
+        document.body.removeChild(anchor);
+
+        URL.revokeObjectURL(url);
+
+        return;
+      }
+
+      // ==================================
+      // MOBILE / TABLET
+      // ==================================
+
+      const directory = FileSystem.cacheDirectory;
+
+      if (!directory) {
+        throw new Error("The device storage directory is unavailable.");
+      }
+
+      const fileName = `SmartFine_${makeSafeFileName(
+        selectedGrade,
+      )}_${makeSafeFileName(selectedSection)}_Student_Accounts.xlsx`;
+
+      const fileUri = `${directory}${fileName}`;
+
+      const result = await FileSystem.downloadAsync(exportUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (result.status < 200 || result.status >= 300) {
+        throw new Error("Failed to download the student account sheet.");
+      }
+
+      const sharingAvailable = await Sharing.isAvailableAsync();
+
+      if (!sharingAvailable) {
+        throw new Error("File sharing is not available on this device.");
+      }
+
+      await Sharing.shareAsync(result.uri, {
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+        dialogTitle: `SmartFine ${selectedGrade} - ${selectedSection} Student Accounts`,
+
+        UTI: "org.openxmlformats.spreadsheetml.sheet",
+      });
+    } catch (error: any) {
+      console.error("Export student accounts error:", error);
+
+      setWarningTitle("Export Failed");
+
+      setWarningMessage(
+        error?.message || "Could not export the student account sheet.",
+      );
+
+      setShowWarningModal(true);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // ========================================
   // RESET IMPORT
   // ========================================
 
@@ -770,10 +807,10 @@ export default function StudentsDirectory() {
   };
 
   // ========================================
-  // DOWNLOAD CSV TEMPLATE
+  // DOWNLOAD STYLED EXCEL TEMPLATE
   // ========================================
 
-  const handleDownloadCsvTemplate = async () => {
+  const handleDownloadExcelTemplate = async () => {
     if (!validateImportClass()) {
       return;
     }
@@ -781,51 +818,66 @@ export default function StudentsDirectory() {
     try {
       setTemplateLoading(true);
 
-      const csvContent =
-        [
-          ["Grade and section:", expectedClassName]
-            .map(escapeCsvValue)
-            .join(","),
+      setImportError("");
 
-          [
-            "student_id_number",
-            "first_name",
-            "middle_name",
-            "last_name",
-            "email",
-            "contact_number",
-          ]
-            .map(escapeCsvValue)
-            .join(","),
+      const token = await AsyncStorage.getItem("token");
 
-          [
-            "EXAMPLE",
-            "Juan",
-            "Santos",
-            "Dela Cruz",
-            "juan@example.com",
-            "09XXXXXXXXX",
-          ]
-            .map(escapeCsvValue)
-            .join(","),
-        ].join("\r\n") + "\r\n";
+      if (!token) {
+        throw new Error(
+          "Your administrator session could not be found. Please log in again.",
+        );
+      }
 
-      const classParts = [
+      const query =
+        `gradeLevel=${encodeURIComponent(importGrade)}` +
+        `&section=${encodeURIComponent(finalImportSection)}`;
+
+      const templateUrl = `${API_BASE}/api/students/import-template?${query}`;
+
+      const fallbackFileName = `SmartFine_${makeSafeFileName(
         importGrade,
+      )}_${makeSafeFileName(finalImportSection)}_Student_Import_Template.xlsx`;
 
-        isSeniorHigh ? importStrand : "",
-
-        importSection,
-      ]
-        .filter(Boolean)
-        .map(makeSafeFileName);
-
-      const fileName = `SmartFine_${classParts.join("_")}.csv`;
+      // ==================================
+      // WEB DOWNLOAD
+      // ==================================
 
       if (Platform.OS === "web") {
-        const blob = new Blob([csvContent], {
-          type: "text/csv;charset=utf-8;",
+        const response = await fetch(templateUrl, {
+          method: "GET",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
+
+        if (!response.ok) {
+          const contentType = response.headers.get("content-type") || "";
+
+          let message = "Failed to create the SmartFine Excel template.";
+
+          if (contentType.includes("application/json")) {
+            const data = await response.json();
+
+            message = data.message || message;
+          }
+
+          throw new Error(message);
+        }
+
+        const blob = await response.blob();
+
+        const disposition = response.headers.get("content-disposition");
+
+        let fileName = fallbackFileName;
+
+        if (disposition) {
+          const match = disposition.match(/filename="?([^"]+)"?/i);
+
+          if (match?.[1]) {
+            fileName = match[1];
+          }
+        }
 
         const url = URL.createObjectURL(blob);
 
@@ -846,17 +898,27 @@ export default function StudentsDirectory() {
         return;
       }
 
+      // ==================================
+      // MOBILE / TABLET DOWNLOAD
+      // ==================================
+
       const directory = FileSystem.cacheDirectory;
 
       if (!directory) {
         throw new Error("The device storage directory is unavailable.");
       }
 
-      const fileUri = `${directory}${fileName}`;
+      const fileUri = `${directory}${fallbackFileName}`;
 
-      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
-        encoding: FileSystem.EncodingType.UTF8,
+      const result = await FileSystem.downloadAsync(templateUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+
+      if (result.status < 200 || result.status >= 300) {
+        throw new Error("Failed to download the SmartFine Excel template.");
+      }
 
       const sharingAvailable = await Sharing.isAvailableAsync();
 
@@ -864,206 +926,50 @@ export default function StudentsDirectory() {
         throw new Error("File sharing is not available on this device.");
       }
 
-      await Sharing.shareAsync(fileUri, {
-        mimeType: "text/csv",
+      await Sharing.shareAsync(result.uri, {
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
-        dialogTitle: "Save or Share SmartFine CSV Template",
+        dialogTitle: "Save or Share SmartFine Student Import Template",
 
-        UTI: "public.comma-separated-values-text",
+        UTI: "org.openxmlformats.spreadsheetml.sheet",
       });
     } catch (error: any) {
-      console.error("Download CSV template error:", error);
+      console.error("Download Excel template error:", error);
 
-      setImportError(error?.message || "Failed to create the CSV template.");
+      setImportError(
+        error?.message || "Failed to create the SmartFine Excel template.",
+      );
     } finally {
       setTemplateLoading(false);
     }
   };
 
   // ========================================
-  // READ CSV
+  // BUILD IMPORT PREVIEW
+  //
+  // The backend parses both XLSX and CSV.
+  // This function performs the current
+  // frontend validation / duplicate checks.
   // ========================================
 
-  const readDocumentText = async (asset: any) => {
-    if (
-      Platform.OS === "web" &&
-      asset?.file &&
-      typeof asset.file.text === "function"
-    ) {
-      return await asset.file.text();
-    }
-
-    return await FileSystem.readAsStringAsync(asset.uri);
-  };
-
-  // ========================================
-  // BUILD CSV PREVIEW
-  // ========================================
-
-  const buildCsvPreview = (rawText: string) => {
-    const csvRows = parseCsvText(rawText);
-
-    if (csvRows.length < 3) {
-      throw new Error(
-        "Invalid CSV format. Please use the official SmartFine CSV template.",
-      );
-    }
-
-    const classLabel = String(csvRows[0]?.[0] || "")
-      .replace(/^\uFEFF/, "")
-      .trim();
-
-    const fileClassName = String(csvRows[0]?.[1] || "").trim();
-
-    const normalizedClassLabel = classLabel.toLowerCase().replace(/\s+/g, " ");
-
-    if (
-      normalizedClassLabel !== "grade and section:" &&
-      normalizedClassLabel !== "grade and section"
-    ) {
-      throw new Error(
-        'Invalid CSV format. Cell A1 must contain "Grade and section:".',
-      );
-    }
-
-    if (!fileClassName) {
-      throw new Error(
-        "The CSV does not contain a Grade and Section in Cell B1.",
-      );
-    }
-
-    // ====================================
-    // AUTO DETECT CLASS
-    // ====================================
-
-    const detectedClass = parseClassInformation(fileClassName);
-
-    setImportGrade(detectedClass.gradeLevel);
-
-    setImportStrand(detectedClass.strand);
-
-    setImportSection(detectedClass.section);
-
-    setShowImportGradeMenu(false);
-
-    setShowImportStrandMenu(false);
-
-    // ====================================
-    // HEADERS
-    // ====================================
-
-    const headers = csvRows[1].map(normalizeHeader);
-
-    const findColumn = (aliases: string[]) => {
-      for (const alias of aliases) {
-        const index = headers.indexOf(alias);
-
-        if (index >= 0) {
-          return index;
-        }
-      }
-
-      return -1;
-    };
-
-    const studentNumberIndex = findColumn(["student_id_number"]);
-
-    const firstNameIndex = findColumn(["first_name"]);
-
-    const middleNameIndex = findColumn(["middle_name"]);
-
-    const lastNameIndex = findColumn(["last_name"]);
-
-    const emailIndex = findColumn(["email"]);
-
-    const contactNumberIndex = findColumn(["contact_number"]);
-
-    const requiredColumns = [
-      {
-        name: "student_id_number",
-
-        index: studentNumberIndex,
-      },
-
-      {
-        name: "first_name",
-
-        index: firstNameIndex,
-      },
-
-      {
-        name: "middle_name",
-
-        index: middleNameIndex,
-      },
-
-      {
-        name: "last_name",
-
-        index: lastNameIndex,
-      },
-
-      {
-        name: "email",
-
-        index: emailIndex,
-      },
-
-      {
-        name: "contact_number",
-
-        index: contactNumberIndex,
-      },
-    ];
-
-    const missingColumns = requiredColumns
-      .filter((column) => column.index < 0)
-      .map((column) => column.name);
-
-    if (missingColumns.length > 0) {
-      throw new Error(
-        `Missing required CSV column(s): ${missingColumns.join(", ")}.`,
-      );
-    }
-
-    const getValue = (row: string[], index: number) => {
-      if (index < 0) {
-        return "";
-      }
-
-      return String(row[index] || "").trim();
-    };
-
-    const rawStudentRows: CsvStudentRow[] = csvRows
-      .slice(2)
-      .map((row, index) => ({
-        row,
-
-        rowNumber: index + 3,
-      }));
-
-    const studentRows = rawStudentRows.filter(({ row }) => {
-      const studentNumber = getValue(row, studentNumberIndex)
-        .trim()
-        .toUpperCase();
-
-      return studentNumber !== "EXAMPLE";
-    });
-
-    if (studentRows.length === 0) {
-      throw new Error(
-        "The CSV does not contain any real student records. Enter real students beginning on Row 4.",
-      );
-    }
-
+  const buildImportPreview = (parsedStudents: ParsedImportStudent[]) => {
     const studentNumberCounts = new Map<string, number>();
 
     const emailCounts = new Map<string, number>();
 
-    for (const { row } of studentRows) {
-      const studentNumber = getValue(row, studentNumberIndex).toLowerCase();
+    // ====================================
+    // COUNT DUPLICATES INSIDE FILE
+    // ====================================
 
-      const email = getValue(row, emailIndex).toLowerCase();
+    for (const student of parsedStudents) {
+      const studentNumber = String(student.studentNumber || "")
+        .trim()
+        .toLowerCase();
+
+      const email = String(student.email || "")
+        .trim()
+        .toLowerCase();
 
       if (studentNumber) {
         studentNumberCounts.set(
@@ -1081,6 +987,10 @@ export default function StudentsDirectory() {
         );
       }
     }
+
+    // ====================================
+    // EXISTING DATABASE VALUES
+    // ====================================
 
     const existingStudentNumbers = new Set(
       students.map((student) =>
@@ -1102,24 +1012,36 @@ export default function StudentsDirectory() {
 
     const previewRows: ImportPreviewRow[] = [];
 
-    studentRows.forEach(({ row, rowNumber }) => {
-      const studentNumber = getValue(row, studentNumberIndex);
+    // ====================================
+    // VALIDATE EACH ROW
+    // ====================================
 
-      const firstName = getValue(row, firstNameIndex);
+    parsedStudents.forEach((student, index) => {
+      const rowNumber = Number(student.rowNumber) || index + 1;
 
-      const middleName = getValue(row, middleNameIndex);
+      const studentNumber = String(student.studentNumber || "").trim();
 
-      const lastName = getValue(row, lastNameIndex);
+      const firstName = String(student.firstName || "").trim();
 
-      const email = getValue(row, emailIndex).toLowerCase();
+      const middleName = String(student.middleName || "").trim();
 
-      const rawContactNumber = getValue(row, contactNumberIndex);
+      const lastName = String(student.lastName || "").trim();
+
+      const email = String(student.email || "")
+        .trim()
+        .toLowerCase();
+
+      const rawContactNumber = String(student.contactNumber || "").trim();
 
       const contactNumber = normalizeContactNumber(rawContactNumber);
 
       const invalidIssues: string[] = [];
 
       const duplicateIssues: string[] = [];
+
+      // ==================================
+      // REQUIRED FIELDS
+      // ==================================
 
       if (!studentNumber) {
         invalidIssues.push("Missing Student ID Number");
@@ -1141,13 +1063,31 @@ export default function StudentsDirectory() {
         invalidIssues.push("Missing Contact Number");
       }
 
+      // ==================================
+      // STUDENT ID
+      // ==================================
+
+      if (studentNumber && !/^[A-Za-z0-9_-]+$/.test(studentNumber)) {
+        invalidIssues.push(
+          "Student ID Number may contain letters, numbers, hyphens, and underscores only",
+        );
+      }
+
+      // ==================================
+      // EMAIL
+      // ==================================
+
       if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         invalidIssues.push("Invalid Email");
       }
 
+      // ==================================
+      // CONTACT NUMBER
+      // ==================================
+
       if (rawContactNumber && isScientificNotation(rawContactNumber)) {
         invalidIssues.push(
-          "Excel converted the Contact Number to scientific notation. Format the column as Text and re-enter the number.",
+          "Contact Number appears to be in scientific notation. Format the Contact Number column as Text and re-enter the number.",
         );
       } else {
         if (contactNumber && !/^[0-9]+$/.test(contactNumber)) {
@@ -1162,6 +1102,10 @@ export default function StudentsDirectory() {
         }
       }
 
+      // ==================================
+      // DUPLICATES
+      // ==================================
+
       const normalizedStudentNumber = studentNumber.toLowerCase();
 
       const normalizedEmail = email.toLowerCase();
@@ -1170,11 +1114,11 @@ export default function StudentsDirectory() {
         normalizedStudentNumber &&
         (studentNumberCounts.get(normalizedStudentNumber) || 0) > 1
       ) {
-        duplicateIssues.push("Duplicate Student ID Number inside CSV");
+        duplicateIssues.push("Duplicate Student ID Number inside file");
       }
 
       if (normalizedEmail && (emailCounts.get(normalizedEmail) || 0) > 1) {
-        duplicateIssues.push("Duplicate Email inside CSV");
+        duplicateIssues.push("Duplicate Email inside file");
       }
 
       if (
@@ -1187,6 +1131,10 @@ export default function StudentsDirectory() {
       if (normalizedEmail && existingEmails.has(normalizedEmail)) {
         duplicateIssues.push("Email already exists");
       }
+
+      // ==================================
+      // STATUS
+      // ==================================
 
       let status: ImportStatus = "VALID";
 
@@ -1221,10 +1169,10 @@ export default function StudentsDirectory() {
   };
 
   // ========================================
-  // CHOOSE CSV
+  // CHOOSE XLSX / CSV STUDENT FILE
   // ========================================
 
-  const handleChooseCsv = async () => {
+  const handleChooseStudentFile = async () => {
     setImportError("");
 
     setImportPreviewRows([]);
@@ -1234,8 +1182,14 @@ export default function StudentsDirectory() {
     try {
       setImportReading(true);
 
+      // ==================================
+      // PICK FILE
+      // ==================================
+
       const result = await DocumentPicker.getDocumentAsync({
         type: [
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
           "text/csv",
 
           "text/comma-separated-values",
@@ -1258,31 +1212,139 @@ export default function StudentsDirectory() {
 
       const fileName = String(asset.name || "");
 
-      if (!fileName.toLowerCase().endsWith(".csv")) {
-        setImportError("Please choose a CSV (.csv) file.");
+      const extension = fileName.toLowerCase().split(".").pop();
+
+      if (extension !== "xlsx" && extension !== "csv") {
+        setImportError(
+          "Please choose a SmartFine Excel (.xlsx) or CSV (.csv) file.",
+        );
 
         return;
       }
 
-      const rawText = await readDocumentText(asset);
+      // ==================================
+      // SESSION TOKEN
+      // ==================================
 
-      if (!rawText.trim()) {
-        setImportError("The selected CSV file is empty.");
+      const token = await AsyncStorage.getItem("token");
 
-        return;
+      if (!token) {
+        throw new Error(
+          "Your administrator session could not be found. Please log in again.",
+        );
       }
+
+      // ==================================
+      // FORM DATA
+      // ==================================
+
+      const formData = new FormData();
+
+      if (Platform.OS === "web") {
+        if (asset.file) {
+          formData.append("studentFile", asset.file, fileName);
+        } else {
+          throw new Error("Could not access the selected file.");
+        }
+      } else {
+        const mimeType =
+          extension === "xlsx"
+            ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            : "text/csv";
+
+        (formData as any).append("studentFile", {
+          uri: asset.uri,
+
+          name: fileName,
+
+          type: asset.mimeType || mimeType,
+        });
+      }
+
+      // ==================================
+      // SEND TO BACKEND PARSER
+      //
+      // Do NOT manually set Content-Type.
+      // fetch/FormData must generate the
+      // multipart boundary automatically.
+      // ==================================
+
+      const response = await fetch(
+        `${API_BASE}/api/students/parse-import-file`,
+        {
+          method: "POST",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+
+          body: formData,
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to read the student file.");
+      }
+
+      // ==================================
+      // VERIFY RESPONSE
+      // ==================================
+
+      const parsedClass = data.class as ParsedImportClass | undefined;
+
+      const parsedStudents = Array.isArray(data.students)
+        ? (data.students as ParsedImportStudent[])
+        : [];
+
+      if (!parsedClass) {
+        throw new Error(
+          "SmartFine could not detect the Grade and Section from this file.",
+        );
+      }
+
+      if (parsedStudents.length === 0) {
+        throw new Error(
+          "The selected file does not contain any real student records.",
+        );
+      }
+
+      // ==================================
+      // AUTO-FILL CLASS FROM FILE
+      // ==================================
+
+      setImportGrade(String(parsedClass.gradeLevel || ""));
+
+      setImportStrand(String(parsedClass.strand || ""));
+
+      setImportSection(String(parsedClass.section || ""));
+
+      setShowImportGradeMenu(false);
+
+      setShowImportStrandMenu(false);
+
+      // ==================================
+      // SHOW SELECTED FILE
+      // ==================================
 
       setImportFileName(fileName);
 
-      buildCsvPreview(rawText);
+      // ==================================
+      // BUILD EXISTING SMARTFINE PREVIEW
+      // ==================================
+
+      buildImportPreview(parsedStudents);
     } catch (error: any) {
-      console.error("CSV preview error:", error);
+      console.error("Student file preview error:", error);
 
       setImportFileName("");
 
       setImportPreviewRows([]);
 
-      setImportError(error?.message || "Failed to read the CSV file.");
+      setImportError(
+        error?.message || "Failed to read the student import file.",
+      );
     } finally {
       setImportReading(false);
     }
@@ -1295,7 +1357,7 @@ export default function StudentsDirectory() {
   const handleImportStudents = () => {
     if (!importCanContinue) {
       if (duplicateImportRows.length > 0 || invalidImportRows.length > 0) {
-        setWarningTitle("Resolve CSV Issues");
+        setWarningTitle("Resolve Student File Issues");
 
         setWarningMessage(
           "Please correct all duplicate and invalid records before importing the class.",
@@ -1393,6 +1455,10 @@ export default function StudentsDirectory() {
 
       const importedClass = expectedClassName;
 
+      const completedGrade = importGrade;
+
+      const completedSection = finalImportSection;
+
       await loadStudents();
 
       setShowImportConfirmModal(false);
@@ -1402,10 +1468,14 @@ export default function StudentsDirectory() {
       setImportSuccessMessage(
         `${importedCount} student account${
           importedCount === 1 ? "" : "s"
-        } imported successfully.\n\nClass: ${importedClass}\nUsername: Student ID Number\nDefault Password: Smartfine@2026\nAccount Status: Active`,
+        } imported successfully.\n\nClass: ${importedClass}\nUsername: First Name + Last Name (lowercase, no spaces; number added if needed)\nDefault Password: Smartfine@2026\nAccount Status: Active`,
       );
 
       resetImportState();
+
+      setSelectedGrade(completedGrade);
+
+      setSelectedSection(completedSection);
 
       setShowImportSuccessModal(true);
     } catch (error) {
@@ -1465,11 +1535,6 @@ export default function StudentsDirectory() {
 
       const failedStudents: string[] = [];
 
-      // ==================================
-      // DELETE EACH SELECTED STUDENT
-      // USING EXISTING BACKEND ROUTE
-      // ==================================
-
       for (const student of selectedStudents) {
         try {
           const response = await fetch(
@@ -1497,19 +1562,11 @@ export default function StudentsDirectory() {
         }
       }
 
-      // ==================================
-      // REFRESH DIRECTORY
-      // ==================================
-
       await loadStudents();
 
       setSelectedStudentIds([]);
 
       setShowDeleteModal(false);
-
-      // ==================================
-      // ALL SUCCESS
-      // ==================================
 
       if (failedStudents.length === 0) {
         setDeleteSuccessMessage(
@@ -1522,10 +1579,6 @@ export default function StudentsDirectory() {
 
         return;
       }
-
-      // ==================================
-      // PARTIAL SUCCESS
-      // ==================================
 
       if (deletedCount > 0) {
         setWarningTitle("Delete Completed with Issues");
@@ -1542,10 +1595,6 @@ export default function StudentsDirectory() {
 
         return;
       }
-
-      // ==================================
-      // ALL FAILED
-      // ==================================
 
       setWarningTitle("Delete Students");
 
@@ -1813,26 +1862,46 @@ export default function StudentsDirectory() {
               </View>
             </View>
 
-            {/* ACTIONS */}
+            {/* ACTION BUTTONS */}
 
             <View style={styles.actionButtons}>
               <TouchableOpacity
                 style={styles.importButton}
                 onPress={handleOpenImportStudents}
+                disabled={exportLoading}
               >
                 <Text style={styles.importButtonText}>Import Students</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
+                style={[
+                  styles.importButton,
+
+                  exportLoading && {
+                    opacity: 0.6,
+                  },
+                ]}
+                onPress={handleExportStudentAccounts}
+                disabled={exportLoading}
+              >
+                {exportLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.importButtonText}>Export Accounts</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={styles.addButton}
                 onPress={handleAddStudent}
+                disabled={exportLoading}
               >
                 <Text style={styles.addButtonText}>+ Add New Student</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* TABLE */}
+          {/* STUDENT TABLE */}
 
           <View style={styles.tableCard}>
             {loading ? (
@@ -1937,9 +2006,7 @@ export default function StudentsDirectory() {
                                   ]}
                                   onPress={() => handleSelectStudent(student)}
                                   activeOpacity={0.8}
-                                >
-                                  {/* No check mark */}
-                                </TouchableOpacity>
+                                />
                               )}
                             </View>
 
@@ -2065,7 +2132,7 @@ export default function StudentsDirectory() {
       </View>
 
       {/* =====================================
-          IMPORT MODAL
+          IMPORT STUDENTS MODAL
       ====================================== */}
 
       <Modal
@@ -2088,9 +2155,10 @@ export default function StudentsDirectory() {
                   <Text style={styles.importTitle}>Import Students</Text>
 
                   <Text style={styles.importSubtitle}>
-                    Download a template for a class, or upload an existing
-                    SmartFine CSV and the Grade, Strand, and Section will be
-                    detected automatically.
+                    Download the official SmartFine Excel template for a class,
+                    let the teacher complete it, then upload the same Excel file
+                    for validation and import. Existing SmartFine CSV files are
+                    still supported.
                   </Text>
                 </View>
 
@@ -2105,12 +2173,16 @@ export default function StudentsDirectory() {
                 </TouchableOpacity>
               </View>
 
-              {/* CLASS */}
+              {/* =================================
+                  CLASS INFORMATION
+              ================================== */}
 
               <View style={styles.importSectionCard}>
                 <Text style={styles.importSectionTitle}>Class Information</Text>
 
                 <View style={styles.importFieldsRow}>
+                  {/* GRADE */}
+
                   <View style={styles.importField}>
                     <Text style={styles.importLabel}>Grade Level *</Text>
 
@@ -2163,6 +2235,8 @@ export default function StudentsDirectory() {
                       </View>
                     )}
                   </View>
+
+                  {/* STRAND */}
 
                   {isSeniorHigh && (
                     <View style={styles.importField}>
@@ -2217,6 +2291,8 @@ export default function StudentsDirectory() {
                     </View>
                   )}
 
+                  {/* SECTION */}
+
                   <View style={styles.importField}>
                     <Text style={styles.importLabel}>Section *</Text>
 
@@ -2255,21 +2331,26 @@ export default function StudentsDirectory() {
                 ) : null}
               </View>
 
-              {/* CSV GUIDE */}
+              {/* =================================
+                  OFFICIAL EXCEL TEMPLATE
+              ================================== */}
 
               <View style={styles.csvGuide}>
                 <View style={styles.csvGuideHeader}>
                   <View style={styles.csvGuideHeaderText}>
                     <Text style={styles.csvGuideTitle}>
-                      Official Teacher CSV Template
+                      Official SmartFine Excel Template
                     </Text>
 
                     <Text style={styles.csvGuideDescription}>
-                      The template contains an example row for the teacher.
-                      SmartFine automatically ignores the example during
-                      validation and import.
+                      Download the formatted Excel template for this class. The
+                      workbook already includes the SmartFine design, class
+                      information, instructions, example row, and properly
+                      formatted Student ID and Contact Number columns.
                     </Text>
                   </View>
+
+                  {/* DOWNLOAD EXCEL TEMPLATE */}
 
                   <TouchableOpacity
                     style={[
@@ -2277,30 +2358,39 @@ export default function StudentsDirectory() {
 
                       templateLoading && styles.downloadTemplateButtonDisabled,
                     ]}
-                    onPress={handleDownloadCsvTemplate}
+                    onPress={handleDownloadExcelTemplate}
                     disabled={templateLoading}
                   >
                     {templateLoading ? (
                       <ActivityIndicator size="small" color="#173A73" />
                     ) : (
-                      <Text style={styles.downloadTemplateText}>
-                        ↓ Download CSV Template
-                      </Text>
+                      <View style={styles.importButtonLoadingContent}>
+                        <Image
+                          source={require("../../../assets/icons/download.png")}
+                          style={styles.navImageIcon}
+                          resizeMode="contain"
+                        />
+
+                        <Text style={styles.downloadTemplateText}>
+                          Download Excel Template
+                        </Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.csvColumnLabel}>Official format</Text>
+                {/* TEMPLATE COLUMNS */}
+
+                <Text style={styles.csvColumnLabel}>Template columns</Text>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <Text selectable style={styles.csvCode}>
-                    Grade and section:,{expectedClassName || "Selected Class"}
-                    {"\n"}
-                    student_id_number,first_name,middle_name,last_name,email,contact_number
-                    {"\n"}
-                    EXAMPLE,Juan,Santos,Dela Cruz,juan@example.com,09XXXXXXXXX
+                    Student ID | First Name | Middle Name | Last Name | Email |
+                    Contact Number
                   </Text>
                 </ScrollView>
+
+                {/* TEACHER INSTRUCTIONS */}
 
                 <View style={styles.templateInstructions}>
                   <Text style={styles.templateInstructionTitle}>
@@ -2308,75 +2398,96 @@ export default function StudentsDirectory() {
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    1. Do not edit the Grade and section row.
+                    1. Do not change the SmartFine class information in the
+                    workbook.
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    2. Do not rename or remove the column headings.
+                    2. Do not rename, remove, or reorder the student column
+                    headings.
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    3. Row 3 is an example only and will not be imported.
+                    3. The EXAMPLE row is only a guide and will automatically be
+                    ignored.
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    4. Enter real student records beginning on Row 4.
+                    4. Enter real student records beginning below the EXAMPLE
+                    row.
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    5. Student ID Number, First Name, Last Name, Email, and
-                    Contact Number are required.
+                    5. Student ID, First Name, Last Name, Email, and Contact
+                    Number are required.
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    6. Middle Name may be left blank.
+                    6. Middle Name is optional and may be left blank.
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    7. Format the Contact Number column as Text in Excel before
-                    entering phone numbers.
+                    7. Student ID and Contact Number columns are already
+                    formatted as Text to preserve their original values.
                   </Text>
 
                   <Text style={styles.templateInstructionText}>
-                    8. The CSV filename may be renamed. SmartFine reads the
-                    class from Row 1.
+                    8. Save and return the same Excel (.xlsx) file. There is no
+                    need to convert it to CSV.
                   </Text>
                 </View>
 
                 <Text style={styles.csvGuideNote}>
-                  When an existing CSV is uploaded, SmartFine automatically
-                  fills the Grade Level, Strand, and Section using Row 1.
+                  When the completed Excel or CSV file is uploaded, SmartFine
+                  automatically detects its Grade Level, Strand, and Section.
                 </Text>
 
                 <Text style={styles.csvGuideNote}>
-                  Imported account: Username = Student ID Number · Default
+                  Imported account: Username = First Name + Last Name
+                  (lowercase, no spaces; number added if needed) · Default
                   Password = Smartfine@2026 · Status = Active
                 </Text>
               </View>
 
-              {/* CSV FILE */}
+              {/* =================================
+                  COMPLETED STUDENT FILE
+              ================================== */}
 
               <View style={styles.importSectionCard}>
                 <Text style={styles.importSectionTitle}>
-                  Completed CSV File
+                  Completed Student File
                 </Text>
 
                 <Text style={styles.fileHelperText}>
-                  Upload the completed CSV returned by the teacher. Grade and
-                  Section will be detected automatically.
+                  Upload the completed SmartFine Excel file returned by the
+                  teacher. Existing SmartFine CSV files are also supported.
+                  Grade, Strand, and Section will be detected automatically.
                 </Text>
 
                 <TouchableOpacity
                   style={styles.chooseFileButton}
-                  onPress={handleChooseCsv}
+                  onPress={handleChooseStudentFile}
                   disabled={importReading || importSubmitting}
                 >
                   {importReading ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.chooseFileText}>Choose CSV File</Text>
+                    <Text style={styles.chooseFileText}>
+                      Choose Student File
+                    </Text>
                   )}
                 </TouchableOpacity>
+
+                <Text
+                  style={[
+                    styles.fileHelperText,
+                    {
+                      marginTop: 8,
+                    },
+                  ]}
+                >
+                  Accepted file types: .xlsx and .csv
+                </Text>
 
                 {importFileName ? (
                   <View style={styles.selectedFile}>
@@ -2395,11 +2506,15 @@ export default function StudentsDirectory() {
                 ) : null}
               </View>
 
-              {/* PREVIEW */}
+              {/* =================================
+                  FILE PREVIEW
+              ================================== */}
 
               {importPreviewRows.length > 0 && (
                 <>
                   <Text style={styles.previewHeading}>File Preview</Text>
+
+                  {/* SUMMARY */}
 
                   <View style={styles.importSummary}>
                     <View style={styles.summaryCard}>
@@ -2450,6 +2565,8 @@ export default function StudentsDirectory() {
                       <Text style={styles.summaryLabel}>Invalid</Text>
                     </View>
                   </View>
+
+                  {/* PREVIEW TABLE */}
 
                   <View style={styles.previewCard}>
                     <ScrollView horizontal showsHorizontalScrollIndicator>
@@ -2604,13 +2721,16 @@ export default function StudentsDirectory() {
                     </ScrollView>
                   </View>
 
+                  {/* DEFAULT ACCOUNT SETUP */}
+
                   <View style={styles.defaultAccountNotice}>
                     <Text style={styles.defaultAccountTitle}>
                       Student Account Setup
                     </Text>
 
                     <Text style={styles.defaultAccountText}>
-                      Username = Student ID Number
+                      Username = First Name + Last Name (lowercase, no spaces;
+                      number added if needed)
                       {"\n"}
                       Default Password ={" "}
                       <Text style={styles.defaultPasswordText}>
@@ -2623,6 +2743,8 @@ export default function StudentsDirectory() {
                     </Text>
                   </View>
 
+                  {/* IMPORT BLOCKED */}
+
                   {(duplicateImportRows.length > 0 ||
                     invalidImportRows.length > 0) && (
                     <View style={styles.importBlockedNotice}>
@@ -2631,13 +2753,17 @@ export default function StudentsDirectory() {
                       </Text>
 
                       <Text style={styles.importBlockedText}>
-                        Correct all duplicate and invalid rows in the CSV, then
-                        upload the file again.
+                        Correct all duplicate and invalid rows in the student
+                        file, save it, and upload the file again.
                       </Text>
                     </View>
                   )}
                 </>
               )}
+
+              {/* =================================
+                  IMPORT FOOTER
+              ================================== */}
 
               <View style={styles.importFooter}>
                 <TouchableOpacity
@@ -2694,7 +2820,7 @@ export default function StudentsDirectory() {
       >
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmModal}>
-            {/* CUSTOM IMPORT ICON */}
+            {/* IMPORT ICON */}
 
             <View style={styles.confirmIcon}>
               <Image
@@ -2715,7 +2841,8 @@ export default function StudentsDirectory() {
 
             <View style={styles.confirmAccountBox}>
               <Text style={styles.confirmAccountText}>
-                Username: Student ID Number
+                Username: First Name + Last Name (lowercase, no spaces; number
+                added if needed)
               </Text>
 
               <Text style={styles.confirmAccountText}>
@@ -2767,7 +2894,7 @@ export default function StudentsDirectory() {
       </Modal>
 
       {/* =====================================
-          MULTIPLE DELETE CONFIRMATION
+          DELETE CONFIRMATION
       ====================================== */}
 
       <DeleteModal

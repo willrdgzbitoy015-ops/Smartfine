@@ -50,3 +50,5 @@ server/.env
 # Runtime uploaded profile pictures
 server/uploads/admin-profiles/
 server/uploads/officer-profiles/
+
+.notes
