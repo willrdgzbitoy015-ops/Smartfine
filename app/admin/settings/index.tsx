@@ -230,6 +230,8 @@ export default function AdminSettings() {
 
   const [fineTypesLoading, setFineTypesLoading] = useState(false);
 
+  const [fineTypesRefreshing, setFineTypesRefreshing] = useState(false);
+
   const [fineTypesError, setFineTypesError] = useState("");
 
   const [showFineTypeForm, setShowFineTypeForm] = useState(false);
@@ -394,9 +396,20 @@ export default function AdminSettings() {
   // LOAD FINE TYPES
   // ========================================
 
-  const loadFineTypes = async (showWarning = false) => {
+  const loadFineTypes = async (
+    showWarning = false,
+    preserveCurrentList = false,
+  ) => {
+    if (fineTypesRefreshing) {
+      return;
+    }
+
     try {
-      setFineTypesLoading(true);
+      if (preserveCurrentList) {
+        setFineTypesRefreshing(true);
+      } else {
+        setFineTypesLoading(true);
+      }
 
       setFineTypesError("");
 
@@ -409,9 +422,11 @@ export default function AdminSettings() {
       if (!response.ok || !data.success) {
         const message = data.message || "Failed to load fine types.";
 
-        setFineTypesError(message);
+        if (!preserveCurrentList) {
+          setFineTypesError(message);
+        }
 
-        if (showWarning) {
+        if (showWarning || preserveCurrentList) {
           showMessage("Fine Types", message);
         }
 
@@ -430,14 +445,35 @@ export default function AdminSettings() {
 
       const message = "Could not load Fine Types Maintenance.";
 
-      setFineTypesError(message);
+      if (!preserveCurrentList) {
+        setFineTypesError(message);
+      }
 
-      if (showWarning) {
+      if (showWarning || preserveCurrentList) {
         showMessage("Connection Error", message);
       }
     } finally {
       setFineTypesLoading(false);
+
+      setFineTypesRefreshing(false);
     }
+  };
+
+  // ========================================
+  // REFRESH FINE TYPES
+  // ========================================
+
+  const handleRefreshFineTypes = async () => {
+    if (
+      fineTypesLoading ||
+      fineTypesRefreshing ||
+      savingFineType ||
+      changingFineStatusId !== null
+    ) {
+      return;
+    }
+
+    await loadFineTypes(true, true);
   };
 
   // ========================================
@@ -525,7 +561,7 @@ export default function AdminSettings() {
       // FINE TYPES
       // ==================================
 
-      await loadFineTypes(false);
+      await loadFineTypes(false, false);
     } catch (error) {
       console.error("Load settings error:", error);
 
@@ -841,6 +877,10 @@ export default function AdminSettings() {
   // ========================================
 
   const handleAddFineType = () => {
+    if (fineTypesLoading || fineTypesRefreshing || savingFineType) {
+      return;
+    }
+
     setEditingFineTypeId(null);
 
     setFineCode(nextFineCode || getNextFineCodeFromTypes(fineTypes));
@@ -861,6 +901,14 @@ export default function AdminSettings() {
   // ========================================
 
   const handleEditFineType = (fineType: FineType) => {
+    if (
+      fineTypesRefreshing ||
+      savingFineType ||
+      changingFineStatusId !== null
+    ) {
+      return;
+    }
+
     setEditingFineTypeId(fineType.id);
 
     setFineCode(fineType.violation_code || "");
@@ -948,7 +996,7 @@ export default function AdminSettings() {
 
       resetFineTypeForm();
 
-      await loadFineTypes(false);
+      await loadFineTypes(false, true);
 
       showMessage(
         "Success",
@@ -972,6 +1020,10 @@ export default function AdminSettings() {
   // ========================================
 
   const handleToggleFineTypeStatus = async (fineType: FineType) => {
+    if (fineTypesRefreshing || savingFineType) {
+      return;
+    }
+
     try {
       setChangingFineStatusId(fineType.id);
 
@@ -1007,7 +1059,7 @@ export default function AdminSettings() {
         setNextFineCode(data.nextCode);
       }
 
-      await loadFineTypes(false);
+      await loadFineTypes(false, true);
 
       showMessage(
         "Success",
@@ -1401,6 +1453,7 @@ export default function AdminSettings() {
                       active && styles.mobileNavItemActive,
                     ]}
                     onPress={() => handleNavigation(item)}
+                    activeOpacity={0.8}
                   >
                     <Text
                       style={[
@@ -1445,6 +1498,7 @@ export default function AdminSettings() {
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={loadSettings}
+                activeOpacity={0.8}
               >
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
@@ -1485,9 +1539,16 @@ export default function AdminSettings() {
                   )}
 
                   <TouchableOpacity
-                    style={styles.cameraButton}
+                    style={[
+                      styles.cameraButton,
+
+                      (uploadingPhoto || removingPhoto) && {
+                        opacity: 0.65,
+                      },
+                    ]}
                     onPress={handleChoosePhoto}
                     disabled={uploadingPhoto || removingPhoto}
+                    activeOpacity={0.8}
                   >
                     {uploadingPhoto ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1496,6 +1557,7 @@ export default function AdminSettings() {
                         source={require("../../../assets/icons/edit-image.png")}
                         style={{
                           width: 18,
+
                           height: 18,
                         }}
                         resizeMode="contain"
@@ -1534,23 +1596,71 @@ export default function AdminSettings() {
 
                 <View style={styles.photoActions}>
                   <TouchableOpacity
-                    style={styles.changePhotoButton}
+                    style={[
+                      styles.changePhotoButton,
+
+                      (uploadingPhoto || removingPhoto) && {
+                        opacity: 0.65,
+                      },
+                    ]}
                     onPress={handleChoosePhoto}
                     disabled={uploadingPhoto || removingPhoto}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.changePhotoButtonText}>
-                      {admin?.profilePictureUri ? "Change Photo" : "Add Photo"}
-                    </Text>
+                    {uploadingPhoto ? (
+                      <View
+                        style={{
+                          flexDirection: "row",
+
+                          alignItems: "center",
+
+                          gap: 7,
+                        }}
+                      >
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+
+                        <Text style={styles.changePhotoButtonText}>
+                          Uploading...
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.changePhotoButtonText}>
+                        {admin?.profilePictureUri
+                          ? "Change Photo"
+                          : "Add Photo"}
+                      </Text>
+                    )}
                   </TouchableOpacity>
 
                   {admin?.profilePictureUri && (
                     <TouchableOpacity
-                      style={styles.removePhotoButton}
+                      style={[
+                        styles.removePhotoButton,
+
+                        (uploadingPhoto || removingPhoto) && {
+                          opacity: 0.65,
+                        },
+                      ]}
                       onPress={handleRemovePhoto}
                       disabled={uploadingPhoto || removingPhoto}
+                      activeOpacity={0.8}
                     >
                       {removingPhoto ? (
-                        <ActivityIndicator size="small" color="#D32F2F" />
+                        <View
+                          style={{
+                            flexDirection: "row",
+
+                            alignItems: "center",
+
+                            gap: 6,
+                          }}
+                        >
+                          <ActivityIndicator size="small" color="#D32F2F" />
+
+                          <Text style={styles.removePhotoButtonText}>
+                            Removing...
+                          </Text>
+                        </View>
                       ) : (
                         <Text style={styles.removePhotoButtonText}>Remove</Text>
                       )}
@@ -1587,6 +1697,7 @@ export default function AdminSettings() {
                           placeholderTextColor="#A0A7B2"
                           style={styles.input}
                           autoCapitalize="none"
+                          editable={!savingAccount}
                         />
                       </View>
 
@@ -1601,6 +1712,7 @@ export default function AdminSettings() {
                           style={styles.input}
                           keyboardType="email-address"
                           autoCapitalize="none"
+                          editable={!savingAccount}
                         />
                       </View>
                     </View>
@@ -1616,6 +1728,7 @@ export default function AdminSettings() {
                           placeholderTextColor="#A0A7B2"
                           style={styles.input}
                           keyboardType="phone-pad"
+                          editable={!savingAccount}
                         />
                       </View>
 
@@ -1632,12 +1745,33 @@ export default function AdminSettings() {
 
                     <View style={styles.cardActionRow}>
                       <TouchableOpacity
-                        style={styles.primaryButton}
+                        style={[
+                          styles.primaryButton,
+
+                          savingAccount && {
+                            opacity: 0.7,
+                          },
+                        ]}
                         onPress={handleSaveAccount}
                         disabled={savingAccount}
+                        activeOpacity={0.8}
                       >
                         {savingAccount ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
+                          <View
+                            style={{
+                              flexDirection: "row",
+
+                              alignItems: "center",
+
+                              gap: 8,
+                            }}
+                          >
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+
+                            <Text style={styles.primaryButtonText}>
+                              Saving...
+                            </Text>
+                          </View>
                         ) : (
                           <Text style={styles.primaryButtonText}>
                             Save Account Changes
@@ -1672,6 +1806,7 @@ export default function AdminSettings() {
                         <TouchableOpacity
                           style={styles.secondaryButton}
                           onPress={() => setShowPasswordForm(true)}
+                          activeOpacity={0.8}
                         >
                           <Text style={styles.secondaryButtonText}>
                             Change Password
@@ -1693,6 +1828,7 @@ export default function AdminSettings() {
                               placeholder="Enter current password"
                               placeholderTextColor="#A0A7B2"
                               style={styles.input}
+                              editable={!changingPassword}
                             />
                           </View>
 
@@ -1706,6 +1842,7 @@ export default function AdminSettings() {
                               placeholder="At least 8 characters"
                               placeholderTextColor="#A0A7B2"
                               style={styles.input}
+                              editable={!changingPassword}
                             />
                           </View>
                         </View>
@@ -1723,6 +1860,7 @@ export default function AdminSettings() {
                               placeholder="Repeat new password"
                               placeholderTextColor="#A0A7B2"
                               style={styles.input}
+                              editable={!changingPassword}
                             />
                           </View>
 
@@ -1731,7 +1869,13 @@ export default function AdminSettings() {
 
                         <View style={styles.passwordActions}>
                           <TouchableOpacity
-                            style={styles.cancelButton}
+                            style={[
+                              styles.cancelButton,
+
+                              changingPassword && {
+                                opacity: 0.6,
+                              },
+                            ]}
                             disabled={changingPassword}
                             onPress={() => {
                               setCurrentPassword("");
@@ -1742,17 +1886,42 @@ export default function AdminSettings() {
 
                               setShowPasswordForm(false);
                             }}
+                            activeOpacity={0.8}
                           >
                             <Text style={styles.cancelButtonText}>Cancel</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
-                            style={styles.primaryButton}
+                            style={[
+                              styles.primaryButton,
+
+                              changingPassword && {
+                                opacity: 0.7,
+                              },
+                            ]}
                             onPress={handleChangePassword}
                             disabled={changingPassword}
+                            activeOpacity={0.8}
                           >
                             {changingPassword ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
+                              <View
+                                style={{
+                                  flexDirection: "row",
+
+                                  alignItems: "center",
+
+                                  gap: 8,
+                                }}
+                              >
+                                <ActivityIndicator
+                                  size="small"
+                                  color="#FFFFFF"
+                                />
+
+                                <Text style={styles.primaryButtonText}>
+                                  Updating...
+                                </Text>
+                              </View>
                             ) : (
                               <Text style={styles.primaryButtonText}>
                                 Update Password
@@ -1775,6 +1944,7 @@ export default function AdminSettings() {
                       <Text
                         style={[
                           styles.sectionTitle,
+
                           styles.fineTypesSectionTitle,
                         ]}
                       >
@@ -1787,15 +1957,109 @@ export default function AdminSettings() {
                       </Text>
                     </View>
 
-                    <TouchableOpacity
-                      style={styles.addFineTypeButton}
-                      onPress={handleAddFineType}
-                      disabled={savingFineType}
+                    <View
+                      style={{
+                        flexDirection: "row",
+
+                        alignItems: "center",
+
+                        flexWrap: "wrap",
+
+                        gap: 8,
+                      }}
                     >
-                      <Text style={styles.addFineTypeButtonText}>
-                        + Add Fine Type
-                      </Text>
-                    </TouchableOpacity>
+                      {/* REFRESH FINE TYPES */}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.secondaryButton,
+
+                          (fineTypesLoading ||
+                            fineTypesRefreshing ||
+                            savingFineType ||
+                            changingFineStatusId !== null) && {
+                            opacity: 0.6,
+                          },
+                        ]}
+                        onPress={handleRefreshFineTypes}
+                        disabled={
+                          fineTypesLoading ||
+                          fineTypesRefreshing ||
+                          savingFineType ||
+                          changingFineStatusId !== null
+                        }
+                        activeOpacity={0.8}
+                      >
+                        {fineTypesRefreshing ? (
+                          <View
+                            style={{
+                              flexDirection: "row",
+
+                              alignItems: "center",
+
+                              gap: 7,
+                            }}
+                          >
+                            <ActivityIndicator size="small" color="#173A73" />
+
+                            <Text style={styles.secondaryButtonText}>
+                              Refreshing...
+                            </Text>
+                          </View>
+                        ) : (
+                          <View
+                            style={{
+                              flexDirection: "row",
+
+                              alignItems: "center",
+
+                              gap: 7,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#173A73",
+
+                                fontSize: 15,
+
+                                fontWeight: "800",
+                              }}
+                            >
+                              ↻
+                            </Text>
+
+                            <Text style={styles.secondaryButtonText}>
+                              Refresh
+                            </Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* ADD FINE TYPE */}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.addFineTypeButton,
+
+                          (fineTypesLoading ||
+                            fineTypesRefreshing ||
+                            savingFineType) && {
+                            opacity: 0.6,
+                          },
+                        ]}
+                        onPress={handleAddFineType}
+                        disabled={
+                          fineTypesLoading ||
+                          fineTypesRefreshing ||
+                          savingFineType
+                        }
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.addFineTypeButtonText}>
+                          + Add Fine Type
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   <View style={styles.settingsCard}>
@@ -1821,9 +2085,7 @@ export default function AdminSettings() {
                         </View>
 
                         <View style={styles.formRow}>
-                          {/* =========================
-                              AUTOMATIC FINE CODE
-                          ========================== */}
+                          {/* AUTOMATIC FINE CODE */}
 
                           <View style={styles.formField}>
                             <Text style={styles.inputLabel}>Fine Code</Text>
@@ -1840,6 +2102,7 @@ export default function AdminSettings() {
                             <Text
                               style={[
                                 styles.fineTypeFormSubtitle,
+
                                 {
                                   marginTop: 6,
                                 },
@@ -1863,6 +2126,7 @@ export default function AdminSettings() {
                               placeholderTextColor="#A0A7B2"
                               style={styles.input}
                               maxLength={120}
+                              editable={!savingFineType}
                             />
                           </View>
                         </View>
@@ -1897,6 +2161,7 @@ export default function AdminSettings() {
                                 placeholderTextColor="#A0A7B2"
                                 style={styles.amountInput}
                                 keyboardType="decimal-pad"
+                                editable={!savingFineType}
                               />
                             </View>
                           </View>
@@ -1915,6 +2180,8 @@ export default function AdminSettings() {
                                     styles.statusSelectorButtonActive,
                                 ]}
                                 onPress={() => setFineActive(true)}
+                                disabled={savingFineType}
+                                activeOpacity={0.8}
                               >
                                 <Text
                                   style={[
@@ -1936,6 +2203,8 @@ export default function AdminSettings() {
                                     styles.statusSelectorButtonInactive,
                                 ]}
                                 onPress={() => setFineActive(false)}
+                                disabled={savingFineType}
+                                activeOpacity={0.8}
                               >
                                 <Text
                                   style={[
@@ -1966,6 +2235,7 @@ export default function AdminSettings() {
                             multiline
                             maxLength={500}
                             textAlignVertical="top"
+                            editable={!savingFineType}
                           />
                         </View>
 
@@ -1973,20 +2243,53 @@ export default function AdminSettings() {
 
                         <View style={styles.fineTypeFormActions}>
                           <TouchableOpacity
-                            style={styles.cancelButton}
+                            style={[
+                              styles.cancelButton,
+
+                              savingFineType && {
+                                opacity: 0.6,
+                              },
+                            ]}
                             onPress={resetFineTypeForm}
                             disabled={savingFineType}
+                            activeOpacity={0.8}
                           >
                             <Text style={styles.cancelButtonText}>Cancel</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
-                            style={styles.primaryButton}
+                            style={[
+                              styles.primaryButton,
+
+                              savingFineType && {
+                                opacity: 0.7,
+                              },
+                            ]}
                             onPress={handleSaveFineType}
                             disabled={savingFineType}
+                            activeOpacity={0.8}
                           >
                             {savingFineType ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
+                              <View
+                                style={{
+                                  flexDirection: "row",
+
+                                  alignItems: "center",
+
+                                  gap: 8,
+                                }}
+                              >
+                                <ActivityIndicator
+                                  size="small"
+                                  color="#FFFFFF"
+                                />
+
+                                <Text style={styles.primaryButtonText}>
+                                  {editingFineTypeId
+                                    ? "Saving..."
+                                    : "Adding..."}
+                                </Text>
+                              </View>
                             ) : (
                               <Text style={styles.primaryButtonText}>
                                 {editingFineTypeId
@@ -2033,7 +2336,8 @@ export default function AdminSettings() {
 
                         <TouchableOpacity
                           style={styles.fineTypesRetryButton}
-                          onPress={() => loadFineTypes(true)}
+                          onPress={() => loadFineTypes(true, false)}
+                          activeOpacity={0.8}
                         >
                           <Text style={styles.fineTypesRetryText}>
                             Try Again
@@ -2041,211 +2345,290 @@ export default function AdminSettings() {
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                      >
-                        <View style={styles.fineTypesTable}>
-                          {/* HEADER */}
+                      <>
+                        {fineTypesRefreshing && (
+                          <View
+                            style={{
+                              flexDirection: "row",
 
-                          <View style={styles.fineTypesTableHeader}>
-                            <Text
-                              style={[
-                                styles.fineTypesHeaderText,
-                                styles.fineCodeColumn,
-                              ]}
-                            >
-                              Code
-                            </Text>
+                              alignItems: "center",
 
-                            <Text
-                              style={[
-                                styles.fineTypesHeaderText,
-                                styles.fineNameColumn,
-                              ]}
-                            >
-                              Fine Type
-                            </Text>
+                              justifyContent: "center",
 
-                            <Text
-                              style={[
-                                styles.fineTypesHeaderText,
-                                styles.fineAmountColumn,
-                              ]}
-                            >
-                              Amount
-                            </Text>
+                              gap: 8,
 
-                            <Text
-                              style={[
-                                styles.fineTypesHeaderText,
-                                styles.fineStatusColumn,
-                              ]}
-                            >
-                              Status
-                            </Text>
+                              paddingBottom: 12,
+                            }}
+                          >
+                            <ActivityIndicator size="small" color="#173A73" />
 
-                            <Text
-                              style={[
-                                styles.fineTypesHeaderText,
-                                styles.fineActionColumn,
-                              ]}
-                            >
-                              Actions
+                            <Text style={styles.fineTypesLoadingText}>
+                              Refreshing fine types...
                             </Text>
                           </View>
+                        )}
 
-                          {/* ROWS */}
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                        >
+                          <View style={styles.fineTypesTable}>
+                            {/* HEADER */}
 
-                          {fineTypes.length === 0 ? (
-                            <View style={styles.fineTypesEmpty}>
-                              <Text style={styles.fineTypesEmptyTitle}>
-                                No fine types found
+                            <View style={styles.fineTypesTableHeader}>
+                              <Text
+                                style={[
+                                  styles.fineTypesHeaderText,
+
+                                  styles.fineCodeColumn,
+                                ]}
+                              >
+                                Code
                               </Text>
 
-                              <Text style={styles.fineTypesEmptyText}>
-                                Add your first fine type to begin using it in
-                                SmartFine.
+                              <Text
+                                style={[
+                                  styles.fineTypesHeaderText,
+
+                                  styles.fineNameColumn,
+                                ]}
+                              >
+                                Fine Type
+                              </Text>
+
+                              <Text
+                                style={[
+                                  styles.fineTypesHeaderText,
+
+                                  styles.fineAmountColumn,
+                                ]}
+                              >
+                                Amount
+                              </Text>
+
+                              <Text
+                                style={[
+                                  styles.fineTypesHeaderText,
+
+                                  styles.fineStatusColumn,
+                                ]}
+                              >
+                                Status
+                              </Text>
+
+                              <Text
+                                style={[
+                                  styles.fineTypesHeaderText,
+
+                                  styles.fineActionColumn,
+                                ]}
+                              >
+                                Actions
                               </Text>
                             </View>
-                          ) : (
-                            fineTypes.map((fineType) => {
-                              const active = Number(fineType.is_active) === 1;
 
-                              const changingStatus =
-                                changingFineStatusId === fineType.id;
+                            {/* ROWS */}
 
-                              return (
-                                <View
-                                  key={fineType.id}
-                                  style={styles.fineTypesTableRow}
-                                >
-                                  {/* CODE */}
+                            {fineTypes.length === 0 ? (
+                              <View style={styles.fineTypesEmpty}>
+                                <Text style={styles.fineTypesEmptyTitle}>
+                                  No fine types found
+                                </Text>
 
-                                  <View style={styles.fineCodeColumn}>
-                                    <Text style={styles.fineCodeText}>
-                                      {fineType.violation_code}
-                                    </Text>
-                                  </View>
+                                <Text style={styles.fineTypesEmptyText}>
+                                  Add your first fine type to begin using it in
+                                  SmartFine.
+                                </Text>
+                              </View>
+                            ) : (
+                              fineTypes.map((fineType) => {
+                                const active = Number(fineType.is_active) === 1;
 
-                                  {/* NAME */}
+                                const changingStatus =
+                                  changingFineStatusId === fineType.id;
 
-                                  <View style={styles.fineNameColumn}>
-                                    <Text style={styles.fineNameText}>
-                                      {fineType.violation_name}
-                                    </Text>
+                                return (
+                                  <View
+                                    key={fineType.id}
+                                    style={[
+                                      styles.fineTypesTableRow,
 
-                                    {fineType.description ? (
-                                      <Text
-                                        numberOfLines={2}
-                                        style={styles.fineDescriptionText}
-                                      >
-                                        {fineType.description}
-                                      </Text>
-                                    ) : null}
-                                  </View>
+                                      fineTypesRefreshing && {
+                                        opacity: 0.7,
+                                      },
+                                    ]}
+                                  >
+                                    {/* CODE */}
 
-                                  {/* AMOUNT */}
-
-                                  <View style={styles.fineAmountColumn}>
-                                    <Text style={styles.fineAmountText}>
-                                      ₱
-                                      {Number(
-                                        fineType.amount ??
-                                          Number(fineType.amount_centavos) /
-                                            100,
-                                      ).toFixed(2)}
-                                    </Text>
-                                  </View>
-
-                                  {/* STATUS */}
-
-                                  <View style={styles.fineStatusColumn}>
-                                    <View
-                                      style={[
-                                        styles.fineStatusBadge,
-
-                                        active
-                                          ? styles.fineStatusActiveBadge
-                                          : styles.fineStatusInactiveBadge,
-                                      ]}
-                                    >
-                                      <Text
-                                        style={[
-                                          styles.fineStatusText,
-
-                                          active
-                                            ? styles.fineStatusActiveText
-                                            : styles.fineStatusInactiveText,
-                                        ]}
-                                      >
-                                        {active ? "Active" : "Inactive"}
+                                    <View style={styles.fineCodeColumn}>
+                                      <Text style={styles.fineCodeText}>
+                                        {fineType.violation_code}
                                       </Text>
                                     </View>
-                                  </View>
 
-                                  {/* ACTIONS */}
+                                    {/* NAME */}
 
-                                  <View style={styles.fineActionColumn}>
-                                    <View style={styles.fineActionButtons}>
-                                      <TouchableOpacity
-                                        style={styles.editFineTypeButton}
-                                        onPress={() =>
-                                          handleEditFineType(fineType)
-                                        }
-                                        disabled={
-                                          changingStatus || savingFineType
-                                        }
-                                      >
-                                        <Text style={styles.editFineTypeText}>
-                                          Edit
+                                    <View style={styles.fineNameColumn}>
+                                      <Text style={styles.fineNameText}>
+                                        {fineType.violation_name}
+                                      </Text>
+
+                                      {fineType.description ? (
+                                        <Text
+                                          numberOfLines={2}
+                                          style={styles.fineDescriptionText}
+                                        >
+                                          {fineType.description}
                                         </Text>
-                                      </TouchableOpacity>
+                                      ) : null}
+                                    </View>
 
-                                      <TouchableOpacity
+                                    {/* AMOUNT */}
+
+                                    <View style={styles.fineAmountColumn}>
+                                      <Text style={styles.fineAmountText}>
+                                        ₱
+                                        {Number(
+                                          fineType.amount ??
+                                            Number(fineType.amount_centavos) /
+                                              100,
+                                        ).toFixed(2)}
+                                      </Text>
+                                    </View>
+
+                                    {/* STATUS */}
+
+                                    <View style={styles.fineStatusColumn}>
+                                      <View
                                         style={[
-                                          styles.fineStatusActionButton,
+                                          styles.fineStatusBadge,
 
                                           active
-                                            ? styles.deactivateFineTypeButton
-                                            : styles.activateFineTypeButton,
+                                            ? styles.fineStatusActiveBadge
+                                            : styles.fineStatusInactiveBadge,
                                         ]}
-                                        onPress={() =>
-                                          handleToggleFineTypeStatus(fineType)
-                                        }
-                                        disabled={
-                                          changingStatus || savingFineType
-                                        }
                                       >
-                                        {changingStatus ? (
-                                          <ActivityIndicator
-                                            size="small"
-                                            color={
-                                              active ? "#D32F2F" : "#2E9D43"
-                                            }
-                                          />
-                                        ) : (
-                                          <Text
-                                            style={[
-                                              styles.fineStatusActionText,
+                                        <Text
+                                          style={[
+                                            styles.fineStatusText,
 
-                                              active
-                                                ? styles.deactivateFineTypeText
-                                                : styles.activateFineTypeText,
-                                            ]}
-                                          >
-                                            {active ? "Deactivate" : "Activate"}
+                                            active
+                                              ? styles.fineStatusActiveText
+                                              : styles.fineStatusInactiveText,
+                                          ]}
+                                        >
+                                          {active ? "Active" : "Inactive"}
+                                        </Text>
+                                      </View>
+                                    </View>
+
+                                    {/* ACTIONS */}
+
+                                    <View style={styles.fineActionColumn}>
+                                      <View style={styles.fineActionButtons}>
+                                        <TouchableOpacity
+                                          style={[
+                                            styles.editFineTypeButton,
+
+                                            (changingStatus ||
+                                              savingFineType ||
+                                              fineTypesRefreshing) && {
+                                              opacity: 0.55,
+                                            },
+                                          ]}
+                                          onPress={() =>
+                                            handleEditFineType(fineType)
+                                          }
+                                          disabled={
+                                            changingStatus ||
+                                            savingFineType ||
+                                            fineTypesRefreshing
+                                          }
+                                          activeOpacity={0.8}
+                                        >
+                                          <Text style={styles.editFineTypeText}>
+                                            Edit
                                           </Text>
-                                        )}
-                                      </TouchableOpacity>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                          style={[
+                                            styles.fineStatusActionButton,
+
+                                            active
+                                              ? styles.deactivateFineTypeButton
+                                              : styles.activateFineTypeButton,
+
+                                            (changingStatus ||
+                                              savingFineType ||
+                                              fineTypesRefreshing) && {
+                                              opacity: 0.6,
+                                            },
+                                          ]}
+                                          onPress={() =>
+                                            handleToggleFineTypeStatus(fineType)
+                                          }
+                                          disabled={
+                                            changingStatus ||
+                                            savingFineType ||
+                                            fineTypesRefreshing
+                                          }
+                                          activeOpacity={0.8}
+                                        >
+                                          {changingStatus ? (
+                                            <View
+                                              style={{
+                                                flexDirection: "row",
+
+                                                alignItems: "center",
+
+                                                gap: 5,
+                                              }}
+                                            >
+                                              <ActivityIndicator
+                                                size="small"
+                                                color={
+                                                  active ? "#D32F2F" : "#2E9D43"
+                                                }
+                                              />
+
+                                              <Text
+                                                style={[
+                                                  styles.fineStatusActionText,
+
+                                                  active
+                                                    ? styles.deactivateFineTypeText
+                                                    : styles.activateFineTypeText,
+                                                ]}
+                                              >
+                                                Updating...
+                                              </Text>
+                                            </View>
+                                          ) : (
+                                            <Text
+                                              style={[
+                                                styles.fineStatusActionText,
+
+                                                active
+                                                  ? styles.deactivateFineTypeText
+                                                  : styles.activateFineTypeText,
+                                              ]}
+                                            >
+                                              {active
+                                                ? "Deactivate"
+                                                : "Activate"}
+                                            </Text>
+                                          )}
+                                        </TouchableOpacity>
+                                      </View>
                                     </View>
                                   </View>
-                                </View>
-                              );
-                            })
-                          )}
-                        </View>
-                      </ScrollView>
+                                );
+                              })
+                            )}
+                          </View>
+                        </ScrollView>
+                      </>
                     )}
                   </View>
                 </View>
@@ -2268,6 +2651,7 @@ export default function AdminSettings() {
                           placeholder="Enter school name"
                           placeholderTextColor="#A0A7B2"
                           style={styles.input}
+                          editable={!savingSystemSettings}
                         />
                       </View>
 
@@ -2280,6 +2664,7 @@ export default function AdminSettings() {
                           placeholder="Example: 2026 - 2027"
                           placeholderTextColor="#A0A7B2"
                           style={styles.input}
+                          editable={!savingSystemSettings}
                         />
                       </View>
                     </View>
@@ -2294,6 +2679,7 @@ export default function AdminSettings() {
                           placeholder="SmartFine"
                           placeholderTextColor="#A0A7B2"
                           style={styles.input}
+                          editable={!savingSystemSettings}
                         />
                       </View>
 
@@ -2327,12 +2713,33 @@ export default function AdminSettings() {
                       ]}
                     >
                       <TouchableOpacity
-                        style={styles.primaryButton}
+                        style={[
+                          styles.primaryButton,
+
+                          savingSystemSettings && {
+                            opacity: 0.7,
+                          },
+                        ]}
                         onPress={handleSaveSystemSettings}
                         disabled={savingSystemSettings}
+                        activeOpacity={0.8}
                       >
                         {savingSystemSettings ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
+                          <View
+                            style={{
+                              flexDirection: "row",
+
+                              alignItems: "center",
+
+                              gap: 8,
+                            }}
+                          >
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+
+                            <Text style={styles.primaryButtonText}>
+                              Saving...
+                            </Text>
+                          </View>
                         ) : (
                           <Text style={styles.primaryButtonText}>
                             Save System Settings
@@ -2487,10 +2894,6 @@ function getMimeType(uri: string) {
 
 // ==========================================
 // NEXT FINE CODE FALLBACK
-//
-// Backend is still the final authority.
-// This is only used if nextCode is not
-// included in the response.
 // ==========================================
 
 function getNextFineCodeFromTypes(fineTypes: FineType[]) {

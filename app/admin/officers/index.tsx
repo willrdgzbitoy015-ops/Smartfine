@@ -87,6 +87,8 @@ export default function OfficersDirectory() {
 
   const [loading, setLoading] = useState(true);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const [error, setError] = useState("");
 
   // ==========================================
@@ -191,9 +193,17 @@ export default function OfficersDirectory() {
   // LOAD OFFICERS
   // ==========================================
 
-  const loadOfficers = async () => {
+  const loadOfficers = async (showFullLoader = false) => {
+    if (refreshing) {
+      return;
+    }
+
     try {
-      setLoading(true);
+      if (showFullLoader) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
 
       setError("");
 
@@ -204,24 +214,52 @@ export default function OfficersDirectory() {
       console.log("Officers response:", data);
 
       if (!response.ok || !data.success) {
-        setError(data.message || "Failed to load officers.");
-
-        return;
+        throw new Error(data.message || "Failed to load officers.");
       }
 
       setOfficers(data.officers || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Load officers error:", error);
 
-      setError("Could not connect to the SmartFine server.");
+      if (showFullLoader || officers.length === 0) {
+        setError(
+          error?.message || "Could not connect to the SmartFine server.",
+        );
+      } else {
+        setWarningTitle("Refresh Failed");
+
+        setWarningMessage(
+          error?.message || "Could not refresh the officers directory.",
+        );
+
+        setShowWarningModal(true);
+      }
     } finally {
       setLoading(false);
+
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadOfficers();
+    loadOfficers(true);
   }, []);
+
+  // ==========================================
+  // REFRESH OFFICERS
+  // ==========================================
+
+  const handleRefresh = async () => {
+    if (loading || refreshing) {
+      return;
+    }
+
+    setShowStatusMenu(false);
+
+    setShowAreaMenu(false);
+
+    await loadOfficers(false);
+  };
 
   // ==========================================
   // ASSIGNED AREA OPTIONS
@@ -290,6 +328,10 @@ export default function OfficersDirectory() {
   // ==========================================
 
   const handleAddOfficer = () => {
+    if (loading || refreshing) {
+      return;
+    }
+
     router.push("/admin/officers/add" as any);
   };
 
@@ -298,6 +340,10 @@ export default function OfficersDirectory() {
   // ==========================================
 
   const handleOfficerPress = (officer: Officer) => {
+    if (loading || refreshing) {
+      return;
+    }
+
     router.push(`/admin/officers/${officer.id}` as any);
   };
 
@@ -459,6 +505,7 @@ export default function OfficersDirectory() {
                       active && styles.mobileNavItemActive,
                     ]}
                     onPress={() => handleNavigation(item)}
+                    activeOpacity={0.8}
                   >
                     <Text
                       style={[
@@ -505,6 +552,7 @@ export default function OfficersDirectory() {
                 onChangeText={setSearch}
                 placeholder="Search officer by name, ID, email, or area"
                 placeholderTextColor="#8C939F"
+                editable={!loading}
               />
             </View>
 
@@ -514,12 +562,24 @@ export default function OfficersDirectory() {
 
             <View style={styles.filterWrapper}>
               <TouchableOpacity
-                style={styles.filterButton}
+                style={[
+                  styles.filterButton,
+
+                  loading && {
+                    opacity: 0.55,
+                  },
+                ]}
                 onPress={() => {
+                  if (loading) {
+                    return;
+                  }
+
                   setShowStatusMenu(!showStatusMenu);
 
                   setShowAreaMenu(false);
                 }}
+                disabled={loading}
+                activeOpacity={0.8}
               >
                 <Text style={styles.filterText}>
                   {selectedStatus === "ALL"
@@ -539,6 +599,7 @@ export default function OfficersDirectory() {
 
                       setShowStatusMenu(false);
                     }}
+                    activeOpacity={0.8}
                   >
                     <Text style={styles.filterOptionText}>All Status</Text>
                   </TouchableOpacity>
@@ -550,6 +611,7 @@ export default function OfficersDirectory() {
 
                       setShowStatusMenu(false);
                     }}
+                    activeOpacity={0.8}
                   >
                     <Text style={styles.filterOptionText}>Active</Text>
                   </TouchableOpacity>
@@ -561,6 +623,7 @@ export default function OfficersDirectory() {
 
                       setShowStatusMenu(false);
                     }}
+                    activeOpacity={0.8}
                   >
                     <Text style={styles.filterOptionText}>Inactive</Text>
                   </TouchableOpacity>
@@ -574,12 +637,24 @@ export default function OfficersDirectory() {
 
             <View style={[styles.filterWrapper, styles.areaFilterWrapper]}>
               <TouchableOpacity
-                style={styles.filterButton}
+                style={[
+                  styles.filterButton,
+
+                  loading && {
+                    opacity: 0.55,
+                  },
+                ]}
                 onPress={() => {
+                  if (loading) {
+                    return;
+                  }
+
                   setShowAreaMenu(!showAreaMenu);
 
                   setShowStatusMenu(false);
                 }}
+                disabled={loading}
+                activeOpacity={0.8}
               >
                 <Text style={styles.filterText} numberOfLines={1}>
                   {selectedArea === "ALL" ? "Assigned Area" : selectedArea}
@@ -597,6 +672,7 @@ export default function OfficersDirectory() {
 
                       setShowAreaMenu(false);
                     }}
+                    activeOpacity={0.8}
                   >
                     <Text style={styles.filterOptionText}>All Areas</Text>
                   </TouchableOpacity>
@@ -610,6 +686,7 @@ export default function OfficersDirectory() {
 
                         setShowAreaMenu(false);
                       }}
+                      activeOpacity={0.8}
                     >
                       <Text style={styles.filterOptionText}>{area}</Text>
                     </TouchableOpacity>
@@ -619,12 +696,75 @@ export default function OfficersDirectory() {
             </View>
 
             {/* ==================================
+                REFRESH
+            ================================== */}
+
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+
+                {
+                  width: 120,
+
+                  opacity: loading || refreshing ? 0.6 : 1,
+                },
+              ]}
+              onPress={handleRefresh}
+              disabled={loading || refreshing}
+              activeOpacity={0.8}
+            >
+              {refreshing ? (
+                <View
+                  style={{
+                    flex: 1,
+
+                    flexDirection: "row",
+
+                    alignItems: "center",
+
+                    justifyContent: "center",
+
+                    gap: 7,
+                  }}
+                >
+                  <ActivityIndicator size="small" color="#173A73" />
+
+                  <Text style={styles.filterText}>Refreshing</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.filterText}>Refresh</Text>
+
+                  <Text
+                    style={{
+                      color: "#173A73",
+
+                      fontSize: 16,
+
+                      fontWeight: "800",
+                    }}
+                  >
+                    ↻
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* ==================================
                 ADD OFFICER
             ================================== */}
 
             <TouchableOpacity
-              style={styles.addButton}
+              style={[
+                styles.addButton,
+
+                (loading || refreshing) && {
+                  opacity: 0.55,
+                },
+              ]}
               onPress={handleAddOfficer}
+              disabled={loading || refreshing}
+              activeOpacity={0.8}
             >
               <Text style={styles.addButtonText}>+ Add New Officer</Text>
             </TouchableOpacity>
@@ -635,13 +775,17 @@ export default function OfficersDirectory() {
           ================================== */}
 
           <View style={styles.tableCard}>
-            {/* LOADING */}
+            {/* ==================================
+                INITIAL LOADING
+            ================================== */}
 
             {loading ? (
               <View style={styles.centerState}>
                 <ActivityIndicator size="large" color="#173A73" />
 
-                <Text style={styles.stateText}>Loading officers...</Text>
+                <Text style={styles.stateText}>
+                  Loading officer accounts...
+                </Text>
               </View>
             ) : error ? (
               // ==================================
@@ -653,7 +797,8 @@ export default function OfficersDirectory() {
 
                 <TouchableOpacity
                   style={styles.retryButton}
-                  onPress={loadOfficers}
+                  onPress={() => loadOfficers(true)}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.retryText}>Try Again</Text>
                 </TouchableOpacity>
@@ -719,8 +864,15 @@ export default function OfficersDirectory() {
                         return (
                           <TouchableOpacity
                             key={officer.id}
-                            style={styles.officerRow}
+                            style={[
+                              styles.officerRow,
+
+                              refreshing && {
+                                opacity: 0.65,
+                              },
+                            ]}
                             activeOpacity={0.7}
+                            disabled={refreshing}
                             onPress={() => handleOfficerPress(officer)}
                           >
                             {/* EMPLOYEE NUMBER */}

@@ -1,9 +1,13 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
+  ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Image,
+  Modal,
   Platform,
   ScrollView,
   Text,
@@ -83,6 +87,12 @@ export default function AdminDashboard() {
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   // ==========================================
+  // ACTIVITIES MODAL
+  // ==========================================
+
+  const [showActivitiesModal, setShowActivitiesModal] = useState(false);
+
+  // ==========================================
   // DASHBOARD STATS
   // ==========================================
 
@@ -110,6 +120,36 @@ export default function AdminDashboard() {
   const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
 
   const [adminImageFailed, setAdminImageFailed] = useState(false);
+
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // ==========================================
+  // PAGE ANIMATIONS
+  // ==========================================
+
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+
+  const headerTranslateY = useRef(new Animated.Value(-12)).current;
+
+  const cardAnimations = useRef(
+    Array.from({ length: 4 }, () => ({
+      opacity: new Animated.Value(0),
+
+      translateY: new Animated.Value(18),
+    })),
+  ).current;
+
+  const activityOpacity = useRef(new Animated.Value(0)).current;
+
+  const activityTranslateY = useRef(new Animated.Value(18)).current;
+
+  // ==========================================
+  // ACTIVITIES MODAL ANIMATION
+  // ==========================================
+
+  const activitiesModalOpacity = useRef(new Animated.Value(0)).current;
+
+  const activitiesModalScale = useRef(new Animated.Value(0.96)).current;
 
   // ==========================================
   // REAL-TIME DATE AND TIME
@@ -142,6 +182,122 @@ export default function AdminDashboard() {
 
     hour12: true,
   });
+
+  // ==========================================
+  // DASHBOARD ENTRANCE ANIMATION
+  // ==========================================
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(headerOpacity, {
+          toValue: 1,
+
+          duration: 280,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(headerTranslateY, {
+          toValue: 0,
+
+          duration: 280,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+      ]),
+
+      Animated.stagger(
+        80,
+
+        cardAnimations.map((animation) =>
+          Animated.parallel([
+            Animated.timing(animation.opacity, {
+              toValue: 1,
+
+              duration: 280,
+
+              easing: Easing.out(Easing.cubic),
+
+              useNativeDriver: true,
+            }),
+
+            Animated.timing(animation.translateY, {
+              toValue: 0,
+
+              duration: 280,
+
+              easing: Easing.out(Easing.cubic),
+
+              useNativeDriver: true,
+            }),
+          ]),
+        ),
+      ),
+
+      Animated.parallel([
+        Animated.timing(activityOpacity, {
+          toValue: 1,
+
+          duration: 320,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(activityTranslateY, {
+          toValue: 0,
+
+          duration: 320,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
+
+  // ==========================================
+  // ACTIVITIES POPUP ENTRANCE ANIMATION
+  // ==========================================
+
+  useEffect(() => {
+    if (!showActivitiesModal) {
+      return;
+    }
+
+    activitiesModalOpacity.setValue(0);
+
+    activitiesModalScale.setValue(0.96);
+
+    Animated.parallel([
+      Animated.timing(activitiesModalOpacity, {
+        toValue: 1,
+
+        duration: 180,
+
+        easing: Easing.out(Easing.cubic),
+
+        useNativeDriver: true,
+      }),
+
+      Animated.spring(activitiesModalScale, {
+        toValue: 1,
+
+        friction: 8,
+
+        tension: 70,
+
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [showActivitiesModal]);
 
   // ==========================================
   // LOAD DASHBOARD STATS
@@ -201,7 +357,7 @@ export default function AdminDashboard() {
         return;
       }
 
-      setRecentActivities(data.activities);
+      setRecentActivities(data.activities || []);
     } catch (error) {
       console.error("Recent activities connection error:", error);
     } finally {
@@ -219,6 +375,8 @@ export default function AdminDashboard() {
 
   const loadAdminProfile = async () => {
     try {
+      setProfileLoading(true);
+
       const token = await AsyncStorage.getItem("token");
 
       if (!token) {
@@ -248,6 +406,8 @@ export default function AdminDashboard() {
       setAdminImageFailed(false);
     } catch (error) {
       console.error("Admin profile connection error:", error);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -321,7 +481,7 @@ export default function AdminDashboard() {
     {
       label: "Total Students",
 
-      value: statsLoading ? "..." : String(stats.totalStudents),
+      value: String(stats.totalStudents),
 
       type: "success",
     },
@@ -329,7 +489,7 @@ export default function AdminDashboard() {
     {
       label: "Unpaid Fines",
 
-      value: statsLoading ? "..." : String(stats.unpaidFines),
+      value: String(stats.unpaidFines),
 
       type: "danger",
     },
@@ -337,9 +497,7 @@ export default function AdminDashboard() {
     {
       label: "Today's Collection",
 
-      value: statsLoading
-        ? "..."
-        : `₱ ${Number(stats.todayCollection).toFixed(2)}`,
+      value: `₱ ${Number(stats.todayCollection).toFixed(2)}`,
 
       type: "money",
     },
@@ -347,7 +505,7 @@ export default function AdminDashboard() {
     {
       label: "Paid Fines",
 
-      value: statsLoading ? "..." : String(stats.paidFines),
+      value: String(stats.paidFines),
 
       type: "success",
     },
@@ -368,11 +526,37 @@ export default function AdminDashboard() {
   };
 
   // ==========================================
-  // VIEW ACTIVITIES
+  // VIEW ALL ACTIVITIES
   // ==========================================
 
   const handleViewActivities = () => {
-    router.push("/admin/fines" as any);
+    setShowActivitiesModal(true);
+  };
+
+  const handleCloseActivities = () => {
+    Animated.parallel([
+      Animated.timing(activitiesModalOpacity, {
+        toValue: 0,
+
+        duration: 140,
+
+        easing: Easing.in(Easing.cubic),
+
+        useNativeDriver: true,
+      }),
+
+      Animated.timing(activitiesModalScale, {
+        toValue: 0.96,
+
+        duration: 140,
+
+        easing: Easing.in(Easing.cubic),
+
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowActivitiesModal(false);
+    });
   };
 
   // ==========================================
@@ -403,11 +587,7 @@ export default function AdminDashboard() {
     try {
       setLogoutLoading(true);
 
-      console.log("Logout confirmation accepted.");
-
       await logout();
-
-      console.log("Admin logged out successfully.");
 
       setShowLogoutModal(false);
 
@@ -445,10 +625,6 @@ export default function AdminDashboard() {
 
       {isTablet && (
         <View style={styles.sidebar}>
-          {/* ==================================
-              SMARTFINE LOGO
-          ================================== */}
-
           <View style={styles.logoArea}>
             <Image
               source={require("../../../assets/branding/smartfineNoBG.png")}
@@ -456,10 +632,6 @@ export default function AdminDashboard() {
               resizeMode="contain"
             />
           </View>
-
-          {/* ==================================
-              NAVIGATION
-          ================================== */}
 
           <View style={styles.navigation}>
             {navItems.map((item) => {
@@ -490,10 +662,6 @@ export default function AdminDashboard() {
             })}
           </View>
 
-          {/* ==================================
-              LOGOUT BUTTON
-          ================================== */}
-
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogout}
@@ -517,7 +685,21 @@ export default function AdminDashboard() {
               HEADER
           ================================== */}
 
-          <View style={styles.header}>
+          <Animated.View
+            style={[
+              styles.header,
+
+              {
+                opacity: headerOpacity,
+
+                transform: [
+                  {
+                    translateY: headerTranslateY,
+                  },
+                ],
+              },
+            ]}
+          >
             <View>
               <Text style={styles.pageTitle}>Dashboard</Text>
 
@@ -531,12 +713,10 @@ export default function AdminDashboard() {
                 <Text style={styles.adminRole}>Administrator</Text>
               </View>
 
-              {/* ==================================
-                  ADMIN PROFILE PICTURE
-              ================================== */}
-
               <View style={styles.avatar}>
-                {adminProfilePictureUrl && !adminImageFailed ? (
+                {profileLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : adminProfilePictureUrl && !adminImageFailed ? (
                   <Image
                     source={{
                       uri: adminProfilePictureUrl,
@@ -550,7 +730,7 @@ export default function AdminDashboard() {
                 )}
               </View>
             </View>
-          </View>
+          </Animated.View>
 
           {/* ==================================
               MOBILE NAVIGATION
@@ -596,56 +776,98 @@ export default function AdminDashboard() {
           ================================== */}
 
           <View style={styles.cardsContainer}>
-            {summaryCards.map((card) => (
-              <View
-                key={card.label}
-                style={[
-                  styles.summaryCard,
+            {summaryCards.map((card, index) => {
+              const cardAnimation = cardAnimations[index];
 
-                  card.type === "danger" && styles.cardDanger,
-
-                  card.type === "success" && styles.cardSuccess,
-
-                  card.type === "money" && styles.cardMoney,
-                ]}
-              >
-                <Text style={styles.cardLabel}>{card.label}</Text>
-
-                <Text
+              return (
+                <Animated.View
+                  key={card.label}
                   style={[
-                    styles.cardValue,
+                    styles.summaryCard,
 
-                    card.type === "danger" && styles.valueDanger,
+                    card.type === "danger" && styles.cardDanger,
 
-                    card.type === "success" && styles.valueSuccess,
+                    card.type === "success" && styles.cardSuccess,
 
-                    card.type === "money" && styles.valueMoney,
+                    card.type === "money" && styles.cardMoney,
+
+                    {
+                      opacity: cardAnimation.opacity,
+
+                      transform: [
+                        {
+                          translateY: cardAnimation.translateY,
+                        },
+                      ],
+                    },
                   ]}
                 >
-                  {card.value}
-                </Text>
-              </View>
-            ))}
+                  <Text style={styles.cardLabel}>{card.label}</Text>
+
+                  {statsLoading ? (
+                    <View style={styles.cardLoadingArea}>
+                      <ActivityIndicator size="small" color="#173A73" />
+
+                      <Text style={styles.cardLoadingText}>Loading...</Text>
+                    </View>
+                  ) : (
+                    <Text
+                      style={[
+                        styles.cardValue,
+
+                        card.type === "danger" && styles.valueDanger,
+
+                        card.type === "success" && styles.valueSuccess,
+
+                        card.type === "money" && styles.valueMoney,
+                      ]}
+                    >
+                      {card.value}
+                    </Text>
+                  )}
+                </Animated.View>
+              );
+            })}
           </View>
 
           {/* ==================================
               RECENT ACTIVITIES
           ================================== */}
 
-          <View style={styles.activityPanel}>
+          <Animated.View
+            style={[
+              styles.activityPanel,
+
+              {
+                opacity: activityOpacity,
+
+                transform: [
+                  {
+                    translateY: activityTranslateY,
+                  },
+                ],
+              },
+            ]}
+          >
             <Text style={styles.activityTitle}>Recent Activities</Text>
 
             <View style={styles.activityList}>
               {activitiesLoading ? (
-                <Text style={styles.activityDetails}>
-                  Loading recent activities...
-                </Text>
+                <View style={styles.activityLoadingContainer}>
+                  <ActivityIndicator size="large" color="#173A73" />
+
+                  <Text style={styles.activityLoadingText}>
+                    Loading recent activities...
+                  </Text>
+                </View>
               ) : recentActivities.length === 0 ? (
-                <Text style={styles.activityDetails}>
-                  No recent activities yet.
-                </Text>
+                <View style={styles.activityEmptyContainer}>
+                  <Text style={styles.activityEmptyText}>
+                    No recent activities yet.
+                  </Text>
+                </View>
               ) : (
-                recentActivities.map((activity) => (
+                recentActivities.slice(0, 5).map((activity) => (
                   <View
                     key={`${activity.activity_type}-${activity.id}`}
                     style={styles.activityItem}
@@ -678,16 +900,137 @@ export default function AdminDashboard() {
               )}
             </View>
 
-            <TouchableOpacity
-              style={styles.viewActivitiesButton}
-              onPress={handleViewActivities}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.viewActivitiesText}>View all activities</Text>
-            </TouchableOpacity>
-          </View>
+            {!activitiesLoading && recentActivities.length > 0 && (
+              <TouchableOpacity
+                style={styles.viewActivitiesButton}
+                onPress={handleViewActivities}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.viewActivitiesText}>
+                  View all activities
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Animated.View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          ALL ACTIVITIES MODAL
+      ====================================== */}
+
+      <Modal
+        visible={showActivitiesModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseActivities}
+      >
+        <View style={styles.activitiesModalOverlay}>
+          <Animated.View
+            style={[
+              styles.activitiesModal,
+
+              {
+                opacity: activitiesModalOpacity,
+
+                transform: [
+                  {
+                    scale: activitiesModalScale,
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* HEADER */}
+
+            <View style={styles.activitiesModalHeader}>
+              <View style={styles.activitiesModalHeaderText}>
+                <Text style={styles.activitiesModalTitle}>
+                  All Recent Activities
+                </Text>
+
+                <Text style={styles.activitiesModalSubtitle}>
+                  Fine and payment activities recorded in SmartFine
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.activitiesModalCloseButton}
+                onPress={handleCloseActivities}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.activitiesModalCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* LIST */}
+
+            <ScrollView
+              style={styles.activitiesModalScroll}
+              contentContainerStyle={styles.activitiesModalContent}
+              showsVerticalScrollIndicator
+            >
+              {activitiesLoading ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="large" color="#173A73" />
+
+                  <Text style={styles.activityLoadingText}>
+                    Loading activities...
+                  </Text>
+                </View>
+              ) : recentActivities.length === 0 ? (
+                <Text style={styles.activitiesModalEmptyText}>
+                  No activities recorded yet.
+                </Text>
+              ) : (
+                recentActivities.map((activity) => (
+                  <View
+                    key={`modal-${activity.activity_type}-${activity.id}`}
+                    style={styles.activityItem}
+                  >
+                    <View style={styles.activityTextArea}>
+                      <Text style={styles.activityDescription}>
+                        <Text style={styles.activityName}>{activity.name}</Text>{" "}
+                        {activity.description}
+                      </Text>
+
+                      <Text style={styles.activityDetails}>
+                        {formatActivityDate(activity.created_at)} •{" "}
+                        {formatActivityTime(activity.created_at)} •{" "}
+                        {activity.details}
+                      </Text>
+                    </View>
+
+                    <Text
+                      style={[
+                        styles.activityAmount,
+
+                        activity.activity_type === "paid"
+                          ? styles.amountPaid
+                          : styles.amountFine,
+                      ]}
+                    >
+                      ₱{Number(activity.amount).toFixed(2)}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {/* FOOTER */}
+
+            <View style={styles.activitiesModalFooter}>
+              <TouchableOpacity
+                style={styles.activitiesModalDoneButton}
+                onPress={handleCloseActivities}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.activitiesModalDoneText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
 
       {/* ======================================
           LOGOUT CONFIRMATION MODAL
@@ -720,7 +1063,43 @@ function getProfilePictureUrl(uri: string | null | undefined) {
 }
 
 // ==========================================
-// ACTIVITY RECORDED TIME
+// ACTIVITY DATE
+// ==========================================
+
+function formatActivityDate(value: string | null | undefined) {
+  if (!value) {
+    return "--";
+  }
+
+  try {
+    let normalized = value.trim();
+
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
+      normalized = normalized.replace(" ", "T") + "Z";
+    }
+
+    const date = new Date(normalized);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toLocaleDateString("en-PH", {
+      month: "short",
+
+      day: "numeric",
+
+      year: "numeric",
+
+      timeZone: "Asia/Manila",
+    });
+  } catch {
+    return value;
+  }
+}
+
+// ==========================================
+// ACTIVITY TIME
 // ==========================================
 
 function formatActivityTime(value: string | null | undefined) {
@@ -730,13 +1109,6 @@ function formatActivityTime(value: string | null | undefined) {
 
   try {
     let normalized = value.trim();
-
-    // SQLite CURRENT_TIMESTAMP:
-    // YYYY-MM-DD HH:MM:SS
-    // is UTC.
-    //
-    // Convert it into an ISO UTC value
-    // before displaying Philippine time.
 
     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
       normalized = normalized.replace(" ", "T") + "Z";

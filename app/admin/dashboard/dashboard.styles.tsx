@@ -376,6 +376,32 @@ export const styles = StyleSheet.create({
   },
 
   // ==========================================
+  // SUMMARY CARD LOADING
+  // ==========================================
+
+  cardLoadingArea: {
+    flex: 1,
+
+    minHeight: 55,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    marginTop: 10,
+  },
+
+  cardLoadingText: {
+    marginTop: 6,
+
+    color: COLORS.muted,
+
+    fontSize: 10,
+
+    fontWeight: "500",
+  },
+
+  // ==========================================
   // RECENT ACTIVITIES
   // ==========================================
 
@@ -473,6 +499,46 @@ export const styles = StyleSheet.create({
     color: COLORS.red,
   },
 
+  // ==========================================
+  // ACTIVITY LOADING / EMPTY STATES
+  // ==========================================
+
+  activityLoadingContainer: {
+    minHeight: 150,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  activityLoadingText: {
+    marginTop: 12,
+
+    color: COLORS.muted,
+
+    fontSize: 12,
+
+    fontWeight: "500",
+
+    textAlign: "center",
+  },
+
+  activityEmptyContainer: {
+    minHeight: 110,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  activityEmptyText: {
+    color: COLORS.muted,
+
+    fontSize: 12,
+
+    textAlign: "center",
+  },
+
   viewActivitiesButton: {
     alignSelf: "flex-end",
 
@@ -487,6 +553,190 @@ export const styles = StyleSheet.create({
     fontSize: 13,
 
     fontWeight: "800",
+  },
+
+  // ==========================================
+  // ALL ACTIVITIES MODAL
+  // ==========================================
+
+  activitiesModalOverlay: {
+    flex: 1,
+
+    backgroundColor: "rgba(0, 0, 0, 0.48)",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    paddingHorizontal: 20,
+
+    paddingVertical: 30,
+  },
+
+  activitiesModal: {
+    width: "88%",
+
+    maxWidth: 760,
+
+    maxHeight: "82%",
+
+    backgroundColor: COLORS.white,
+
+    borderRadius: 18,
+
+    borderWidth: 1,
+
+    borderColor: COLORS.navy,
+
+    overflow: "hidden",
+
+    shadowColor: "#000000",
+
+    shadowOffset: {
+      width: 0,
+
+      height: 10,
+    },
+
+    shadowOpacity: 0.2,
+
+    shadowRadius: 20,
+
+    elevation: 10,
+  },
+
+  activitiesModalHeader: {
+    minHeight: 88,
+
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent: "space-between",
+
+    paddingHorizontal: 28,
+
+    paddingVertical: 20,
+
+    borderBottomWidth: 1,
+
+    borderBottomColor: "#E5E9EF",
+
+    backgroundColor: COLORS.white,
+  },
+
+  activitiesModalHeaderText: {
+    flex: 1,
+
+    paddingRight: 20,
+  },
+
+  activitiesModalTitle: {
+    color: COLORS.text,
+
+    fontSize: 20,
+
+    fontWeight: "800",
+  },
+
+  activitiesModalSubtitle: {
+    marginTop: 4,
+
+    color: COLORS.muted,
+
+    fontSize: 11,
+  },
+
+  activitiesModalCloseButton: {
+    width: 38,
+
+    height: 38,
+
+    borderRadius: 19,
+
+    backgroundColor: "#EFF3F8",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  activitiesModalCloseText: {
+    color: COLORS.navy,
+
+    fontSize: 25,
+
+    lineHeight: 28,
+
+    fontWeight: "500",
+  },
+
+  activitiesModalScroll: {
+    maxHeight: 520,
+  },
+
+  activitiesModalContent: {
+    paddingHorizontal: 28,
+
+    paddingVertical: 22,
+
+    gap: 14,
+  },
+
+  activitiesModalEmptyText: {
+    color: COLORS.muted,
+
+    fontSize: 13,
+
+    textAlign: "center",
+
+    paddingVertical: 40,
+  },
+
+  modalLoadingContainer: {
+    minHeight: 220,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  activitiesModalFooter: {
+    paddingHorizontal: 28,
+
+    paddingVertical: 16,
+
+    alignItems: "flex-end",
+
+    borderTopWidth: 1,
+
+    borderTopColor: "#E5E9EF",
+
+    backgroundColor: "#FAFBFC",
+  },
+
+  activitiesModalDoneButton: {
+    minWidth: 110,
+
+    height: 40,
+
+    borderRadius: 8,
+
+    backgroundColor: COLORS.navy,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    paddingHorizontal: 20,
+  },
+
+  activitiesModalDoneText: {
+    color: COLORS.white,
+
+    fontSize: 13,
+
+    fontWeight: "700",
   },
 });
 

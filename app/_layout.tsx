@@ -13,7 +13,15 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { StatusBar } from "expo-status-bar";
 
-import { Image, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -28,14 +36,16 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // Ignore if splash is already controlled
-  // by the current development environment.
+  // by the development environment.
 });
 
 // ==========================================
-// SPLASH DURATION
+// SPLASH SETTINGS
 // ==========================================
 
 const CUSTOM_SPLASH_DURATION = 3000;
+
+const SPLASH_EXIT_DURATION = 350;
 
 // ==========================================
 // ROOT LAYOUT
@@ -55,6 +65,28 @@ export default function RootLayout() {
   const [progress, setProgress] = useState(0);
 
   const splashStartedRef = useRef(false);
+
+  // ========================================
+  // SPLASH ANIMATIONS
+  // ========================================
+
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+
+  const logoScale = useRef(new Animated.Value(0.9)).current;
+
+  const logoTranslateY = useRef(new Animated.Value(16)).current;
+
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
+
+  const subtitleTranslateY = useRef(new Animated.Value(10)).current;
+
+  const loadingOpacity = useRef(new Animated.Value(0)).current;
+
+  const loadingTranslateY = useRef(new Animated.Value(10)).current;
+
+  const footerOpacity = useRef(new Animated.Value(0)).current;
 
   // ========================================
   // FONTS
@@ -81,14 +113,114 @@ export default function RootLayout() {
   }, [fontError]);
 
   // ========================================
-  // SMARTFINE 3-SECOND SPLASH
+  // START SPLASH CONTENT ANIMATION
+  // ========================================
+
+  const startSplashAnimation = () => {
+    Animated.sequence([
+      // ====================================
+      // LOGO
+      // ====================================
+
+      Animated.parallel([
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+
+          duration: 450,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+
+        Animated.spring(logoScale, {
+          toValue: 1,
+
+          friction: 7,
+
+          tension: 55,
+
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(logoTranslateY, {
+          toValue: 0,
+
+          duration: 450,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+      ]),
+
+      // ====================================
+      // SUBTITLE
+      // ====================================
+
+      Animated.parallel([
+        Animated.timing(subtitleOpacity, {
+          toValue: 1,
+
+          duration: 350,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(subtitleTranslateY, {
+          toValue: 0,
+
+          duration: 350,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+      ]),
+
+      // ====================================
+      // LOADING AREA
+      // ====================================
+
+      Animated.parallel([
+        Animated.timing(loadingOpacity, {
+          toValue: 1,
+
+          duration: 350,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(loadingTranslateY, {
+          toValue: 0,
+
+          duration: 350,
+
+          easing: Easing.out(Easing.cubic),
+
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(footerOpacity, {
+          toValue: 1,
+
+          duration: 400,
+
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  };
+
+  // ========================================
+  // SMARTFINE SPLASH
   // ========================================
 
   useEffect(() => {
-    // Wait until application resources
-    // are ready before showing the custom
-    // SmartFine splash.
-
     if (!fontsLoaded || isLoading || fontError || splashStartedRef.current) {
       return;
     }
@@ -102,7 +234,13 @@ export default function RootLayout() {
     SplashScreen.hideAsync().catch(() => {});
 
     // ======================================
-    // START CUSTOM PROGRESS
+    // BEGIN ENTRANCE ANIMATION
+    // ======================================
+
+    startSplashAnimation();
+
+    // ======================================
+    // START PROGRESS
     // ======================================
 
     const startedAt = Date.now();
@@ -131,8 +269,22 @@ export default function RootLayout() {
     const finishTimer = setTimeout(() => {
       setProgress(100);
 
-      setShowAppSplash(false);
+      Animated.timing(splashOpacity, {
+        toValue: 0,
+
+        duration: SPLASH_EXIT_DURATION,
+
+        easing: Easing.inOut(Easing.cubic),
+
+        useNativeDriver: true,
+      }).start(() => {
+        setShowAppSplash(false);
+      });
     }, CUSTOM_SPLASH_DURATION);
+
+    // ======================================
+    // CLEANUP
+    // ======================================
 
     return () => {
       clearInterval(progressTimer);
@@ -171,7 +323,14 @@ export default function RootLayout() {
 
   if (showAppSplash) {
     return (
-      <View style={styles.splashScreen}>
+      <Animated.View
+        style={[
+          styles.splashScreen,
+          {
+            opacity: splashOpacity,
+          },
+        ]}
+      >
         <StatusBar style="light" />
 
         <View style={styles.splashContent}>
@@ -179,30 +338,75 @@ export default function RootLayout() {
               SMARTFINE LOGO
           ================================= */}
 
-          <Image
-            source={require("../assets/branding/smartfineNoBG.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Animated.View
+            style={{
+              opacity: logoOpacity,
+
+              transform: [
+                {
+                  scale: logoScale,
+                },
+
+                {
+                  translateY: logoTranslateY,
+                },
+              ],
+            }}
+          >
+            <Image
+              source={require("../assets/branding/smartfineNoBG.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Animated.View>
 
           {/* =================================
               DESCRIPTION
           ================================= */}
 
-          <Text style={styles.subtitle}>
-            Student Fines Monitoring and Management System
-          </Text>
+          <Animated.View
+            style={[
+              styles.subtitleContainer,
+              {
+                opacity: subtitleOpacity,
+
+                transform: [
+                  {
+                    translateY: subtitleTranslateY,
+                  },
+                ],
+              },
+            ]}
+          >
+            <Text style={styles.subtitle}>
+              Student Fines Monitoring and Management System
+            </Text>
+          </Animated.View>
 
           {/* =================================
-              PROGRESS BAR
+              LOADING AREA
           ================================= */}
 
-          <View style={styles.loadingArea}>
+          <Animated.View
+            style={[
+              styles.loadingArea,
+              {
+                opacity: loadingOpacity,
+
+                transform: [
+                  {
+                    translateY: loadingTranslateY,
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* PROGRESS BAR */}
+
             <View style={styles.progressTrack}>
               <View
                 style={[
                   styles.progressFill,
-
                   {
                     width: `${progress}%`,
                   },
@@ -210,29 +414,49 @@ export default function RootLayout() {
               />
             </View>
 
-            {/* =================================
-                PROGRESS INFORMATION
-            ================================= */}
+            {/* PROGRESS INFORMATION */}
 
             <View style={styles.progressInfo}>
-              <Text style={styles.loadingText}>Loading SmartFine...</Text>
+              <View style={styles.loadingTextArea}>
+                <ActivityIndicator
+                  size="small"
+                  color="#FFFFFF"
+                  style={styles.loadingSpinner}
+                />
+
+                <Text style={styles.loadingText}>Loading SmartFine...</Text>
+              </View>
 
               <Text style={styles.percentageText}>{progress}%</Text>
             </View>
-          </View>
+          </Animated.View>
         </View>
 
         {/* =================================
             FOOTER
         ================================= */}
 
-        <Text style={styles.footerText}>SmartFine</Text>
-      </View>
+        <Animated.Text
+          style={[
+            styles.footerText,
+            {
+              opacity: footerOpacity,
+            },
+          ]}
+        >
+          SmartFine
+        </Animated.Text>
+      </Animated.View>
     );
   }
 
   // ========================================
   // MAIN APP
+  //
+  // IMPORTANT:
+  // Keep Stack configuration simple here.
+  // Screen-specific animations will be
+  // handled inside each module instead.
   // ========================================
 
   return (
@@ -294,6 +518,12 @@ const styles = StyleSheet.create({
   // ======================================
   // SUBTITLE
   // ======================================
+
+  subtitleContainer: {
+    width: "100%",
+
+    alignItems: "center",
+  },
 
   subtitle: {
     maxWidth: 320,
@@ -364,7 +594,23 @@ const styles = StyleSheet.create({
 
     justifyContent: "space-between",
 
-    marginTop: 10,
+    marginTop: 12,
+  },
+
+  loadingTextArea: {
+    flexDirection: "row",
+
+    alignItems: "center",
+  },
+
+  loadingSpinner: {
+    marginRight: 8,
+
+    transform: [
+      {
+        scale: 0.8,
+      },
+    ],
   },
 
   loadingText: {
@@ -399,8 +645,6 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_300Light",
 
     fontSize: 11,
-
-    opacity: 0.5,
   },
 
   // ======================================

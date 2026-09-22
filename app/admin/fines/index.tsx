@@ -147,6 +147,8 @@ export default function FinesDirectory() {
 
   const [loading, setLoading] = useState(true);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState("");
 
   // ==========================================
@@ -216,12 +218,24 @@ export default function FinesDirectory() {
   // ==========================================
 
   useEffect(() => {
-    loadPageData();
+    loadPageData(true);
   }, []);
 
-  const loadPageData = async () => {
+  const loadPageData = async (showFullLoader = false) => {
+    if (loading && !showFullLoader) {
+      return;
+    }
+
+    if (refreshing) {
+      return;
+    }
+
     try {
-      setLoading(true);
+      if (showFullLoader) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
 
       setErrorMessage("");
 
@@ -260,13 +274,43 @@ export default function FinesDirectory() {
       setFines(finesData.fines || []);
 
       setViolationTypes(violationsData.violations || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Load fines directory error:", error);
 
-      setErrorMessage("Could not connect to the SmartFine server.");
+      if (showFullLoader || fines.length === 0) {
+        setErrorMessage(
+          error?.message || "Could not connect to the SmartFine server.",
+        );
+      } else {
+        setWarningTitle("Refresh Failed");
+
+        setWarningMessage(
+          error?.message || "Could not refresh the fines directory.",
+        );
+
+        setShowWarningModal(true);
+      }
     } finally {
       setLoading(false);
+
+      setRefreshing(false);
     }
+  };
+
+  // ==========================================
+  // REFRESH DIRECTORY
+  // ==========================================
+
+  const handleRefresh = async () => {
+    if (loading || refreshing) {
+      return;
+    }
+
+    setStatusMenuOpen(false);
+
+    setViolationMenuOpen(false);
+
+    await loadPageData(false);
   };
 
   // ==========================================
@@ -349,6 +393,10 @@ export default function FinesDirectory() {
   // ==========================================
 
   const handleAddFine = () => {
+    if (loading || refreshing) {
+      return;
+    }
+
     router.push("/admin/fines/add" as any);
   };
 
@@ -357,6 +405,10 @@ export default function FinesDirectory() {
   // ==========================================
 
   const handleOpenFine = (fineId: number) => {
+    if (loading || refreshing) {
+      return;
+    }
+
     router.push(`/admin/fines/${fineId}` as any);
   };
 
@@ -387,8 +439,6 @@ export default function FinesDirectory() {
   const performLogout = async () => {
     try {
       setLogoutLoading(true);
-
-      console.log("Logout confirmation accepted.");
 
       await logout();
 
@@ -497,9 +547,7 @@ export default function FinesDirectory() {
             })}
           </View>
 
-          {/* ==================================
-              LOGOUT
-          ================================== */}
+          {/* LOGOUT */}
 
           <TouchableOpacity
             style={styles.logoutButton}
@@ -582,21 +630,32 @@ export default function FinesDirectory() {
                 onChangeText={setSearchText}
                 placeholder="Search student name or Fine ID"
                 placeholderTextColor="#8C939F"
+                editable={!loading}
               />
             </View>
 
-            {/* ==================================
-                STATUS FILTER
-            ================================== */}
+            {/* STATUS FILTER */}
 
             <View style={styles.filterWrapper}>
               <TouchableOpacity
-                style={styles.filterButton}
+                style={[
+                  styles.filterButton,
+
+                  loading && {
+                    opacity: 0.55,
+                  },
+                ]}
                 onPress={() => {
+                  if (loading) {
+                    return;
+                  }
+
                   setStatusMenuOpen(!statusMenuOpen);
 
                   setViolationMenuOpen(false);
                 }}
+                disabled={loading}
+                activeOpacity={0.8}
               >
                 <Text style={styles.filterButtonText}>
                   {selectedStatus === "ALL"
@@ -618,6 +677,7 @@ export default function FinesDirectory() {
 
                         setStatusMenuOpen(false);
                       }}
+                      activeOpacity={0.8}
                     >
                       <Text style={styles.dropdownItemText}>
                         {status === "ALL" ? "All Status" : formatStatus(status)}
@@ -628,18 +688,28 @@ export default function FinesDirectory() {
               )}
             </View>
 
-            {/* ==================================
-                VIOLATION FILTER
-            ================================== */}
+            {/* VIOLATION FILTER */}
 
             <View style={[styles.filterWrapper, styles.violationFilterWrapper]}>
               <TouchableOpacity
-                style={styles.filterButton}
+                style={[
+                  styles.filterButton,
+
+                  loading && {
+                    opacity: 0.55,
+                  },
+                ]}
                 onPress={() => {
+                  if (loading) {
+                    return;
+                  }
+
                   setViolationMenuOpen(!violationMenuOpen);
 
                   setStatusMenuOpen(false);
                 }}
+                disabled={loading}
+                activeOpacity={0.8}
               >
                 <Text style={styles.filterButtonText} numberOfLines={1}>
                   {selectedViolationName}
@@ -657,6 +727,7 @@ export default function FinesDirectory() {
 
                       setViolationMenuOpen(false);
                     }}
+                    activeOpacity={0.8}
                   >
                     <Text style={styles.dropdownItemText}>All Violations</Text>
                   </TouchableOpacity>
@@ -670,6 +741,7 @@ export default function FinesDirectory() {
 
                         setViolationMenuOpen(false);
                       }}
+                      activeOpacity={0.8}
                     >
                       <Text style={styles.dropdownItemText}>
                         {violation.violation_name}
@@ -680,13 +752,71 @@ export default function FinesDirectory() {
               )}
             </View>
 
-            {/* ==================================
-                ADD FINE
-            ================================== */}
+            {/* REFRESH */}
 
             <TouchableOpacity
-              style={styles.addButton}
+              style={[
+                styles.filterButton,
+
+                {
+                  width: 125,
+
+                  opacity: loading || refreshing ? 0.6 : 1,
+                },
+              ]}
+              onPress={handleRefresh}
+              disabled={loading || refreshing}
+              activeOpacity={0.8}
+            >
+              {refreshing ? (
+                <View
+                  style={{
+                    flex: 1,
+
+                    flexDirection: "row",
+
+                    alignItems: "center",
+
+                    justifyContent: "center",
+
+                    gap: 7,
+                  }}
+                >
+                  <ActivityIndicator size="small" color="#173A73" />
+
+                  <Text style={styles.filterButtonText}>Refreshing</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.filterButtonText}>Refresh</Text>
+
+                  <Text
+                    style={{
+                      color: "#173A73",
+
+                      fontSize: 16,
+
+                      fontWeight: "700",
+                    }}
+                  >
+                    ↻
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* ADD FINE */}
+
+            <TouchableOpacity
+              style={[
+                styles.addButton,
+
+                (loading || refreshing) && {
+                  opacity: 0.55,
+                },
+              ]}
               onPress={handleAddFine}
+              disabled={loading || refreshing}
               activeOpacity={0.85}
             >
               <Text style={styles.addButtonText}>+ Add Fine</Text>
@@ -698,41 +828,36 @@ export default function FinesDirectory() {
           ================================== */}
 
           <View style={styles.tableCard}>
-            {/* ==================================
-                LOADING
-            ================================== */}
+            {/* INITIAL LOADING */}
 
             {loading ? (
               <View style={styles.centerState}>
                 <ActivityIndicator size="large" color="#173A73" />
 
-                <Text style={styles.loadingText}>Loading fines...</Text>
+                <Text style={styles.loadingText}>
+                  Loading fines and violation types...
+                </Text>
               </View>
             ) : errorMessage ? (
-              /* ==================================
-                  ERROR
-              ================================== */
+              /* ERROR */
 
               <View style={styles.centerState}>
                 <Text style={styles.errorText}>{errorMessage}</Text>
 
                 <TouchableOpacity
                   style={styles.retryButton}
-                  onPress={loadPageData}
+                  onPress={() => loadPageData(true)}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.retryButtonText}>Try Again</Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              /* ==================================
-                  TABLE
-              ================================== */
+              /* TABLE */
 
               <ScrollView horizontal showsHorizontalScrollIndicator={true}>
                 <View style={styles.table}>
-                  {/* ==================================
-                      TABLE HEADER
-                  ================================== */}
+                  {/* TABLE HEADER */}
 
                   <View style={styles.tableHeader}>
                     <Text style={[styles.headerCell, styles.fineIdColumn]}>
@@ -764,9 +889,7 @@ export default function FinesDirectory() {
                     </Text>
                   </View>
 
-                  {/* ==================================
-                      EMPTY STATE
-                  ================================== */}
+                  {/* EMPTY STATE */}
 
                   {filteredFines.length === 0 ? (
                     <View style={styles.emptyTable}>
@@ -777,15 +900,20 @@ export default function FinesDirectory() {
                       </Text>
                     </View>
                   ) : (
-                    /* ==================================
-                        FINE ROWS
-                    ================================== */
+                    /* FINE ROWS */
 
                     filteredFines.map((fine) => (
                       <TouchableOpacity
                         key={fine.id}
-                        style={styles.tableRow}
+                        style={[
+                          styles.tableRow,
+
+                          refreshing && {
+                            opacity: 0.65,
+                          },
+                        ]}
                         onPress={() => handleOpenFine(fine.id)}
+                        disabled={refreshing}
                         activeOpacity={0.75}
                       >
                         {/* FINE ID */}
