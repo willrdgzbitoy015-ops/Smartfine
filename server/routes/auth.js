@@ -2053,6 +2053,149 @@ router.get(
 );
 
 // ==========================================
+// STUDENT DASHBOARD
+// GET /api/auth/student-dashboard
+// ==========================================
+
+router.get("/student-dashboard", authenticateToken, (req, res) => {
+  try {
+    const userId = Number(req.authUser?.userId);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Your session is invalid. Please log in again.",
+      });
+    }
+
+    const student = getCurrentUser(userId);
+
+    if (!student) {
+      return res.status(401).json({
+        success: false,
+        message: "Your account could not be found.",
+      });
+    }
+
+    if (
+      String(student.role).toUpperCase() !== "STUDENT" ||
+      String(student.account_status).toUpperCase() !== "ACTIVE"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "An active student account is required.",
+      });
+    }
+
+    // The student ID comes from the verified token.
+    // Clients cannot request another student's dashboard.
+    const totals = db
+      .prepare(
+        `
+      SELECT
+        COALESCE(SUM(amount_centavos), 0) AS totalAmountCentavos,
+
+        COALESCE(SUM(
+          CASE
+            WHEN paid_at IS NOT NULL
+              OR UPPER(COALESCE(fine_status, 'UNPAID')) = 'PAID'
+            THEN amount_centavos
+            ELSE 0
+          END
+        ), 0) AS paidAmountCentavos,
+
+        COALESCE(SUM(
+          CASE
+            WHEN paid_at IS NULL
+              AND UPPER(COALESCE(fine_status, 'UNPAID')) != 'PAID'
+            THEN amount_centavos
+            ELSE 0
+          END
+        ), 0) AS outstandingAmountCentavos,
+
+        COALESCE(SUM(
+          CASE
+            WHEN paid_at IS NULL
+              AND UPPER(COALESCE(fine_status, 'UNPAID')) != 'PAID'
+            THEN 1
+            ELSE 0
+          END
+        ), 0) AS unpaidCount
+
+      FROM fines
+      WHERE student_id = ?
+        AND cancelled_at IS NULL
+        AND UPPER(COALESCE(fine_status, 'UNPAID')) != 'CANCELLED'
+    `,
+      )
+      .get(userId);
+
+    // Payment activities represent fines marked paid.
+    // They are not fabricated payment transactions.
+    const activities = db
+      .prepare(
+        `
+      SELECT *
+      FROM (
+        SELECT
+          'fine-' || f.id AS id,
+          'FINE' AS type,
+          COALESCE(vt.violation_name, 'Fine') AS description,
+          f.amount_centavos AS amountCentavos,
+          f.created_at AS recordedAt
+        FROM fines f
+        LEFT JOIN violation_types vt
+          ON vt.id = f.violation_type_id
+        WHERE f.student_id = ?
+          AND f.cancelled_at IS NULL
+          AND UPPER(COALESCE(f.fine_status, 'UNPAID')) != 'CANCELLED'
+
+        UNION ALL
+
+        SELECT
+          'paid-' || f.id AS id,
+          'PAID' AS type,
+          COALESCE(vt.violation_name, 'Fine') AS description,
+          f.amount_centavos AS amountCentavos,
+          f.paid_at AS recordedAt
+        FROM fines f
+        LEFT JOIN violation_types vt
+          ON vt.id = f.violation_type_id
+        WHERE f.student_id = ?
+          AND f.paid_at IS NOT NULL
+          AND f.cancelled_at IS NULL
+          AND UPPER(COALESCE(f.fine_status, 'UNPAID')) != 'CANCELLED'
+      )
+      ORDER BY DATETIME(recordedAt) DESC, id DESC
+      LIMIT 6
+    `,
+      )
+      .all(userId, userId);
+
+    return res.json({
+      success: true,
+      user: formatUser(student),
+      stats: {
+        totalAmountCentavos: Number(totals.totalAmountCentavos),
+        paidAmountCentavos: Number(totals.paidAmountCentavos),
+        outstandingAmountCentavos: Number(totals.outstandingAmountCentavos),
+        unpaidCount: Number(totals.unpaidCount),
+      },
+      activities: activities.map((activity) => ({
+        ...activity,
+        amountCentavos: Number(activity.amountCentavos),
+      })),
+    });
+  } catch (error) {
+    console.error("Student dashboard error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load your dashboard.",
+    });
+  }
+});
+// ==========================================
 // EXPORTS
 // ==========================================
 

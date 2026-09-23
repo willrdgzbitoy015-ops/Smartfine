@@ -1219,7 +1219,12 @@ router.post("/", (req, res) => {
 // GET /api/fines/:id
 // ==========================================
 
-router.get("/:id", (req, res) => {
+router.get("/:id", (req, res, next) => {
+  // Let the student fines endpoint below handle this request.
+  if (req.params.id === "my-fines") {
+    return next("route");
+  }
+
   try {
     const fineId = Number(req.params.id);
 
@@ -1965,6 +1970,107 @@ router.patch("/:id/cancel", (req, res) => {
       code: "CANCEL_FINE_ERROR",
       message: "Failed to cancel fine.",
       error: error.message,
+    });
+  }
+});
+
+// GET /api/fines/my-fines
+// Keep this BEFORE router.get("/:id", ...).
+
+router.get("/my-fines", authenticateToken, (req, res) => {
+  try {
+    const studentId = Number(req.authUser?.userId);
+
+    if (!Number.isSafeInteger(studentId) || studentId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Please sign in again.",
+      });
+    }
+
+    const student = db
+      .prepare(
+        `
+        SELECT id, role, account_status
+        FROM users
+        WHERE id = ?
+      `,
+      )
+      .get(studentId);
+
+    if (
+      !student ||
+      String(student.role).toUpperCase() !== "STUDENT" ||
+      String(student.account_status).toUpperCase() !== "ACTIVE"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "An active student account is required.",
+      });
+    }
+
+    const rows = db
+      .prepare(
+        `
+        SELECT
+          f.id,
+          f.fine_reference AS fineReference,
+          COALESCE(vt.violation_name, 'Violation') AS violationName,
+          f.amount_centavos AS amountCentavos,
+          f.created_at AS recordedAt,
+          f.paid_at AS paidAt,
+          f.remarks,
+          CASE
+            WHEN f.paid_at IS NOT NULL
+              OR UPPER(COALESCE(f.fine_status, '')) = 'PAID'
+              THEN 'PAID'
+            WHEN UPPER(COALESCE(f.fine_status, '')) = 'PENDING'
+              THEN 'PENDING'
+            ELSE 'UNPAID'
+          END AS status
+        FROM fines f
+        LEFT JOIN violation_types vt
+          ON vt.id = f.violation_type_id
+        WHERE f.student_id = ?
+          AND f.cancelled_at IS NULL
+          AND UPPER(COALESCE(f.fine_status, '')) <> 'CANCELLED'
+        ORDER BY datetime(f.created_at) DESC, f.id DESC
+      `,
+      )
+      .all(studentId);
+
+    const fines = rows.map((fine) => ({
+      ...fine,
+      id: Number(fine.id),
+      amountCentavos: Number(fine.amountCentavos),
+    }));
+
+    const outstandingAmountCentavos = fines.reduce(
+      (total, fine) =>
+        fine.status !== "PAID" ? total + fine.amountCentavos : total,
+      0,
+    );
+
+    const payableAmountCentavos = fines.reduce(
+      (total, fine) =>
+        fine.status === "UNPAID" ? total + fine.amountCentavos : total,
+      0,
+    );
+
+    return res.json({
+      success: true,
+      fines,
+      summary: {
+        outstandingAmountCentavos,
+        payableAmountCentavos,
+      },
+    });
+  } catch (error) {
+    console.error("GET /api/fines/my-fines failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load your fines. Please try again.",
     });
   }
 });
