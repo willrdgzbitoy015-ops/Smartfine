@@ -92,6 +92,10 @@ export default function AdminDashboard() {
 
   const [showActivitiesModal, setShowActivitiesModal] = useState(false);
 
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(
+    null,
+  );
+
   // ==========================================
   // DASHBOARD STATS
   // ==========================================
@@ -268,7 +272,7 @@ export default function AdminDashboard() {
   // ==========================================
 
   useEffect(() => {
-    if (!showActivitiesModal) {
+    if (!showActivitiesModal && !selectedActivity) {
       return;
     }
 
@@ -297,7 +301,7 @@ export default function AdminDashboard() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [showActivitiesModal]);
+  }, [showActivitiesModal, selectedActivity]);
 
   // ==========================================
   // LOAD DASHBOARD STATS
@@ -533,6 +537,18 @@ export default function AdminDashboard() {
     setShowActivitiesModal(true);
   };
 
+  const handleActivityPress = (activity: Activity) => {
+    setSelectedActivity(activity);
+  };
+
+  const handleBackFromActivity = () => {
+    if (showActivitiesModal) {
+      setSelectedActivity(null);
+    } else {
+      handleCloseActivities();
+    }
+  };
+
   const handleCloseActivities = () => {
     Animated.parallel([
       Animated.timing(activitiesModalOpacity, {
@@ -556,6 +572,8 @@ export default function AdminDashboard() {
       }),
     ]).start(() => {
       setShowActivitiesModal(false);
+
+      setSelectedActivity(null);
     });
   };
 
@@ -849,7 +867,21 @@ export default function AdminDashboard() {
               },
             ]}
           >
-            <Text style={styles.activityTitle}>Recent Activities</Text>
+            <View style={styles.activityHeader}>
+              <Text style={styles.activityTitle}>Recent Activities</Text>
+
+              {!activitiesLoading && recentActivities.length > 0 && (
+                <TouchableOpacity
+                  style={styles.viewActivitiesButton}
+                  onPress={handleViewActivities}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.viewActivitiesText}>
+                    View all activities
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             <View style={styles.activityList}>
               {activitiesLoading ? (
@@ -868,9 +900,12 @@ export default function AdminDashboard() {
                 </View>
               ) : (
                 recentActivities.slice(0, 5).map((activity) => (
-                  <View
+                  <TouchableOpacity
                     key={`${activity.activity_type}-${activity.id}`}
                     style={styles.activityItem}
+                    onPress={() => handleActivityPress(activity)}
+                    activeOpacity={0.8}
+                    accessibilityLabel={`View activity details for ${activity.name}`}
                   >
                     <View style={styles.activityTextArea}>
                       <Text style={styles.activityDescription}>
@@ -895,22 +930,10 @@ export default function AdminDashboard() {
                     >
                       ₱{Number(activity.amount).toFixed(2)}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
             </View>
-
-            {!activitiesLoading && recentActivities.length > 0 && (
-              <TouchableOpacity
-                style={styles.viewActivitiesButton}
-                onPress={handleViewActivities}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.viewActivitiesText}>
-                  View all activities
-                </Text>
-              </TouchableOpacity>
-            )}
           </Animated.View>
         </ScrollView>
       </View>
@@ -920,10 +943,12 @@ export default function AdminDashboard() {
       ====================================== */}
 
       <Modal
-        visible={showActivitiesModal}
+        visible={showActivitiesModal || selectedActivity !== null}
         transparent
         animationType="fade"
-        onRequestClose={handleCloseActivities}
+        onRequestClose={
+          selectedActivity ? handleBackFromActivity : handleCloseActivities
+        }
       >
         <View style={styles.activitiesModalOverlay}>
           <Animated.View
@@ -946,20 +971,35 @@ export default function AdminDashboard() {
             <View style={styles.activitiesModalHeader}>
               <View style={styles.activitiesModalHeaderText}>
                 <Text style={styles.activitiesModalTitle}>
-                  All Recent Activities
+                  {selectedActivity
+                    ? "Activity Details"
+                    : "All Recent Activities"}
                 </Text>
 
                 <Text style={styles.activitiesModalSubtitle}>
-                  Fine and payment activities recorded in SmartFine
+                  {selectedActivity
+                    ? "Details recorded in SmartFine"
+                    : "Fine and payment activities recorded in SmartFine"}
                 </Text>
               </View>
 
               <TouchableOpacity
                 style={styles.activitiesModalCloseButton}
-                onPress={handleCloseActivities}
+                onPress={
+                  selectedActivity
+                    ? handleBackFromActivity
+                    : handleCloseActivities
+                }
                 activeOpacity={0.8}
+                accessibilityLabel={
+                  selectedActivity && showActivitiesModal
+                    ? "Back to activities"
+                    : "Close activities"
+                }
               >
-                <Text style={styles.activitiesModalCloseText}>×</Text>
+                <Text style={styles.activitiesModalCloseText}>
+                  {selectedActivity && showActivitiesModal ? "‹" : "×"}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -970,7 +1010,64 @@ export default function AdminDashboard() {
               contentContainerStyle={styles.activitiesModalContent}
               showsVerticalScrollIndicator
             >
-              {activitiesLoading ? (
+              {selectedActivity ? (
+                <View style={styles.activityDetailContent}>
+                  <View style={styles.activityDetailSummary}>
+                    <Text
+                      style={[
+                        styles.activityDetailBadge,
+                        selectedActivity.activity_type === "paid"
+                          ? styles.activityDetailPaidBadge
+                          : styles.activityDetailFineBadge,
+                      ]}
+                    >
+                      {selectedActivity.activity_type === "paid"
+                        ? "Payment"
+                        : "Fine Recorded"}
+                    </Text>
+
+                    <Text style={styles.activityDetailName}>
+                      {selectedActivity.name}
+                    </Text>
+
+                    <Text style={styles.activityDetailDescription}>
+                      {selectedActivity.description}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.activityDetailAmount,
+                        selectedActivity.activity_type === "paid"
+                          ? styles.amountPaid
+                          : styles.amountFine,
+                      ]}
+                    >
+                      ₱{Number(selectedActivity.amount).toFixed(2)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.activityDetailRow}>
+                    <Text style={styles.activityDetailLabel}>Date</Text>
+                    <Text style={styles.activityDetailValue}>
+                      {formatActivityDate(selectedActivity.created_at)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.activityDetailRow}>
+                    <Text style={styles.activityDetailLabel}>Time</Text>
+                    <Text style={styles.activityDetailValue}>
+                      {formatActivityTime(selectedActivity.created_at)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.activityDetailRow}>
+                    <Text style={styles.activityDetailLabel}>Details</Text>
+                    <Text style={styles.activityDetailValue}>
+                      {selectedActivity.details || "Not specified"}
+                    </Text>
+                  </View>
+                </View>
+              ) : activitiesLoading ? (
                 <View style={styles.modalLoadingContainer}>
                   <ActivityIndicator size="large" color="#173A73" />
 
@@ -984,9 +1081,12 @@ export default function AdminDashboard() {
                 </Text>
               ) : (
                 recentActivities.map((activity) => (
-                  <View
+                  <TouchableOpacity
                     key={`modal-${activity.activity_type}-${activity.id}`}
                     style={styles.activityItem}
+                    onPress={() => handleActivityPress(activity)}
+                    activeOpacity={0.8}
+                    accessibilityLabel={`View activity details for ${activity.name}`}
                   >
                     <View style={styles.activityTextArea}>
                       <Text style={styles.activityDescription}>
@@ -1012,7 +1112,7 @@ export default function AdminDashboard() {
                     >
                       ₱{Number(activity.amount).toFixed(2)}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
             </ScrollView>
@@ -1022,10 +1122,16 @@ export default function AdminDashboard() {
             <View style={styles.activitiesModalFooter}>
               <TouchableOpacity
                 style={styles.activitiesModalDoneButton}
-                onPress={handleCloseActivities}
+                onPress={
+                  selectedActivity
+                    ? handleBackFromActivity
+                    : handleCloseActivities
+                }
                 activeOpacity={0.8}
               >
-                <Text style={styles.activitiesModalDoneText}>Close</Text>
+                <Text style={styles.activitiesModalDoneText}>
+                  {selectedActivity && showActivitiesModal ? "Back" : "Close"}
+                </Text>
               </TouchableOpacity>
             </View>
           </Animated.View>

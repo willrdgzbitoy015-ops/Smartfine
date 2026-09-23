@@ -1,10 +1,12 @@
 import { File as ExpoFile } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
+  Animated,
   Image,
+  Modal,
   Platform,
   ScrollView,
   Text,
@@ -212,6 +214,20 @@ export default function AdminSettings() {
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
+  const passwordFormProgress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (showPasswordForm) {
+      passwordFormProgress.setValue(0);
+
+      Animated.timing(passwordFormProgress, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showPasswordForm, passwordFormProgress]);
+
   // ========================================
   // SYSTEM SETTINGS
   // ========================================
@@ -236,6 +252,20 @@ export default function AdminSettings() {
 
   const [showFineTypeForm, setShowFineTypeForm] = useState(false);
 
+  const fineTypeFormProgress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (showFineTypeForm) {
+      fineTypeFormProgress.setValue(0);
+
+      Animated.timing(fineTypeFormProgress, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showFineTypeForm, fineTypeFormProgress]);
+
   const [editingFineTypeId, setEditingFineTypeId] = useState<number | null>(
     null,
   );
@@ -253,6 +283,8 @@ export default function AdminSettings() {
   const [fineActive, setFineActive] = useState(true);
 
   const [savingFineType, setSavingFineType] = useState(false);
+
+  const [fineTypeFormError, setFineTypeFormError] = useState("");
 
   const [changingFineStatusId, setChangingFineStatusId] = useState<
     number | null
@@ -857,6 +889,8 @@ export default function AdminSettings() {
   // ========================================
 
   const resetFineTypeForm = () => {
+    setFineTypeFormError("");
+
     setEditingFineTypeId(null);
 
     setFineCode("");
@@ -882,6 +916,8 @@ export default function AdminSettings() {
     }
 
     setEditingFineTypeId(null);
+
+    setFineTypeFormError("");
 
     setFineCode(nextFineCode || getNextFineCodeFromTypes(fineTypes));
 
@@ -910,6 +946,8 @@ export default function AdminSettings() {
     }
 
     setEditingFineTypeId(fineType.id);
+
+    setFineTypeFormError("");
 
     setFineCode(fineType.violation_code || "");
 
@@ -940,18 +978,20 @@ export default function AdminSettings() {
     const amount = Number(fineAmount);
 
     if (!cleanedName) {
-      showMessage("Validation", "Fine type name is required.");
+      setFineTypeFormError("Fine type name is required.");
 
       return;
     }
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      showMessage("Validation", "Fine amount must be greater than zero.");
+      setFineTypeFormError("Fine amount must be greater than zero.");
 
       return;
     }
 
     try {
+      setFineTypeFormError("");
+
       setSavingFineType(true);
 
       const isEditing = editingFineTypeId !== null;
@@ -981,11 +1021,7 @@ export default function AdminSettings() {
       const data: FineTypesResponse = await response.json();
 
       if (!response.ok || !data.success) {
-        showMessage(
-          isEditing ? "Unable to Update" : "Unable to Add",
-
-          data.message || "Failed to save the fine type.",
-        );
+        setFineTypeFormError(data.message || "Failed to save the fine type.");
 
         return;
       }
@@ -1009,7 +1045,7 @@ export default function AdminSettings() {
     } catch (error) {
       console.error("Save fine type error:", error);
 
-      showMessage("Connection Error", "Could not save the fine type.");
+      setFineTypeFormError("Could not save the fine type.");
     } finally {
       setSavingFineType(false);
     }
@@ -1814,7 +1850,19 @@ export default function AdminSettings() {
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <>
+                      <Animated.View
+                        style={{
+                          opacity: passwordFormProgress,
+                          transform: [
+                            {
+                              translateY: passwordFormProgress.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [6, 0],
+                              }),
+                            },
+                          ],
+                        }}
+                      >
                         <View style={styles.formRow}>
                           <View style={styles.formField}>
                             <Text style={styles.inputLabel}>
@@ -1929,7 +1977,7 @@ export default function AdminSettings() {
                             )}
                           </TouchableOpacity>
                         </View>
-                      </>
+                      </Animated.View>
                     )}
                   </View>
                 </View>
@@ -2063,245 +2111,6 @@ export default function AdminSettings() {
                   </View>
 
                   <View style={styles.settingsCard}>
-                    {/* =============================
-                        ADD / EDIT FORM
-                    ============================== */}
-
-                    {showFineTypeForm && (
-                      <View style={styles.fineTypeForm}>
-                        <View style={styles.fineTypeFormHeader}>
-                          <View>
-                            <Text style={styles.fineTypeFormTitle}>
-                              {editingFineTypeId
-                                ? "Edit Fine Type"
-                                : "Add Fine Type"}
-                            </Text>
-
-                            <Text style={styles.fineTypeFormSubtitle}>
-                              The amount configured here will be used
-                              automatically for future fines.
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.formRow}>
-                          {/* AUTOMATIC FINE CODE */}
-
-                          <View style={styles.formField}>
-                            <Text style={styles.inputLabel}>Fine Code</Text>
-
-                            <TextInput
-                              value={fineCode}
-                              editable={false}
-                              selectTextOnFocus={false}
-                              placeholder="Automatically generated"
-                              placeholderTextColor="#A0A7B2"
-                              style={[styles.input, styles.readOnlyInput]}
-                            />
-
-                            <Text
-                              style={[
-                                styles.fineTypeFormSubtitle,
-
-                                {
-                                  marginTop: 6,
-                                },
-                              ]}
-                            >
-                              {editingFineTypeId
-                                ? "Fine codes are permanent and cannot be changed."
-                                : "SmartFine automatically assigns the next fine code."}
-                            </Text>
-                          </View>
-
-                          {/* FINE TYPE */}
-
-                          <View style={styles.formField}>
-                            <Text style={styles.inputLabel}>Fine Type *</Text>
-
-                            <TextInput
-                              value={fineName}
-                              onChangeText={setFineName}
-                              placeholder="Example: Unauthorized Gadget Use"
-                              placeholderTextColor="#A0A7B2"
-                              style={styles.input}
-                              maxLength={120}
-                              editable={!savingFineType}
-                            />
-                          </View>
-                        </View>
-
-                        <View style={styles.formRow}>
-                          {/* AMOUNT */}
-
-                          <View style={styles.formField}>
-                            <Text style={styles.inputLabel}>Fine Amount *</Text>
-
-                            <View style={styles.amountInputContainer}>
-                              <Text style={styles.amountPeso}>₱</Text>
-
-                              <TextInput
-                                value={fineAmount}
-                                onChangeText={(value) => {
-                                  let cleaned = value.replace(/[^0-9.]/g, "");
-
-                                  const firstDot = cleaned.indexOf(".");
-
-                                  if (firstDot !== -1) {
-                                    cleaned =
-                                      cleaned.substring(0, firstDot + 1) +
-                                      cleaned
-                                        .substring(firstDot + 1)
-                                        .replace(/\./g, "");
-                                  }
-
-                                  setFineAmount(cleaned);
-                                }}
-                                placeholder="0.00"
-                                placeholderTextColor="#A0A7B2"
-                                style={styles.amountInput}
-                                keyboardType="decimal-pad"
-                                editable={!savingFineType}
-                              />
-                            </View>
-                          </View>
-
-                          {/* STATUS */}
-
-                          <View style={styles.formField}>
-                            <Text style={styles.inputLabel}>Status</Text>
-
-                            <View style={styles.statusSelector}>
-                              <TouchableOpacity
-                                style={[
-                                  styles.statusSelectorButton,
-
-                                  fineActive &&
-                                    styles.statusSelectorButtonActive,
-                                ]}
-                                onPress={() => setFineActive(true)}
-                                disabled={savingFineType}
-                                activeOpacity={0.8}
-                              >
-                                <Text
-                                  style={[
-                                    styles.statusSelectorText,
-
-                                    fineActive &&
-                                      styles.statusSelectorTextActive,
-                                  ]}
-                                >
-                                  Active
-                                </Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity
-                                style={[
-                                  styles.statusSelectorButton,
-
-                                  !fineActive &&
-                                    styles.statusSelectorButtonInactive,
-                                ]}
-                                onPress={() => setFineActive(false)}
-                                disabled={savingFineType}
-                                activeOpacity={0.8}
-                              >
-                                <Text
-                                  style={[
-                                    styles.statusSelectorText,
-
-                                    !fineActive &&
-                                      styles.statusSelectorTextInactive,
-                                  ]}
-                                >
-                                  Inactive
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                        </View>
-
-                        {/* DESCRIPTION */}
-
-                        <View style={styles.fineDescriptionField}>
-                          <Text style={styles.inputLabel}>Description</Text>
-
-                          <TextInput
-                            value={fineDescription}
-                            onChangeText={setFineDescription}
-                            placeholder="Optional description of the violation"
-                            placeholderTextColor="#A0A7B2"
-                            style={styles.fineDescriptionInput}
-                            multiline
-                            maxLength={500}
-                            textAlignVertical="top"
-                            editable={!savingFineType}
-                          />
-                        </View>
-
-                        {/* FORM ACTIONS */}
-
-                        <View style={styles.fineTypeFormActions}>
-                          <TouchableOpacity
-                            style={[
-                              styles.cancelButton,
-
-                              savingFineType && {
-                                opacity: 0.6,
-                              },
-                            ]}
-                            onPress={resetFineTypeForm}
-                            disabled={savingFineType}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[
-                              styles.primaryButton,
-
-                              savingFineType && {
-                                opacity: 0.7,
-                              },
-                            ]}
-                            onPress={handleSaveFineType}
-                            disabled={savingFineType}
-                            activeOpacity={0.8}
-                          >
-                            {savingFineType ? (
-                              <View
-                                style={{
-                                  flexDirection: "row",
-
-                                  alignItems: "center",
-
-                                  gap: 8,
-                                }}
-                              >
-                                <ActivityIndicator
-                                  size="small"
-                                  color="#FFFFFF"
-                                />
-
-                                <Text style={styles.primaryButtonText}>
-                                  {editingFineTypeId
-                                    ? "Saving..."
-                                    : "Adding..."}
-                                </Text>
-                              </View>
-                            ) : (
-                              <Text style={styles.primaryButtonText}>
-                                {editingFineTypeId
-                                  ? "Save Changes"
-                                  : "Add Fine Type"}
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    )}
-
                     {/* =============================
                         INFO
                     ============================== */}
@@ -2754,6 +2563,286 @@ export default function AdminSettings() {
           )}
         </ScrollView>
       </View>
+
+      {/* =====================================
+          ADD / EDIT FINE TYPE
+      ====================================== */}
+
+      <Modal
+        visible={showFineTypeForm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!savingFineType) {
+            resetFineTypeForm();
+          }
+        }}
+      >
+        <View style={styles.fineTypeModalOverlay}>
+          <View style={styles.fineTypeModalCard}>
+            <TouchableOpacity
+              style={styles.fineTypeModalClose}
+              onPress={resetFineTypeForm}
+              disabled={savingFineType}
+              accessibilityLabel="Close fine type form"
+              activeOpacity={0.8}
+            >
+              <Text style={styles.fineTypeModalCloseText}>×</Text>
+            </TouchableOpacity>
+
+            <ScrollView
+              style={styles.fineTypeModalScroll}
+              contentContainerStyle={styles.fineTypeModalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {showFineTypeForm && (
+                <Animated.View
+                  style={[
+                    styles.fineTypeForm,
+                    styles.fineTypeModalForm,
+                    {
+                      opacity: fineTypeFormProgress,
+                      transform: [
+                        {
+                          translateY: fineTypeFormProgress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [6, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <View style={styles.fineTypeFormHeader}>
+                    <View>
+                      <Text style={styles.fineTypeFormTitle}>
+                        {editingFineTypeId ? "Edit Fine Type" : "Add Fine Type"}
+                      </Text>
+
+                      <Text style={styles.fineTypeFormSubtitle}>
+                        The amount configured here will be used automatically
+                        for future fines.
+                      </Text>
+                    </View>
+                  </View>
+
+                  {fineTypeFormError !== "" && (
+                    <Text style={styles.fineTypeFormError}>
+                      {fineTypeFormError}
+                    </Text>
+                  )}
+
+                  <View style={styles.formRow}>
+                    {/* AUTOMATIC FINE CODE */}
+
+                    <View style={styles.formField}>
+                      <Text style={styles.inputLabel}>Fine Code</Text>
+
+                      <TextInput
+                        value={fineCode}
+                        editable={false}
+                        selectTextOnFocus={false}
+                        placeholder="Automatically generated"
+                        placeholderTextColor="#A0A7B2"
+                        style={[styles.input, styles.readOnlyInput]}
+                      />
+
+                      <Text
+                        style={[
+                          styles.fineTypeFormSubtitle,
+
+                          {
+                            marginTop: 6,
+                          },
+                        ]}
+                      >
+                        {editingFineTypeId
+                          ? "Fine codes are permanent and cannot be changed."
+                          : "SmartFine automatically assigns the next fine code."}
+                      </Text>
+                    </View>
+
+                    {/* FINE TYPE */}
+
+                    <View style={styles.formField}>
+                      <Text style={styles.inputLabel}>Fine Type *</Text>
+
+                      <TextInput
+                        value={fineName}
+                        onChangeText={setFineName}
+                        placeholder="Example: Unauthorized Gadget Use"
+                        placeholderTextColor="#A0A7B2"
+                        style={styles.input}
+                        maxLength={120}
+                        editable={!savingFineType}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formRow}>
+                    {/* AMOUNT */}
+
+                    <View style={styles.formField}>
+                      <Text style={styles.inputLabel}>Fine Amount *</Text>
+
+                      <View style={styles.amountInputContainer}>
+                        <Text style={styles.amountPeso}>₱</Text>
+
+                        <TextInput
+                          value={fineAmount}
+                          onChangeText={(value) => {
+                            let cleaned = value.replace(/[^0-9.]/g, "");
+
+                            const firstDot = cleaned.indexOf(".");
+
+                            if (firstDot !== -1) {
+                              cleaned =
+                                cleaned.substring(0, firstDot + 1) +
+                                cleaned
+                                  .substring(firstDot + 1)
+                                  .replace(/\./g, "");
+                            }
+
+                            setFineAmount(cleaned);
+                          }}
+                          placeholder="0.00"
+                          placeholderTextColor="#A0A7B2"
+                          style={styles.amountInput}
+                          keyboardType="decimal-pad"
+                          editable={!savingFineType}
+                        />
+                      </View>
+                    </View>
+
+                    {/* STATUS */}
+
+                    <View style={styles.formField}>
+                      <Text style={styles.inputLabel}>Status</Text>
+
+                      <View style={styles.statusSelector}>
+                        <TouchableOpacity
+                          style={[
+                            styles.statusSelectorButton,
+
+                            fineActive && styles.statusSelectorButtonActive,
+                          ]}
+                          onPress={() => setFineActive(true)}
+                          disabled={savingFineType}
+                          activeOpacity={0.8}
+                        >
+                          <Text
+                            style={[
+                              styles.statusSelectorText,
+
+                              fineActive && styles.statusSelectorTextActive,
+                            ]}
+                          >
+                            Active
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.statusSelectorButton,
+
+                            !fineActive && styles.statusSelectorButtonInactive,
+                          ]}
+                          onPress={() => setFineActive(false)}
+                          disabled={savingFineType}
+                          activeOpacity={0.8}
+                        >
+                          <Text
+                            style={[
+                              styles.statusSelectorText,
+
+                              !fineActive && styles.statusSelectorTextInactive,
+                            ]}
+                          >
+                            Inactive
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* DESCRIPTION */}
+
+                  <View style={styles.fineDescriptionField}>
+                    <Text style={styles.inputLabel}>Description</Text>
+
+                    <TextInput
+                      value={fineDescription}
+                      onChangeText={setFineDescription}
+                      placeholder="Optional description of the violation"
+                      placeholderTextColor="#A0A7B2"
+                      style={styles.fineDescriptionInput}
+                      multiline
+                      maxLength={500}
+                      textAlignVertical="top"
+                      editable={!savingFineType}
+                    />
+                  </View>
+
+                  {/* FORM ACTIONS */}
+
+                  <View style={styles.fineTypeFormActions}>
+                    <TouchableOpacity
+                      style={[
+                        styles.cancelButton,
+
+                        savingFineType && {
+                          opacity: 0.6,
+                        },
+                      ]}
+                      onPress={resetFineTypeForm}
+                      disabled={savingFineType}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.primaryButton,
+
+                        savingFineType && {
+                          opacity: 0.7,
+                        },
+                      ]}
+                      onPress={handleSaveFineType}
+                      disabled={savingFineType}
+                      activeOpacity={0.8}
+                    >
+                      {savingFineType ? (
+                        <View
+                          style={{
+                            flexDirection: "row",
+
+                            alignItems: "center",
+
+                            gap: 8,
+                          }}
+                        >
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+
+                          <Text style={styles.primaryButtonText}>
+                            {editingFineTypeId ? "Saving..." : "Adding..."}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.primaryButtonText}>
+                          {editingFineTypeId ? "Save Changes" : "Add Fine Type"}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* =====================================
           REMOVE PHOTO

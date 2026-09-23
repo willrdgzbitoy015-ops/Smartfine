@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -185,6 +185,8 @@ export default function PaymentReports() {
 
   const [error, setError] = useState("");
 
+  const requestInFlight = useRef(false);
+
   // ==========================================
   // NAVIGATION
   // ==========================================
@@ -252,6 +254,12 @@ export default function PaymentReports() {
   // ==========================================
 
   const loadReports = useCallback(async (isRefresh = false) => {
+    if (requestInFlight.current) {
+      return;
+    }
+
+    requestInFlight.current = true;
+
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -259,7 +267,9 @@ export default function PaymentReports() {
         setLoading(true);
       }
 
-      setError("");
+      if (!isRefresh) {
+        setError("");
+      }
 
       const response = await fetch(`${API_BASE}/api/reports/payments`);
 
@@ -272,7 +282,17 @@ export default function PaymentReports() {
       // ======================================
 
       if (!response.ok || !data.success) {
-        setError(data.message || "Failed to load payment reports.");
+        const message = data.message || "Failed to load payment reports.";
+
+        if (isRefresh) {
+          setWarningTitle("Refresh Failed");
+
+          setWarningMessage(message);
+
+          setShowWarningModal(true);
+        } else {
+          setError(message);
+        }
 
         return;
       }
@@ -295,8 +315,18 @@ export default function PaymentReports() {
     } catch (error) {
       console.error("Payment reports connection error:", error);
 
-      setError("Could not connect to the SmartFine server.");
+      if (isRefresh) {
+        setWarningTitle("Refresh Failed");
+
+        setWarningMessage("Could not connect to the SmartFine server.");
+
+        setShowWarningModal(true);
+      } else {
+        setError("Could not connect to the SmartFine server.");
+      }
     } finally {
+      requestInFlight.current = false;
+
       setLoading(false);
 
       setRefreshing(false);
@@ -448,6 +478,8 @@ export default function PaymentReports() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => loadReports(true)}
+              colors={["#173A73"]}
+              tintColor="#173A73"
             />
           }
         >
@@ -505,10 +537,15 @@ export default function PaymentReports() {
             <TouchableOpacity
               style={styles.refreshButton}
               onPress={() => loadReports(true)}
-              disabled={refreshing}
+              disabled={loading || refreshing}
             >
               {refreshing ? (
-                <ActivityIndicator size="small" color="#173A73" />
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <ActivityIndicator size="small" color="#173A73" />
+                  <Text style={[styles.refreshButtonText, { marginLeft: 8 }]}>
+                    Refreshing...
+                  </Text>
+                </View>
               ) : (
                 <Text style={styles.refreshButtonText}>Refresh</Text>
               )}

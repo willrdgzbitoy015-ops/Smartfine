@@ -13,7 +13,7 @@ const COLORS = {
 
   yellow: "#F4C542",
 
-  background: "#E8E8E8",
+  background: "#F4F6F9",
 
   white: "#FFFFFF",
 
@@ -164,9 +164,11 @@ export const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
 
-    paddingHorizontal: 38,
+    paddingHorizontal: 28,
 
-    paddingVertical: 35,
+    paddingTop: 30,
+
+    paddingBottom: 40,
   },
 
   // ==========================================
@@ -180,7 +182,7 @@ export const styles = StyleSheet.create({
 
     alignItems: "center",
 
-    marginBottom: 65,
+    marginBottom: 32,
   },
 
   pageTitle: {
@@ -304,33 +306,47 @@ export const styles = StyleSheet.create({
 
     flexWrap: "wrap",
 
-    gap: 18,
+    gap: 16,
 
-    justifyContent: "center",
+    justifyContent: "space-between",
 
-    marginBottom: 75,
+    marginBottom: 24,
   },
 
   summaryCard: {
-    width: 180,
+    flexGrow: 1,
 
-    minHeight: 125,
+    flexBasis: 170,
+
+    minWidth: 150,
+
+    minHeight: 132,
 
     backgroundColor: COLORS.white,
 
     borderWidth: 1,
 
-    borderColor: COLORS.navy,
+    borderColor: "#DCE4ED",
 
-    borderRadius: 10,
+    borderRadius: 14,
 
     paddingHorizontal: 18,
 
-    paddingVertical: 20,
+    paddingVertical: 18,
 
     justifyContent: "space-between",
 
-    borderTopWidth: 2,
+    borderTopWidth: 4,
+
+    shadowColor: COLORS.navyDark,
+
+    shadowOffset: { width: 0, height: 3 },
+
+    shadowOpacity: 0.05,
+
+    shadowRadius: 8,
+
+    elevation: 2,
   },
 
   cardSuccess: {
@@ -348,19 +364,19 @@ export const styles = StyleSheet.create({
   cardLabel: {
     color: COLORS.text,
 
-    fontSize: 14,
+    fontSize: 13,
 
     fontWeight: "700",
   },
 
   cardValue: {
-    textAlign: "center",
+    textAlign: "left",
 
-    fontSize: 25,
+    fontSize: 30,
 
     fontWeight: "800",
 
-    marginTop: 18,
+    marginTop: 12,
   },
 
   valueSuccess: {
@@ -406,47 +422,69 @@ export const styles = StyleSheet.create({
   // ==========================================
 
   activityPanel: {
-    width: "82%",
-
-    maxWidth: 760,
-
-    alignSelf: "center",
+    width: "100%",
 
     backgroundColor: COLORS.white,
 
     borderWidth: 1,
 
-    borderColor: COLORS.navy,
+    borderColor: "#DCE4ED",
 
-    borderRadius: 16,
+    borderRadius: 14,
 
-    paddingHorizontal: 34,
+    paddingHorizontal: 26,
 
-    paddingTop: 26,
+    paddingTop: 22,
 
-    paddingBottom: 18,
+    paddingBottom: 22,
+
+    shadowColor: COLORS.navyDark,
+
+    shadowOffset: { width: 0, height: 3 },
+
+    shadowOpacity: 0.05,
+
+    shadowRadius: 8,
+
+    elevation: 2,
+  },
+
+  activityHeader: {
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent: "space-between",
+
+    gap: 12,
+
+    marginBottom: 18,
   },
 
   activityTitle: {
     color: COLORS.text,
 
-    fontSize: 17,
+    fontSize: 18,
 
     fontWeight: "800",
 
-    marginBottom: 35,
+    flexShrink: 1,
   },
 
   activityList: {
-    gap: 18,
+    gap: 10,
   },
 
   activityItem: {
-    minHeight: 63,
+    minHeight: 68,
 
     backgroundColor: COLORS.activityBackground,
 
-    borderRadius: 9,
+    borderRadius: 10,
+
+    borderWidth: 1,
+
+    borderColor: "#ECF0F5",
 
     paddingHorizontal: 20,
 
@@ -459,6 +497,81 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
+  activityDetailContent: {
+    gap: 0,
+  },
+
+  activityDetailSummary: {
+    backgroundColor: "#F5F7FA",
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginBottom: 12,
+  },
+
+  activityDetailBadge: {
+    alignSelf: "flex-start",
+    overflow: "hidden",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 14,
+  },
+
+  activityDetailPaidBadge: {
+    color: "#18833B",
+    backgroundColor: "#E6F7EA",
+  },
+
+  activityDetailFineBadge: {
+    color: "#B42318",
+    backgroundColor: "#FFEDEC",
+  },
+
+  activityDetailName: {
+    color: COLORS.text,
+    fontSize: 19,
+    fontWeight: "800",
+  },
+
+  activityDetailDescription: {
+    color: "#4D5B6B",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 5,
+  },
+
+  activityDetailAmount: {
+    fontSize: 24,
+    fontWeight: "800",
+    marginTop: 18,
+  },
+
+  activityDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6EBF2",
+  },
+
+  activityDetailLabel: {
+    color: "#7B8795",
+    fontSize: 13,
+  },
+
+  activityDetailValue: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+
   activityTextArea: {
     flex: 1,
 
@@ -466,29 +579,33 @@ export const styles = StyleSheet.create({
   },
 
   activityDescription: {
-    color: "#555555",
+    color: "#4D5B6B",
 
-    fontSize: 13,
+    fontSize: 14,
+
+    lineHeight: 20,
   },
 
   activityName: {
-    color: "#333333",
+    color: COLORS.text,
 
     fontWeight: "700",
   },
 
   activityDetails: {
-    color: "#A2A9B3",
+    color: "#7B8795",
 
-    fontSize: 10,
+    fontSize: 11,
 
     marginTop: 4,
   },
 
   activityAmount: {
-    fontSize: 13,
+    fontSize: 14,
 
     fontWeight: "800",
+
+    textAlign: "right",
   },
 
   amountPaid: {
@@ -540,17 +657,19 @@ export const styles = StyleSheet.create({
   },
 
   viewActivitiesButton: {
-    alignSelf: "flex-end",
+    paddingHorizontal: 12,
 
-    marginTop: 40,
+    paddingVertical: 9,
 
-    paddingVertical: 8,
+    borderRadius: 8,
+
+    backgroundColor: "#EDF3FA",
   },
 
   viewActivitiesText: {
     color: COLORS.text,
 
-    fontSize: 13,
+    fontSize: 12,
 
     fontWeight: "800",
   },

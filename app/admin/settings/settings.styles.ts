@@ -557,6 +557,71 @@ export const styles = StyleSheet.create({
   // FINE TYPE FORM
   // ========================================
 
+  fineTypeModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(8, 24, 46, 0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+  },
+
+  fineTypeModalCard: {
+    width: "100%",
+    maxWidth: 760,
+    maxHeight: "90%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#082B52",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    elevation: 12,
+  },
+
+  fineTypeModalClose: {
+    alignSelf: "flex-end",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F0F3F8",
+  },
+
+  fineTypeModalCloseText: {
+    color: "#173A73",
+    fontSize: 22,
+    lineHeight: 25,
+  },
+
+  fineTypeModalScroll: {
+    flexShrink: 1,
+  },
+
+  fineTypeModalScrollContent: {
+    paddingBottom: 4,
+  },
+
+  fineTypeModalForm: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 0,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    marginBottom: 0,
+  },
+
+  fineTypeFormError: {
+    color: "#B42318",
+    backgroundColor: "#FFF0EE",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 12,
+    marginBottom: 16,
+  },
+
   fineTypeForm: {
     width: "100%",
     backgroundColor: "#F7F9FC",

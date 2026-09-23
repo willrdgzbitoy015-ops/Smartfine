@@ -94,6 +94,8 @@ export default function QRScanner() {
 
   const [permission, requestPermission] = useCameraPermissions();
 
+  const [requestingPermission, setRequestingPermission] = useState(false);
+
   // ==========================================
   // LOGOUT MODAL
   // ==========================================
@@ -227,6 +229,34 @@ export default function QRScanner() {
       setErrorMessage("Could not connect to the SmartFine server.");
     } finally {
       setLoadingStudents(false);
+    }
+  };
+
+  // ==========================================
+  // REQUEST CAMERA PERMISSION
+  // ==========================================
+
+  const handleRequestPermission = async () => {
+    if (requestingPermission) {
+      return;
+    }
+
+    try {
+      setRequestingPermission(true);
+
+      await requestPermission();
+    } catch (error) {
+      console.error("Camera permission error:", error);
+
+      setWarningTitle("Camera Error");
+
+      setWarningMessage(
+        "Could not request camera permission. Please try again.",
+      );
+
+      setShowWarningModal(true);
+    } finally {
+      setRequestingPermission(false);
     }
   };
 
@@ -689,6 +719,8 @@ export default function QRScanner() {
       return (
         <View style={styles.cameraState}>
           <ActivityIndicator size="large" color="#173A73" />
+
+          <Text style={styles.cameraPlaceholderText}>Loading camera...</Text>
         </View>
       );
     }
@@ -717,9 +749,20 @@ export default function QRScanner() {
 
           <TouchableOpacity
             style={styles.permissionButton}
-            onPress={requestPermission}
+            onPress={handleRequestPermission}
+            disabled={requestingPermission}
           >
-            <Text style={styles.permissionButtonText}>Allow Camera</Text>
+            {requestingPermission ? (
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+
+                <Text style={[styles.permissionButtonText, { marginLeft: 8 }]}>
+                  Requesting...
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.permissionButtonText}>Allow Camera</Text>
+            )}
           </TouchableOpacity>
         </View>
       );
@@ -995,7 +1038,17 @@ export default function QRScanner() {
                       disabled={processingScan}
                     >
                       {processingScan ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <View
+                          style={{ flexDirection: "row", alignItems: "center" }}
+                        >
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+
+                          <Text
+                            style={[styles.searchButtonText, { marginLeft: 8 }]}
+                          >
+                            Searching...
+                          </Text>
+                        </View>
                       ) : (
                         <Text style={styles.searchButtonText}>
                           Search Student
@@ -1037,4 +1090,3 @@ export default function QRScanner() {
     </View>
   );
 }
- 
