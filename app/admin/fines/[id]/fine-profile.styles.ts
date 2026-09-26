@@ -175,7 +175,13 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  logoutButton: {
+  navBadge: {
+    marginLeft: "auto", minWidth: 22, height: 22, paddingHorizontal: 5,
+    borderRadius: 11, backgroundColor: COLORS.red,
+    alignItems: "center", justifyContent: "center",
+  },
+  navBadgeText: { color: COLORS.white, fontSize: 11, fontWeight: "700" },
+    logoutButton: {
     marginTop: "auto",
 
     borderWidth: 1,
@@ -293,9 +299,17 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
 
     paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 
-  mobileNavItemActive: {
+  mobileNavBadge: {
+    minWidth: 20, height: 20, paddingHorizontal: 4,
+    borderRadius: 10, backgroundColor: COLORS.red,
+    alignItems: "center", justifyContent: "center",
+  },
+    mobileNavItemActive: {
     backgroundColor: COLORS.green,
   },
 
@@ -371,7 +385,13 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  divider: {
+  notificationNew: {
+    color: COLORS.red, fontSize: 11, fontWeight: "800",
+  },
+  notificationRead: {
+    color: COLORS.muted, fontSize: 11, fontWeight: "700",
+  },
+    divider: {
     height: 1,
 
     backgroundColor: "#E2E5EA",

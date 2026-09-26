@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -150,6 +151,8 @@ export default function FinesDirectory() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [fineNotifications, setFineNotifications] = useState<Record<number, { id: number; isRead: boolean }>>({});
 
   // ==========================================
   // NAVIGATION ITEMS
@@ -219,6 +222,65 @@ export default function FinesDirectory() {
 
   useEffect(() => {
     loadPageData(true);
+  }, []);
+  useEffect(() => {
+    let mounted = true;
+    let fetching = false;
+    const loadNotifications = async () => {
+      if (fetching) return;
+      fetching = true;
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          if (mounted) {
+            setUnreadCount(0);
+            setFineNotifications({});
+          }
+          return;
+        }
+        const byFine: Record<number, { id: number; isRead: boolean }> = {};
+        let offset = 0;
+        let count = 0;
+        while (true) {
+          const response = await fetch(
+            `${API_BASE}/api/admin/notifications?limit=100&offset=${offset}`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          if (!data.success || !Array.isArray(data.notifications)) {
+            throw new Error("Invalid notification response.");
+          }
+          if (offset === 0) count = Number(data.unreadCount);
+          for (const item of data.notifications) {
+            const fineId = Number(item.fineId);
+            if (Number.isSafeInteger(fineId) && fineId > 0 && !byFine[fineId]) {
+              byFine[fineId] = { id: Number(item.id), isRead: item.isRead === true };
+            }
+          }
+          if (!data.hasMore) break;
+          const next = Number(data.nextOffset);
+          if (!Number.isSafeInteger(next) || next <= offset) {
+            throw new Error("Invalid notification page.");
+          }
+          offset = next;
+        }
+        if (mounted) {
+          setFineNotifications(byFine);
+          if (Number.isSafeInteger(count) && count >= 0) setUnreadCount(count);
+        }
+      } catch (error) {
+        console.error("Fine notification list error:", error);
+      } finally {
+        fetching = false;
+      }
+    };
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const loadPageData = async (showFullLoader = false) => {
@@ -542,6 +604,13 @@ export default function FinesDirectory() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  {item.label === "Fines" && unreadCount > 0 && (
+                    <View style={styles.navBadge}>
+                      <Text style={styles.navBadgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -600,6 +669,13 @@ export default function FinesDirectory() {
                     >
                       {item.label}
                     </Text>
+                    {item.label === "Fines" && unreadCount > 0 && (
+                      <View style={styles.mobileNavBadge}>
+                        <Text style={styles.navBadgeText}>
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -907,6 +983,9 @@ export default function FinesDirectory() {
                         key={fine.id}
                         style={[
                           styles.tableRow,
+                          fineNotifications[fine.id]?.isRead === false && styles.tableRowUnread,
+
+                          
 
                           refreshing && {
                             opacity: 0.65,
@@ -928,6 +1007,11 @@ export default function FinesDirectory() {
                           ]}
                         >
                           {fine.fine_reference}
+                        {fineNotifications[fine.id] && (
+                            <Text style={fineNotifications[fine.id].isRead ? styles.fineReadLabel : styles.fineUnreadLabel}>
+                              {"\n"}{fineNotifications[fine.id].isRead ? "READ" : "NEW"}
+                            </Text>
+                          )}
                         </Text>
 
                         {/* VIOLATION */}

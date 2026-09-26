@@ -108,6 +108,43 @@ export default function AdminDashboard() {
   });
 
   const [statsLoading, setStatsLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    let fetching = false;
+    const loadUnreadCount = async () => {
+      if (fetching) return;
+      fetching = true;
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          if (mounted) setUnreadCount(0);
+          return;
+        }
+        const response = await fetch(
+          `${API_BASE}/api/admin/notifications/unread-count`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const count = Number(data.unreadCount);
+        if (mounted && data.success && Number.isSafeInteger(count) && count >= 0) {
+          setUnreadCount(count);
+        }
+      } catch (error) {
+        console.error("Unread notification count error:", error);
+      } finally {
+        fetching = false;
+      }
+    };
+    loadUnreadCount();
+    const interval = setInterval(loadUnreadCount, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // ==========================================
   // RECENT ACTIVITIES
@@ -675,6 +712,13 @@ export default function AdminDashboard() {
                   >
                     {item.label}
                   </Text>
+                  {item.label === "Fines" && unreadCount > 0 && (
+                    <View style={styles.navBadge}>
+                      <Text style={styles.navBadgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -783,6 +827,13 @@ export default function AdminDashboard() {
                     >
                       {item.label}
                     </Text>
+                    {item.label === "Fines" && unreadCount > 0 && (
+                      <View style={styles.mobileNavBadge}>
+                        <Text style={styles.navBadgeText}>
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}

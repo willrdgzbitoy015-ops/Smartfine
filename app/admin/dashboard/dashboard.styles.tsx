@@ -133,7 +133,23 @@ export const styles = StyleSheet.create({
     color: COLORS.white,
   },
 
-  logoutButton: {
+  navBadge: {
+    marginLeft: "auto",
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 5,
+    borderRadius: 11,
+    backgroundColor: COLORS.red,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navBadgeText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+    logoutButton: {
     marginTop: "auto",
 
     borderWidth: 1,
@@ -279,9 +295,21 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
 
     paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 
-  mobileNavItemActive: {
+  mobileNavBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: COLORS.red,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+    mobileNavItemActive: {
     backgroundColor: COLORS.green,
   },
 

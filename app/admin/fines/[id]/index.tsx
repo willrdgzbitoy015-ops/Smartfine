@@ -126,6 +126,8 @@ export default function FineDetailedView() {
   // ==========================================
 
   const [fine, setFine] = useState<Fine | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationStatus, setNotificationStatus] = useState<"NEW" | "READ" | null>(null);
 
   // ==========================================
   // PAGE STATE
@@ -247,6 +249,80 @@ export default function FineDetailedView() {
   // LOAD FINE
   // ==========================================
 
+  useEffect(() => {
+    let mounted = true;
+    const loadCount = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+        const response = await fetch(
+          `${API_BASE}/api/admin/notifications/unread-count`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const count = Number(data.unreadCount);
+        if (mounted && data.success && Number.isSafeInteger(count) && count >= 0) {
+          setUnreadCount(count);
+        }
+      } catch (error) {
+        console.error("Fine detail notification count error:", error);
+      }
+    };
+    loadCount();
+    const interval = setInterval(loadCount, 15000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
+
+  const markFineNotificationRead = async (openedFineId: number) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+      let offset = 0;
+      while (true) {
+        const response = await fetch(
+          `${API_BASE}/api/admin/notifications?limit=100&offset=${offset}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.notifications)) {
+          throw new Error("Invalid notification response.");
+        }
+        const item = data.notifications.find(
+          (row: { fineId: number }) => Number(row.fineId) === openedFineId,
+        );
+        if (item) {
+          if (item.isRead) {
+            setNotificationStatus("READ");
+            setUnreadCount(Number(data.unreadCount));
+            return;
+          }
+          setNotificationStatus("NEW");
+          const readResponse = await fetch(
+            `${API_BASE}/api/admin/notifications/${item.id}/read`,
+            { method: "PATCH", headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!readResponse.ok) throw new Error(`HTTP ${readResponse.status}`);
+          const result = await readResponse.json();
+          if (!result.success) throw new Error("Could not mark notification read.");
+          setNotificationStatus("READ");
+          const count = Number(result.unreadCount);
+          if (Number.isSafeInteger(count) && count >= 0) setUnreadCount(count);
+          return;
+        }
+        if (!data.hasMore) return;
+        const next = Number(data.nextOffset);
+        if (!Number.isSafeInteger(next) || next <= offset) {
+          throw new Error("Invalid notification page.");
+        }
+        offset = next;
+      }
+    } catch (error) {
+      console.error("Mark fine notification read error:", error);
+    }
+  };
+
   const loadFine = async () => {
     if (!fineId) {
       return;
@@ -268,6 +344,7 @@ export default function FineDetailedView() {
       }
 
       setFine(data.fine);
+      void markFineNotificationRead(Number(data.fine.id));
     } catch (error) {
       console.error("Load fine details error:", error);
 
@@ -689,6 +766,13 @@ export default function FineDetailedView() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  {item.label === "Fines" && unreadCount > 0 && (
+                    <View style={styles.navBadge}>
+                      <Text style={styles.navBadgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -776,6 +860,13 @@ export default function FineDetailedView() {
                     >
                       {item.label}
                     </Text>
+                    {item.label === "Fines" && unreadCount > 0 && (
+                      <View style={styles.mobileNavBadge}>
+                        <Text style={styles.navBadgeText}>
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -790,7 +881,12 @@ export default function FineDetailedView() {
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>
                 Fine Information #{fine.fine_reference}
-              </Text>
+              {notificationStatus && (
+                  <Text style={notificationStatus === "NEW" ? styles.notificationNew : styles.notificationRead}>
+                    {"\n"}{notificationStatus === "NEW" ? "? NEW NOTIFICATION" : "? NOTIFICATION READ"}
+                  </Text>
+                )}
+                </Text>
 
               <View
                 style={[

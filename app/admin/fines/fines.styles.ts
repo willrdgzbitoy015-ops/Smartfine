@@ -114,6 +114,22 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  navBadge: {
+    marginLeft: "auto",
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 5,
+    borderRadius: 11,
+    backgroundColor: COLORS.red,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navBadgeText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+  },
   logoutButton: {
     marginTop: "auto",
 
@@ -185,8 +201,20 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
 
     paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 
+  mobileNavBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: COLORS.red,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   mobileNavItemActive: {
     backgroundColor: COLORS.green,
   },
@@ -510,7 +538,11 @@ export const styles = StyleSheet.create({
   // TABLE ROW
   // ==========================================
 
-  tableRow: {
+  tableRowUnread: {
+    backgroundColor: "#FFF8F8",
+    borderColor: COLORS.red,
+  },
+    tableRow: {
     minHeight: 62,
 
     marginHorizontal: 10,
@@ -558,7 +590,17 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  studentName: {
+  fineUnreadLabel: {
+    color: COLORS.red,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  fineReadLabel: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+    studentName: {
     color: "#333333",
 
     fontSize: 13,
