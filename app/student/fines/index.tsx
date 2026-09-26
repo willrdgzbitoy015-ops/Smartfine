@@ -4,6 +4,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    Modal,
     RefreshControl,
     ScrollView,
     Text,
@@ -18,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { API_BASE } from "@/constants/api";
 import { styles } from "../styles/student-fines.styles";
+import { notificationStyles } from "../styles/student-notification.styles";
 
 type FineStatus = "UNPAID" | "PAID" | "PENDING";
 
@@ -30,6 +32,8 @@ type Fine = {
   paidAt: string | null;
   remarks: string | null;
   status: FineStatus;
+  isRead: number | boolean;
+  readAt: string | null;
 };
 
 type FinesResponse = {
@@ -118,6 +122,7 @@ export default function StudentFinesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
+  const [selectedFine, setSelectedFine] = useState<Fine | null>(null);
 
   const requestRef = useRef<AbortController | null>(null);
 
@@ -230,9 +235,65 @@ export default function StudentFinesScreen() {
 
   const visibleFines =
     data?.fines.filter((fine) => fine.status === filter) ?? [];
-
   const outstanding = data?.summary.outstandingAmountCentavos;
   const payable = data?.summary.payableAmountCentavos ?? 0;
+
+  const markFineRead = async (fineId: number) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(
+        `${API_BASE}/api/fines/my-fines/${fineId}/read`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
+          },
+        },
+      );
+
+      const body = await response.json();
+
+      if (!response.ok || !body?.success) {
+        throw new Error(body?.message || "Could not mark this fine as read.");
+      }
+
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              fines: current.fines.map((fine) =>
+                fine.id === fineId
+                  ? { ...fine, isRead: true, readAt: body.readAt }
+                  : fine,
+              ),
+            }
+          : current,
+      );
+
+      setSelectedFine((current) =>
+        current?.id === fineId
+          ? { ...current, isRead: true, readAt: body.readAt }
+          : current,
+      );
+    } catch (caught) {
+      Alert.alert(
+        "Unable to update",
+        caught instanceof Error ? caught.message : "Please try again.",
+      );
+    }
+  };
+
+  const openFineDetails = (fine: Fine) => {
+    setSelectedFine(fine);
+
+    if (!fine.isRead) {
+      void markFineRead(fine.id);
+    }
+  };
 
   const paymentNotAvailable = () => {
     Alert.alert(
@@ -276,7 +337,6 @@ export default function StudentFinesScreen() {
           </TouchableOpacity>
 
           <Text style={styles.title}>My Fines</Text>
-
           <View style={styles.headerSpacer} />
         </View>
 
@@ -360,7 +420,44 @@ export default function StudentFinesScreen() {
               {visibleFines.map((fine) => (
                 <View key={fine.id} style={styles.fineCard}>
                   <View style={styles.fineInfo}>
-                    <Text style={styles.violation}>{fine.violationName}</Text>
+                    <View style={notificationStyles.fineTitleRow}>
+                      <Text style={styles.violation}>{fine.violationName}</Text>
+
+                      <Text
+                        style={[
+                          notificationStyles.fineReadLabel,
+                          fine.isRead
+                            ? notificationStyles.readLabel
+                            : notificationStyles.newLabel,
+                        ]}
+                      >
+                        {fine.isRead ? "READ" : "NEW"}
+                      </Text>
+                    </View>
+
+                    {!fine.isRead && (
+                      <TouchableOpacity
+                        style={notificationStyles.markReadButton}
+                        onPress={() => void markFineRead(fine.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Mark ${fine.violationName} as read`}
+                      >
+                        <Text style={notificationStyles.markReadText}>
+                          Mark as read
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={notificationStyles.viewDetailsButton}
+                      onPress={() => openFineDetails(fine)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`View details for ${fine.violationName}`}
+                    >
+                      <Text style={notificationStyles.viewDetailsText}>
+                        View details
+                      </Text>
+                    </TouchableOpacity>
 
                     <Text style={styles.reference}>{fine.fineReference}</Text>
 
@@ -500,6 +597,90 @@ export default function StudentFinesScreen() {
           </View>
         </SafeAreaView>
       </View>
+
+      <Modal
+        visible={selectedFine !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedFine(null)}
+      >
+        <View style={notificationStyles.detailsOverlay}>
+          <View style={notificationStyles.detailsCard}>
+            <Text style={notificationStyles.detailsTitle}>Fine Details</Text>
+
+            {selectedFine && (
+              <>
+                <Text style={notificationStyles.detailsViolation}>
+                  {selectedFine.violationName}
+                </Text>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Reference</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {selectedFine.fineReference}
+                  </Text>
+                </View>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Amount</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {money(selectedFine.amountCentavos)}
+                  </Text>
+                </View>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Status</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {selectedFine.status}
+                  </Text>
+                </View>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Issued</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {dateLabel(selectedFine.recordedAt)}
+                  </Text>
+                </View>
+
+                {selectedFine.paidAt && (
+                  <View style={notificationStyles.detailsRow}>
+                    <Text style={notificationStyles.detailsLabel}>Paid</Text>
+                    <Text style={notificationStyles.detailsValue}>
+                      {dateLabel(selectedFine.paidAt)}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={notificationStyles.detailsRemarks}>
+                  <Text style={notificationStyles.detailsLabel}>Remarks</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {selectedFine.remarks || "No additional remarks."}
+                  </Text>
+                </View>
+
+                <Text
+                  style={[
+                    notificationStyles.detailsReadStatus,
+                    selectedFine.isRead
+                      ? notificationStyles.readLabel
+                      : notificationStyles.newLabel,
+                  ]}
+                >
+                  {selectedFine.isRead ? "READ" : "NEW"}
+                </Text>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={notificationStyles.detailsCloseButton}
+              onPress={() => setSelectedFine(null)}
+              accessibilityRole="button"
+            >
+              <Text style={notificationStyles.detailsCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
