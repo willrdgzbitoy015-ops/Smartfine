@@ -1,20 +1,18 @@
-import { useCallback, useRef, useState } from "react";
-
-import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useCallback, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { API_BASE } from "@/constants/api";
@@ -83,7 +81,6 @@ function dateLabel(value: string | null) {
 
   const text = value.trim();
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(text);
-
   const normalized = dateOnly
     ? `${text}T00:00:00+08:00`
     : /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(text)
@@ -91,7 +88,6 @@ function dateLabel(value: string | null) {
       : text;
 
   const date = new Date(normalized);
-
   if (Number.isNaN(date.getTime())) return "Date unavailable";
 
   if (dateOnly) {
@@ -123,7 +119,6 @@ export default function StudentFinesScreen() {
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
   const [selectedFine, setSelectedFine] = useState<Fine | null>(null);
-
   const requestRef = useRef<AbortController | null>(null);
 
   const loadFines = useCallback(async () => {
@@ -137,7 +132,6 @@ export default function StudentFinesScreen() {
     setAccessDenied(false);
 
     let timedOut = false;
-
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
@@ -214,7 +208,6 @@ export default function StudentFinesScreen() {
 
       if (requestRef.current === controller) {
         setLoading(false);
-
         if (timedOut) {
           setError("The request timed out. Please try again.");
         }
@@ -289,10 +282,7 @@ export default function StudentFinesScreen() {
 
   const openFineDetails = (fine: Fine) => {
     setSelectedFine(fine);
-
-    if (!fine.isRead) {
-      void markFineRead(fine.id);
-    }
+    if (!fine.isRead) void markFineRead(fine.id);
   };
 
   const paymentNotAvailable = () => {
@@ -310,7 +300,6 @@ export default function StudentFinesScreen() {
         "userRole",
         "userEmail",
       ]);
-
       router.replace("/login");
     } catch {
       setError("Unable to clear your session. Please try again.");
@@ -335,7 +324,6 @@ export default function StudentFinesScreen() {
               resizeMode="contain"
             />
           </TouchableOpacity>
-
           <Text style={styles.title}>My Fines</Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -385,22 +373,17 @@ export default function StudentFinesScreen() {
           {!!error && (
             <View style={styles.errorPanel}>
               <Text style={styles.errorText}>{error}</Text>
-
               {data && (
                 <Text style={styles.helper}>
                   Showing your last loaded information.
                 </Text>
               )}
-
               <TouchableOpacity
                 style={styles.retryButton}
                 disabled={loading}
                 onPress={() => {
-                  if (accessDenied) {
-                    void returnToLogin();
-                  } else {
-                    void loadFines();
-                  }
+                  if (accessDenied) void returnToLogin();
+                  else void loadFines();
                 }}
               >
                 <Text style={styles.retryText}>
@@ -422,7 +405,6 @@ export default function StudentFinesScreen() {
                   <View style={styles.fineInfo}>
                     <View style={notificationStyles.fineTitleRow}>
                       <Text style={styles.violation}>{fine.violationName}</Text>
-
                       <Text
                         style={[
                           notificationStyles.fineReadLabel,
@@ -460,7 +442,6 @@ export default function StudentFinesScreen() {
                     </TouchableOpacity>
 
                     <Text style={styles.reference}>{fine.fineReference}</Text>
-
                     <Text style={styles.timestamp}>
                       {dateLabel(fine.recordedAt)}
                     </Text>
@@ -509,7 +490,6 @@ export default function StudentFinesScreen() {
                   <Text style={styles.emptyTitle}>
                     No {filter.toLowerCase()} fines
                   </Text>
-
                   <Text style={styles.helper}>
                     {filter === "UNPAID"
                       ? "You have no unpaid fines in this list."
@@ -524,7 +504,6 @@ export default function StudentFinesScreen() {
 
           <View style={styles.totalCard}>
             <Text style={styles.totalLabel}>Total Outstanding</Text>
-
             <Text style={styles.totalAmount}>
               {outstanding !== undefined ? money(outstanding) : "—"}
             </Text>
@@ -569,6 +548,8 @@ export default function StudentFinesScreen() {
                       router.replace("/student/dashboard");
                     } else if (active) {
                       void loadFines();
+                    } else if (item.label === "My QR") {
+                      router.push("/student/qr");
                     } else {
                       Alert.alert(
                         item.label,
@@ -582,9 +563,7 @@ export default function StudentFinesScreen() {
                     style={styles.navIcon}
                     resizeMode="contain"
                   />
-
                   <Text style={styles.navLabel}>{item.label}</Text>
-
                   <View
                     style={[
                       styles.indicator,
