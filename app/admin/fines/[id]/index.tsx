@@ -1,5 +1,11 @@
+import LogoutModal from "@/components/logout-modal";
+import SuccessModal from "@/components/success-modal";
+import WarningModal from "@/components/warningmodal";
+import { API_BASE } from "@/constants/api";
+import { useAuth } from "@/hooks/use-auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-
 import {
   ActivityIndicator,
   Image,
@@ -11,259 +17,134 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-
-import { useLocalSearchParams, useRouter } from "expo-router";
-
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-import { useAuth } from "@/hooks/use-auth";
-
-import { API_BASE } from "@/constants/api";
-
-import LogoutModal from "@/components/logout-modal";
-import SuccessModal from "@/components/success-modal";
-import WarningModal from "@/components/warningmodal";
-
 import { styles } from "./fine-profile.styles";
-
-// ==========================================
-// TYPES
-// ==========================================
-
 type Fine = {
   id: number;
-
   fine_reference: string;
-
   student_id: number;
-
   student_number: string | null;
-
   student_username: string | null;
-
   student_first_name: string | null;
-
   student_middle_name: string | null;
-
   student_last_name: string | null;
-
   student_name: string;
-
   grade_level: string | null;
-
   section: string | null;
-
   violation_type_id: number;
-
   violation_code: string | null;
-
   violation_name: string;
-
   violation_description: string | null;
-
   amount_centavos: number;
-
   amount: number;
-
   remarks: string | null;
-
   officer_id: number | null;
-
   officer_name: string;
-
   issued_at: string;
-
   paid_at: string | null;
-
   cancelled_at: string | null;
-
   cancelled_by: number | null;
-
   cancellation_reason: string | null;
-
   created_at: string | null;
-
   updated_at: string | null;
-
   status: string;
 };
-
 type NavItem = {
   label: string;
-
   route: string;
-
   icon: any;
 };
-
-// ==========================================
-// FINE DETAILED VIEW
-// ==========================================
-
 export default function FineDetailedView() {
   const router = useRouter();
-
   const params = useLocalSearchParams();
-
   const { logout } = useAuth();
-
   const { width } = useWindowDimensions();
-
   const isTablet = width >= 768;
-
   const isCompact = width < 600;
-
-  // ==========================================
-  // ROUTE ID
-  // ==========================================
-
   const rawId = params.id;
-
   const fineId = Array.isArray(rawId) ? rawId[0] : rawId;
-
-  // ==========================================
-  // FINE DATA
-  // ==========================================
-
   const [fine, setFine] = useState<Fine | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notificationStatus, setNotificationStatus] = useState<"NEW" | "READ" | null>(null);
-
-  // ==========================================
-  // PAGE STATE
-  // ==========================================
-
+  const [fineUnreadCount, setFineUnreadCount] = useState(0);
+  const [paymentUnreadCount, setPaymentUnreadCount] = useState(0);
+  const unreadCount = fineUnreadCount + paymentUnreadCount;
+  const [notificationStatus, setNotificationStatus] = useState<
+    "NEW" | "READ" | null
+  >(null);
+  const [paymentNotificationStatus, setPaymentNotificationStatus] = useState<"NEW" | "READ" | null>(null);
+  const [cashRequestPending, setCashRequestPending] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [actionLoading, setActionLoading] = useState(false);
-
   const [errorMessage, setErrorMessage] = useState("");
-
-  // ==========================================
-  // LOGOUT MODAL
-  // ==========================================
-
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
   const [logoutLoading, setLogoutLoading] = useState(false);
-
-  // ==========================================
-  // SUCCESS MODAL
-  // ==========================================
-
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
   const [successTitle, setSuccessTitle] = useState("");
-
   const [successMessage, setSuccessMessage] = useState("");
-
-  // ==========================================
-  // WARNING MODAL
-  // ==========================================
-
   const [showWarningModal, setShowWarningModal] = useState(false);
-
   const [warningTitle, setWarningTitle] = useState("");
-
   const [warningMessage, setWarningMessage] = useState("");
-
-  // ==========================================
-  // MARK PAID MODAL
-  // ==========================================
-
   const [markPaidModalVisible, setMarkPaidModalVisible] = useState(false);
-
-  // ==========================================
-  // CANCEL FINE MODAL
-  // ==========================================
-
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
-
   const [cancellationReason, setCancellationReason] = useState("");
-
   const [cancelError, setCancelError] = useState("");
-
-  // ==========================================
-  // NAVIGATION
-  // ==========================================
-
   const navItems: NavItem[] = [
     {
       label: "Dashboard",
-
       route: "/admin/dashboard",
-
       icon: require("../../../../assets/icons/dashboard.png"),
     },
-
     {
       label: "Students",
-
       route: "/admin/students",
-
       icon: require("../../../../assets/icons/students.png"),
     },
-
     {
       label: "Fines",
-
       route: "/admin/fines",
-
       icon: require("../../../../assets/icons/fines.png"),
     },
-
     {
       label: "QR Scanner",
-
       route: "/admin/qr-scanner",
-
       icon: require("../../../../assets/icons/qr-codeWhite.png"),
     },
-
     {
       label: "Reports",
-
       route: "/admin/reports",
-
       icon: require("../../../../assets/icons/reports.png"),
     },
-
     {
       label: "Settings",
-
       route: "/admin/settings",
-
       icon: require("../../../../assets/icons/settings.png"),
     },
-
     {
       label: "Officers",
-
       route: "/admin/officers",
-
       icon: require("../../../../assets/icons/officers.png"),
     },
   ];
-
-  // ==========================================
-  // LOAD FINE
-  // ==========================================
-
   useEffect(() => {
     let mounted = true;
     const loadCount = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
         if (!token) return;
-        const response = await fetch(
-          `${API_BASE}/api/admin/notifications/unread-count`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const count = Number(data.unreadCount);
-        if (mounted && data.success && Number.isSafeInteger(count) && count >= 0) {
-          setUnreadCount(count);
+        const counts = await Promise.all(["FINE", "PAYMENT"].map(async (type) => {
+          const response = await fetch(
+            `${API_BASE}/api/admin/notifications/unread-count?type=${type}`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          const count = Number(data.unreadCount);
+          if (!data.success || !Number.isSafeInteger(count) || count < 0) {
+            throw new Error("Invalid notification count.");
+          }
+          return count;
+        }));
+        if (mounted) {
+          setFineUnreadCount(counts[0]);
+          setPaymentUnreadCount(counts[1]);
         }
       } catch (error) {
         console.error("Fine detail notification count error:", error);
@@ -271,9 +152,11 @@ export default function FineDetailedView() {
     };
     loadCount();
     const interval = setInterval(loadCount, 15000);
-    return () => { mounted = false; clearInterval(interval); };
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
-
   const markFineNotificationRead = async (openedFineId: number) => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -295,20 +178,29 @@ export default function FineDetailedView() {
         if (item) {
           if (item.isRead) {
             setNotificationStatus("READ");
-            setUnreadCount(Number(data.unreadCount));
+            setFineUnreadCount(Number(data.unreadCount));
             return;
           }
           setNotificationStatus("NEW");
           const readResponse = await fetch(
             `${API_BASE}/api/admin/notifications/${item.id}/read`,
-            { method: "PATCH", headers: { Authorization: `Bearer ${token}` } },
+            {
+              method: "PATCH",
+              headers: { Authorization: `Bearer ${token}` },
+            },
           );
-          if (!readResponse.ok) throw new Error(`HTTP ${readResponse.status}`);
+          if (!readResponse.ok) {
+            throw new Error(`HTTP ${readResponse.status}`);
+          }
           const result = await readResponse.json();
-          if (!result.success) throw new Error("Could not mark notification read.");
+          if (!result.success) {
+            throw new Error("Could not mark notification read.");
+          }
           setNotificationStatus("READ");
           const count = Number(result.unreadCount);
-          if (Number.isSafeInteger(count) && count >= 0) setUnreadCount(count);
+          if (Number.isSafeInteger(count) && count >= 0) {
+            setFineUnreadCount(count);
+          }
           return;
         }
         if (!data.hasMore) return;
@@ -322,420 +214,273 @@ export default function FineDetailedView() {
       console.error("Mark fine notification read error:", error);
     }
   };
-
-  const loadFine = async () => {
-    if (!fineId) {
-      return;
+  const markPaymentNotificationsRead = async (openedFineId: number) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+      let offset = 0;
+      let found = false;
+      while (true) {
+        const response = await fetch(
+          `${API_BASE}/api/admin/notifications?type=PAYMENT&limit=100&offset=${offset}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.notifications)) {
+          throw new Error("Invalid payment notifications response.");
+        }
+        for (const item of data.notifications) {
+          if (Number(item.fineId) !== openedFineId) continue;
+          found = true;
+          if (!item.isRead) {
+            setPaymentNotificationStatus("NEW");
+            const readResponse = await fetch(
+              `${API_BASE}/api/admin/notifications/${item.id}/read?type=PAYMENT`,
+              { method: "PATCH", headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (!readResponse.ok) throw new Error(`HTTP ${readResponse.status}`);
+            const result = await readResponse.json();
+            if (!result.success) throw new Error("Could not mark cash request read.");
+            const count = Number(result.unreadCount);
+            if (Number.isSafeInteger(count) && count >= 0) setPaymentUnreadCount(count);
+          }
+        }
+        if (!data.hasMore) break;
+        const next = Number(data.nextOffset);
+        if (!Number.isSafeInteger(next) || next <= offset) throw new Error("Invalid notification page.");
+        offset = next;
+      }
+      if (found) setPaymentNotificationStatus("READ");
+    } catch (error) {
+      console.error("Mark cash request notification read error:", error);
     }
-
+  };
+  const loadPendingCashRequest = async (openedFineId: number) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+      const response = await fetch(`${API_BASE}/api/payments/cash-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.success || !Array.isArray(data.payments)) throw new Error("Invalid cash requests response.");
+      setCashRequestPending(data.payments.some((item: { fineId: number }) => Number(item.fineId) === openedFineId));
+    } catch (error) {
+      console.error("Load cash request error:", error);
+    }
+  };
+  const loadFine = async () => {
+    if (!fineId) return;
     try {
       setLoading(true);
-
       setErrorMessage("");
-
       const response = await fetch(`${API_BASE}/api/fines/${fineId}`);
-
       const data = await response.json();
-
       if (!response.ok || !data.success || !data.fine) {
         setErrorMessage(data.message || "Failed to load fine information.");
-
         return;
       }
-
       setFine(data.fine);
       void markFineNotificationRead(Number(data.fine.id));
+      void markPaymentNotificationsRead(Number(data.fine.id));
+      void loadPendingCashRequest(Number(data.fine.id));
     } catch (error) {
       console.error("Load fine details error:", error);
-
       setErrorMessage("Could not connect to the SmartFine server.");
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadFine();
   }, [fineId]);
-
-  // ==========================================
-  // BACK
-  // ==========================================
-
   const handleBack = () => {
     router.replace("/admin/fines" as any);
   };
-
-  // ==========================================
-  // EDIT FINE
-  // ==========================================
-
   const handleEdit = () => {
-    if (!fineId) {
-      return;
-    }
-
+    if (!fineId) return;
     router.push(`/admin/fines/${fineId}/edit` as any);
   };
-
-  // ==========================================
-  // CANCEL FINE
-  // ==========================================
-
   const handleCancelFine = () => {
-    if (!fine) {
+    if (!fine) return;
+    if (String(fine.status || "").toUpperCase() !== "UNPAID") {
       return;
     }
-
-    const status = String(fine.status || "").toUpperCase();
-
-    if (status !== "UNPAID") {
-      return;
-    }
-
     setCancellationReason("");
-
     setCancelError("");
-
     setCancelModalVisible(true);
   };
-
-  // ==========================================
-  // CLOSE CANCEL FINE MODAL
-  // ==========================================
-
   const closeCancelModal = () => {
-    if (actionLoading) {
-      return;
-    }
-
+    if (actionLoading) return;
     setCancelModalVisible(false);
-
     setCancellationReason("");
-
     setCancelError("");
   };
-
-  // ==========================================
-  // PERFORM CANCEL FINE
-  // ==========================================
-
   const performCancelFine = async () => {
-    if (!fineId || !fine) {
-      return;
-    }
-
+    if (!fineId || !fine) return;
     const reason = cancellationReason.trim();
-
     if (reason.length < 3) {
       setCancelError("Please enter a cancellation reason.");
-
       return;
     }
-
     if (reason.length > 500) {
       setCancelError("Cancellation reason must not exceed 500 characters.");
-
       return;
     }
-
     try {
       setActionLoading(true);
-
       setCancelError("");
-
       setErrorMessage("");
-
       const storedUserId = await AsyncStorage.getItem("userId");
-
       const parsedUserId = Number(storedUserId);
-
       const cancelledBy =
         Number.isInteger(parsedUserId) && parsedUserId > 0
           ? parsedUserId
           : null;
-
       const response = await fetch(`${API_BASE}/api/fines/${fineId}/cancel`, {
         method: "PATCH",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           cancellationReason: reason,
-
           cancelledBy,
         }),
       });
-
       const data = await response.json();
-
       if (!response.ok || !data.success) {
         setCancelError(data.message || "Failed to cancel fine.");
-
         return;
       }
-
-      // ======================================
-      // CLOSE CANCELLATION FORM
-      // ======================================
-
       setCancelModalVisible(false);
-
       setCancellationReason("");
-
       setCancelError("");
-
-      // ======================================
-      // REFRESH FINE
-      // ======================================
-
       await loadFine();
-
-      // ======================================
-      // SUCCESS MODAL
-      // ======================================
-
       setSuccessTitle("Fine Cancelled");
-
       setSuccessMessage(
         `${fine.fine_reference} has been cancelled successfully.`,
       );
-
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Cancel fine error:", error);
-
       setCancelError("Could not connect to the SmartFine server.");
     } finally {
       setActionLoading(false);
     }
   };
-
-  // ==========================================
-  // OPEN MARK AS PAID MODAL
-  // ==========================================
-
   const handleMarkPaid = () => {
-    if (!fine) {
-      return;
-    }
-
+    if (!fine) return;
     if (String(fine.status).toUpperCase() !== "UNPAID") {
       return;
     }
-
     setMarkPaidModalVisible(true);
   };
-
-  // ==========================================
-  // CLOSE MARK AS PAID MODAL
-  // ==========================================
-
   const closeMarkPaidModal = () => {
-    if (actionLoading) {
-      return;
-    }
-
+    if (actionLoading) return;
     setMarkPaidModalVisible(false);
   };
-
-  // ==========================================
-  // PERFORM MARK PAID
-  // ==========================================
-
   const performMarkPaid = async () => {
-    if (!fineId || !fine) {
-      return;
-    }
-
+    if (!fineId || !fine) return;
     try {
       setActionLoading(true);
-
       setErrorMessage("");
-
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        throw new Error("Please sign in again to record this payment.");
+      }
       const response = await fetch(
-        `${API_BASE}/api/fines/${fineId}/mark-paid`,
+        `${API_BASE}/api/payments/cash-collections/${fineId}`,
         {
-          method: "PATCH",
-
+          method: "POST",
           headers: {
+            Accept: "application/json",
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
           },
-
           body: JSON.stringify({}),
         },
       );
-
       const data = await response.json();
-
-      // ======================================
-      // FAILED
-      // ======================================
-
       if (!response.ok || !data.success) {
-        setMarkPaidModalVisible(false);
-
-        setWarningTitle("Mark as Paid");
-
-        setWarningMessage(data.message || "Failed to mark fine as paid.");
-
-        setShowWarningModal(true);
-
-        return;
+        throw new Error(data.message || "Could not record the cash payment.");
       }
-
-      // ======================================
-      // CLOSE CONFIRMATION
-      // ======================================
-
       setMarkPaidModalVisible(false);
-
-      // ======================================
-      // REFRESH FINE
-      // ======================================
-
       await loadFine();
-
-      // ======================================
-      // SUCCESS
-      // ======================================
-
-      setSuccessTitle("Fine Paid");
-
+      setSuccessTitle("Cash Payment Recorded");
       setSuccessMessage(
-        `${fine.fine_reference} has been marked as paid successfully.`,
+        `${fine.fine_reference} was paid in cash. The transaction is saved in Payment Reports.`,
       );
-
       setShowSuccessModal(true);
     } catch (error) {
-      console.error("Mark fine paid error:", error);
-
+      console.error("Record cash payment error:", error);
       setMarkPaidModalVisible(false);
-
-      setWarningTitle("Connection Error");
-
-      setWarningMessage("Could not connect to the SmartFine server.");
-
+      setWarningTitle("Payment Not Recorded");
+      setWarningMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not record the cash payment.",
+      );
       setShowWarningModal(true);
     } finally {
       setActionLoading(false);
     }
   };
-
-  // ==========================================
-  // OPEN LOGOUT
-  // ==========================================
-
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
-
-  // ==========================================
-  // CANCEL LOGOUT
-  // ==========================================
-
   const handleCancelLogout = () => {
-    if (logoutLoading) {
-      return;
-    }
-
+    if (logoutLoading) return;
     setShowLogoutModal(false);
   };
-
-  // ==========================================
-  // PERFORM LOGOUT
-  // ==========================================
-
   const performLogout = async () => {
     try {
       setLogoutLoading(true);
-
       await logout();
-
       setShowLogoutModal(false);
-
       router.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
-
       setShowLogoutModal(false);
-
       setWarningTitle("Logout Error");
-
       setWarningMessage("Could not log out. Please try again.");
-
       setShowWarningModal(true);
     } finally {
       setLogoutLoading(false);
     }
   };
-
-  // ==========================================
-  // LOADING
-  // ==========================================
-
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color="#173A73" />
-
         <Text style={styles.loadingText}>Loading fine information...</Text>
       </View>
     );
   }
-
-  // ==========================================
-  // ERROR
-  // ==========================================
-
   if (errorMessage && !fine) {
     return (
       <View style={styles.loadingScreen}>
         <Text style={styles.errorStateText}>{errorMessage}</Text>
-
         <TouchableOpacity style={styles.retryButton} onPress={loadFine}>
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
-
         <TouchableOpacity style={styles.backErrorButton} onPress={handleBack}>
           <Text style={styles.backErrorText}>Back to Fines</Text>
         </TouchableOpacity>
       </View>
     );
   }
-
-  if (!fine) {
-    return null;
-  }
-
-  // ==========================================
-  // STATUS
-  // ==========================================
-
+  if (!fine) return null;
   const normalizedStatus = String(fine.status || "").toUpperCase();
-
   const isUnpaid = normalizedStatus === "UNPAID";
-
   const isPaid = normalizedStatus === "PAID";
-
   const isCancelled = normalizedStatus === "CANCELLED";
-
-  // ==========================================
-  // UI
-  // ==========================================
-
   return (
     <View style={styles.screen}>
-      {/* ======================================
-          SIDEBAR
-      ====================================== */}
-
       {isTablet && (
         <View style={styles.sidebar}>
-          {/* LOGO */}
-
           <View style={styles.logoArea}>
             <Image
               source={require("../../../../assets/branding/smartfineNoBG.png")}
@@ -743,13 +488,9 @@ export default function FineDetailedView() {
               resizeMode="contain"
             />
           </View>
-
-          {/* NAVIGATION */}
-
           <View style={styles.navigation}>
             {navItems.map((item) => {
               const active = item.label === "Fines";
-
               return (
                 <TouchableOpacity
                   key={item.label}
@@ -764,7 +505,6 @@ export default function FineDetailedView() {
                       resizeMode="contain"
                     />
                   </View>
-
                   <Text style={styles.navText}>{item.label}</Text>
                   {item.label === "Fines" && unreadCount > 0 && (
                     <View style={styles.navBadge}>
@@ -777,9 +517,6 @@ export default function FineDetailedView() {
               );
             })}
           </View>
-
-          {/* LOGOUT */}
-
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogout}
@@ -789,24 +526,14 @@ export default function FineDetailedView() {
           </TouchableOpacity>
         </View>
       )}
-
-      {/* ======================================
-          MAIN
-      ====================================== */}
-
       <View style={styles.main}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-
             isCompact && styles.scrollContentCompact,
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* ==================================
-              BACK / PAGE TITLE
-          ================================== */}
-
           <TouchableOpacity
             style={styles.backButton}
             onPress={handleBack}
@@ -819,7 +546,6 @@ export default function FineDetailedView() {
               style={styles.backIconImage}
               resizeMode="contain"
             />
-
             <Text
               style={[styles.backText, isCompact && styles.backTextCompact]}
               numberOfLines={1}
@@ -827,11 +553,6 @@ export default function FineDetailedView() {
               Fine Detailed View
             </Text>
           </TouchableOpacity>
-
-          {/* ==================================
-              MOBILE NAV
-          ================================== */}
-
           {!isTablet && (
             <ScrollView
               horizontal
@@ -840,13 +561,11 @@ export default function FineDetailedView() {
             >
               {navItems.map((item) => {
                 const active = item.label === "Fines";
-
                 return (
                   <TouchableOpacity
                     key={item.label}
                     style={[
                       styles.mobileNavItem,
-
                       active && styles.mobileNavItemActive,
                     ]}
                     onPress={() => router.push(item.route as any)}
@@ -854,7 +573,6 @@ export default function FineDetailedView() {
                     <Text
                       style={[
                         styles.mobileNavText,
-
                         active && styles.mobileNavTextActive,
                       ]}
                     >
@@ -872,41 +590,51 @@ export default function FineDetailedView() {
               })}
             </ScrollView>
           )}
-
-          {/* ==================================
-              DETAILS CARD
-          ================================== */}
-
           <View style={styles.detailsCard}>
+            {cashRequestPending && (
+              <View style={styles.cashRequestBanner}>
+                <Text style={styles.cashRequestBannerTitle}>Cashier payment requested</Text>
+                <Text style={styles.cashRequestBannerText}>
+                  The student has requested to pay in person. This fine stays Unpaid until you receive the cash and select Record Cash Payment.
+                </Text>
+              </View>
+            )}
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>
                 Fine Information #{fine.fine_reference}
-              {notificationStatus && (
-                  <Text style={notificationStatus === "NEW" ? styles.notificationNew : styles.notificationRead}>
-                    {"\n"}{notificationStatus === "NEW" ? "? NEW NOTIFICATION" : "? NOTIFICATION READ"}
+                {notificationStatus && (
+                  <Text
+                    style={
+                      notificationStatus === "NEW"
+                        ? styles.notificationNew
+                        : styles.notificationRead
+                    }
+                  >
+                    {"\n"}
+                    {notificationStatus === "NEW"
+                      ? "NEW NOTIFICATION"
+                      : "NOTIFICATION READ"}
                   </Text>
                 )}
-                </Text>
-
+                {paymentNotificationStatus && (
+                  <Text style={paymentNotificationStatus === "NEW" ? styles.notificationNew : styles.notificationRead}>
+                    {"\n"}CASH REQUEST {paymentNotificationStatus}
+                  </Text>
+                )}
+              </Text>
               <View
                 style={[
                   styles.statusBadge,
-
                   isPaid && styles.statusBadgePaid,
-
                   isUnpaid && styles.statusBadgeUnpaid,
-
                   isCancelled && styles.statusBadgeCancelled,
                 ]}
               >
                 <Text
                   style={[
                     styles.statusText,
-
                     isPaid && styles.statusTextPaid,
-
                     isUnpaid && styles.statusTextUnpaid,
-
                     isCancelled && styles.statusTextCancelled,
                   ]}
                 >
@@ -914,9 +642,7 @@ export default function FineDetailedView() {
                 </Text>
               </View>
             </View>
-
             <View style={styles.divider} />
-
             <View style={styles.informationArea}>
               <InfoRow
                 label="Student"
@@ -924,7 +650,6 @@ export default function FineDetailedView() {
                   fine.student_number || "No Student ID"
                 })`}
               />
-
               {(fine.grade_level || fine.section) && (
                 <InfoRow
                   label="Grade / Section"
@@ -933,38 +658,33 @@ export default function FineDetailedView() {
                     .join(" - ")}
                 />
               )}
-
               <InfoRow label="Violation Type" value={fine.violation_name} />
-
               <InfoRow
                 label="Amount"
                 value={formatMoney(fine.amount)}
                 emphasized
               />
-
+              {cashRequestPending && (
+                <InfoRow label="Cashier Request" value="Pending — cash has not yet been recorded" />
+              )}
               <InfoRow label="Date Issued" value={formatDate(fine.issued_at)} />
-
               <InfoRow
                 label="Issued By"
                 value={fine.officer_name || "Unknown"}
               />
-
               <InfoRow
                 label="Notes / Description"
                 value={fine.remarks || "No notes provided."}
               />
-
               {isPaid && fine.paid_at && (
                 <InfoRow label="Date Paid" value={formatDate(fine.paid_at)} />
               )}
-
               {isCancelled && (
                 <>
                   <InfoRow
                     label="Date Cancelled"
                     value={formatDate(fine.cancelled_at)}
                   />
-
                   <InfoRow
                     label="Cancellation Reason"
                     value={
@@ -976,28 +696,15 @@ export default function FineDetailedView() {
               )}
             </View>
           </View>
-
-          {/* ==================================
-              ACTION ERROR
-          ================================== */}
-
           {errorMessage !== "" && (
             <View style={styles.actionError}>
               <Text style={styles.actionErrorText}>{errorMessage}</Text>
             </View>
           )}
-
-          {/* ==================================
-              ACTIONS
-          ================================== */}
-
           <View style={styles.actionRow}>
-            {/* CANCEL FINE */}
-
             <TouchableOpacity
               style={[
                 styles.cancelFineButton,
-
                 !isUnpaid && styles.disabledButton,
               ]}
               onPress={handleCancelFine}
@@ -1005,9 +712,6 @@ export default function FineDetailedView() {
             >
               <Text style={styles.cancelFineText}>Cancel Fine</Text>
             </TouchableOpacity>
-
-            {/* EDIT FINE */}
-
             <TouchableOpacity
               style={[styles.editButton, !isUnpaid && styles.disabledButton]}
               onPress={handleEdit}
@@ -1015,18 +719,14 @@ export default function FineDetailedView() {
             >
               <Text style={styles.editButtonText}>Edit Fine</Text>
             </TouchableOpacity>
-
-            {/* MARK PAID */}
-
             <TouchableOpacity
               style={[styles.paidButton, !isUnpaid && styles.disabledButton]}
               onPress={handleMarkPaid}
               disabled={!isUnpaid || actionLoading}
             >
-              <Text style={styles.paidButtonText}>Mark as Paid</Text>
+              <Text style={styles.paidButtonText}>Record Cash Payment</Text>
             </TouchableOpacity>
           </View>
-
           {!isUnpaid && (
             <Text style={styles.completedHint}>
               {isPaid
@@ -1036,11 +736,6 @@ export default function FineDetailedView() {
           )}
         </ScrollView>
       </View>
-
-      {/* ======================================
-          CANCEL FINE MODAL
-      ====================================== */}
-
       <Modal
         visible={cancelModalVisible}
         transparent
@@ -1050,7 +745,6 @@ export default function FineDetailedView() {
         <View style={styles.modalOverlay}>
           <View style={styles.cancelModalCard}>
             <Text style={styles.cancelModalTitle}>Cancel Fine?</Text>
-
             <Text style={styles.cancelModalMessage}>
               You are about to cancel{" "}
               <Text style={styles.cancelModalFineReference}>
@@ -1059,15 +753,12 @@ export default function FineDetailedView() {
               . This will keep the fine record in SmartFine but mark it as
               cancelled.
             </Text>
-
             <Text style={styles.cancelReasonLabel}>Cancellation Reason *</Text>
-
             <TextInput
               style={styles.cancelReasonInput}
               value={cancellationReason}
               onChangeText={(text) => {
                 setCancellationReason(text);
-
                 if (cancelError) {
                   setCancelError("");
                 }
@@ -1079,18 +770,14 @@ export default function FineDetailedView() {
               textAlignVertical="top"
               editable={!actionLoading}
             />
-
             <Text style={styles.cancelReasonCounter}>
-              {cancellationReason.length}
-              /500
+              {cancellationReason.length}/500
             </Text>
-
             {cancelError !== "" && (
               <View style={styles.cancelModalError}>
                 <Text style={styles.cancelModalErrorText}>{cancelError}</Text>
               </View>
             )}
-
             <View style={styles.cancelModalActions}>
               <TouchableOpacity
                 style={styles.cancelModalBackButton}
@@ -1099,11 +786,9 @@ export default function FineDetailedView() {
               >
                 <Text style={styles.cancelModalBackText}>Go Back</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={[
                   styles.cancelModalConfirmButton,
-
                   actionLoading && styles.cancelModalButtonDisabled,
                 ]}
                 onPress={performCancelFine}
@@ -1119,11 +804,6 @@ export default function FineDetailedView() {
           </View>
         </View>
       </Modal>
-
-      {/* ======================================
-          MARK AS PAID CONFIRMATION MODAL
-      ====================================== */}
-
       <Modal
         visible={markPaidModalVisible}
         transparent
@@ -1133,38 +813,24 @@ export default function FineDetailedView() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.paidModalCard}>
-            {/* ICON */}
-
             <View style={styles.paidModalIcon}>
               <Text style={styles.paidModalIconText}>₱</Text>
             </View>
-
-            {/* TITLE */}
-
-            <Text style={styles.paidModalTitle}>Mark as Paid?</Text>
-
-            {/* MESSAGE */}
-
+            <Text style={styles.paidModalTitle}>Confirm Cash Received?</Text>
             <Text style={styles.paidModalMessage}>
-              Are you sure you want to mark{" "}
+              Have you received cash for{" "}
               <Text style={styles.paidModalFineReference}>
                 {fine.fine_reference}
               </Text>{" "}
-              as paid?
+              from the student? Confirming will save the payment and mark the
+              fine as paid.
             </Text>
-
-            {/* AMOUNT */}
-
             <View style={styles.paidModalAmountBox}>
               <Text style={styles.paidModalAmountLabel}>Amount</Text>
-
               <Text style={styles.paidModalAmount}>
                 {formatMoney(fine.amount)}
               </Text>
             </View>
-
-            {/* BUTTONS */}
-
             <View style={styles.paidModalActions}>
               <TouchableOpacity
                 style={styles.paidModalCancelButton}
@@ -1173,11 +839,9 @@ export default function FineDetailedView() {
               >
                 <Text style={styles.paidModalCancelText}>Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={[
                   styles.paidModalConfirmButton,
-
                   actionLoading && styles.paidModalButtonDisabled,
                 ]}
                 onPress={performMarkPaid}
@@ -1186,46 +850,29 @@ export default function FineDetailedView() {
                 {actionLoading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.paidModalConfirmText}>Mark as Paid</Text>
+                  <Text style={styles.paidModalConfirmText}>
+                    Confirm Payment
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
-      {/* ======================================
-          SUCCESS MODAL
-      ====================================== */}
-
       <SuccessModal
         visible={showSuccessModal}
         title={successTitle}
         message={successMessage}
         buttonText="OK"
-        onClose={() => {
-          setShowSuccessModal(false);
-        }}
+        onClose={() => setShowSuccessModal(false)}
       />
-
-      {/* ======================================
-          WARNING MODAL
-      ====================================== */}
-
       <WarningModal
         visible={showWarningModal}
         title={warningTitle}
         message={warningMessage}
         buttonText="OK"
-        onClose={() => {
-          setShowWarningModal(false);
-        }}
+        onClose={() => setShowWarningModal(false)}
       />
-
-      {/* ======================================
-          LOGOUT MODAL
-      ====================================== */}
-
       <LogoutModal
         visible={showLogoutModal}
         loading={logoutLoading}
@@ -1235,26 +882,18 @@ export default function FineDetailedView() {
     </View>
   );
 }
-
-// ==========================================
-// INFORMATION ROW
-// ==========================================
-
 function InfoRow({
   label,
   value,
   emphasized = false,
 }: {
   label: string;
-
   value: string;
-
   emphasized?: boolean;
 }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-
       <Text
         style={[styles.infoValue, emphasized && styles.infoValueEmphasized]}
       >
@@ -1263,60 +902,31 @@ function InfoRow({
     </View>
   );
 }
-
-// ==========================================
-// FORMAT MONEY
-// ==========================================
-
 function formatMoney(amount: number) {
   return `₱${Number(amount || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
-
     maximumFractionDigits: 2,
   })}`;
 }
-
-// ==========================================
-// FORMAT DATE
-// ==========================================
-
 function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
+  if (!value) return "—";
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
-
   const date = new Date(normalized);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
+  if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", {
     month: "long",
-
     day: "numeric",
-
     year: "numeric",
   });
 }
-
-// ==========================================
-// FORMAT STATUS
-// ==========================================
-
 function formatStatus(status: string) {
   switch (String(status || "").toUpperCase()) {
     case "PAID":
       return "Paid";
-
     case "CANCELLED":
       return "Cancelled";
-
     case "UNPAID":
       return "Unpaid";
-
     default:
       return status;
   }

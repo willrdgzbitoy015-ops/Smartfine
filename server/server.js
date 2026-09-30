@@ -9,11 +9,13 @@ const path = require("path");
 const authRoutes = require("./routes/auth");
 const officerProfileRoutes = require("./routes/officer-profile");
 const officerProfilePhotoRoutes = require("./routes/officer-profile-photo");
+const studentProfileRoutes = require("./routes/student-profile");
 const dashboardRoutes = require("./routes/dashboard");
 const studentsRoutes = require("./routes/students");
 const finesRoutes = require("./routes/fines");
 const studentFineReadRoutes = require("./routes/student-fine-reads");
 const studentQRRoutes = require("./routes/student-qr");
+const cashPaymentRoutes = require("./routes/cash-payments");
 const officersRoutes = require("./routes/officers");
 const reportsRoutes = require("./routes/reports");
 const settingsRoutes = require("./routes/settings");
@@ -33,6 +35,8 @@ app.use("/api/fines/my-fines", studentFineReadRoutes);
 app.use("/api/fines", finesRoutes);
 
 app.use("/api/student-qr", studentQRRoutes);
+app.use("/api/student-profile", studentProfileRoutes);
+app.use("/api/payments", cashPaymentRoutes);
 
 app.use("/api/officers", officersRoutes);
 app.use("/api/reports", reportsRoutes);

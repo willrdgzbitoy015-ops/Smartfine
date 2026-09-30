@@ -62,6 +62,7 @@ type DashboardData = {
 };
 
 type ModalMode = "notifications" | "activities" | "details" | null;
+
 type NotificationFilter = "ALL" | "UNREAD" | "READ";
 
 const icons = {
@@ -124,7 +125,10 @@ function recordedLabel(value: string | null) {
   }
 
   const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "Date unavailable";
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
 
   if (dateOnly) {
     return date.toLocaleDateString("en-PH", {
@@ -148,12 +152,12 @@ function recordedLabel(value: string | null) {
 
 function ActivityCard({
   activity,
-  isRead,
   onPress,
+  isRead,
 }: {
   activity: Activity;
-  isRead: boolean | null;
   onPress: () => void;
+  isRead: boolean | null;
 }) {
   const paid = activity.type === "PAID";
 
@@ -179,7 +183,7 @@ function ActivityCard({
 
         {isRead !== null && (
           <View style={notificationStyles.activityReadState}>
-            {!isRead && <View style={notificationStyles.unreadDot} />}
+            {isRead === false && <View style={notificationStyles.unreadDot} />}
             <Text
               style={[
                 notificationStyles.activityReadText,
@@ -216,6 +220,7 @@ export default function StudentDashboard() {
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [notificationFilter, setNotificationFilter] =
     useState<NotificationFilter>("ALL");
@@ -237,6 +242,7 @@ export default function StudentDashboard() {
     setAccessDenied(false);
 
     let timedOut = false;
+
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
@@ -324,12 +330,14 @@ export default function StudentDashboard() {
         }
 
         const fines = finesBody.fines as FineRecord[];
+
         setFineRecords(fines);
+
         body.stats.unreadFineCount = fines.filter(
           (fine) => !fine.isRead,
         ).length;
       } catch {
-        // The balance and activities can still be displayed.
+        // Balance and activities can still load.
       }
 
       setData(body);
@@ -349,6 +357,7 @@ export default function StudentDashboard() {
 
       if (requestRef.current === controller) {
         setLoading(false);
+
         if (timedOut) {
           setError("The request timed out. Please try again.");
         }
@@ -375,11 +384,15 @@ export default function StudentDashboard() {
 
   const markFineRead = async (fineId: number) => {
     if (markingReadRef.current.has(fineId)) return;
+
     markingReadRef.current.add(fineId);
 
     try {
       const token = await AsyncStorage.getItem("token");
-      if (!token) throw new Error("Please sign in again.");
+
+      if (!token) {
+        throw new Error("Please sign in again.");
+      }
 
       const response = await fetch(
         `${API_BASE}/api/fines/my-fines/${fineId}/read`,
@@ -394,6 +407,7 @@ export default function StudentDashboard() {
       );
 
       const raw = await response.text();
+
       let body: {
         success?: boolean;
         message?: string;
@@ -404,7 +418,7 @@ export default function StudentDashboard() {
         body = JSON.parse(raw);
       } catch {
         throw new Error(
-          "The read-status API returned a webpage. Check the backend read route.",
+          "The read-status API returned a webpage. Restart the backend and check POST /api/fines/my-fines/:id/read.",
         );
       }
 
@@ -417,14 +431,22 @@ export default function StudentDashboard() {
       setFineRecords((current) =>
         current.map((fine) =>
           fine.id === fineId
-            ? { ...fine, isRead: true, readAt: body.readAt ?? null }
+            ? {
+                ...fine,
+                isRead: true,
+                readAt: body.readAt ?? null,
+              }
             : fine,
         ),
       );
 
       setSelectedFine((current) =>
         current?.id === fineId
-          ? { ...current, isRead: true, readAt: body.readAt ?? null }
+          ? {
+              ...current,
+              isRead: true,
+              readAt: body.readAt ?? null,
+            }
           : current,
       );
 
@@ -456,12 +478,15 @@ export default function StudentDashboard() {
     setReadError("");
     setModalMode("details");
 
-    if (!fine.isRead) void markFineRead(fine.id);
+    if (!fine.isRead) {
+      void markFineRead(fine.id);
+    }
   };
 
   const openActivity = (activity: Activity) => {
     const match = /^(?:fine|paid)-(\d+)$/.exec(activity.id);
     const fineId = match ? Number(match[1]) : NaN;
+
     const fine = fineRecords.find((item) => item.id === fineId);
 
     if (!fine) {
@@ -511,6 +536,7 @@ export default function StudentDashboard() {
         "userRole",
         "userEmail",
       ]);
+
       closeModal();
       router.replace("/login");
     } catch {
@@ -571,6 +597,7 @@ export default function StudentDashboard() {
                 style={styles.notificationIcon}
                 resizeMode="contain"
               />
+
               {!!data?.stats.unreadFineCount &&
                 data.stats.unreadFineCount > 0 && (
                   <View style={notificationStyles.bellBadge}>
@@ -589,17 +616,22 @@ export default function StudentDashboard() {
               <Text style={styles.errorText} accessibilityRole="alert">
                 {error}
               </Text>
+
               {data && (
                 <Text style={styles.helper}>
                   Showing your last loaded information.
                 </Text>
               )}
+
               <TouchableOpacity
                 style={styles.retryButton}
                 disabled={loading}
                 onPress={() => {
-                  if (accessDenied) void returnToLogin();
-                  else void loadDashboard();
+                  if (accessDenied) {
+                    void returnToLogin();
+                  } else {
+                    void loadDashboard();
+                  }
                 }}
                 accessibilityRole="button"
               >
@@ -619,6 +651,7 @@ export default function StudentDashboard() {
 
           <View style={styles.balanceCard}>
             <Text style={styles.balanceTitle}>Outstanding Fine</Text>
+
             <Text
               style={[
                 styles.balanceValue,
@@ -627,6 +660,7 @@ export default function StudentDashboard() {
             >
               {outstanding !== undefined ? money(outstanding) : "—"}
             </Text>
+
             <Text
               style={[
                 styles.balanceStatus,
@@ -635,6 +669,7 @@ export default function StudentDashboard() {
             >
               {data ? (hasBalance ? "Unpaid" : "No outstanding fines") : " "}
             </Text>
+
             {data && hasBalance && (
               <Text style={styles.balanceHint}>
                 {data.stats.unpaidCount} outstanding{" "}
@@ -673,6 +708,7 @@ export default function StudentDashboard() {
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activities</Text>
+
             <TouchableOpacity
               style={styles.viewAllButton}
               onPress={() => {
@@ -715,7 +751,9 @@ export default function StudentDashboard() {
                   key={item.label}
                   style={styles.navItem}
                   accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
+                  accessibilityState={{
+                    selected: active,
+                  }}
                   onPress={() => {
                     if (item.label === "Home") {
                       void loadDashboard();
@@ -723,8 +761,8 @@ export default function StudentDashboard() {
                       router.push("/student/fines");
                     } else if (item.label === "My QR") {
                       router.push("/student/qr");
-                    } else {
-                      upcoming(item.label);
+                    } else if (item.label === "Profile") {
+                      router.push("/student/profile");
                     }
                   }}
                 >
@@ -932,7 +970,6 @@ export default function StudentDashboard() {
                             ? "Fine marked paid"
                             : "Fine issued"}
                         </Text>
-
                         <View style={notificationStyles.activityReadState}>
                           {!fine.isRead && (
                             <View style={notificationStyles.unreadDot} />
@@ -949,7 +986,6 @@ export default function StudentDashboard() {
                           </Text>
                         </View>
                       </View>
-
                       <Text style={styles.activityDescription}>
                         {fine.violationName}
                       </Text>

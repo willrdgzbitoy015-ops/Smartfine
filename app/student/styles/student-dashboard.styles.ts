@@ -14,7 +14,7 @@ const colors = {
   white: "#FFFFFF",
   text: "#111111",
   muted: "#626975",
-  border: "#777777",
+  border: "#C5CDD7",
   red: "#E52323",
   green: "#238A35",
   active: "#16E564",
@@ -41,8 +41,8 @@ export const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 14,
-    paddingBottom: 28,
+    paddingTop: 18,
+    paddingBottom: 30,
   },
 
   // STUDENT HEADER
@@ -50,7 +50,7 @@ export const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 24,
   },
 
   avatar: {
@@ -77,14 +77,15 @@ export const styles = StyleSheet.create({
   greeting: {
     flex: 1,
     minWidth: 0,
-    marginLeft: 10,
+    marginLeft: 12,
     marginRight: 8,
   },
 
   hello: {
     fontFamily: fonts.regular,
-    fontSize: 17,
-    color: colors.text,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.muted,
   },
 
   studentName: {
@@ -95,91 +96,104 @@ export const styles = StyleSheet.create({
   },
 
   notificationButton: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 23,
   },
 
   notificationIcon: {
-    width: 29,
-    height: 29,
-    tintColor: colors.text,
+    width: 26,
+    height: 26,
+    tintColor: colors.navy,
   },
 
   // OUTSTANDING FINE
 
   balanceCard: {
     width: "100%",
-    minHeight: 180,
+    minHeight: 160,
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 19,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 12,
   },
 
   balanceTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    color: colors.text,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.muted,
   },
 
   balanceValue: {
     fontFamily: fonts.bold,
-    fontSize: 34,
+    fontSize: 32,
+    lineHeight: 43,
     color: colors.red,
-    marginTop: 20,
+    marginTop: 13,
   },
 
   balanceStatus: {
-    fontFamily: fonts.medium,
-    fontSize: 13,
+    alignSelf: "flex-start",
+    overflow: "hidden",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: "#FDE8E8",
+    borderRadius: 6,
+    fontFamily: fonts.semibold,
+    fontSize: 11,
     color: colors.red,
-    marginTop: 2,
+    marginTop: 7,
   },
 
   balanceHint: {
-    fontFamily: fonts.light,
+    fontFamily: fonts.regular,
     fontSize: 11,
+    lineHeight: 17,
     color: colors.muted,
-    marginTop: 8,
+    marginTop: 9,
   },
 
-  // OFFICIAL ICON QUICK ACTIONS
+  // QUICK ACTIONS
 
   quickActions: {
     flexDirection: "row",
-    justifyContent: "space-evenly",
-    alignItems: "center",
-    marginTop: 24,
-    marginBottom: 20,
+    gap: 12,
+    marginTop: 16,
+    marginBottom: 26,
   },
 
   quickCard: {
-    width: 92,
+    flex: 1,
+    minWidth: 0,
     minHeight: 92,
     paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 11,
   },
 
   quickIcon: {
-    width: 43,
-    height: 43,
-    tintColor: colors.text,
+    width: 35,
+    height: 35,
+    tintColor: colors.navy,
   },
 
   quickLabel: {
     fontFamily: fonts.medium,
-    fontSize: 11,
-    color: colors.text,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.navy,
     textAlign: "center",
     marginTop: 7,
   },
@@ -190,6 +204,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 10,
     marginBottom: 10,
   },
 
@@ -197,13 +212,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.semibold,
     fontSize: 17,
-    color: "#383838",
-    marginRight: 8,
+    color: colors.text,
   },
 
   viewAllButton: {
     minHeight: 44,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -216,19 +230,20 @@ export const styles = StyleSheet.create({
 
   activityCard: {
     width: "100%",
-    paddingHorizontal: 15,
-    paddingVertical: 13,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginBottom: 10,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 9,
+    borderRadius: 11,
   },
 
   activityTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 12,
-    lineHeight: 19,
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text,
   },
 
   activityDescription: {
@@ -236,7 +251,7 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     color: colors.navy,
-    marginTop: 3,
+    marginTop: 4,
   },
 
   activityFooter: {
@@ -246,20 +261,20 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
     columnGap: 10,
     rowGap: 5,
-    marginTop: 7,
+    marginTop: 9,
   },
 
   timestamp: {
     flexGrow: 1,
     flexShrink: 1,
-    fontFamily: fonts.light,
+    fontFamily: fonts.regular,
     fontSize: 10,
     lineHeight: 16,
     color: colors.muted,
   },
 
   activityAmount: {
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semibold,
     fontSize: 12,
     color: colors.navy,
     textAlign: "right",
@@ -274,7 +289,7 @@ export const styles = StyleSheet.create({
     color: colors.red,
   },
 
-  // LOADING, EMPTY AND ERROR STATES
+  // LOADING, EMPTY, AND ERROR STATES
 
   loadingPanel: {
     paddingVertical: 26,
@@ -284,7 +299,7 @@ export const styles = StyleSheet.create({
   },
 
   helper: {
-    fontFamily: fonts.light,
+    fontFamily: fonts.regular,
     fontSize: 12,
     lineHeight: 19,
     color: colors.muted,
@@ -296,8 +311,8 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#BFC5CE",
-    borderRadius: 10,
+    borderColor: colors.border,
+    borderRadius: 11,
   },
 
   emptyTitle: {
@@ -421,7 +436,7 @@ export const styles = StyleSheet.create({
   },
 
   modalHelper: {
-    fontFamily: fonts.light,
+    fontFamily: fonts.regular,
     fontSize: 12,
     lineHeight: 19,
     color: colors.muted,

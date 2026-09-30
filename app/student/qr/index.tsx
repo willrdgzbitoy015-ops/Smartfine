@@ -85,7 +85,6 @@ export default function StudentQRScreen() {
     setNotice("");
 
     let timedOut = false;
-
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
@@ -93,7 +92,6 @@ export default function StudentQRScreen() {
 
     try {
       const token = await AsyncStorage.getItem("token");
-
       if (controller.signal.aborted) return;
 
       if (!token) {
@@ -236,7 +234,6 @@ export default function StudentQRScreen() {
       canvas.height = 1024;
 
       const context = canvas.getContext("2d");
-
       if (!context) {
         throw new Error("Image export is unavailable.");
       }
@@ -352,7 +349,7 @@ export default function StudentQRScreen() {
           >
             <Image
               source={require("../../../assets/icons/back_icon.png")}
-              style={styles.backIcon}
+              style={[styles.backIcon, { transform: [{ rotate: "180deg" }] }]}
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -418,7 +415,6 @@ export default function StudentQRScreen() {
                   <Text style={styles.studentName}>
                     {data.student.fullName}
                   </Text>
-
                   <Text style={styles.studentClass}>
                     {gradeSection || "Grade and section not assigned"}
                   </Text>
@@ -498,7 +494,7 @@ export default function StudentQRScreen() {
                     } else if (item.label === "Fines") {
                       router.replace("/student/fines");
                     } else if (item.label === "Profile") {
-                      setNotice("Student Profile is the next module to add.");
+                      router.push("/student/profile");
                     }
                   }}
                 >

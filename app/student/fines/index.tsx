@@ -44,6 +44,17 @@ type FinesResponse = {
   };
 };
 
+type CashRequest = {
+  id: number;
+  paymentReference: string;
+  fineId: number;
+  fineReference: string;
+  amountCentavos: number;
+  status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED";
+  createdAt: string;
+  paidAt: string | null;
+};
+
 const filters: { label: string; value: FineStatus }[] = [
   { label: "Unpaid", value: "UNPAID" },
   { label: "Paid", value: "PAID" },
@@ -81,6 +92,7 @@ function dateLabel(value: string | null) {
 
   const text = value.trim();
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(text);
+
   const normalized = dateOnly
     ? `${text}T00:00:00+08:00`
     : /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(text)
@@ -88,7 +100,10 @@ function dateLabel(value: string | null) {
       : text;
 
   const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "Date unavailable";
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
 
   if (dateOnly) {
     return date.toLocaleDateString("en-PH", {
@@ -119,7 +134,18 @@ export default function StudentFinesScreen() {
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
   const [selectedFine, setSelectedFine] = useState<Fine | null>(null);
+
+  const [cashRequests, setCashRequests] = useState<CashRequest[]>([]);
+  const [cashError, setCashError] = useState("");
+  const [cashFine, setCashFine] = useState<Fine | null>(null);
+  const [requestingFineId, setRequestingFineId] = useState<number | null>(null);
+  const [cashFeedback, setCashFeedback] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
+
   const requestRef = useRef<AbortController | null>(null);
+  const cashRequestRef = useRef<AbortController | null>(null);
 
   const loadFines = useCallback(async () => {
     requestRef.current?.abort();
@@ -132,6 +158,7 @@ export default function StudentFinesScreen() {
     setAccessDenied(false);
 
     let timedOut = false;
+
     const timeout = setTimeout(() => {
       timedOut = true;
       controller.abort();
@@ -158,7 +185,7 @@ export default function StudentFinesScreen() {
         signal: controller.signal,
       });
 
-      const text = await response.text();
+      const raw = await response.text();
 
       if (requestRef.current !== controller) return;
       if (controller.signal.aborted) return;
@@ -171,7 +198,7 @@ export default function StudentFinesScreen() {
       let body: FinesResponse;
 
       try {
-        body = JSON.parse(text);
+        body = JSON.parse(raw);
       } catch {
         throw new Error(
           "Unexpected server response. Check the backend connection.",
@@ -208,6 +235,7 @@ export default function StudentFinesScreen() {
 
       if (requestRef.current === controller) {
         setLoading(false);
+
         if (timedOut) {
           setError("The request timed out. Please try again.");
         }
@@ -215,21 +243,176 @@ export default function StudentFinesScreen() {
     }
   }, []);
 
+  const loadCashRequests = useCallback(async () => {
+    cashRequestRef.current?.abort();
+
+    const controller = new AbortController();
+    cashRequestRef.current = controller;
+    setCashError("");
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (controller.signal.aborted || cashRequestRef.current !== controller) {
+        return;
+      }
+
+      if (!token) {
+        setCashRequests([]);
+        return;
+      }
+
+      const response = await fetch(
+        `${API_BASE}/api/payments/cash-requests/me`,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
+          },
+          signal: controller.signal,
+        },
+      );
+
+      const body = await response.json();
+
+      if (controller.signal.aborted || cashRequestRef.current !== controller) {
+        return;
+      }
+
+      if (!response.ok || !body?.success || !Array.isArray(body.payments)) {
+        throw new Error(
+          body?.message || "Could not load cash request statuses.",
+        );
+      }
+
+      setCashRequests(body.payments);
+    } catch (caught) {
+      if (controller.signal.aborted || cashRequestRef.current !== controller) {
+        return;
+      }
+
+      setCashError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not load cash request statuses.",
+      );
+    }
+  }, []);
+
+  const refresh = useCallback(() => {
+    void loadFines();
+    void loadCashRequests();
+  }, [loadFines, loadCashRequests]);
+
   useFocusEffect(
     useCallback(() => {
-      void loadFines();
+      refresh();
 
       return () => {
         requestRef.current?.abort();
         requestRef.current = null;
+        cashRequestRef.current?.abort();
+        cashRequestRef.current = null;
       };
-    }, [loadFines]),
+    }, [refresh]),
   );
 
+  const pendingCashRequest = (fineId: number) =>
+    cashRequests.find(
+      (request) => request.fineId === fineId && request.status === "PENDING",
+    );
+
   const visibleFines =
-    data?.fines.filter((fine) => fine.status === filter) ?? [];
+    data?.fines.filter((fine) => {
+      const cashPending = !!pendingCashRequest(fine.id);
+
+      if (filter === "PENDING") {
+        return (
+          fine.status === "PENDING" || (fine.status === "UNPAID" && cashPending)
+        );
+      }
+
+      if (filter === "UNPAID") {
+        return fine.status === "UNPAID" && !cashPending;
+      }
+
+      return fine.status === "PAID";
+    }) ?? [];
+
   const outstanding = data?.summary.outstandingAmountCentavos;
   const payable = data?.summary.payableAmountCentavos ?? 0;
+
+  const submitCashRequest = async (fine: Fine) => {
+    if (requestingFineId !== null || fine.status !== "UNPAID") {
+      return;
+    }
+
+    try {
+      setRequestingFineId(fine.id);
+
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Please sign in again.");
+      }
+
+      const response = await fetch(`${API_BASE}/api/payments/cash-requests`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({ fineId: fine.id }),
+      });
+
+      const body = await response.json();
+
+      if (!response.ok || !body?.success || !body.payment) {
+        throw new Error(body?.message || "Could not save your cash request.");
+      }
+
+      const payment: CashRequest = {
+        id: Number(body.payment.id),
+        paymentReference: String(body.payment.paymentReference),
+        fineId: fine.id,
+        fineReference: fine.fineReference,
+        amountCentavos: fine.amountCentavos,
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+        paidAt: null,
+      };
+
+      setCashRequests((current) => [
+        payment,
+        ...current.filter(
+          (item) => item.fineId !== fine.id || item.status !== "PENDING",
+        ),
+      ]);
+
+      setCashFine(null);
+      setCashFeedback({
+        title: "Cash Request Saved",
+        message:
+          `Bring ${money(fine.amountCentavos)} to the cashier or student treasurer. ` +
+          `Show fine ${fine.fineReference} and payment reference ${payment.paymentReference}. ` +
+          "Your fine stays unpaid until the cash is received and confirmed.",
+      });
+    } catch (caught) {
+      setCashFine(null);
+      setCashFeedback({
+        title: "Request Not Confirmed",
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "Refresh your fines before trying again.",
+      });
+    } finally {
+      setRequestingFineId(null);
+    }
+  };
 
   const markFineRead = async (fineId: number) => {
     try {
@@ -260,7 +443,11 @@ export default function StudentFinesScreen() {
               ...current,
               fines: current.fines.map((fine) =>
                 fine.id === fineId
-                  ? { ...fine, isRead: true, readAt: body.readAt }
+                  ? {
+                      ...fine,
+                      isRead: true,
+                      readAt: body.readAt,
+                    }
                   : fine,
               ),
             }
@@ -269,7 +456,11 @@ export default function StudentFinesScreen() {
 
       setSelectedFine((current) =>
         current?.id === fineId
-          ? { ...current, isRead: true, readAt: body.readAt }
+          ? {
+              ...current,
+              isRead: true,
+              readAt: body.readAt,
+            }
           : current,
       );
     } catch (caught) {
@@ -282,14 +473,10 @@ export default function StudentFinesScreen() {
 
   const openFineDetails = (fine: Fine) => {
     setSelectedFine(fine);
-    if (!fine.isRead) void markFineRead(fine.id);
-  };
 
-  const paymentNotAvailable = () => {
-    Alert.alert(
-      "Payment",
-      "Payment processing is not available yet. No payment has been submitted.",
-    );
+    if (!fine.isRead) {
+      void markFineRead(fine.id);
+    }
   };
 
   const returnToLogin = async () => {
@@ -300,6 +487,7 @@ export default function StudentFinesScreen() {
         "userRole",
         "userEmail",
       ]);
+
       router.replace("/login");
     } catch {
       setError("Unable to clear your session. Please try again.");
@@ -324,6 +512,7 @@ export default function StudentFinesScreen() {
               resizeMode="contain"
             />
           </TouchableOpacity>
+
           <Text style={styles.title}>My Fines</Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -335,23 +524,16 @@ export default function StudentFinesScreen() {
             return (
               <TouchableOpacity
                 key={item.value}
-                style={styles.filterTouch}
+                style={[styles.filterButton, active && styles.filterActive]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 onPress={() => setFilter(item.value)}
               >
-                <View
-                  style={[styles.filterButton, active && styles.filterActive]}
+                <Text
+                  style={[styles.filterText, active && styles.filterTextActive]}
                 >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      active && styles.filterTextActive,
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                </View>
+                  {item.label}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -364,7 +546,7 @@ export default function StudentFinesScreen() {
           refreshControl={
             <RefreshControl
               refreshing={loading && data !== null}
-              onRefresh={() => void loadFines()}
+              onRefresh={refresh}
               tintColor="#123266"
               colors={["#123266"]}
             />
@@ -373,18 +555,24 @@ export default function StudentFinesScreen() {
           {!!error && (
             <View style={styles.errorPanel}>
               <Text style={styles.errorText}>{error}</Text>
+
               {data && (
                 <Text style={styles.helper}>
                   Showing your last loaded information.
                 </Text>
               )}
+
               <TouchableOpacity
                 style={styles.retryButton}
                 disabled={loading}
                 onPress={() => {
-                  if (accessDenied) void returnToLogin();
-                  else void loadFines();
+                  if (accessDenied) {
+                    void returnToLogin();
+                  } else {
+                    refresh();
+                  }
                 }}
+                accessibilityRole="button"
               >
                 <Text style={styles.retryText}>
                   {accessDenied ? "Back to Login" : "Try Again"}
@@ -400,88 +588,179 @@ export default function StudentFinesScreen() {
             </View>
           ) : (
             <>
+              <View style={styles.totalCard}>
+                <Text style={styles.totalLabel}>TOTAL OUTSTANDING</Text>
+
+                <Text style={styles.totalAmount}>
+                  {outstanding !== undefined ? money(outstanding) : "—"}
+                </Text>
+
+                <Text style={styles.totalHelper}>
+                  {data && outstanding === 0
+                    ? "You have no outstanding balance."
+                    : data && outstanding !== undefined && outstanding > payable
+                      ? "Includes pending fines."
+                      : "Your current unpaid fine balance."}
+                </Text>
+              </View>
+
+              <View style={styles.paymentNote}>
+                <Text style={styles.paymentNoteTitle}>Pay at the cashier</Text>
+
+                <Text style={styles.paymentNoteText}>
+                  Request to pay an unpaid fine in cash, then bring the amount
+                  to the cashier or student treasurer. A request is not a
+                  payment. Online payment is not available yet.
+                </Text>
+
+                {!!cashError && (
+                  <Text style={styles.paymentNoteText}>
+                    Cash request status unavailable: {cashError}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.listHeader}>
+                <Text style={styles.listTitle}>
+                  {filter === "PENDING"
+                    ? "Pending Payments / Fines"
+                    : `${filters.find((item) => item.value === filter)?.label} Fines`}
+                </Text>
+
+                <Text style={styles.listCount}>
+                  {visibleFines.length}{" "}
+                  {visibleFines.length === 1 ? "fine" : "fines"}
+                </Text>
+              </View>
+
               {visibleFines.map((fine) => (
                 <View key={fine.id} style={styles.fineCard}>
-                  <View style={styles.fineInfo}>
-                    <View style={notificationStyles.fineTitleRow}>
-                      <Text style={styles.violation}>{fine.violationName}</Text>
+                  <View style={styles.fineHeader}>
+                    <Text style={styles.violation}>{fine.violationName}</Text>
+
+                    <View
+                      style={[
+                        styles.readBadge,
+                        fine.isRead
+                          ? styles.readBadgeRead
+                          : styles.readBadgeNew,
+                      ]}
+                    >
                       <Text
                         style={[
-                          notificationStyles.fineReadLabel,
+                          styles.readBadgeText,
                           fine.isRead
-                            ? notificationStyles.readLabel
-                            : notificationStyles.newLabel,
+                            ? styles.readBadgeTextRead
+                            : styles.readBadgeTextNew,
                         ]}
                       >
                         {fine.isRead ? "READ" : "NEW"}
                       </Text>
                     </View>
+                  </View>
 
-                    {!fine.isRead && (
-                      <TouchableOpacity
-                        style={notificationStyles.markReadButton}
-                        onPress={() => void markFineRead(fine.id)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Mark ${fine.violationName} as read`}
+                  <Text style={styles.reference}>
+                    Reference: {fine.fineReference}
+                  </Text>
+
+                  <Text style={styles.timestamp}>
+                    Issued {dateLabel(fine.recordedAt)}
+                  </Text>
+
+                  {fine.status === "PAID" && fine.paidAt && (
+                    <Text style={styles.paidDate}>
+                      Paid {dateLabel(fine.paidAt)}
+                    </Text>
+                  )}
+
+                  {fine.status === "UNPAID" && pendingCashRequest(fine.id) && (
+                    <Text style={styles.reference}>
+                      Cash request pending ·{" "}
+                      {pendingCashRequest(fine.id)?.paymentReference}
+                    </Text>
+                  )}
+
+                  <View style={styles.fineDivider} />
+
+                  <View style={styles.fineSummary}>
+                    <View style={styles.amountArea}>
+                      <Text style={styles.amountLabel}>Amount</Text>
+
+                      <Text style={styles.amount}>
+                        {money(fine.amountCentavos)}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        fine.status === "PAID"
+                          ? styles.statusPaid
+                          : fine.status === "PENDING" ||
+                              pendingCashRequest(fine.id)
+                            ? styles.statusPending
+                            : styles.statusUnpaid,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          fine.status === "PAID"
+                            ? styles.statusTextPaid
+                            : fine.status === "PENDING" ||
+                                pendingCashRequest(fine.id)
+                              ? styles.statusTextPending
+                              : styles.statusTextUnpaid,
+                        ]}
                       >
-                        <Text style={notificationStyles.markReadText}>
-                          Mark as read
-                        </Text>
-                      </TouchableOpacity>
-                    )}
+                        {fine.status === "PAID"
+                          ? "Paid"
+                          : pendingCashRequest(fine.id)
+                            ? "Cash requested"
+                            : fine.status === "PENDING"
+                              ? "Pending"
+                              : "Unpaid"}
+                      </Text>
+                    </View>
+                  </View>
 
+                  <View style={styles.cardActions}>
                     <TouchableOpacity
-                      style={notificationStyles.viewDetailsButton}
+                      style={styles.detailsButton}
                       onPress={() => openFineDetails(fine)}
                       accessibilityRole="button"
                       accessibilityLabel={`View details for ${fine.violationName}`}
                     >
-                      <Text style={notificationStyles.viewDetailsText}>
-                        View details
-                      </Text>
+                      <Text style={styles.detailsButtonText}>View details</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.reference}>{fine.fineReference}</Text>
-                    <Text style={styles.timestamp}>
-                      {dateLabel(fine.recordedAt)}
-                    </Text>
-
-                    {fine.status === "PAID" && fine.paidAt && (
-                      <Text style={styles.paidDate}>
-                        Paid: {dateLabel(fine.paidAt)}
-                      </Text>
-                    )}
-                  </View>
-
-                  <View style={styles.amountArea}>
-                    <Text style={styles.amount}>
-                      {money(fine.amountCentavos)}
-                    </Text>
-
-                    {fine.status === "UNPAID" ? (
+                    {!fine.isRead && (
                       <TouchableOpacity
-                        style={styles.payTouch}
+                        style={styles.markReadButton}
+                        onPress={() => void markFineRead(fine.id)}
                         accessibilityRole="button"
-                        accessibilityLabel={`Pay ${fine.violationName}`}
-                        onPress={paymentNotAvailable}
+                        accessibilityLabel={`Mark ${fine.violationName} as read`}
                       >
-                        <View style={styles.payButton}>
-                          <Text style={styles.payText}>Pay</Text>
-                        </View>
+                        <Text style={styles.markReadText}>Mark as read</Text>
                       </TouchableOpacity>
-                    ) : (
-                      <Text
-                        style={[
-                          styles.status,
-                          fine.status === "PAID"
-                            ? styles.paidStatus
-                            : styles.pendingStatus,
-                        ]}
-                      >
-                        {fine.status === "PAID" ? "Paid" : "Pending"}
-                      </Text>
                     )}
                   </View>
+
+                  {fine.status === "UNPAID" && !pendingCashRequest(fine.id) && (
+                    <TouchableOpacity
+                      style={notificationStyles.detailsCloseButton}
+                      onPress={() => setCashFine(fine)}
+                      disabled={requestingFineId !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Request cash payment for ${fine.violationName}`}
+                    >
+                      <Text style={notificationStyles.detailsCloseText}>
+                        {requestingFineId === fine.id
+                          ? "Saving..."
+                          : "Pay at Cashier"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
 
@@ -490,46 +769,18 @@ export default function StudentFinesScreen() {
                   <Text style={styles.emptyTitle}>
                     No {filter.toLowerCase()} fines
                   </Text>
+
                   <Text style={styles.helper}>
                     {filter === "UNPAID"
-                      ? "You have no unpaid fines in this list."
+                      ? "You have no unpaid fines."
                       : filter === "PAID"
-                        ? "Fines marked paid will appear here."
-                        : "No fines are currently marked pending."}
+                        ? "Paid fines will appear here."
+                        : "No pending cash requests or fines."}
                   </Text>
                 </View>
               )}
             </>
           )}
-
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Total Outstanding</Text>
-            <Text style={styles.totalAmount}>
-              {outstanding !== undefined ? money(outstanding) : "—"}
-            </Text>
-
-            {data && outstanding === 0 && (
-              <Text style={styles.totalHelper}>No outstanding balance</Text>
-            )}
-
-            {data && outstanding !== undefined && outstanding > payable && (
-              <Text style={styles.totalHelper}>
-                Includes pending fines. Pending fines cannot be paid again here.
-              </Text>
-            )}
-
-            <TouchableOpacity
-              style={[
-                styles.payNowButton,
-                (!data || payable <= 0) && styles.disabled,
-              ]}
-              disabled={!data || payable <= 0}
-              onPress={paymentNotAvailable}
-              accessibilityRole="button"
-            >
-              <Text style={styles.payNowText}>PAY NOW</Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
 
         <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
@@ -547,14 +798,11 @@ export default function StudentFinesScreen() {
                     if (item.label === "Home") {
                       router.replace("/student/dashboard");
                     } else if (active) {
-                      void loadFines();
+                      refresh();
                     } else if (item.label === "My QR") {
                       router.push("/student/qr");
-                    } else {
-                      Alert.alert(
-                        item.label,
-                        "This feature is not available yet.",
-                      );
+                    } else if (item.label === "Profile") {
+                      router.push("/student/profile");
                     }
                   }}
                 >
@@ -563,7 +811,9 @@ export default function StudentFinesScreen() {
                     style={styles.navIcon}
                     resizeMode="contain"
                   />
+
                   <Text style={styles.navLabel}>{item.label}</Text>
+
                   <View
                     style={[
                       styles.indicator,
@@ -610,9 +860,23 @@ export default function StudentFinesScreen() {
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Status</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {selectedFine.status}
+                    {pendingCashRequest(selectedFine.id)
+                      ? "Unpaid — cash requested"
+                      : selectedFine.status}
                   </Text>
                 </View>
+
+                {pendingCashRequest(selectedFine.id) && (
+                  <View style={notificationStyles.detailsRow}>
+                    <Text style={notificationStyles.detailsLabel}>
+                      Cash request
+                    </Text>
+                    <Text style={notificationStyles.detailsValue}>
+                      Pending ·{" "}
+                      {pendingCashRequest(selectedFine.id)?.paymentReference}
+                    </Text>
+                  </View>
+                )}
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Issued</Text>
@@ -656,6 +920,98 @@ export default function StudentFinesScreen() {
               accessibilityRole="button"
             >
               <Text style={notificationStyles.detailsCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={cashFine !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (requestingFineId === null) {
+            setCashFine(null);
+          }
+        }}
+      >
+        <View style={notificationStyles.detailsOverlay}>
+          <View style={notificationStyles.detailsCard}>
+            <Text style={notificationStyles.detailsTitle}>Pay at Cashier</Text>
+
+            {cashFine && (
+              <>
+                <Text style={notificationStyles.detailsViolation}>
+                  {cashFine.violationName}
+                </Text>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Fine</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {cashFine.fineReference}
+                  </Text>
+                </View>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Amount</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {money(cashFine.amountCentavos)}
+                  </Text>
+                </View>
+
+                <Text style={styles.helper}>
+                  This saves a cash payment request. Your fine remains unpaid
+                  until the cashier or student treasurer receives the cash and
+                  confirms it.
+                </Text>
+
+                <TouchableOpacity
+                  style={notificationStyles.detailsCloseButton}
+                  disabled={requestingFineId !== null}
+                  onPress={() => void submitCashRequest(cashFine)}
+                  accessibilityRole="button"
+                >
+                  <Text style={notificationStyles.detailsCloseText}>
+                    {requestingFineId === cashFine.id
+                      ? "Saving request..."
+                      : "Request Cash Payment"}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={styles.markReadButton}
+              disabled={requestingFineId !== null}
+              onPress={() => setCashFine(null)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.markReadText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={cashFeedback !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCashFeedback(null)}
+      >
+        <View style={notificationStyles.detailsOverlay}>
+          <View style={notificationStyles.detailsCard}>
+            <Text style={notificationStyles.detailsTitle}>
+              {cashFeedback?.title}
+            </Text>
+
+            <Text style={styles.helper}>{cashFeedback?.message}</Text>
+
+            <TouchableOpacity
+              style={notificationStyles.detailsCloseButton}
+              onPress={() => setCashFeedback(null)}
+              accessibilityRole="button"
+            >
+              <Text style={notificationStyles.detailsCloseText}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>

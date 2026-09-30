@@ -1,5 +1,18 @@
 import { StyleSheet } from "react-native";
 
+const colors = {
+  background: "#E8E8E8",
+  navy: "#123266",
+  white: "#FFFFFF",
+  text: "#111111",
+  muted: "#626975",
+  border: "#777777",
+  red: "#E52323",
+  green: "#238A35",
+  amber: "#936000",
+  active: "#16E564",
+};
+
 const fonts = {
   bold: "Poppins_700Bold",
   semibold: "Poppins_600SemiBold",
@@ -11,7 +24,7 @@ const fonts = {
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: colors.background,
   },
 
   phone: {
@@ -19,10 +32,8 @@ export const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 480,
     alignSelf: "center",
-    backgroundColor: "#E8E8E8",
+    backgroundColor: colors.background,
   },
-
-  // HEADER
 
   header: {
     flexDirection: "row",
@@ -42,7 +53,7 @@ export const styles = StyleSheet.create({
   backIcon: {
     width: 23,
     height: 23,
-    tintColor: "#111111",
+    tintColor: colors.text,
     transform: [{ rotate: "180deg" }],
   },
 
@@ -50,7 +61,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.bold,
     fontSize: 21,
-    color: "#111111",
+    color: colors.text,
     textAlign: "center",
   },
 
@@ -58,47 +69,40 @@ export const styles = StyleSheet.create({
     width: 44,
   },
 
-  // UNPAID / PAID / PENDING FILTERS
-
   filters: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 24,
-    marginTop: 12,
+    marginTop: 10,
     marginBottom: 18,
   },
 
-  filterTouch: {
-    minHeight: 44,
-    justifyContent: "center",
-  },
-
   filterButton: {
-    minWidth: 66,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "#123266",
-    borderRadius: 8,
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: 6,
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "#B9C4D3",
+    borderRadius: 9,
   },
 
   filterActive: {
-    backgroundColor: "#123266",
+    backgroundColor: colors.navy,
+    borderColor: colors.navy,
   },
 
   filterText: {
     fontFamily: fonts.medium,
     fontSize: 12,
-    color: "#123266",
+    color: colors.navy,
   },
 
   filterTextActive: {
-    color: "#FFFFFF",
+    color: colors.white,
   },
-
-  // SCROLLABLE CONTENT
 
   scroll: {
     flex: 1,
@@ -106,168 +110,268 @@ export const styles = StyleSheet.create({
 
   content: {
     flexGrow: 1,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     paddingBottom: 30,
   },
 
-  // FINE CARDS
-
-  fineCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    minHeight: 116,
-    padding: 15,
-    marginBottom: 18,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#777777",
-    borderRadius: 10,
-  },
-
-  fineInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  violation: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: "#123266",
-  },
-
-  reference: {
-    fontFamily: fonts.light,
-    fontSize: 10,
-    color: "#626975",
-    marginTop: 5,
-  },
-
-  timestamp: {
-    fontFamily: fonts.light,
-    fontSize: 10,
-    lineHeight: 16,
-    color: "#626975",
-    marginTop: 10,
-  },
-
-  paidDate: {
-    fontFamily: fonts.light,
-    fontSize: 10,
-    lineHeight: 16,
-    color: "#239D39",
-    marginTop: 5,
-  },
-
-  amountArea: {
-    maxWidth: "42%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  amount: {
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    color: "#123266",
-    textAlign: "center",
-  },
-
-  payTouch: {
-    minHeight: 44,
-    minWidth: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 3,
-  },
-
-  payButton: {
-    minWidth: 52,
-    paddingHorizontal: 13,
-    paddingVertical: 5,
-    backgroundColor: "#123266",
-    borderRadius: 7,
-    alignItems: "center",
-  },
-
-  payText: {
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    color: "#FFFFFF",
-  },
-
-  status: {
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    marginTop: 12,
-    textAlign: "center",
-  },
-
-  paidStatus: {
-    color: "#239D39",
-  },
-
-  pendingStatus: {
-    color: "#936000",
-  },
-
-  // TOTAL OUTSTANDING
-
   totalCard: {
-    padding: 18,
-    marginTop: 8,
-    backgroundColor: "#123266",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#0D2348",
+    paddingHorizontal: 19,
+    paddingVertical: 18,
+    backgroundColor: colors.navy,
+    borderRadius: 12,
   },
 
   totalLabel: {
-    fontFamily: fonts.semibold,
-    fontSize: 14,
-    color: "#FFFFFF",
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: "#D9E7FA",
   },
 
   totalAmount: {
     fontFamily: fonts.bold,
-    fontSize: 32,
-    color: "#FF6464",
-    textAlign: "center",
-    marginTop: 13,
+    fontSize: 30,
+    lineHeight: 42,
+    color: colors.white,
+    marginTop: 5,
   },
 
   totalHelper: {
-    fontFamily: fonts.light,
+    fontFamily: fonts.regular,
     fontSize: 11,
-    color: "#FFFFFF",
-    textAlign: "center",
-    marginTop: 8,
+    lineHeight: 17,
+    color: "#D9E7FA",
+    marginTop: 3,
   },
 
-  payNowButton: {
-    minHeight: 44,
-    width: "80%",
-    alignSelf: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginTop: 20,
+  paymentNote: {
+    paddingHorizontal: 15,
+    paddingVertical: 13,
+    marginTop: 12,
+    marginBottom: 23,
+    backgroundColor: "#F5F7FA",
+    borderWidth: 1,
+    borderColor: "#C9D4E1",
+    borderRadius: 9,
+  },
+
+  paymentNoteTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.navy,
+  },
+
+  paymentNoteText: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.muted,
+    marginTop: 3,
+  },
+
+  listHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#45B94F",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 11,
+  },
+
+  listTitle: {
+    flex: 1,
+    fontFamily: fonts.semibold,
+    fontSize: 16,
+    color: colors.text,
+  },
+
+  listCount: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.muted,
+  },
+
+  fineCard: {
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "#C5CDD7",
+    borderRadius: 11,
+  },
+
+  fineHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+
+  violation: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.navy,
+  },
+
+  readBadge: {
+    minWidth: 46,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: "center",
+    borderRadius: 6,
+  },
+
+  readBadgeNew: {
+    backgroundColor: "#FDE8E8",
+  },
+
+  readBadgeRead: {
+    backgroundColor: "#EBEFF3",
+  },
+
+  readBadgeText: {
+    fontFamily: fonts.semibold,
+    fontSize: 10,
+  },
+
+  readBadgeTextNew: {
+    color: colors.red,
+  },
+
+  readBadgeTextRead: {
+    color: colors.muted,
+  },
+
+  reference: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.muted,
+    marginTop: 7,
+  },
+
+  timestamp: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.muted,
+    marginTop: 2,
+  },
+
+  paidDate: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.green,
+    marginTop: 2,
+  },
+
+  fineDivider: {
+    height: 1,
+    backgroundColor: "#E5E9EE",
+    marginTop: 14,
+    marginBottom: 13,
+  },
+
+  fineSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  amountArea: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  amountLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 10,
+    color: colors.muted,
+  },
+
+  amount: {
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    lineHeight: 26,
+    color: colors.navy,
+    marginTop: 1,
+  },
+
+  statusBadge: {
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: 7,
   },
 
-  payNowText: {
+  statusUnpaid: {
+    backgroundColor: "#FDE8E8",
+  },
+
+  statusPaid: {
+    backgroundColor: "#E6F5E9",
+  },
+
+  statusPending: {
+    backgroundColor: "#FFF3D8",
+  },
+
+  statusText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+  },
+
+  statusTextUnpaid: {
+    color: colors.red,
+  },
+
+  statusTextPaid: {
+    color: colors.green,
+  },
+
+  statusTextPending: {
+    color: colors.amber,
+  },
+
+  cardActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 15,
+  },
+
+  detailsButton: {
+    minHeight: 42,
+    minWidth: 112,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.navy,
+    borderRadius: 8,
+  },
+
+  detailsButtonText: {
     fontFamily: fonts.medium,
-    fontSize: 13,
-    color: "#FFFFFF",
-    textAlign: "center",
+    fontSize: 12,
+    color: colors.white,
   },
 
-  disabled: {
-    opacity: 0.45,
+  markReadButton: {
+    minHeight: 42,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  // LOADING AND EMPTY STATES
+  markReadText: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.navy,
+  },
 
   loadingPanel: {
     paddingVertical: 30,
@@ -276,10 +380,10 @@ export const styles = StyleSheet.create({
   },
 
   emptyPanel: {
-    padding: 20,
-    backgroundColor: "#FFFFFF",
+    padding: 19,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#BFC5CE",
+    borderColor: "#C5CDD7",
     borderRadius: 10,
     marginBottom: 18,
   },
@@ -287,31 +391,31 @@ export const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: fonts.semibold,
     fontSize: 14,
-    color: "#123266",
+    color: colors.navy,
   },
 
   helper: {
-    fontFamily: fonts.light,
+    fontFamily: fonts.regular,
     fontSize: 12,
-    color: "#626975",
+    lineHeight: 18,
+    color: colors.muted,
     marginTop: 6,
   },
-
-  // ERROR AND RETRY
 
   errorPanel: {
     padding: 14,
     borderWidth: 1,
-    borderColor: "#D32F2F",
+    borderColor: colors.red,
     borderRadius: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     marginBottom: 18,
   },
 
   errorText: {
     fontFamily: fonts.regular,
     fontSize: 12,
-    color: "#D32F2F",
+    lineHeight: 19,
+    color: colors.red,
   },
 
   retryButton: {
@@ -323,13 +427,11 @@ export const styles = StyleSheet.create({
   retryText: {
     fontFamily: fonts.medium,
     fontSize: 12,
-    color: "#123266",
+    color: colors.navy,
   },
 
-  // BOTTOM NAVIGATION
-
   bottomArea: {
-    backgroundColor: "#123266",
+    backgroundColor: colors.navy,
   },
 
   bottomNavigation: {
@@ -350,13 +452,13 @@ export const styles = StyleSheet.create({
   navIcon: {
     width: 28,
     height: 28,
-    tintColor: "#FFFFFF",
+    tintColor: colors.white,
   },
 
   navLabel: {
     fontFamily: fonts.medium,
     fontSize: 10,
-    color: "#FFFFFF",
+    color: colors.white,
     marginTop: 5,
   },
 
@@ -364,7 +466,7 @@ export const styles = StyleSheet.create({
     width: "65%",
     maxWidth: 52,
     height: 3,
-    backgroundColor: "#16E564",
+    backgroundColor: colors.active,
     borderRadius: 2,
     marginTop: 4,
   },
@@ -375,7 +477,6 @@ export const styles = StyleSheet.create({
 });
 
 // Compatibility workaround while this stylesheet lives inside app/.
-// This is not an actual application screen.
 export default function StudentFinesStylesRoute() {
   return null;
 }
