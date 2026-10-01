@@ -37,6 +37,9 @@ type Fine = {
   cancellation_reason: string | null;
   cash_request_reference?: string | null;
   cash_request_status?: string | null;
+  online_payment_reference?: string | null;
+  online_payment_status?: string | null;
+  online_payment_notes?: string | null;
   status: string;
 };
 
@@ -328,6 +331,11 @@ export default function AdminFineDetails({
   // Cash is only awaited while the fine itself is still unpaid.
   const cashPending = isUnpaid && cashStatus === "PENDING";
   const cashCancelled = isCancelled && cashStatus === "CANCELLED";
+  const onlineStatus = String(fine.online_payment_status || "").toUpperCase();
+  // The student opened a GCash checkout that PayMongo has not confirmed yet.
+  const gcashPending = isUnpaid && onlineStatus === "PENDING";
+  const paidByGcash = isPaid && onlineStatus === "SUCCESS";
+  const gcashReview = String(fine.online_payment_notes || "").startsWith("Needs review");
 
   // Each step (details, cancel, pay) fades in when it opens.
   if (step === "cancel") {
@@ -461,7 +469,7 @@ export default function AdminFineDetails({
     : isUnpaid
       ? "Waiting for payment."
       : isPaid
-        ? `Paid ${formatDay(fine.paid_at)}.`
+        ? `Paid ${formatDay(fine.paid_at)}${paidByGcash ? " with GCash" : ""}.`
         : `Cancelled ${formatDay(fine.cancelled_at)}.`;
 
   return (
@@ -490,6 +498,11 @@ export default function AdminFineDetails({
           {cashPending && (
             <Text style={[styles.badge, styles.badgePending]}>
               Cash requested
+            </Text>
+          )}
+          {gcashPending && (
+            <Text style={[styles.badge, styles.badgeGcash]}>
+              GCash in progress
             </Text>
           )}
         </View>
@@ -534,6 +547,29 @@ export default function AdminFineDetails({
           </View>
         )}
 
+        {gcashPending && (
+          <View style={[styles.banner, styles.bannerGcash]}>
+            <Text style={[styles.bannerTitle, styles.bannerGcashTitle]}>
+              GCash payment in progress
+            </Text>
+            <Text style={[styles.bannerText, styles.bannerGcashText]}>
+              The student opened a GCash checkout. This fine stays Unpaid
+              until PayMongo confirms the payment. Recording a cash payment
+              first checks with PayMongo and closes that checkout if it was
+              not paid.
+            </Text>
+          </View>
+        )}
+
+        {gcashReview && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>
+              {fine.online_payment_notes} Check this payment in the PayMongo
+              dashboard and refund it if needed.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.divider} />
 
         <View style={styles.grid}>
@@ -572,6 +608,13 @@ export default function AdminFineDetails({
           )}
           {isPaid && (
             <Field label="DATE PAID" value={formatDay(fine.paid_at)} />
+          )}
+          {paidByGcash && (
+            <Field
+              label="PAID WITH"
+              value="GCash (PayMongo)"
+              hint={fine.online_payment_reference}
+            />
           )}
           {isCancelled && (
             <>

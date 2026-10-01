@@ -2,10 +2,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useRef, useState } from "react";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
@@ -71,6 +75,52 @@ type CashRequest = {
   createdAt: string;
   paidAt: string | null;
 };
+
+type OnlinePayment = {
+  id: number;
+  paymentReference: string;
+  fineId: number;
+  amountCentavos: number;
+  status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED";
+  createdAt: string;
+  paidAt: string | null;
+  needsReview: boolean;
+  checkoutUrl: string | null;
+};
+
+// After the GCash checkout, PayMongo's page links back to this app route.
+const PAYMENT_RETURN_PATH = "payment-return";
+
+// Checks after returning from GCash: up to 6 tries, 2 seconds apart.
+const CONFIRM_ATTEMPTS = 6;
+const CONFIRM_INTERVAL_MS = 2000;
+
+// Signed-in JSON request; throws the server's message on failure.
+async function apiRequest(path: string, init: RequestInit = {}) {
+  const token = await AsyncStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Please sign in again.");
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
+    },
+  });
+
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.message || "Something went wrong. Please try again.");
+  }
+
+  return body;
+}
 
 const filters: { label: string; value: FineFilter }[] = [
   { label: "Unpaid", value: "UNPAID" },
@@ -158,6 +208,23 @@ export default function StudentFinesScreen() {
   const [cashFine, setCashFine] = useState<Fine | null>(null);
   const [requestingFineId, setRequestingFineId] = useState<number | null>(null);
   const [cashFeedback, setCashFeedback] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
+
+  // GCash through PayMongo
+  const [onlinePayments, setOnlinePayments] = useState<OnlinePayment[]>([]);
+  const [onlineEnabled, setOnlineEnabled] = useState(false);
+  const [onlineTestMode, setOnlineTestMode] = useState(false);
+  const [gcashFine, setGcashFine] = useState<Fine | null>(null);
+  const [startingGcashFineId, setStartingGcashFineId] = useState<number | null>(
+    null,
+  );
+  const [confirmingPaymentId, setConfirmingPaymentId] = useState<number | null>(
+    null,
+  );
+  // What the progress pop-up says while a GCash request is running.
+  const [paymentBusy, setPaymentBusy] = useState<{
     title: string;
     message: string;
   } | null>(null);
@@ -318,10 +385,25 @@ export default function StudentFinesScreen() {
     }
   }, []);
 
+  // GCash payments and whether online payment is switched on.
+  const loadOnlinePayments = useCallback(async () => {
+    try {
+      const body = await apiRequest("/api/payments/online/me");
+
+      setOnlineEnabled(Boolean(body.enabled));
+      setOnlineTestMode(Boolean(body.testMode));
+      setOnlinePayments(Array.isArray(body.payments) ? body.payments : []);
+    } catch {
+      // Cashier payments still work without online payment.
+      setOnlineEnabled(false);
+    }
+  }, []);
+
   const refresh = useCallback(() => {
     void loadFines();
     void loadCashRequests();
-  }, [loadFines, loadCashRequests]);
+    void loadOnlinePayments();
+  }, [loadFines, loadCashRequests, loadOnlinePayments]);
 
   useFocusEffect(
     useCallback(() => {
@@ -340,6 +422,240 @@ export default function StudentFinesScreen() {
     cashRequests.find(
       (request) => request.fineId === fineId && request.status === "PENDING",
     );
+
+  const pendingOnlinePayment = (fineId: number) =>
+    onlinePayments.find(
+      (payment) => payment.fineId === fineId && payment.status === "PENDING",
+    );
+
+  // Asks the server, which asks PayMongo, whether the payment went through.
+  // Returning from the checkout page alone never marks a fine paid.
+  const confirmOnlinePayment = async (
+    paymentId: number,
+    attempts = CONFIRM_ATTEMPTS,
+  ) => {
+    setConfirmingPaymentId(paymentId);
+    setPaymentBusy({
+      title: "Confirming your payment",
+      message: "Checking with PayMongo. This takes a few seconds.",
+    });
+
+    try {
+      let payment: OnlinePayment | null = null;
+
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        const body = await apiRequest(`/api/payments/online/${paymentId}`);
+
+        payment = body.payment;
+
+        if (payment?.status !== "PENDING" || attempt === attempts - 1) {
+          break;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, CONFIRM_INTERVAL_MS));
+      }
+
+      refresh();
+      void refreshNotificationCounts();
+
+      if (payment?.status === "SUCCESS" && !payment.needsReview) {
+        haptics.success();
+        setCashFeedback({
+          title: "Payment Confirmed",
+          message:
+            "PayMongo confirmed your GCash payment. Your fine is now paid.",
+        });
+      } else if (payment?.status === "SUCCESS") {
+        setCashFeedback({
+          title: "Payment Received",
+          message:
+            "Your GCash payment was received, but the school needs to review it. You will be notified.",
+        });
+      } else if (payment?.status === "PENDING") {
+        setCashFeedback({
+          title: "Not Confirmed Yet",
+          message:
+            "PayMongo has not confirmed this payment yet. If you finished paying in GCash, tap Check payment on the fine in a moment. Your fine stays unpaid until it is confirmed.",
+        });
+      } else {
+        setCashFeedback({
+          title: "Payment Not Completed",
+          message:
+            "No GCash payment was made. You can try again or pay at the cashier.",
+        });
+      }
+    } catch (caught) {
+      haptics.error();
+      setCashFeedback({
+        title: "Could Not Check Payment",
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "Please check your connection and try again.",
+      });
+    } finally {
+      setConfirmingPaymentId(null);
+      setPaymentBusy(null);
+    }
+  };
+
+  // Opens PayMongo's GCash page, then confirms the result on return.
+  const openCheckout = async (checkoutUrl: string, paymentId: number) => {
+    if (Platform.OS === "web") {
+      await WebBrowser.openBrowserAsync(checkoutUrl).catch(() => null);
+
+      setCashFeedback({
+        title: "Finish in the New Tab",
+        message:
+          "Complete the GCash payment in the new tab, then tap Check payment on this fine.",
+      });
+      void loadOnlinePayments();
+      return;
+    }
+
+    // On phones this returns when the student comes back to the app.
+    await WebBrowser.openAuthSessionAsync(
+      checkoutUrl,
+      Linking.createURL(PAYMENT_RETURN_PATH),
+    ).catch(() => null);
+
+    await confirmOnlinePayment(paymentId);
+  };
+
+  const startGcashPayment = async (fine: Fine) => {
+    setGcashFine(null);
+    setStartingGcashFineId(fine.id);
+
+    try {
+      const body = await apiRequest("/api/payments/online/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          fineId: fine.id,
+          returnUrl: Linking.createURL(PAYMENT_RETURN_PATH),
+        }),
+      });
+
+      void loadOnlinePayments();
+      setStartingGcashFineId(null);
+
+      await openCheckout(body.checkoutUrl, body.payment.id);
+    } catch (caught) {
+      haptics.error();
+      setCashFeedback({
+        title: "GCash Unavailable",
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "GCash checkout could not be opened. Please try again.",
+      });
+    } finally {
+      setStartingGcashFineId(null);
+    }
+  };
+
+  const cancelOnlinePayment = async (payment: OnlinePayment) => {
+    setConfirmingPaymentId(payment.id);
+    setPaymentBusy({
+      title: "Cancelling GCash payment",
+      message: "Closing the checkout with PayMongo.",
+    });
+
+    try {
+      await apiRequest(`/api/payments/online/${payment.id}/cancel`, {
+        method: "POST",
+      });
+
+      setCashFeedback({
+        title: "GCash Payment Cancelled",
+        message: "No payment was made. You can pay again at any time.",
+      });
+    } catch (caught) {
+      haptics.error();
+      setCashFeedback({
+        title: "Could Not Cancel",
+        message:
+          caught instanceof Error ? caught.message : "Please try again.",
+      });
+    } finally {
+      setConfirmingPaymentId(null);
+      setPaymentBusy(null);
+      refresh();
+    }
+  };
+
+  // The GCash part of an unpaid fine's card.
+  const renderGcashActions = (fine: Fine) => {
+    if (fine.status !== "UNPAID" || !onlineEnabled) {
+      return null;
+    }
+
+    const open = pendingOnlinePayment(fine.id);
+    const busy = confirmingPaymentId !== null || startingGcashFineId !== null;
+
+    if (open) {
+      return (
+        <View style={styles.gcashPending}>
+          <Text style={styles.gcashPendingTitle}>
+            GCash payment in progress
+          </Text>
+          <Text style={styles.gcashPendingText}>
+            Your fine stays unpaid until PayMongo confirms the payment.
+          </Text>
+
+          <View style={styles.gcashPendingActions}>
+            <TouchableOpacity
+              style={styles.gcashOutlineButton}
+              onPress={() => void confirmOnlinePayment(open.id, 1)}
+              disabled={busy}
+              accessibilityRole="button"
+            >
+              {confirmingPaymentId === open.id ? (
+                <ActivityIndicator size="small" color="#0B63E5" />
+              ) : (
+                <Text style={styles.gcashOutlineText}>Check payment</Text>
+              )}
+            </TouchableOpacity>
+
+            {!!open.checkoutUrl && (
+              <TouchableOpacity
+                style={styles.gcashSmallButton}
+                onPress={() => void openCheckout(open.checkoutUrl!, open.id)}
+                disabled={busy}
+                accessibilityRole="button"
+              >
+                <Text style={styles.gcashButtonText}>Continue in GCash</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.gcashCancelLink}
+            onPress={() => void cancelOnlinePayment(open)}
+            disabled={busy}
+            accessibilityRole="button"
+          >
+            <Text style={styles.gcashCancelText}>Cancel GCash payment</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        style={[styles.gcashButton, busy && { opacity: 0.6 }]}
+        onPress={() => setGcashFine(fine)}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel={`Pay ${fine.violationName} with GCash`}
+      >
+        {startingGcashFineId === fine.id ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.gcashButtonText}>Pay with GCash</Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   const visibleFines =
     data?.fines.filter((fine) => {
@@ -670,12 +986,14 @@ export default function StudentFinesScreen() {
               </FadeIn>
 
               <FadeIn style={styles.paymentNote} delay={60}>
-                <Text style={styles.paymentNoteTitle}>Pay at the cashier</Text>
+                <Text style={styles.paymentNoteTitle}>
+                  {onlineEnabled ? "How to pay" : "Pay at the cashier"}
+                </Text>
 
                 <Text style={styles.paymentNoteText}>
-                  Request to pay an unpaid fine in cash, then bring the amount
-                  to the cashier or student treasurer. A request is not a
-                  payment. Online payment is not available yet.
+                  {onlineEnabled
+                    ? "Pay with GCash online, or request to pay in cash and bring the amount to the cashier or student treasurer. A cashier request is not a payment."
+                    : "Request to pay an unpaid fine in cash, then bring the amount to the cashier or student treasurer. A request is not a payment. Online payment is not available yet."}
                 </Text>
 
                 {!!cashError && (
@@ -809,6 +1127,8 @@ export default function StudentFinesScreen() {
                       </TouchableOpacity>
                     )}
                   </View>
+
+                  {renderGcashActions(fine)}
 
                   {fine.status === "UNPAID" && !pendingCashRequest(fine.id) && (
                     <TouchableOpacity
@@ -1109,27 +1429,117 @@ export default function StudentFinesScreen() {
         </View>
       </Modal>
 
+      {/* GCASH: CONFIRM BEFORE LEAVING THE APP */}
       <Modal
-        visible={cashFeedback !== null}
+        visible={gcashFine !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setCashFeedback(null)}
+        onRequestClose={() => setGcashFine(null)}
       >
         <View style={notificationStyles.detailsOverlay}>
           <PopIn style={notificationStyles.detailsCard}>
-            <Text style={notificationStyles.detailsTitle}>
-              {cashFeedback?.title}
-            </Text>
+            <Text style={notificationStyles.detailsTitle}>Pay with GCash</Text>
 
-            <Text style={styles.helper}>{cashFeedback?.message}</Text>
+            {gcashFine && (
+              <>
+                <Text style={notificationStyles.detailsViolation}>
+                  {gcashFine.violationName}
+                </Text>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Fine</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {gcashFine.fineReference}
+                  </Text>
+                </View>
+
+                <View style={notificationStyles.detailsRow}>
+                  <Text style={notificationStyles.detailsLabel}>Amount</Text>
+                  <Text style={notificationStyles.detailsValue}>
+                    {money(gcashFine.amountCentavos)}
+                  </Text>
+                </View>
+
+                {onlineTestMode && (
+                  <Text style={styles.gcashTestBadge}>
+                    TEST MODE · no real money is charged
+                  </Text>
+                )}
+
+                <Text style={styles.gcashNote}>
+                  You will pay on PayMongo&apos;s secure GCash page. Your fine is
+                  marked paid only after SmartFine confirms the payment with
+                  PayMongo.
+                  {pendingCashRequest(gcashFine.id)
+                    ? " Your cashier request is closed once the payment is confirmed."
+                    : ""}
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.gcashButton}
+                  onPress={() => void startGcashPayment(gcashFine)}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.gcashButtonText}>Continue to GCash</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             <TouchableOpacity
-              style={notificationStyles.detailsCloseButton}
-              onPress={() => setCashFeedback(null)}
+              style={styles.markReadButton}
+              onPress={() => setGcashFine(null)}
               accessibilityRole="button"
             >
-              <Text style={notificationStyles.detailsCloseText}>OK</Text>
+              <Text style={styles.markReadText}>Cancel</Text>
             </TouchableOpacity>
+          </PopIn>
+        </View>
+      </Modal>
+
+      {/* One pop-up shows the GCash progress, then the result, so two
+          pop-ups never swap at the same moment. */}
+      <Modal
+        visible={cashFeedback !== null || paymentBusy !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!paymentBusy) {
+            setCashFeedback(null);
+          }
+        }}
+      >
+        <View style={notificationStyles.detailsOverlay}>
+          <PopIn style={notificationStyles.detailsCard}>
+            {paymentBusy ? (
+              <View
+                style={styles.verifyingBox}
+                accessible
+                accessibilityRole="progressbar"
+                accessibilityLabel={paymentBusy.title}
+              >
+                <ActivityIndicator size="large" color="#0B63E5" />
+                <Text style={notificationStyles.detailsTitle}>
+                  {paymentBusy.title}
+                </Text>
+                <Text style={styles.helper}>{paymentBusy.message}</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={notificationStyles.detailsTitle}>
+                  {cashFeedback?.title}
+                </Text>
+
+                <Text style={styles.helper}>{cashFeedback?.message}</Text>
+
+                <TouchableOpacity
+                  style={notificationStyles.detailsCloseButton}
+                  onPress={() => setCashFeedback(null)}
+                  accessibilityRole="button"
+                >
+                  <Text style={notificationStyles.detailsCloseText}>OK</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </PopIn>
         </View>
       </Modal>

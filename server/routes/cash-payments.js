@@ -3,6 +3,10 @@ const crypto = require("node:crypto");
 
 const db = require("../database/database");
 const { notifyCashCollected } = require("../database/notifications");
+const {
+  settleErrorResponse,
+  settlePendingOnlinePayment,
+} = require("../payments/online-payments");
 const { authenticateToken } = require("./auth");
 
 const router = express.Router();
@@ -128,7 +132,7 @@ router.post(
   "/cash-requests",
   authenticateToken,
   requireActiveRole("STUDENT"),
-  (req, res) => {
+  async (req, res) => {
     const fineId = positiveId(req.body?.fineId);
 
     if (!fineId) {
@@ -136,6 +140,31 @@ router.post(
         success: false,
         message: "A valid fine ID is required.",
       });
+    }
+
+    // Choosing the cashier closes this student's open GCash checkout first.
+    const owned = db
+      .prepare("SELECT student_id FROM fines WHERE id = ?")
+      .get(fineId);
+
+    if (owned && owned.student_id === req.paymentUserId) {
+      try {
+        const settled = await settlePendingOnlinePayment(
+          fineId,
+          req.paymentUserId,
+          "CASH_REQUESTED",
+        );
+
+        if (settled.paid) {
+          return res.status(409).json({
+            success: false,
+            message: "This fine was already paid with GCash.",
+          });
+        }
+      } catch (error) {
+        const { status, body } = settleErrorResponse(error);
+        return res.status(status).json(body);
+      }
     }
 
     try {
@@ -355,7 +384,7 @@ router.post(
   "/cash-collections/:fineId",
   authenticateToken,
   requireActiveRole("ADMIN"),
-  (req, res) => {
+  async (req, res) => {
     const fineId = positiveId(req.params.fineId);
 
     if (!fineId) {
@@ -373,6 +402,26 @@ router.post(
         success: false,
         message: "Notes must be 500 characters or fewer.",
       });
+    }
+
+    // Cash in hand closes an open GCash checkout, unless PayMongo says it
+    // was paid a moment ago.
+    try {
+      const settled = await settlePendingOnlinePayment(
+        fineId,
+        req.paymentUserId,
+        "CASH_COLLECTED",
+      );
+
+      if (settled.paid) {
+        return res.status(409).json({
+          success: false,
+          message: "This fine was just paid with GCash. Do not collect cash.",
+        });
+      }
+    } catch (error) {
+      const { status, body } = settleErrorResponse(error);
+      return res.status(status).json(body);
     }
 
     try {

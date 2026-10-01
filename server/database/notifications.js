@@ -160,7 +160,71 @@ function notifyCashCollected(fineId, paymentId, collectedBy) {
   );
 }
 
+// PayMongo confirmed a GCash payment and the fine is Paid.
+function notifyOnlinePaymentReceived(fineId, paymentId) {
+  const context = fineContext(fineId);
+  if (!context) return;
+  const amount = peso(context.amountCentavos);
+
+  notifyStudent(
+    context,
+    "PAYMENT",
+    "Payment Received",
+    `Your GCash payment of ${amount} for ${context.reference} (${context.violation}) was received. This fine is now Paid.`,
+    paymentId,
+  );
+
+  // The student paid, so the officer is always told.
+  notifyRecordingOfficer(
+    context,
+    null,
+    "PAYMENT",
+    "Fine Paid",
+    `${context.reference} (${context.violation}) issued to ${context.studentName} was paid online via GCash — ${amount}.`,
+    paymentId,
+  );
+
+  // Same title as cash collections so it appears in Reports activity.
+  db.prepare(
+    `INSERT INTO notifications (
+       user_id, notification_type, title, message,
+       related_fine_id, related_payment_id
+     )
+     SELECT id, 'SYSTEM', 'Payment Collected', ?, ?, ?
+     FROM users
+     WHERE role = 'ADMIN' AND account_status = 'ACTIVE'`,
+  ).run(
+    `GCash payment received for ${context.reference} — ${amount}.`,
+    context.id,
+    paymentId,
+  );
+}
+
+// Money arrived that SmartFine could not apply automatically (the fine was
+// already cancelled or paid, or the amount differs). An Admin must review it,
+// usually by refunding it in the PayMongo dashboard.
+function notifyOnlinePaymentNeedsReview(fineId, paymentId, reason) {
+  const context = fineContext(fineId);
+  if (!context) return;
+
+  db.prepare(
+    `INSERT INTO notifications (
+       user_id, notification_type, title, message,
+       related_fine_id, related_payment_id
+     )
+     SELECT id, 'PAYMENT', 'GCash Payment Needs Review', ?, ?, ?
+     FROM users
+     WHERE role = 'ADMIN' AND account_status = 'ACTIVE'`,
+  ).run(
+    `A GCash payment for ${context.reference} (${context.studentName}) was received but not applied: ${reason} Review it in the PayMongo dashboard.`,
+    context.id,
+    paymentId,
+  );
+}
+
 module.exports = {
   notifyCashCollected,
   notifyFineCancelled,
+  notifyOnlinePaymentNeedsReview,
+  notifyOnlinePaymentReceived,
 };

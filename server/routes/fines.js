@@ -3,6 +3,10 @@ const router = express.Router();
 const db = require("../database/database");
 const { notifyFineCancelled } = require("../database/notifications");
 const { authenticateToken } = require("./auth");
+const {
+  settleErrorResponse,
+  settlePendingOnlinePayment,
+} = require("../payments/online-payments");
 console.log("fines.js loaded");
 const studentFineReadsAlreadyExisted = Boolean(
   db
@@ -59,6 +63,20 @@ function cancelFineAndCashRequest(fineId, cancelledBy, cancellationReason) {
           AND payment_status = 'PENDING'`,
       )
       .run(fineId);
+    // A GCash checkout opened after the route settled it is closed too.
+    db.prepare(
+      `INSERT INTO payment_events (payment_id, event_type, actor_user_id, details_json)
+      SELECT id, 'ONLINE_CHECKOUT_CLOSED', ?, '{"reason":"FINE_CANCELLED"}'
+      FROM payments
+      WHERE fine_id = ? AND payment_method = 'GCASH'
+        AND payment_status = 'PENDING'`,
+    ).run(cancelledBy, fineId);
+    db.prepare(
+      `UPDATE payments
+      SET payment_status = 'CANCELLED'
+      WHERE fine_id = ? AND payment_method = 'GCASH'
+        AND payment_status = 'PENDING'`,
+    ).run(fineId);
     // A cancelled request no longer requires attention in the Admin inbox.
     db.prepare(
       `UPDATE notifications
@@ -1066,6 +1084,9 @@ router.get("/:id", (req, res, next) => {
           f.updated_at,
           cash_request.payment_reference AS cash_request_reference,
           cash_request.payment_status AS cash_request_status,
+          online_payment.payment_reference AS online_payment_reference,
+          online_payment.payment_status AS online_payment_status,
+          online_payment.payment_notes AS online_payment_notes,
           CASE
             WHEN f.cancelled_at IS NOT NULL THEN 'CANCELLED'
             WHEN f.paid_at IS NOT NULL THEN 'PAID'
@@ -1084,6 +1105,17 @@ router.get("/:id", (req, res, next) => {
             FROM payments p
             WHERE p.fine_id = f.id
               AND p.payment_method = 'CASH'
+            ORDER BY p.id DESC
+            LIMIT 1
+          )
+        -- The latest GCash payment that is open or was received.
+        LEFT JOIN payments online_payment
+          ON online_payment.id = (
+            SELECT p.id
+            FROM payments p
+            WHERE p.fine_id = f.id
+              AND p.payment_method = 'GCASH'
+              AND p.payment_status IN ('PENDING', 'SUCCESS')
             ORDER BY p.id DESC
             LIMIT 1
           )
@@ -1111,7 +1143,7 @@ router.get("/:id", (req, res, next) => {
     });
   }
 });
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const fineId = Number(req.params.id);
     if (!Number.isInteger(fineId) || fineId <= 0) {
@@ -1154,6 +1186,25 @@ router.put("/:id", (req, res) => {
         code: "FINE_ALREADY_PAID",
         message: "Paid fines cannot be edited.",
       });
+    }
+    // An open GCash checkout was made for the current amount: close it
+    // (or record it, if PayMongo says it was paid) before editing.
+    try {
+      const settled = await settlePendingOnlinePayment(
+        fineId,
+        null,
+        "FINE_EDITED",
+      );
+      if (settled.paid) {
+        return res.status(409).json({
+          success: false,
+          code: "FINE_ALREADY_PAID",
+          message: "This fine was just paid with GCash and can no longer be edited.",
+        });
+      }
+    } catch (error) {
+      const { status, body } = settleErrorResponse(error);
+      return res.status(status).json(body);
     }
     // A pending request was made for the current student and amount.
     const pendingPayment = db
@@ -1297,7 +1348,29 @@ router.patch("/:id/mark-paid", (req, res) => {
       "Marking a fine paid directly is no longer supported. Use Record Cash Payment.",
   });
 });
-router.delete("/:id", canCancelFines, (req, res) => {
+// Settles an open GCash checkout before a fine is cancelled. Returns a
+// response when the cancellation must stop, otherwise null.
+async function settleBeforeCancel(fineId, userId, res) {
+  try {
+    const settled = await settlePendingOnlinePayment(
+      fineId,
+      userId,
+      "FINE_CANCELLED",
+    );
+    if (settled.paid) {
+      return res.status(409).json({
+        success: false,
+        code: "PAID_FINE_CANNOT_BE_CANCELLED",
+        message: "This fine was just paid with GCash, so it cannot be cancelled.",
+      });
+    }
+    return null;
+  } catch (error) {
+    const { status, body } = settleErrorResponse(error);
+    return res.status(status).json(body);
+  }
+}
+router.delete("/:id", canCancelFines, async (req, res) => {
   try {
     const fineId = Number(req.params.id);
     const { cancellationReason } = req.body || {};
@@ -1345,6 +1418,8 @@ router.delete("/:id", canCancelFines, (req, res) => {
         message: "A paid fine cannot be cancelled from the Fines module.",
       });
     }
+    const stopped = await settleBeforeCancel(fineId, req.cancellingUserId, res);
+    if (stopped) return stopped;
     const result = cancelFineAndCashRequest(
       fineId,
       req.cancellingUserId,
@@ -1376,7 +1451,7 @@ router.delete("/:id", canCancelFines, (req, res) => {
     });
   }
 });
-router.patch("/:id/cancel", canCancelFines, (req, res) => {
+router.patch("/:id/cancel", canCancelFines, async (req, res) => {
   try {
     const fineId = Number(req.params.id);
     if (!Number.isInteger(fineId) || fineId <= 0) {
@@ -1439,6 +1514,8 @@ router.patch("/:id/cancel", canCancelFines, (req, res) => {
         message: "A paid fine cannot be cancelled.",
       });
     }
+    const stopped = await settleBeforeCancel(fineId, req.cancellingUserId, res);
+    if (stopped) return stopped;
     const result = cancelFineAndCashRequest(
       fineId,
       req.cancellingUserId,

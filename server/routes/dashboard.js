@@ -228,7 +228,7 @@ const ACTIVITY_FEED = `
     NULL,
     ${fullName("student")},
     'paid ' || f.fine_reference ||
-      CASE WHEN p.payment_method = 'CASH' THEN ' in cash' ELSE ' online' END,
+      CASE p.payment_method WHEN 'CASH' THEN ' in cash' WHEN 'GCASH' THEN ' via GCash' ELSE ' online' END,
     ${fullName("actor")},
     actor.role,
     p.amount_centavos

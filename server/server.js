@@ -21,12 +21,20 @@ const reportsRoutes = require("./routes/reports");
 const settingsRoutes = require("./routes/settings");
 const adminNotificationRoutes = require("./routes/admin-notifications");
 const notificationRoutes = require("./routes/notifications");
+const onlinePaymentRoutes = require("./routes/online-payments");
 
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
-app.use(express.json());
+// The raw body is kept so PayMongo webhook signatures can be verified.
+app.use(
+  express.json({
+    verify: (req, _res, buffer) => {
+      req.rawBody = buffer;
+    },
+  }),
+);
 
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/students", studentsRoutes);
@@ -38,6 +46,7 @@ app.use("/api/fines", finesRoutes);
 app.use("/api/student-qr", studentQRRoutes);
 app.use("/api/student-profile", studentProfileRoutes);
 app.use("/api/payments", cashPaymentRoutes);
+app.use("/api/payments", onlinePaymentRoutes);
 
 app.use("/api/officers", officersRoutes);
 app.use("/api/reports", reportsRoutes);

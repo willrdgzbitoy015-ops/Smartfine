@@ -11,6 +11,9 @@ const colors = {
   green: "#238A35",
   amber: "#936000",
   active: "#16E564",
+  gcash: "#0B63E5",
+  gcashDark: "#0A4BAF",
+  gcashLight: "#EEF5FF",
 };
 
 const fonts = {
@@ -348,6 +351,122 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     marginTop: 15,
+  },
+
+  // GCASH (PayMongo)
+
+  gcashButton: {
+    minHeight: 46,
+    marginTop: 16,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.gcash,
+    borderRadius: 8,
+  },
+
+  gcashButtonText: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: colors.white,
+  },
+
+  gcashPending: {
+    marginTop: 16,
+    padding: 14,
+    backgroundColor: colors.gcashLight,
+    borderWidth: 1,
+    borderColor: "#B9D3FB",
+    borderRadius: 10,
+  },
+
+  gcashPendingTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: colors.gcashDark,
+  },
+
+  gcashPendingText: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.muted,
+    marginTop: 4,
+  },
+
+  gcashPendingActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 12,
+  },
+
+  gcashSmallButton: {
+    flexGrow: 1,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.gcash,
+    borderRadius: 8,
+  },
+
+  gcashOutlineButton: {
+    flexGrow: 1,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gcash,
+    borderRadius: 8,
+  },
+
+  gcashOutlineText: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    color: colors.gcash,
+  },
+
+  gcashCancelLink: {
+    alignSelf: "center",
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+
+  gcashCancelText: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.red,
+    textDecorationLine: "underline",
+  },
+
+  gcashNote: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 17,
+    color: colors.muted,
+    marginTop: 12,
+  },
+
+  gcashTestBadge: {
+    alignSelf: "flex-start",
+    overflow: "hidden",
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    marginTop: 10,
+    borderRadius: 10,
+    backgroundColor: "#FFF1D6",
+    fontFamily: fonts.semibold,
+    fontSize: 10,
+    color: colors.amber,
+  },
+
+  verifyingBox: {
+    alignItems: "center",
+    paddingVertical: 10,
+    gap: 12,
   },
 
   detailsButton: {

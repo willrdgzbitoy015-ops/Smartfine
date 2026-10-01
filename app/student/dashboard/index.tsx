@@ -3,7 +3,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Image,
   Modal,
@@ -731,9 +730,6 @@ export default function StudentDashboard() {
     `${modalMode}:${selectedFine?.id ?? ""}:${selectedNotice?.id ?? ""}`,
   );
 
-  const upcoming = (module: string) => {
-    Alert.alert(module, "This feature is not available yet.");
-  };
 
   const returnToLogin = async () => {
     try {
@@ -905,7 +901,7 @@ export default function StudentDashboard() {
 
             <PressableScale
               style={styles.quickCard}
-              onPress={() => upcoming("Payment")}
+              onPress={() => router.push("/student/fines")}
               accessibilityRole="button"
             >
               <Image
