@@ -58,6 +58,38 @@ db.exec(`
   END;
 `);
 
+// The fined student is notified in the same INSERT, whoever recorded it.
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS notify_student_when_fine_recorded
+  AFTER INSERT ON fines
+  BEGIN
+    INSERT INTO notifications (
+      user_id,
+      notification_type,
+      title,
+      message,
+      related_fine_id
+    )
+    SELECT
+      student.id,
+      'FINE',
+      'New Fine Issued',
+      violation.violation_name ||
+      ' — ' ||
+      printf('₱%.2f', NEW.amount_centavos / 100.0) ||
+      ' was recorded on your account (' ||
+      NEW.fine_reference ||
+      ').',
+      NEW.id
+    FROM users AS student
+    JOIN violation_types AS violation
+      ON violation.id = NEW.violation_type_id
+    WHERE student.id = NEW.student_id
+      AND student.role = 'STUDENT'
+      AND student.account_status = 'ACTIVE';
+  END;
+`);
+
 console.log("Connected to SmartFine SQLite database.");
 
 module.exports = db;

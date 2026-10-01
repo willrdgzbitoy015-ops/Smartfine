@@ -188,6 +188,64 @@ router.patch("/read-all", (req, res) => {
   }
 });
 
+// Called after a fine's details load: reads this Admin's FINE and PAYMENT
+// notices for that fine and reports which ones existed.
+router.patch("/fine/:fineId/read", (req, res) => {
+  try {
+    const fineId = Number(req.params.fineId);
+
+    if (!Number.isSafeInteger(fineId) || fineId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid fine ID.",
+      });
+    }
+
+    const userId = req.notificationUserId;
+    const notices = { FINE: null, PAYMENT: null };
+
+    const rows = db
+      .prepare(
+        `SELECT notification_type AS type, MIN(is_read) AS allRead
+         FROM notifications
+         WHERE user_id = ?
+           AND related_fine_id = ?
+           AND notification_type IN ('FINE', 'PAYMENT')
+         GROUP BY notification_type`,
+      )
+      .all(userId, fineId);
+
+    for (const row of rows) {
+      notices[row.type] = { wasUnread: Number(row.allRead) === 0 };
+    }
+
+    db.prepare(
+      `UPDATE notifications
+       SET is_read = 1
+       WHERE user_id = ?
+         AND related_fine_id = ?
+         AND notification_type IN ('FINE', 'PAYMENT')
+         AND is_read = 0`,
+    ).run(userId, fineId);
+
+    return res.json({
+      success: true,
+      notices,
+      unreadCount: {
+        FINE: unreadCount(userId, "FINE"),
+        PAYMENT: unreadCount(userId, "PAYMENT"),
+      },
+    });
+  } catch (error) {
+    console.error("Mark fine notifications read error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to mark notifications as read.",
+    });
+  }
+});
+
 router.patch("/:id/read", (req, res) => {
   const type = requestedType(req, res);
   if (!type) return;

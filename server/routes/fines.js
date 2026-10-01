@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../database/database");
+const { notifyFineCancelled } = require("../database/notifications");
 const { authenticateToken } = require("./auth");
 console.log("fines.js loaded");
 const studentFineReadsAlreadyExisted = Boolean(
@@ -24,6 +25,103 @@ if (!studentFineReadsAlreadyExisted) {
   `,
   ).run();
 }
+// Cancel an unpaid fine and close its outstanding cashier request in one
+// transaction. Successful payments and other fines' requests are untouched.
+function cancelFineAndCashRequest(fineId, cancelledBy, cancellationReason) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const result = db
+      .prepare(
+        `UPDATE fines
+         SET fine_status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP,
+             cancelled_by = ?, cancellation_reason = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND paid_at IS NULL AND cancelled_at IS NULL`,
+      )
+      .run(cancelledBy, cancellationReason, fineId);
+    if (Number(result.changes) !== 1) {
+      db.exec("ROLLBACK");
+      return result;
+    }
+    // Keep a history entry for each request closed by this cancellation.
+    db.prepare(
+      `INSERT INTO payment_events (payment_id, event_type, actor_user_id)
+      SELECT id, 'CASH_REQUEST_CANCELLED', ?
+      FROM payments
+      WHERE fine_id = ? AND payment_method = 'CASH'
+        AND payment_status = 'PENDING'`,
+    ).run(cancelledBy, fineId);
+    const requests = db
+      .prepare(
+        `UPDATE payments
+        SET payment_status = 'CANCELLED'
+        WHERE fine_id = ? AND payment_method = 'CASH'
+          AND payment_status = 'PENDING'`,
+      )
+      .run(fineId);
+    // A cancelled request no longer requires attention in the Admin inbox.
+    db.prepare(
+      `UPDATE notifications
+      SET is_read = 1
+      WHERE notification_type = 'PAYMENT' AND is_read = 0
+        AND title = 'Cashier Payment Requested'
+        AND related_payment_id IN (
+          SELECT id FROM payments
+          WHERE fine_id = ? AND payment_method = 'CASH'
+            AND payment_status = 'CANCELLED'
+        )`,
+    ).run(fineId);
+    notifyFineCancelled(
+      fineId,
+      cancelledBy,
+      cancellationReason,
+      Number(requests.changes),
+    );
+    db.exec("COMMIT");
+    return result;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+// Only an active Admin or Fines Officer may cancel a fine. The canceller is
+// taken from the signed-in token, not from the request body.
+function requireActiveFineManager(req, res, next) {
+  try {
+    const userId = Number(req.authUser?.userId);
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      return res.status(401).json({
+        success: false,
+        code: "AUTH_REQUIRED",
+        message: "Please sign in again.",
+      });
+    }
+    const user = db
+      .prepare("SELECT id, role, account_status FROM users WHERE id = ?")
+      .get(userId);
+    if (
+      !user ||
+      !["ADMIN", "FINES_OFFICER"].includes(user.role) ||
+      user.account_status !== "ACTIVE"
+    ) {
+      return res.status(403).json({
+        success: false,
+        code: "INVALID_CANCEL_USER",
+        message:
+          "Only an active administrator or fines officer can cancel a fine.",
+      });
+    }
+    req.cancellingUserId = userId;
+    next();
+  } catch (error) {
+    console.error("Cancel fine authorization error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Could not verify your account.",
+    });
+  }
+}
+const canCancelFines = [authenticateToken, requireActiveFineManager];
 function formatFullName(firstName, middleName, lastName) {
   return [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
 }
@@ -966,6 +1064,8 @@ router.get("/:id", (req, res, next) => {
           f.created_at,
           f.created_at AS recordedAt,
           f.updated_at,
+          cash_request.payment_reference AS cash_request_reference,
+          cash_request.payment_status AS cash_request_status,
           CASE
             WHEN f.cancelled_at IS NOT NULL THEN 'CANCELLED'
             WHEN f.paid_at IS NOT NULL THEN 'PAID'
@@ -978,6 +1078,15 @@ router.get("/:id", (req, res, next) => {
           ON vt.id = f.violation_type_id
         LEFT JOIN users officer
           ON officer.id = f.recorded_by
+        LEFT JOIN payments cash_request
+          ON cash_request.id = (
+            SELECT p.id
+            FROM payments p
+            WHERE p.fine_id = f.id
+              AND p.payment_method = 'CASH'
+            ORDER BY p.id DESC
+            LIMIT 1
+          )
         WHERE f.id = ?
         `,
       )
@@ -1044,6 +1153,22 @@ router.put("/:id", (req, res) => {
         success: false,
         code: "FINE_ALREADY_PAID",
         message: "Paid fines cannot be edited.",
+      });
+    }
+    // A pending request was made for the current student and amount.
+    const pendingPayment = db
+      .prepare(
+        `SELECT id FROM payments
+         WHERE fine_id = ? AND payment_status = 'PENDING'
+         LIMIT 1`,
+      )
+      .get(fineId);
+    if (pendingPayment) {
+      return res.status(409).json({
+        success: false,
+        code: "FINE_PAYMENT_PENDING",
+        message:
+          "This fine has a pending cashier request. Record the cash payment or cancel the fine before editing it.",
       });
     }
     const { studentId, violationTypeId, recordedBy, remarks, issuedAt } =
@@ -1162,96 +1287,20 @@ router.put("/:id", (req, res) => {
     });
   }
 });
+// Retired: it marked fines Paid with no login, payment record, or notices.
+// Admins record cash through POST /api/payments/cash-collections/:fineId.
 router.patch("/:id/mark-paid", (req, res) => {
-  try {
-    const fineId = Number(req.params.id);
-    if (!Number.isInteger(fineId) || fineId <= 0) {
-      return res.status(400).json({
-        success: false,
-        code: "INVALID_FINE_ID",
-        message: "Invalid fine ID.",
-      });
-    }
-    const fine = db
-      .prepare(
-        `
-        SELECT
-          id,
-          fine_reference,
-          paid_at,
-          cancelled_at
-        FROM fines
-        WHERE id = ?
-        `,
-      )
-      .get(fineId);
-    if (!fine) {
-      return res.status(404).json({
-        success: false,
-        code: "FINE_NOT_FOUND",
-        message: "Fine not found.",
-      });
-    }
-    if (fine.cancelled_at) {
-      return res.status(409).json({
-        success: false,
-        code: "FINE_CANCELLED",
-        message: "A cancelled fine cannot be marked as paid.",
-      });
-    }
-    if (fine.paid_at) {
-      return res.status(409).json({
-        success: false,
-        code: "FINE_ALREADY_PAID",
-        message: "This fine is already marked as paid.",
-      });
-    }
-    const paidAt =
-      req.body && req.body.paidAt ? String(req.body.paidAt).trim() : null;
-    const result = db
-      .prepare(
-        `
-        UPDATE fines
-        SET
-          paid_at = COALESCE(?, CURRENT_TIMESTAMP),
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-          AND paid_at IS NULL
-          AND cancelled_at IS NULL
-        `,
-      )
-      .run(paidAt, fineId);
-    if (Number(result.changes) === 0) {
-      return res.status(409).json({
-        success: false,
-        code: "FINE_NOT_MARKED_PAID",
-        message: "Fine could not be marked as paid.",
-      });
-    }
-    return res.json({
-      success: true,
-      message: "Fine marked as paid successfully.",
-      fine: {
-        id: fine.id,
-        fineReference: fine.fine_reference,
-        status: "PAID",
-      },
-    });
-  } catch (error) {
-    console.error("Mark fine paid error:", error);
-    return res.status(500).json({
-      success: false,
-      code: "MARK_FINE_PAID_ERROR",
-      message: "Failed to mark fine as paid.",
-      error: error.message,
-    });
-  }
+  return res.status(410).json({
+    success: false,
+    code: "MARK_PAID_RETIRED",
+    message:
+      "Marking a fine paid directly is no longer supported. Use Record Cash Payment.",
+  });
 });
-router.delete("/:id", (req, res) => {
+router.delete("/:id", canCancelFines, (req, res) => {
   try {
     const fineId = Number(req.params.id);
-    const { cancelledBy, cancellationReason } = req.body || {};
-    const normalizedCancelledBy = Number(cancelledBy);
+    const { cancellationReason } = req.body || {};
     const normalizedReason = cancellationReason
       ? String(cancellationReason).trim()
       : null;
@@ -1260,17 +1309,6 @@ router.delete("/:id", (req, res) => {
         success: false,
         code: "INVALID_FINE_ID",
         message: "Invalid fine ID.",
-      });
-    }
-    if (
-      !Number.isInteger(normalizedCancelledBy) ||
-      normalizedCancelledBy <= 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        code: "INVALID_CANCELLED_BY",
-        message:
-          "A valid administrator or officer is required to cancel this fine.",
       });
     }
     const fine = db
@@ -1307,40 +1345,11 @@ router.delete("/:id", (req, res) => {
         message: "A paid fine cannot be cancelled from the Fines module.",
       });
     }
-    const cancelledByUser = db
-      .prepare(
-        `
-        SELECT
-          id,
-          role,
-          account_status
-        FROM users
-        WHERE id = ?
-          AND role IN ('ADMIN', 'FINES_OFFICER')
-        `,
-      )
-      .get(normalizedCancelledBy);
-    if (!cancelledByUser) {
-      return res.status(403).json({
-        success: false,
-        code: "INVALID_CANCEL_USER",
-        message: "Only an administrator or fines officer can cancel a fine.",
-      });
-    }
-    const result = db
-      .prepare(
-        `
-        UPDATE fines
-        SET
-          cancelled_at = CURRENT_TIMESTAMP,
-          cancelled_by = ?,
-          cancellation_reason = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-          AND cancelled_at IS NULL
-        `,
-      )
-      .run(normalizedCancelledBy, normalizedReason, fineId);
+    const result = cancelFineAndCashRequest(
+      fineId,
+      req.cancellingUserId,
+      normalizedReason,
+    );
     if (Number(result.changes) === 0) {
       return res.status(409).json({
         success: false,
@@ -1367,7 +1376,7 @@ router.delete("/:id", (req, res) => {
     });
   }
 });
-router.patch("/:id/cancel", (req, res) => {
+router.patch("/:id/cancel", canCancelFines, (req, res) => {
   try {
     const fineId = Number(req.params.id);
     if (!Number.isInteger(fineId) || fineId <= 0) {
@@ -1380,7 +1389,6 @@ router.patch("/:id/cancel", (req, res) => {
     const cancellationReason = String(
       req.body?.cancellationReason || "",
     ).trim();
-    const cancelledByValue = req.body?.cancelledBy;
     if (cancellationReason.length < 3) {
       return res.status(400).json({
         success: false,
@@ -1394,40 +1402,6 @@ router.patch("/:id/cancel", (req, res) => {
         code: "CANCELLATION_REASON_TOO_LONG",
         message: "Cancellation reason must not exceed 500 characters.",
       });
-    }
-    let cancelledBy = null;
-    if (
-      cancelledByValue !== undefined &&
-      cancelledByValue !== null &&
-      cancelledByValue !== ""
-    ) {
-      const parsedUserId = Number(cancelledByValue);
-      if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
-        return res.status(400).json({
-          success: false,
-          code: "INVALID_CANCELLED_BY",
-          message: "Invalid cancelling user ID.",
-        });
-      }
-      const cancellingUser = db
-        .prepare(
-          `
-          SELECT
-            id,
-            role
-          FROM users
-          WHERE id = ?
-          `,
-        )
-        .get(parsedUserId);
-      if (!cancellingUser) {
-        return res.status(400).json({
-          success: false,
-          code: "CANCELLING_USER_NOT_FOUND",
-          message: "The cancelling user could not be found.",
-        });
-      }
-      cancelledBy = parsedUserId;
     }
     const fine = db
       .prepare(
@@ -1465,22 +1439,11 @@ router.patch("/:id/cancel", (req, res) => {
         message: "A paid fine cannot be cancelled.",
       });
     }
-    const result = db
-      .prepare(
-        `
-        UPDATE fines
-        SET
-          fine_status = 'CANCELLED',
-          cancelled_at = CURRENT_TIMESTAMP,
-          cancelled_by = ?,
-          cancellation_reason = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-          AND paid_at IS NULL
-          AND cancelled_at IS NULL
-        `,
-      )
-      .run(cancelledBy, cancellationReason, fineId);
+    const result = cancelFineAndCashRequest(
+      fineId,
+      req.cancellingUserId,
+      cancellationReason,
+    );
     if (Number(result.changes) === 0) {
       return res.status(409).json({
         success: false,
@@ -1664,9 +1627,49 @@ router.get("/my-fines", authenticateToken, (req, res) => {
         fine.status === "UNPAID" ? total + fine.amountCentavos : total,
       0,
     );
+    // Listed separately so totals and dashboard counts stay unchanged while
+    // the student can still see that a cancelled fine needs no payment.
+    const cancelledFines = db
+      .prepare(
+        `
+        SELECT
+          f.id,
+          f.fine_reference AS fineReference,
+          COALESCE(vt.violation_name, 'Violation') AS violationName,
+          f.amount_centavos AS amountCentavos,
+          f.created_at AS recordedAt,
+          f.cancelled_at AS cancelledAt,
+          (
+            SELECT p.payment_reference
+            FROM payments p
+            WHERE p.fine_id = f.id
+              AND p.payment_method = 'CASH'
+              AND p.payment_status = 'CANCELLED'
+            ORDER BY p.id DESC
+            LIMIT 1
+          ) AS cancelledCashRequestReference
+        FROM fines f
+        LEFT JOIN violation_types vt
+          ON vt.id = f.violation_type_id
+        WHERE f.student_id = ?
+          AND (
+            f.cancelled_at IS NOT NULL
+            OR UPPER(COALESCE(f.fine_status, '')) = 'CANCELLED'
+          )
+        ORDER BY datetime(COALESCE(f.cancelled_at, f.created_at)) DESC, f.id DESC
+      `,
+      )
+      .all(studentId)
+      .map((fine) => ({
+        ...fine,
+        id: Number(fine.id),
+        amountCentavos: Number(fine.amountCentavos),
+        status: "CANCELLED",
+      }));
     return res.json({
       success: true,
       fines,
+      cancelledFines,
       summary: {
         outstandingAmountCentavos,
         payableAmountCentavos,
@@ -1677,6 +1680,103 @@ router.get("/my-fines", authenticateToken, (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Unable to load your fines. Please try again.",
+    });
+  }
+});
+// One of the signed-in student's fines, including cancelled ones, so a
+// notification can open the record it describes.
+router.get("/my-fines/:id", authenticateToken, (req, res) => {
+  try {
+    const studentId = Number(req.authUser?.userId);
+    const fineId = Number(req.params.id);
+    if (!Number.isSafeInteger(studentId) || studentId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Please sign in again.",
+      });
+    }
+    if (!Number.isSafeInteger(fineId) || fineId <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid fine ID." });
+    }
+    const student = db
+      .prepare("SELECT role, account_status FROM users WHERE id = ?")
+      .get(studentId);
+    if (
+      !student ||
+      String(student.role).toUpperCase() !== "STUDENT" ||
+      String(student.account_status).toUpperCase() !== "ACTIVE"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "An active student account is required.",
+      });
+    }
+    const fine = db
+      .prepare(
+        `
+        SELECT
+          f.id,
+          f.fine_reference AS fineReference,
+          COALESCE(vt.violation_name, 'Violation') AS violationName,
+          f.amount_centavos AS amountCentavos,
+          f.created_at AS recordedAt,
+          f.paid_at AS paidAt,
+          f.cancelled_at AS cancelledAt,
+          f.remarks,
+          CASE
+            WHEN f.cancelled_at IS NOT NULL
+              OR UPPER(COALESCE(f.fine_status, '')) = 'CANCELLED'
+              THEN 'CANCELLED'
+            WHEN f.paid_at IS NOT NULL
+              OR UPPER(COALESCE(f.fine_status, '')) = 'PAID'
+              THEN 'PAID'
+            WHEN UPPER(COALESCE(f.fine_status, '')) = 'PENDING'
+              THEN 'PENDING'
+            ELSE 'UNPAID'
+          END AS status,
+          CASE WHEN sfr.read_at IS NULL THEN 0 ELSE 1 END AS isRead,
+          cash_request.payment_reference AS cashRequestReference,
+          cash_request.payment_status AS cashRequestStatus
+        FROM fines f
+        LEFT JOIN violation_types vt
+          ON vt.id = f.violation_type_id
+        LEFT JOIN student_fine_reads sfr
+          ON sfr.fine_id = f.id AND sfr.student_id = f.student_id
+        LEFT JOIN payments cash_request
+          ON cash_request.id = (
+            SELECT p.id
+            FROM payments p
+            WHERE p.fine_id = f.id
+              AND p.payment_method = 'CASH'
+            ORDER BY p.id DESC
+            LIMIT 1
+          )
+        WHERE f.id = ? AND f.student_id = ?
+      `,
+      )
+      .get(fineId, studentId);
+    if (!fine) {
+      return res.status(404).json({
+        success: false,
+        message: "This fine is no longer available on your account.",
+      });
+    }
+    return res.json({
+      success: true,
+      fine: {
+        ...fine,
+        id: Number(fine.id),
+        amountCentavos: Number(fine.amountCentavos),
+        isRead: Number(fine.isRead) === 1,
+      },
+    });
+  } catch (error) {
+    console.error("GET /api/fines/my-fines/:id failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load this fine. Please try again.",
     });
   }
 });

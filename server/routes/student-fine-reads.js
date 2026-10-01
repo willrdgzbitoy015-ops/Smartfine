@@ -75,6 +75,19 @@ router.post("/:id/read", authenticateToken, (req, res) => {
     `,
     ).run(studentId, fineId);
 
+    // Viewing the fine also reads its matching new-fine notification.
+    db.prepare(
+      `
+      UPDATE notifications
+      SET is_read = 1
+      WHERE user_id = ?
+        AND related_fine_id = ?
+        AND notification_type = 'FINE'
+        AND title = 'New Fine Issued'
+        AND is_read = 0
+    `,
+    ).run(studentId, fineId);
+
     const read = db
       .prepare(
         `

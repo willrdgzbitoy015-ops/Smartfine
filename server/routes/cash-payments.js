@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("node:crypto");
 
 const db = require("../database/database");
+const { notifyCashCollected } = require("../database/notifications");
 const { authenticateToken } = require("./auth");
 
 const router = express.Router();
@@ -305,6 +306,7 @@ router.get(
 );
 
 // Admin pending cash requests.
+// Only requests for fines that can still be collected are actionable.
 router.get(
   "/cash-requests",
   authenticateToken,
@@ -333,6 +335,9 @@ router.get(
             AND f.student_id = u.id
            WHERE p.payment_method = 'CASH'
              AND p.payment_status = 'PENDING'
+             AND f.fine_status = 'UNPAID'
+             AND f.paid_at IS NULL
+             AND f.cancelled_at IS NULL
            ORDER BY p.id DESC`,
         )
         .all();
@@ -493,6 +498,8 @@ router.post(
            )
            VALUES (?, 'CASH_COLLECTED', ?)`,
         ).run(paymentId, req.paymentUserId);
+
+        notifyCashCollected(fine.id, paymentId, req.paymentUserId);
 
         return db
           .prepare(

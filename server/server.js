@@ -20,6 +20,7 @@ const officersRoutes = require("./routes/officers");
 const reportsRoutes = require("./routes/reports");
 const settingsRoutes = require("./routes/settings");
 const adminNotificationRoutes = require("./routes/admin-notifications");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 const PORT = 3000;
@@ -42,6 +43,7 @@ app.use("/api/officers", officersRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/admin/notifications", adminNotificationRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/officer-profile", officerProfilePhotoRoutes);
 app.use("/api/officer-profile", officerProfileRoutes);
 

@@ -50,5 +50,7 @@ server/.env
 # Runtime uploaded profile pictures
 server/uploads/admin-profiles/
 server/uploads/officer-profiles/
+# Database backups made by repair scripts (they contain student records)
+server/database/backups/
 
 .notes
