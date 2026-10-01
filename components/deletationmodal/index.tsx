@@ -6,6 +6,8 @@ import {
     View,
 } from "react-native";
 
+import { PopIn } from "@/components/motion";
+
 import { styles } from "./deletationmodal.styles";
 
 type DeleteModalProps = {
@@ -38,7 +40,7 @@ export default function DeleteModal({
       }}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalCard}>
+        <PopIn style={styles.modalCard}>
           <Text style={styles.title}>{title}</Text>
 
           <Text style={styles.message}>{message}</Text>
@@ -66,7 +68,7 @@ export default function DeleteModal({
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </PopIn>
       </View>
     </Modal>
   );

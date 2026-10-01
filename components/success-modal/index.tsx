@@ -1,4 +1,8 @@
+import { useEffect } from "react";
 import { Image, Modal, Text, TouchableOpacity, View } from "react-native";
+
+import { PopIn } from "@/components/motion";
+import { haptics } from "@/utils/haptics";
 
 import { styles } from "./success-modal.styles";
 
@@ -17,6 +21,13 @@ export default function SuccessModal({
   buttonText = "OK",
   onClose,
 }: SuccessModalProps) {
+  // A short "done" vibration as the pop-up appears.
+  useEffect(() => {
+    if (visible) {
+      haptics.success();
+    }
+  }, [visible]);
+
   return (
     <Modal
       visible={visible}
@@ -26,18 +37,18 @@ export default function SuccessModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalCard}>
+        <PopIn style={styles.modalCard}>
           {/* ======================================
-              SUCCESS ICON
+              SUCCESS ICON (pops in after the card)
           ====================================== */}
 
-          <View style={styles.iconContainer}>
+          <PopIn style={styles.iconContainer} delay={120} from={0.4}>
             <Image
               source={require("../../assets/icons/check.png")}
               style={styles.checkIcon}
               resizeMode="contain"
             />
-          </View>
+          </PopIn>
 
           {/* ======================================
               TITLE
@@ -62,7 +73,7 @@ export default function SuccessModal({
           >
             <Text style={styles.okButtonText}>{buttonText}</Text>
           </TouchableOpacity>
-        </View>
+        </PopIn>
       </View>
     </Modal>
   );

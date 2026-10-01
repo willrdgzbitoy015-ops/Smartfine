@@ -160,6 +160,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
 
     borderRadius: 18,

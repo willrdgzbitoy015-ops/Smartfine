@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import {
-  ActivityIndicator,
   Image,
   ScrollView,
   Text,
@@ -15,6 +14,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { FadeIn } from "@/components/motion";
+import { SkeletonProfile } from "@/components/skeleton";
 
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
@@ -335,11 +337,11 @@ export default function DetailedPaymentReport() {
 
     if (loading) {
       return (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color="#173A73" />
-
-          <Text style={styles.stateText}>Loading transaction details...</Text>
-        </View>
+        <SkeletonProfile
+          label="Loading transaction details"
+          sections={2}
+          style={styles.skeleton}
+        />
       );
     }
 
@@ -679,6 +681,7 @@ export default function DetailedPaymentReport() {
                   </Text>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -739,6 +742,7 @@ export default function DetailedPaymentReport() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -754,7 +758,11 @@ export default function DetailedPaymentReport() {
               style={styles.headerBackButton}
               onPress={handleBackToReports}
             >
-              <Text style={styles.headerBackIcon}>‹</Text>
+              <Image
+                source={require("../../../../assets/icons/back_icon.png")}
+                style={styles.headerBackIcon}
+                resizeMode="contain"
+              />
 
               <Text style={styles.headerBackText}>Reports</Text>
             </TouchableOpacity>
@@ -766,7 +774,10 @@ export default function DetailedPaymentReport() {
             </Text>
           </View>
 
-          {renderContent()}
+          {/* The loaded page fades in after the placeholder. */}
+          <FadeIn key={loading ? "loading" : "content"}>
+            {renderContent()}
+          </FadeIn>
         </ScrollView>
       </View>
 

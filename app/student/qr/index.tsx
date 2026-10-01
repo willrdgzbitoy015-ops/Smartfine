@@ -17,8 +17,12 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeIn, PopIn, TabIndicator } from "@/components/motion";
+import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { haptics } from "@/utils/haptics";
 import { styles } from "../styles/student-qr.styles";
+import { HomeTabBadge } from "@/components/notification-badge";
 
 type StudentQRData = {
   student: {
@@ -295,6 +299,7 @@ export default function StudentQRScreen() {
           encoding: FileSystem.EncodingType.Base64,
         });
 
+        haptics.success();
         setNotice("Your QR code was saved to the selected folder.");
         return;
       }
@@ -322,6 +327,7 @@ export default function StudentQRScreen() {
       setNotice("Use Save Image or Save to Files in the save/share menu.");
     } catch (caught) {
       console.error("Student QR download failed:", caught);
+      haptics.error();
       setSaveError("Unable to save your QR code. Please try again.");
     } finally {
       savingRef.current = false;
@@ -368,10 +374,27 @@ export default function StudentQRScreen() {
           </Text>
 
           {loading ? (
-            <View style={styles.stateCard}>
-              <ActivityIndicator size="large" color="#123266" />
-              <Text style={styles.helper}>Loading your QR code...</Text>
-            </View>
+            // Placeholder in the shape of the QR card.
+            <SkeletonGroup label="Loading your QR code" style={styles.qrCard}>
+              <Skeleton width={130} height={18} />
+              <Skeleton width={110} height={10} style={styles.skeletonGap} />
+              <Skeleton
+                width={qrSize + 48}
+                height={qrSize + 48}
+                radius={12}
+                style={styles.qrSkeleton}
+              />
+              <View style={styles.studentInformation}>
+                <Skeleton width="60%" height={18} />
+                <Skeleton width="45%" height={12} style={styles.skeletonGap} />
+                <Skeleton
+                  width={170}
+                  height={28}
+                  radius={14}
+                  style={styles.skeletonGap}
+                />
+              </View>
+            </SkeletonGroup>
           ) : error ? (
             <View style={styles.stateCard}>
               <Text style={styles.errorTitle}>QR code unavailable</Text>
@@ -389,7 +412,8 @@ export default function StudentQRScreen() {
             </View>
           ) : data ? (
             <>
-              <View style={styles.qrCard}>
+              {/* The ID card pops in once the code is ready. */}
+              <PopIn style={styles.qrCard} from={0.95}>
                 <Text style={styles.cardBrand}>SMARTFINE</Text>
                 <Text style={styles.cardLabel}>STUDENT QR CODE</Text>
 
@@ -425,11 +449,13 @@ export default function StudentQRScreen() {
                     </Text>
                   </View>
                 </View>
-              </View>
+              </PopIn>
 
-              <Text style={styles.instruction}>
-                Show this QR code to a Fines Officer for quick scanning.
-              </Text>
+              <FadeIn delay={120}>
+                <Text style={styles.instruction}>
+                  Show this QR code to a Fines Officer for quick scanning.
+                </Text>
+              </FadeIn>
 
               <TouchableOpacity
                 style={[styles.primaryButton, saving && styles.disabled]}
@@ -504,11 +530,11 @@ export default function StudentQRScreen() {
                     resizeMode="contain"
                   />
                   <Text style={styles.navLabel}>{item.label}</Text>
-                  <View
-                    style={[
-                      styles.indicator,
-                      !active && styles.hiddenIndicator,
-                    ]}
+                  <HomeTabBadge label={item.label} />
+                  <TabIndicator
+                    active={active}
+                    style={styles.indicator}
+                    hiddenStyle={styles.hiddenIndicator}
                   />
                 </TouchableOpacity>
               );

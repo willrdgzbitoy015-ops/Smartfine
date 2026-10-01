@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
 
 import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
@@ -955,6 +956,7 @@ export default function AddOfficer() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -1087,6 +1089,7 @@ export default function AddOfficer() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}

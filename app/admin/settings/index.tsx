@@ -25,11 +25,14 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
 
 import DeleteModal from "@/components/deletationmodal";
 import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
+import { PopIn } from "@/components/motion";
+import { SkeletonProfile, SkeletonTable } from "@/components/skeleton";
 
 import { styles } from "./settings.styles";
 
@@ -1444,6 +1447,7 @@ export default function AdminSettings() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -1500,6 +1504,7 @@ export default function AdminSettings() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -1520,11 +1525,7 @@ export default function AdminSettings() {
           </View>
 
           {loading ? (
-            <View style={styles.centerState}>
-              <ActivityIndicator size="large" color="#173A73" />
-
-              <Text style={styles.stateText}>Loading settings...</Text>
-            </View>
+            <SkeletonProfile label="Loading settings" sections={2} />
           ) : pageError ? (
             <View style={styles.centerState}>
               <Text style={styles.errorTitle}>Unable to Load Settings</Text>
@@ -2130,13 +2131,12 @@ export default function AdminSettings() {
                     ============================== */}
 
                     {fineTypesLoading ? (
-                      <View style={styles.fineTypesLoading}>
-                        <ActivityIndicator size="small" color="#173A73" />
-
-                        <Text style={styles.fineTypesLoadingText}>
-                          Loading fine types...
-                        </Text>
-                      </View>
+                      <SkeletonTable
+                        label="Loading fine types"
+                        rows={4}
+                        columns={4}
+                        avatar={false}
+                      />
                     ) : fineTypesError ? (
                       <View style={styles.fineTypesErrorBox}>
                         <Text style={styles.fineTypesErrorText}>
@@ -2579,7 +2579,7 @@ export default function AdminSettings() {
         }}
       >
         <View style={styles.fineTypeModalOverlay}>
-          <View style={styles.fineTypeModalCard}>
+          <PopIn style={styles.fineTypeModalCard}>
             <TouchableOpacity
               style={styles.fineTypeModalClose}
               onPress={resetFineTypeForm}
@@ -2840,7 +2840,7 @@ export default function AdminSettings() {
                 </Animated.View>
               )}
             </ScrollView>
-          </View>
+          </PopIn>
         </View>
       </Modal>
 

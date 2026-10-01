@@ -191,6 +191,13 @@ export const styles = StyleSheet.create({
     paddingVertical: 70,
     alignItems: "center",
   },
+  // Placeholders while the student loads.
+  skeletonGap: {
+    marginTop: 8,
+  },
+  skeletonField: {
+    marginTop: 16,
+  },
   error: {
     color: "#D32F2F",
     fontFamily: "Poppins_400Regular",

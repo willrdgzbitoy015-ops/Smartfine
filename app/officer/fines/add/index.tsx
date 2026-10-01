@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -19,7 +20,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeIn, PopIn, useSwitchFade } from "@/components/motion";
+import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { haptics } from "@/utils/haptics";
 import { useResponsiveStyles } from "./add-fine.styles";
 
 type Student = {
@@ -235,11 +239,13 @@ export default function OfficerAddFine() {
     setError("");
 
     if (!student || !active || !officerId) {
+      haptics.warning();
       setError("An active student and valid officer session are required.");
       return;
     }
 
     if (!selected) {
+      haptics.warning();
       setError("Please select a violation.");
       return;
     }
@@ -277,9 +283,11 @@ export default function OfficerAddFine() {
 
       const data = await readResponse(response);
 
+      haptics.success();
       setSavedFine(data.fine || {});
       setModal("success");
     } catch (caught) {
+      haptics.error();
       setError(
         caught instanceof Error
           ? caught.message
@@ -291,6 +299,8 @@ export default function OfficerAddFine() {
       setSaving(false);
     }
   };
+
+  const stepFade = useSwitchFade(modal);
 
   const avatarUri = pictureUrl(student?.profile_picture_uri);
 
@@ -361,13 +371,31 @@ export default function OfficerAddFine() {
           </View>
 
           {loading ? (
-            <View style={styles.loading}>
-              <ActivityIndicator size="large" color="#173A73" />
+            // Placeholders in the shape of the student and the form.
+            <SkeletonGroup label="Loading student information">
+              <View style={styles.studentRow}>
+                <Skeleton width={60} height={60} radius={30} />
+                <View style={styles.studentText}>
+                  <Skeleton width="62%" height={16} />
+                  <Skeleton width="85%" height={11} style={styles.skeletonGap} />
+                </View>
+              </View>
 
-              <Text style={styles.helper}>Loading student information…</Text>
-            </View>
+              <View style={styles.form}>
+                {[50, 50, 110].map((height, index) => (
+                  <View key={index} style={styles.skeletonField}>
+                    <Skeleton width="30%" height={11} />
+                    <Skeleton
+                      height={height}
+                      radius={10}
+                      style={styles.skeletonGap}
+                    />
+                  </View>
+                ))}
+              </View>
+            </SkeletonGroup>
           ) : (
-            <>
+            <FadeIn>
               {student && studentHeader()}
 
               {error ? (
@@ -437,7 +465,7 @@ export default function OfficerAddFine() {
                   <Text style={styles.buttonText}>Add Fine</Text>
                 </TouchableOpacity>
               </View>
-            </>
+            </FadeIn>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -457,8 +485,10 @@ export default function OfficerAddFine() {
         }}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard} accessibilityViewIsModal>
-            <ScrollView
+          <PopIn style={styles.modalCard} accessibilityViewIsModal>
+            {/* Fades in again at each step: violations, confirm, success. */}
+            <Animated.ScrollView
+              style={stepFade}
               contentContainerStyle={styles.modalContent}
               showsVerticalScrollIndicator={false}
             >
@@ -480,6 +510,7 @@ export default function OfficerAddFine() {
                         selectedId === violation.id && styles.optionSelected,
                       ]}
                       onPress={() => {
+                        haptics.selection();
                         setSelectedId(violation.id);
                         setModal(null);
                         setError("");
@@ -556,13 +587,13 @@ export default function OfficerAddFine() {
 
               {modal === "success" && (
                 <>
-                  <View style={styles.successCircle}>
+                  <PopIn style={styles.successCircle} delay={80} from={0.4}>
                     <Image
                       source={require("../../../../assets/icons/check.png")}
                       style={styles.successIcon}
                       resizeMode="contain"
                     />
-                  </View>
+                  </PopIn>
 
                   <Text style={styles.modalTitle}>
                     Fine Recorded Successfully!
@@ -607,8 +638,8 @@ export default function OfficerAddFine() {
                   </TouchableOpacity>
                 </>
               )}
-            </ScrollView>
-          </View>
+            </Animated.ScrollView>
+          </PopIn>
         </View>
       </Modal>
     </SafeAreaView>

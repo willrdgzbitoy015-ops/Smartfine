@@ -121,6 +121,12 @@ export const styles = StyleSheet.create({
     marginTop: 7,
   },
 
+  // Takes the total's place while the dashboard loads.
+  valueSkeleton: {
+    alignSelf: "center",
+    marginTop: 12,
+  },
+
   // ==========================================
   // SUMMARY
   // ==========================================
@@ -466,6 +472,99 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: "#626975",
     marginTop: 5,
+  },
+
+  // ==========================================
+  // NOTIFICATIONS (bell matches the Student dashboard)
+  // ==========================================
+
+  notificationButton: {
+    width: 46,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#777777",
+    borderRadius: 23,
+  },
+  notificationIcon: {
+    width: 26,
+    height: 26,
+    tintColor: "#173A73",
+  },
+  noticeCard: {
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#777777",
+    borderRadius: 9,
+  },
+  noticeUnread: {
+    backgroundColor: "#F1F7FF",
+    borderColor: "#173A73",
+  },
+  noticeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  noticeTitle: {
+    flex: 1,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 12,
+    color: "#123266",
+  },
+  noticeNewLabel: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 10,
+    color: "#1265B0",
+  },
+  noticeReadLabel: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 10,
+    color: "#8793A0",
+  },
+  noticeMessage: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#435166",
+    marginTop: 4,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E7ECF2",
+  },
+  detailLabel: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    color: "#626975",
+  },
+  detailValue: {
+    flex: 1,
+    textAlign: "right",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    color: "#123266",
+  },
+  noticeError: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    color: "#E52323",
+    marginTop: 12,
+  },
+  noticeLink: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    color: "#173A73",
+    marginTop: 14,
   },
 });
 

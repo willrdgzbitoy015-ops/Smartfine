@@ -27,40 +27,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 7,
   },
-  detailOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(8, 24, 47, 0.62)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 18,
-  },
-  detailCard: {
-    width: "100%",
-    maxWidth: 680,
-    maxHeight: "90%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-  detailHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 22,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  detailTitle: { color: "#123266", fontSize: 20, fontWeight: "800" },
-  detailSubtitle: { color: "#7D8999", fontSize: 11, marginTop: 4 },
-  detailCloseButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#EEF2F7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  detailCloseText: { color: "#173A73", fontSize: 16, fontWeight: "700" },
+  // The pop-up frame comes from components/admin-modal.
   detailState: {
     padding: 36,
     minHeight: 160,
@@ -86,6 +53,7 @@ export const styles = StyleSheet.create({
   },
   detailPaid: { color: "#16843A", backgroundColor: "#E4F6EA" },
   detailPending: { color: "#A46C00", backgroundColor: "#FFF1CF" },
+  detailCancelled: { color: "#606775", backgroundColor: "#ECEFF4" },
   detailHint: { color: "#728092", fontSize: 11, lineHeight: 17, marginTop: 4 },
   detailDivider: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 20 },
   detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 18 },
@@ -102,61 +70,40 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 18,
   },
-  noticeCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#DDE5EF",
-    marginBottom: 24,
-    overflow: "hidden",
-  },
-  noticeHeading: {
+  // Transaction search and status filter.
+  filterBar: {
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
     gap: 12,
-    padding: 18,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    backgroundColor: "#FFFFFF",
   },
-  noticeHeadingText: { flex: 1, minWidth: 170 },
-  noticeTitle: { color: "#123266", fontWeight: "800", fontSize: 16 },
-  noticeSubtitle: { color: "#697789", fontSize: 11, marginTop: 4 },
-  noticeBadge: {
-    color: "#173A73",
-    backgroundColor: "#E9F1FF",
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  noticeAction: { color: "#173A73", fontSize: 11, fontWeight: "700" },
-  noticeEmpty: {
-    color: "#697789",
-    paddingHorizontal: 18,
-    paddingBottom: 18,
+  filterSearch: {
+    flexGrow: 1,
+    flexBasis: 260,
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: "#C8CFD9",
+    borderRadius: 9,
+    paddingHorizontal: 14,
+    color: "#253242",
     fontSize: 12,
+    backgroundColor: "#FFFFFF",
   },
-  noticeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: "#E7ECF2",
-    gap: 12,
+  filterChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  filterChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D3D7DD",
+    backgroundColor: "#FFFFFF",
   },
-  noticeUnread: { backgroundColor: "#F1F7FF" },
-  noticeBody: { flex: 1 },
-  noticeItemTitle: { color: "#123266", fontSize: 12, fontWeight: "800" },
-  noticeMessage: {
-    color: "#435166",
-    fontSize: 11,
-    marginTop: 4,
-    lineHeight: 16,
-  },
-  noticeDate: { color: "#8893A2", fontSize: 10, marginTop: 5 },
-  noticeNewLabel: { color: "#1265B0", fontSize: 10, fontWeight: "800" },
-  noticeReadLabel: { color: "#8793A0", fontSize: 10, fontWeight: "700" },
+  filterChipActive: { backgroundColor: "#173A73", borderColor: "#173A73" },
+  filterChipText: { color: "#173A73", fontSize: 11, fontWeight: "700" },
+  filterChipTextActive: { color: "#FFFFFF" },
   // ========================================
   // SCREEN
   // ========================================
@@ -247,6 +194,10 @@ export const styles = StyleSheet.create({
     paddingTop: 34,
     paddingBottom: 45,
   },
+  // Phones: same side spacing as Fines and Students.
+  scrollContentPhone: {
+    paddingHorizontal: 22,
+  },
   // ========================================
   // MOBILE NAV
   // ========================================
@@ -255,6 +206,8 @@ export const styles = StyleSheet.create({
     paddingBottom: 22,
   },
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 20,
@@ -354,51 +307,6 @@ export const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
-  },
-  // ========================================
-  // SUMMARY CARDS
-  // ========================================
-  summaryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 28,
-    marginBottom: 32,
-  },
-  summaryCard: {
-    flexGrow: 1,
-    flexBasis: 230,
-    minWidth: 210,
-    minHeight: 120,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#333333",
-    borderRadius: 10,
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-    justifyContent: "center",
-  },
-  summaryLabel: {
-    color: "#123266",
-    fontSize: 12,
-    fontWeight: "800",
-    marginBottom: 12,
-  },
-  summaryAmountRed: {
-    color: "#FF2424",
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: "800",
-  },
-  summaryAmountGreen: {
-    color: "#16B53F",
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: "800",
-  },
-  summaryCount: {
-    color: "#9198A2",
-    fontSize: 10,
-    marginTop: 6,
   },
   // ========================================
   // PAYMENT TRANSACTIONS CARD
@@ -514,6 +422,18 @@ export const styles = StyleSheet.create({
   //
   // Flat rows like Officers Directory.
   // ========================================
+  // Placeholder rows while reports load.
+  skeletonTable: {
+    paddingVertical: 10,
+  },
+  skeletonRow: {
+    marginTop: 0,
+    marginHorizontal: 0,
+    borderWidth: 0,
+    borderRadius: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E7E9ED",
+  },
   transactionRow: {
     width: "100%",
     minHeight: 64,

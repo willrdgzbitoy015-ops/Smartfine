@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -7,8 +7,8 @@ import {
   Animated,
   Easing,
   Image,
-  Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -16,13 +16,23 @@ import {
   View,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { API_BASE } from "@/constants/api";
 
+import { AdminModal } from "@/components/admin-modal";
+import AdminFineDetails from "@/components/admin-modal/fine-details";
 import LogoutModal from "@/components/logout-modal";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
+import { FadeIn } from "@/components/motion";
+import { SkeletonList } from "@/components/skeleton";
+import {
+  formatNotificationTime,
+  refreshNotificationCounts,
+} from "@/hooks/use-notification-counts";
 
 import { styles } from "./dashboard.styles";
 
@@ -33,8 +43,13 @@ import { styles } from "./dashboard.styles";
 type DashboardStats = {
   totalStudents: number;
   unpaidFines: number;
-  todayCollection: number;
+  unpaidAmountCentavos: number;
+  pendingCashRequests: number;
   paidFines: number;
+  todayCollectionCentavos: number;
+  todayCollectionCount: number;
+  totalCollectedCentavos: number;
+  totalCollectedCount: number;
 };
 
 type NavItem = {
@@ -43,25 +58,236 @@ type NavItem = {
   icon?: any;
 };
 
-type SummaryCard = {
-  label: string;
-  value: string;
-  type: "normal" | "danger" | "success" | "money";
-};
+type ActivityType =
+  | "FINE_ISSUED"
+  | "CASH_REQUESTED"
+  | "PAYMENT_RECEIVED"
+  | "FINE_MARKED_PAID"
+  | "FINE_CANCELLED"
+  | "STUDENT_ADDED"
+  | "OFFICER_ADDED";
+
+type ActivityCategory =
+  | "ALL"
+  | "FINES"
+  | "CASH_REQUESTS"
+  | "PAYMENTS"
+  | "CANCELLED"
+  | "ACCOUNTS";
 
 type Activity = {
-  id: number;
-  name: string;
+  key: string;
+  type: ActivityType;
+  category: Exclude<ActivityCategory, "ALL">;
+  occurredAt: string;
+  fineId: number | null;
+  fineReference: string | null;
+  paymentId: number | null;
+  userId: number | null;
+  subjectName: string;
   description: string;
-  amount: number;
-  created_at: string;
-  activity_type: "paid" | "fine";
-  details: string;
+  actorName: string | null;
+  actorRole: string | null;
+  amountCentavos: number | null;
+};
+
+type ActivityCounts = Record<ActivityCategory, number>;
+
+type ActivityPage = {
+  activities: Activity[];
+  counts: ActivityCounts;
+  nextOffset: number | null;
 };
 
 type AdminProfile = {
+  firstName?: string | null;
+  middleName?: string | null;
+  lastName?: string | null;
   profilePictureUri: string | null;
 };
+
+// One pop-up: every activity, or a fine (optionally opened from that list).
+type DashboardModal =
+  | { view: "all" }
+  | { view: "fine"; fineId: number; fromAll: boolean }
+  | null;
+
+type SummaryCard = {
+  label: string;
+  value: string;
+  hint: string;
+  tone: "attention" | "danger" | "money" | "success" | "info";
+  active?: boolean;
+  onPress: () => void;
+};
+
+// ==========================================
+// CONSTANTS
+// ==========================================
+
+const EMPTY_STATS: DashboardStats = {
+  totalStudents: 0,
+  unpaidFines: 0,
+  unpaidAmountCentavos: 0,
+  pendingCashRequests: 0,
+  paidFines: 0,
+  todayCollectionCentavos: 0,
+  todayCollectionCount: 0,
+  totalCollectedCentavos: 0,
+  totalCollectedCount: 0,
+};
+
+const EMPTY_COUNTS: ActivityCounts = {
+  ALL: 0,
+  FINES: 0,
+  CASH_REQUESTS: 0,
+  PAYMENTS: 0,
+  CANCELLED: 0,
+  ACCOUNTS: 0,
+};
+
+const ACTIVITY_LABELS: Record<
+  ActivityType,
+  { label: string; tone: "red" | "amber" | "green" | "grey" | "blue" }
+> = {
+  FINE_ISSUED: { label: "Fine issued", tone: "red" },
+  CASH_REQUESTED: { label: "Cash request", tone: "amber" },
+  PAYMENT_RECEIVED: { label: "Payment", tone: "green" },
+  FINE_MARKED_PAID: { label: "Marked paid", tone: "green" },
+  FINE_CANCELLED: { label: "Cancelled", tone: "grey" },
+  STUDENT_ADDED: { label: "New student", tone: "blue" },
+  OFFICER_ADDED: { label: "New officer", tone: "blue" },
+};
+
+const ACTIVITY_FILTERS: { key: ActivityCategory; label: string }[] = [
+  { key: "ALL", label: "All" },
+  { key: "FINES", label: "Fines issued" },
+  { key: "CASH_REQUESTS", label: "Cash requests" },
+  { key: "PAYMENTS", label: "Payments" },
+  { key: "CANCELLED", label: "Cancelled" },
+  { key: "ACCOUNTS", label: "Accounts" },
+];
+
+const RECENT_COUNT = 8;
+const PAGE_SIZE = 25;
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+function money(centavos: number) {
+  return `₱${(Number(centavos || 0) / 100).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+async function authHeaders() {
+  const token = await AsyncStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Please sign in again.");
+  }
+
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+    "ngrok-skip-browser-warning": "true",
+  };
+}
+
+async function fetchActivities(
+  category: ActivityCategory,
+  limit: number,
+  offset: number,
+): Promise<ActivityPage> {
+  const response = await fetch(
+    `${API_BASE}/api/dashboard/activities?category=${category}&limit=${limit}&offset=${offset}`,
+    { headers: await authHeaders() },
+  );
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok || !data?.success || !Array.isArray(data.activities)) {
+    throw new Error(data?.message || "Could not load activities.");
+  }
+
+  return data;
+}
+
+function errorText(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) return fallback;
+  return error.message === "Network request failed"
+    ? "Could not connect to the SmartFine server."
+    : error.message;
+}
+
+// ==========================================
+// ACTIVITY ROW
+// ==========================================
+
+function ActivityRow({
+  activity,
+  onPress,
+}: {
+  activity: Activity;
+  onPress: () => void;
+}) {
+  const meta = ACTIVITY_LABELS[activity.type] ?? {
+    label: "Activity",
+    tone: "grey",
+  };
+
+  const toneStyle = {
+    red: styles.toneRed,
+    amber: styles.toneAmber,
+    green: styles.toneGreen,
+    grey: styles.toneGrey,
+    blue: styles.toneBlue,
+  }[meta.tone];
+
+  const amountStyle =
+    activity.category === "PAYMENTS"
+      ? styles.amountPaid
+      : activity.category === "CASH_REQUESTS"
+        ? styles.amountAmber
+        : activity.category === "CANCELLED"
+          ? styles.amountMuted
+          : styles.amountFine;
+
+  const actor = activity.actorName
+    ? `${activity.actorRole === "FINES_OFFICER" ? "Officer" : "Admin"} ${activity.actorName}`
+    : null;
+
+  return (
+    <TouchableOpacity
+      style={styles.activityItem}
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={`${meta.label}: ${activity.subjectName} ${activity.description}`}
+    >
+      <View style={styles.activityTextArea}>
+        <Text style={[styles.activityChip, toneStyle]}>{meta.label}</Text>
+
+        <Text style={styles.activityDescription}>
+          <Text style={styles.activityName}>{activity.subjectName}</Text>{" "}
+          {activity.description}
+        </Text>
+
+        <Text style={styles.activityDetails}>
+          {actor ? `By ${actor} • ` : ""}
+          {formatNotificationTime(activity.occurredAt)}
+        </Text>
+      </View>
+
+      {activity.amountCentavos !== null && (
+        <Text style={[styles.activityAmount, amountStyle]}>
+          {money(activity.amountCentavos)}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+}
 
 // ==========================================
 // ADMIN DASHBOARD
@@ -87,72 +313,45 @@ export default function AdminDashboard() {
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   // ==========================================
-  // ACTIVITIES MODAL
+  // DASHBOARD DATA
   // ==========================================
 
-  const [showActivitiesModal, setShowActivitiesModal] = useState(false);
-
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(
-    null,
-  );
-
-  // ==========================================
-  // DASHBOARD STATS
-  // ==========================================
-
-  const [stats, setStats] = useState<DashboardStats>({
-    totalStudents: 0,
-    unpaidFines: 0,
-    todayCollection: 0,
-    paidFines: 0,
-  });
+  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
 
   const [statsLoading, setStatsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    let mounted = true;
-    let fetching = false;
-    const loadUnreadCount = async () => {
-      if (fetching) return;
-      fetching = true;
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token) {
-          if (mounted) setUnreadCount(0);
-          return;
-        }
-        const response = await fetch(
-          `${API_BASE}/api/admin/notifications/unread-count`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const count = Number(data.unreadCount);
-        if (mounted && data.success && Number.isSafeInteger(count) && count >= 0) {
-          setUnreadCount(count);
-        }
-      } catch (error) {
-        console.error("Unread notification count error:", error);
-      } finally {
-        fetching = false;
-      }
-    };
-    loadUnreadCount();
-    const interval = setInterval(loadUnreadCount, 15000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  // ==========================================
-  // RECENT ACTIVITIES
-  // ==========================================
+  const [statsError, setStatsError] = useState("");
 
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
 
+  const [activityCounts, setActivityCounts] =
+    useState<ActivityCounts>(EMPTY_COUNTS);
+
   const [activitiesLoading, setActivitiesLoading] = useState(true);
+
+  const [activitiesError, setActivitiesError] = useState("");
+
+  // ==========================================
+  // ALL ACTIVITIES POP-UP
+  // ==========================================
+
+  const [modal, setModal] = useState<DashboardModal>(null);
+
+  const [allCategory, setAllCategory] = useState<ActivityCategory>("ALL");
+
+  const [allActivities, setAllActivities] = useState<Activity[]>([]);
+
+  const [allNextOffset, setAllNextOffset] = useState<number | null>(null);
+
+  const [allLoading, setAllLoading] = useState(false);
+
+  const [allError, setAllError] = useState("");
+
+  // Ignores a slow response after the filter has changed.
+  const allRequestRef = useRef(0);
+
+  // A fine changed from the pop-up; the list reloads when shown again.
+  const allStaleRef = useRef(false);
 
   // ==========================================
   // ADMIN PROFILE
@@ -173,7 +372,7 @@ export default function AdminDashboard() {
   const headerTranslateY = useRef(new Animated.Value(-12)).current;
 
   const cardAnimations = useRef(
-    Array.from({ length: 4 }, () => ({
+    Array.from({ length: 6 }, () => ({
       opacity: new Animated.Value(0),
 
       translateY: new Animated.Value(18),
@@ -185,15 +384,7 @@ export default function AdminDashboard() {
   const activityTranslateY = useRef(new Animated.Value(18)).current;
 
   // ==========================================
-  // ACTIVITIES MODAL ANIMATION
-  // ==========================================
-
-  const activitiesModalOpacity = useRef(new Animated.Value(0)).current;
-
-  const activitiesModalScale = useRef(new Animated.Value(0.96)).current;
-
-  // ==========================================
-  // REAL-TIME DATE AND TIME
+  // DATE AND TIME (minute precision)
   // ==========================================
 
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -201,28 +392,25 @@ export default function AdminDashboard() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentDateTime(new Date());
-    }, 1000);
+    }, 30000);
 
     return () => clearInterval(timer);
   }, []);
 
   const formattedDateTime = currentDateTime.toLocaleString("en-US", {
     weekday: "long",
-
     month: "short",
-
     day: "numeric",
-
     year: "numeric",
-
     hour: "numeric",
-
     minute: "2-digit",
-
-    second: "2-digit",
-
     hour12: true,
   });
+
+  const hour = currentDateTime.getHours();
+
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   // ==========================================
   // DASHBOARD ENTRANCE ANIMATION
@@ -233,47 +421,35 @@ export default function AdminDashboard() {
       Animated.parallel([
         Animated.timing(headerOpacity, {
           toValue: 1,
-
           duration: 280,
-
           easing: Easing.out(Easing.cubic),
-
           useNativeDriver: true,
         }),
 
         Animated.timing(headerTranslateY, {
           toValue: 0,
-
           duration: 280,
-
           easing: Easing.out(Easing.cubic),
-
           useNativeDriver: true,
         }),
       ]),
 
       Animated.stagger(
-        80,
+        60,
 
         cardAnimations.map((animation) =>
           Animated.parallel([
             Animated.timing(animation.opacity, {
               toValue: 1,
-
-              duration: 280,
-
+              duration: 260,
               easing: Easing.out(Easing.cubic),
-
               useNativeDriver: true,
             }),
 
             Animated.timing(animation.translateY, {
               toValue: 0,
-
-              duration: 280,
-
+              duration: 260,
               easing: Easing.out(Easing.cubic),
-
               useNativeDriver: true,
             }),
           ]),
@@ -283,21 +459,15 @@ export default function AdminDashboard() {
       Animated.parallel([
         Animated.timing(activityOpacity, {
           toValue: 1,
-
           duration: 320,
-
           easing: Easing.out(Easing.cubic),
-
           useNativeDriver: true,
         }),
 
         Animated.timing(activityTranslateY, {
           toValue: 0,
-
           duration: 320,
-
           easing: Easing.out(Easing.cubic),
-
           useNativeDriver: true,
         }),
       ]),
@@ -305,105 +475,65 @@ export default function AdminDashboard() {
   }, []);
 
   // ==========================================
-  // ACTIVITIES POPUP ENTRANCE ANIMATION
+  // LOAD DASHBOARD DATA (on every visit)
   // ==========================================
 
-  useEffect(() => {
-    if (!showActivitiesModal && !selectedActivity) {
-      return;
-    }
+  const loadDashboardStats = useCallback(async () => {
+    setStatsError("");
 
-    activitiesModalOpacity.setValue(0);
-
-    activitiesModalScale.setValue(0.96);
-
-    Animated.parallel([
-      Animated.timing(activitiesModalOpacity, {
-        toValue: 1,
-
-        duration: 180,
-
-        easing: Easing.out(Easing.cubic),
-
-        useNativeDriver: true,
-      }),
-
-      Animated.spring(activitiesModalScale, {
-        toValue: 1,
-
-        friction: 8,
-
-        tension: 70,
-
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [showActivitiesModal, selectedActivity]);
-
-  // ==========================================
-  // LOAD DASHBOARD STATS
-  // ==========================================
-
-  useEffect(() => {
-    loadDashboardStats();
-  }, []);
-
-  const loadDashboardStats = async () => {
     try {
-      setStatsLoading(true);
+      const response = await fetch(`${API_BASE}/api/dashboard/stats`, {
+        headers: await authHeaders(),
+      });
+      const data = await response.json().catch(() => null);
 
-      const response = await fetch(`${API_BASE}/api/dashboard/stats`);
-
-      const data = await response.json();
-
-      console.log("Dashboard stats response:", data);
-
-      if (!response.ok || !data.success) {
-        console.error("Failed to load dashboard stats:", data);
-
-        return;
+      if (!response.ok || !data?.success || !data.stats) {
+        throw new Error(
+          data?.message || "Failed to load dashboard statistics.",
+        );
       }
 
-      setStats(data.stats);
+      setStats({ ...EMPTY_STATS, ...data.stats });
     } catch (error) {
-      console.error("Dashboard stats connection error:", error);
+      setStatsError(errorText(error, "Failed to load dashboard statistics."));
     } finally {
       setStatsLoading(false);
     }
-  };
-
-  // ==========================================
-  // LOAD RECENT ACTIVITIES
-  // ==========================================
-
-  useEffect(() => {
-    loadRecentActivities();
   }, []);
 
-  const loadRecentActivities = async () => {
+  const loadRecentActivities = useCallback(async () => {
+    setActivitiesError("");
+
     try {
-      setActivitiesLoading(true);
+      const page = await fetchActivities("ALL", RECENT_COUNT, 0);
 
-      const response = await fetch(
-        `${API_BASE}/api/dashboard/recent-activities`,
-      );
+      setRecentActivities(page.activities);
 
-      const data = await response.json();
-
-      console.log("Recent activities response:", data);
-
-      if (!response.ok || !data.success) {
-        console.error("Failed to load recent activities:", data);
-
-        return;
-      }
-
-      setRecentActivities(data.activities || []);
+      setActivityCounts({ ...EMPTY_COUNTS, ...page.counts });
     } catch (error) {
-      console.error("Recent activities connection error:", error);
+      setActivitiesError(errorText(error, "Could not load activities."));
     } finally {
       setActivitiesLoading(false);
     }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadDashboardStats();
+
+      void loadRecentActivities();
+    }, [loadDashboardStats, loadRecentActivities]),
+  );
+
+  // Pull down to reload the cards and the activity feed.
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+
+  const handlePullRefresh = async () => {
+    setPullRefreshing(true);
+
+    await Promise.all([loadDashboardStats(), loadRecentActivities()]);
+
+    setPullRefreshing(false);
   };
 
   // ==========================================
@@ -421,8 +551,6 @@ export default function AdminDashboard() {
       const token = await AsyncStorage.getItem("token");
 
       if (!token) {
-        console.log("Admin dashboard profile: token not found.");
-
         return;
       }
 
@@ -433,8 +561,6 @@ export default function AdminDashboard() {
       });
 
       const data = await response.json();
-
-      console.log("Admin dashboard profile response:", data);
 
       if (!response.ok || !data.success || !data.user) {
         console.error("Failed to load admin profile:", data);
@@ -452,6 +578,122 @@ export default function AdminDashboard() {
     }
   };
 
+  const adminName = adminProfile
+    ? [
+        adminProfile.firstName,
+        adminProfile.middleName?.trim()
+          ? `${adminProfile.middleName.trim()[0]}.`
+          : null,
+        adminProfile.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : "";
+
+  const adminInitials =
+    `${adminProfile?.firstName?.[0] ?? ""}${adminProfile?.lastName?.[0] ?? ""}`.toUpperCase() ||
+    "AD";
+
+  // ==========================================
+  // ALL ACTIVITIES
+  // ==========================================
+
+  const loadAllActivities = async (
+    category: ActivityCategory,
+    offset: number,
+  ) => {
+    const requestId = ++allRequestRef.current;
+
+    setAllLoading(true);
+
+    setAllError("");
+
+    try {
+      const page = await fetchActivities(category, PAGE_SIZE, offset);
+
+      if (requestId !== allRequestRef.current) return;
+
+      setAllActivities((current) =>
+        offset === 0 ? page.activities : [...current, ...page.activities],
+      );
+
+      setAllNextOffset(page.nextOffset);
+
+      setActivityCounts({ ...EMPTY_COUNTS, ...page.counts });
+    } catch (error) {
+      if (requestId !== allRequestRef.current) return;
+
+      setAllError(errorText(error, "Could not load activities."));
+    } finally {
+      if (requestId === allRequestRef.current) {
+        setAllLoading(false);
+      }
+    }
+  };
+
+  const showCategory = (category: ActivityCategory) => {
+    setAllCategory(category);
+
+    setAllActivities([]);
+
+    setAllNextOffset(null);
+
+    void loadAllActivities(category, 0);
+  };
+
+  const handleViewActivities = () => {
+    allStaleRef.current = false;
+
+    setModal({ view: "all" });
+
+    showCategory("ALL");
+  };
+
+  const backToAllActivities = () => {
+    setModal({ view: "all" });
+
+    if (allStaleRef.current) {
+      allStaleRef.current = false;
+
+      showCategory(allCategory);
+    }
+  };
+
+  // Fine activities open the fine here; account activities open the profile.
+  const handleActivityPress = (activity: Activity, fromAll: boolean) => {
+    if (activity.fineId) {
+      setModal({ view: "fine", fineId: activity.fineId, fromAll });
+
+      return;
+    }
+
+    if (activity.userId) {
+      setModal(null);
+
+      router.push(
+        (activity.type === "OFFICER_ADDED"
+          ? `/admin/officers/${activity.userId}`
+          : `/admin/students/${activity.userId}`) as any,
+      );
+    }
+  };
+
+  const handleFineChanged = () => {
+    allStaleRef.current = true;
+
+    void loadDashboardStats();
+
+    void loadRecentActivities();
+
+    void refreshNotificationCounts();
+  };
+
+  const handleEditFine = (fineId: number) => {
+    setModal(null);
+
+    router.push(`/admin/fines/${fineId}/edit` as any);
+  };
+
   // ==========================================
   // NAVIGATION ITEMS
   // ==========================================
@@ -459,96 +701,129 @@ export default function AdminDashboard() {
   const navItems: NavItem[] = [
     {
       label: "Dashboard",
-
       route: "/admin/dashboard",
-
       icon: require("../../../assets/icons/dashboard.png"),
     },
 
     {
       label: "Students",
-
       route: "/admin/students",
-
       icon: require("../../../assets/icons/students.png"),
     },
 
     {
       label: "Fines",
-
       route: "/admin/fines",
-
       icon: require("../../../assets/icons/fines.png"),
     },
 
     {
       label: "QR Scanner",
-
       route: "/admin/qr-scanner",
-
       icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
       label: "Reports",
-
       route: "/admin/reports",
-
       icon: require("../../../assets/icons/reports.png"),
     },
 
     {
       label: "Settings",
-
       route: "/admin/settings",
-
       icon: require("../../../assets/icons/settings.png"),
     },
 
     {
       label: "Officers",
-
       route: "/admin/officers",
-
       icon: require("../../../assets/icons/officers.png"),
     },
   ];
 
   // ==========================================
-  // SUMMARY CARDS
+  // SUMMARY CARDS (each opens its module)
   // ==========================================
+
+  const openFines = (status: string) =>
+    router.push({ pathname: "/admin/fines", params: { status } } as any);
 
   const summaryCards: SummaryCard[] = [
     {
-      label: "Total Students",
-
-      value: String(stats.totalStudents),
-
-      type: "success",
+      label: "Pending Cash Requests",
+      value: String(stats.pendingCashRequests),
+      hint:
+        stats.pendingCashRequests > 0
+          ? "Waiting at the cashier"
+          : "None waiting",
+      tone: "attention",
+      active: stats.pendingCashRequests > 0,
+      onPress: () => openFines("PENDING_CASH"),
     },
 
     {
       label: "Unpaid Fines",
-
       value: String(stats.unpaidFines),
-
-      type: "danger",
+      hint: `${money(stats.unpaidAmountCentavos)} outstanding`,
+      tone: "danger",
+      onPress: () => openFines("UNPAID"),
     },
 
     {
       label: "Today's Collection",
+      value: money(stats.todayCollectionCentavos),
+      hint: `${stats.todayCollectionCount} ${stats.todayCollectionCount === 1 ? "payment" : "payments"} today`,
+      tone: "money",
+      onPress: () => router.push("/admin/reports" as any),
+    },
 
-      value: `₱ ${Number(stats.todayCollection).toFixed(2)}`,
-
-      type: "money",
+    {
+      label: "Total Collected",
+      value: money(stats.totalCollectedCentavos),
+      hint: `${stats.totalCollectedCount} ${stats.totalCollectedCount === 1 ? "payment" : "payments"} in all`,
+      tone: "success",
+      onPress: () => router.push("/admin/reports" as any),
     },
 
     {
       label: "Paid Fines",
-
       value: String(stats.paidFines),
+      hint: "Settled fines",
+      tone: "success",
+      onPress: () => openFines("PAID"),
+    },
 
-      type: "success",
+    {
+      label: "Total Students",
+      value: String(stats.totalStudents),
+      hint: "Active and inactive accounts",
+      tone: "info",
+      onPress: () => router.push("/admin/students" as any),
+    },
+  ];
+
+  const quickActions = [
+    {
+      label: "Record Fine",
+      route: "/admin/fines/add",
+      icon: require("../../../assets/icons/fines.png"),
+      primary: true,
+    },
+    {
+      label: "Scan Student QR",
+      route: "/admin/qr-scanner",
+      icon: require("../../../assets/icons/qr-code.png"),
+    },
+    {
+      label: "Add Student",
+      route: "/admin/students/add",
+      icon: require("../../../assets/icons/students.png"),
+    },
+    {
+      label: "Payment Reports",
+      route: "/admin/reports",
+      icon: require("../../../assets/icons/wallet.png"),
     },
   ];
 
@@ -567,64 +842,12 @@ export default function AdminDashboard() {
   };
 
   // ==========================================
-  // VIEW ALL ACTIVITIES
-  // ==========================================
-
-  const handleViewActivities = () => {
-    setShowActivitiesModal(true);
-  };
-
-  const handleActivityPress = (activity: Activity) => {
-    setSelectedActivity(activity);
-  };
-
-  const handleBackFromActivity = () => {
-    if (showActivitiesModal) {
-      setSelectedActivity(null);
-    } else {
-      handleCloseActivities();
-    }
-  };
-
-  const handleCloseActivities = () => {
-    Animated.parallel([
-      Animated.timing(activitiesModalOpacity, {
-        toValue: 0,
-
-        duration: 140,
-
-        easing: Easing.in(Easing.cubic),
-
-        useNativeDriver: true,
-      }),
-
-      Animated.timing(activitiesModalScale, {
-        toValue: 0.96,
-
-        duration: 140,
-
-        easing: Easing.in(Easing.cubic),
-
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowActivitiesModal(false);
-
-      setSelectedActivity(null);
-    });
-  };
-
-  // ==========================================
-  // OPEN LOGOUT MODAL
+  // LOGOUT
   // ==========================================
 
   const handleLogout = () => {
     setShowLogoutModal(true);
   };
-
-  // ==========================================
-  // CANCEL LOGOUT
-  // ==========================================
 
   const handleCancelLogout = () => {
     if (logoutLoading) {
@@ -633,10 +856,6 @@ export default function AdminDashboard() {
 
     setShowLogoutModal(false);
   };
-
-  // ==========================================
-  // CONFIRM LOGOUT
-  // ==========================================
 
   const performLogout = async () => {
     try {
@@ -712,13 +931,7 @@ export default function AdminDashboard() {
                   >
                     {item.label}
                   </Text>
-                  {item.label === "Fines" && unreadCount > 0 && (
-                    <View style={styles.navBadge}>
-                      <Text style={styles.navBadgeText}>
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </Text>
-                    </View>
-                  )}
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -742,6 +955,14 @@ export default function AdminDashboard() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={pullRefreshing}
+              onRefresh={handlePullRefresh}
+              tintColor="#173A73"
+              colors={["#173A73"]}
+            />
+          }
         >
           {/* ==================================
               HEADER
@@ -750,27 +971,27 @@ export default function AdminDashboard() {
           <Animated.View
             style={[
               styles.header,
-
               {
                 opacity: headerOpacity,
-
-                transform: [
-                  {
-                    translateY: headerTranslateY,
-                  },
-                ],
+                transform: [{ translateY: headerTranslateY }],
               },
             ]}
           >
             <View>
               <Text style={styles.pageTitle}>Dashboard</Text>
 
+              <Text style={styles.greetingText}>{greeting}</Text>
+
               <Text style={styles.dateText}>{formattedDateTime}</Text>
             </View>
 
             <View style={styles.profileArea}>
               <View style={styles.profileTextArea}>
-                <Text style={styles.adminName}>WILL R. BITOY</Text>
+                {!!adminName && (
+                  <Text style={styles.adminName}>
+                    {adminName.toUpperCase()}
+                  </Text>
+                )}
 
                 <Text style={styles.adminRole}>Administrator</Text>
               </View>
@@ -780,15 +1001,13 @@ export default function AdminDashboard() {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : adminProfilePictureUrl && !adminImageFailed ? (
                   <Image
-                    source={{
-                      uri: adminProfilePictureUrl,
-                    }}
+                    source={{ uri: adminProfilePictureUrl }}
                     style={styles.avatarImage}
                     resizeMode="cover"
                     onError={() => setAdminImageFailed(true)}
                   />
                 ) : (
-                  <Text style={styles.avatarText}>WB</Text>
+                  <Text style={styles.avatarText}>{adminInitials}</Text>
                 )}
               </View>
             </View>
@@ -812,7 +1031,6 @@ export default function AdminDashboard() {
                     key={item.label}
                     style={[
                       styles.mobileNavItem,
-
                       isActive && styles.mobileNavItemActive,
                     ]}
                     onPress={() => handleNavigation(item)}
@@ -821,19 +1039,12 @@ export default function AdminDashboard() {
                     <Text
                       style={[
                         styles.mobileNavText,
-
                         isActive && styles.mobileNavTextActive,
                       ]}
                     >
                       {item.label}
                     </Text>
-                    {item.label === "Fines" && unreadCount > 0 && (
-                      <View style={styles.mobileNavBadge}>
-                        <Text style={styles.navBadgeText}>
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </Text>
-                      </View>
-                    )}
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -844,144 +1055,139 @@ export default function AdminDashboard() {
               SUMMARY CARDS
           ================================== */}
 
-          <View style={styles.cardsContainer}>
-            {summaryCards.map((card, index) => {
-              const cardAnimation = cardAnimations[index];
+          <SummaryCardRow>
+            {summaryCards.map((card, index) => (
+              <SummaryCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                hint={card.hint}
+                tone={card.tone}
+                highlighted={card.active}
+                loading={statsLoading}
+                onPress={card.onPress}
+                animatedStyle={{
+                  opacity: cardAnimations[index].opacity,
+                  transform: [{ translateY: cardAnimations[index].translateY }],
+                }}
+              />
+            ))}
+          </SummaryCardRow>
 
-              return (
-                <Animated.View
-                  key={card.label}
+          {!!statsError && (
+            <TouchableOpacity
+              style={[styles.viewActivitiesButton, styles.statsError]}
+              onPress={() => void loadDashboardStats()}
+            >
+              <Text style={styles.viewActivitiesText}>
+                {statsError} Tap to try again.
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ==================================
+              QUICK ACTIONS
+          ================================== */}
+
+          <View style={styles.quickActions}>
+            {quickActions.map((action) => (
+              <TouchableOpacity
+                key={action.label}
+                style={[
+                  styles.quickAction,
+                  action.primary && styles.quickActionPrimary,
+                ]}
+                onPress={() => router.push(action.route as any)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+              >
+                <Image
+                  source={action.icon}
                   style={[
-                    styles.summaryCard,
-
-                    card.type === "danger" && styles.cardDanger,
-
-                    card.type === "success" && styles.cardSuccess,
-
-                    card.type === "money" && styles.cardMoney,
-
-                    {
-                      opacity: cardAnimation.opacity,
-
-                      transform: [
-                        {
-                          translateY: cardAnimation.translateY,
-                        },
-                      ],
-                    },
+                    styles.quickActionIcon,
+                    action.primary && styles.quickActionIconPrimary,
+                  ]}
+                  resizeMode="contain"
+                />
+                <Text
+                  style={[
+                    styles.quickActionText,
+                    action.primary && styles.quickActionTextPrimary,
                   ]}
                 >
-                  <Text style={styles.cardLabel}>{card.label}</Text>
-
-                  {statsLoading ? (
-                    <View style={styles.cardLoadingArea}>
-                      <ActivityIndicator size="small" color="#173A73" />
-
-                      <Text style={styles.cardLoadingText}>Loading...</Text>
-                    </View>
-                  ) : (
-                    <Text
-                      style={[
-                        styles.cardValue,
-
-                        card.type === "danger" && styles.valueDanger,
-
-                        card.type === "success" && styles.valueSuccess,
-
-                        card.type === "money" && styles.valueMoney,
-                      ]}
-                    >
-                      {card.value}
-                    </Text>
-                  )}
-                </Animated.View>
-              );
-            })}
+                  {action.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           {/* ==================================
-              RECENT ACTIVITIES
+              RECENT ACTIVITY
           ================================== */}
 
           <Animated.View
             style={[
               styles.activityPanel,
-
               {
                 opacity: activityOpacity,
-
-                transform: [
-                  {
-                    translateY: activityTranslateY,
-                  },
-                ],
+                transform: [{ translateY: activityTranslateY }],
               },
             ]}
           >
             <View style={styles.activityHeader}>
-              <Text style={styles.activityTitle}>Recent Activities</Text>
+              <View style={{ flexShrink: 1 }}>
+                <Text style={styles.activityTitle}>Recent Activity</Text>
 
-              {!activitiesLoading && recentActivities.length > 0 && (
+                <Text style={styles.activitySubtitle}>
+                  Fines, cashier requests, payments, cancellations, and new
+                  accounts
+                </Text>
+              </View>
+
+              {activityCounts.ALL > 0 && (
                 <TouchableOpacity
                   style={styles.viewActivitiesButton}
                   onPress={handleViewActivities}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.viewActivitiesText}>
-                    View all activities
+                    View all ({activityCounts.ALL})
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
 
             <View style={styles.activityList}>
-              {activitiesLoading ? (
-                <View style={styles.activityLoadingContainer}>
-                  <ActivityIndicator size="large" color="#173A73" />
-
-                  <Text style={styles.activityLoadingText}>
-                    Loading recent activities...
+              {activitiesLoading && recentActivities.length === 0 ? (
+                <SkeletonList
+                  label="Loading recent activity"
+                  count={5}
+                  avatar={false}
+                  itemStyle={styles.activityItem}
+                />
+              ) : activitiesError && recentActivities.length === 0 ? (
+                <TouchableOpacity
+                  style={styles.activityEmptyContainer}
+                  onPress={() => void loadRecentActivities()}
+                >
+                  <Text style={styles.activityEmptyText}>
+                    {activitiesError} Tap to try again.
                   </Text>
-                </View>
+                </TouchableOpacity>
               ) : recentActivities.length === 0 ? (
                 <View style={styles.activityEmptyContainer}>
                   <Text style={styles.activityEmptyText}>
-                    No recent activities yet.
+                    No activity recorded yet.
                   </Text>
                 </View>
               ) : (
-                recentActivities.slice(0, 5).map((activity) => (
-                  <TouchableOpacity
-                    key={`${activity.activity_type}-${activity.id}`}
-                    style={styles.activityItem}
-                    onPress={() => handleActivityPress(activity)}
-                    activeOpacity={0.8}
-                    accessibilityLabel={`View activity details for ${activity.name}`}
-                  >
-                    <View style={styles.activityTextArea}>
-                      <Text style={styles.activityDescription}>
-                        <Text style={styles.activityName}>{activity.name}</Text>{" "}
-                        {activity.description}
-                      </Text>
-
-                      <Text style={styles.activityDetails}>
-                        {formatActivityTime(activity.created_at)} •{" "}
-                        {activity.details}
-                      </Text>
-                    </View>
-
-                    <Text
-                      style={[
-                        styles.activityAmount,
-
-                        activity.activity_type === "paid"
-                          ? styles.amountPaid
-                          : styles.amountFine,
-                      ]}
-                    >
-                      ₱{Number(activity.amount).toFixed(2)}
-                    </Text>
-                  </TouchableOpacity>
+                recentActivities.map((activity, index) => (
+                  <FadeIn key={activity.key} index={index}>
+                    <ActivityRow
+                      activity={activity}
+                      onPress={() => handleActivityPress(activity, false)}
+                    />
+                  </FadeIn>
                 ))
               )}
             </View>
@@ -990,204 +1196,116 @@ export default function AdminDashboard() {
       </View>
 
       {/* ======================================
-          ALL ACTIVITIES MODAL
+          ALL ACTIVITIES AND FINE POP-UP
       ====================================== */}
 
-      <Modal
-        visible={showActivitiesModal || selectedActivity !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={
-          selectedActivity ? handleBackFromActivity : handleCloseActivities
+      <AdminModal
+        visible={modal !== null}
+        title={modal?.view === "all" ? "All activity" : "Fine details"}
+        subtitle={
+          modal?.view === "all"
+            ? `${activityCounts.ALL} activities recorded in SmartFine`
+            : "Fine record and actions"
+        }
+        onClose={() => setModal(null)}
+        onBack={
+          modal?.view === "fine" && modal.fromAll
+            ? backToAllActivities
+            : undefined
         }
       >
-        <View style={styles.activitiesModalOverlay}>
-          <Animated.View
-            style={[
-              styles.activitiesModal,
+        {modal?.view === "all" ? (
+          <>
+            <View style={styles.filterRow}>
+              {ACTIVITY_FILTERS.map((filter) => {
+                const active = filter.key === allCategory;
 
-              {
-                opacity: activitiesModalOpacity,
-
-                transform: [
-                  {
-                    scale: activitiesModalScale,
-                  },
-                ],
-              },
-            ]}
-          >
-            {/* HEADER */}
-
-            <View style={styles.activitiesModalHeader}>
-              <View style={styles.activitiesModalHeaderText}>
-                <Text style={styles.activitiesModalTitle}>
-                  {selectedActivity
-                    ? "Activity Details"
-                    : "All Recent Activities"}
-                </Text>
-
-                <Text style={styles.activitiesModalSubtitle}>
-                  {selectedActivity
-                    ? "Details recorded in SmartFine"
-                    : "Fine and payment activities recorded in SmartFine"}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.activitiesModalCloseButton}
-                onPress={
-                  selectedActivity
-                    ? handleBackFromActivity
-                    : handleCloseActivities
-                }
-                activeOpacity={0.8}
-                accessibilityLabel={
-                  selectedActivity && showActivitiesModal
-                    ? "Back to activities"
-                    : "Close activities"
-                }
-              >
-                <Text style={styles.activitiesModalCloseText}>
-                  {selectedActivity && showActivitiesModal ? "‹" : "×"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* LIST */}
-
-            <ScrollView
-              style={styles.activitiesModalScroll}
-              contentContainerStyle={styles.activitiesModalContent}
-              showsVerticalScrollIndicator
-            >
-              {selectedActivity ? (
-                <View style={styles.activityDetailContent}>
-                  <View style={styles.activityDetailSummary}>
-                    <Text
-                      style={[
-                        styles.activityDetailBadge,
-                        selectedActivity.activity_type === "paid"
-                          ? styles.activityDetailPaidBadge
-                          : styles.activityDetailFineBadge,
-                      ]}
-                    >
-                      {selectedActivity.activity_type === "paid"
-                        ? "Payment"
-                        : "Fine Recorded"}
-                    </Text>
-
-                    <Text style={styles.activityDetailName}>
-                      {selectedActivity.name}
-                    </Text>
-
-                    <Text style={styles.activityDetailDescription}>
-                      {selectedActivity.description}
-                    </Text>
-
-                    <Text
-                      style={[
-                        styles.activityDetailAmount,
-                        selectedActivity.activity_type === "paid"
-                          ? styles.amountPaid
-                          : styles.amountFine,
-                      ]}
-                    >
-                      ₱{Number(selectedActivity.amount).toFixed(2)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.activityDetailRow}>
-                    <Text style={styles.activityDetailLabel}>Date</Text>
-                    <Text style={styles.activityDetailValue}>
-                      {formatActivityDate(selectedActivity.created_at)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.activityDetailRow}>
-                    <Text style={styles.activityDetailLabel}>Time</Text>
-                    <Text style={styles.activityDetailValue}>
-                      {formatActivityTime(selectedActivity.created_at)}
-                    </Text>
-                  </View>
-
-                  <View style={styles.activityDetailRow}>
-                    <Text style={styles.activityDetailLabel}>Details</Text>
-                    <Text style={styles.activityDetailValue}>
-                      {selectedActivity.details || "Not specified"}
-                    </Text>
-                  </View>
-                </View>
-              ) : activitiesLoading ? (
-                <View style={styles.modalLoadingContainer}>
-                  <ActivityIndicator size="large" color="#173A73" />
-
-                  <Text style={styles.activityLoadingText}>
-                    Loading activities...
-                  </Text>
-                </View>
-              ) : recentActivities.length === 0 ? (
-                <Text style={styles.activitiesModalEmptyText}>
-                  No activities recorded yet.
-                </Text>
-              ) : (
-                recentActivities.map((activity) => (
+                return (
                   <TouchableOpacity
-                    key={`modal-${activity.activity_type}-${activity.id}`}
-                    style={styles.activityItem}
-                    onPress={() => handleActivityPress(activity)}
-                    activeOpacity={0.8}
-                    accessibilityLabel={`View activity details for ${activity.name}`}
+                    key={filter.key}
+                    style={[styles.filterChip, active && styles.filterChipActive]}
+                    onPress={() => showCategory(filter.key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
                   >
-                    <View style={styles.activityTextArea}>
-                      <Text style={styles.activityDescription}>
-                        <Text style={styles.activityName}>{activity.name}</Text>{" "}
-                        {activity.description}
-                      </Text>
-
-                      <Text style={styles.activityDetails}>
-                        {formatActivityDate(activity.created_at)} •{" "}
-                        {formatActivityTime(activity.created_at)} •{" "}
-                        {activity.details}
-                      </Text>
-                    </View>
-
                     <Text
                       style={[
-                        styles.activityAmount,
-
-                        activity.activity_type === "paid"
-                          ? styles.amountPaid
-                          : styles.amountFine,
+                        styles.filterChipText,
+                        active && styles.filterChipTextActive,
                       ]}
                     >
-                      ₱{Number(activity.amount).toFixed(2)}
+                      {filter.label} ({activityCounts[filter.key]})
                     </Text>
                   </TouchableOpacity>
-                ))
+                );
+              })}
+            </View>
+
+            <ScrollView
+              style={styles.modalList}
+              contentContainerStyle={styles.modalListContent}
+            >
+              {allActivities.map((activity, index) => (
+                <FadeIn key={activity.key} index={index}>
+                  <ActivityRow
+                    activity={activity}
+                    onPress={() => handleActivityPress(activity, true)}
+                  />
+                </FadeIn>
+              ))}
+
+              {/* First page: placeholder rows. Later pages: a small spinner. */}
+              {allLoading && allActivities.length === 0 ? (
+                <SkeletonList
+                  label="Loading activity"
+                  count={6}
+                  avatar={false}
+                  itemStyle={styles.activityItem}
+                />
+              ) : allLoading ? (
+                <View style={styles.activityLoadingContainer}>
+                  <ActivityIndicator size="small" color="#173A73" />
+                </View>
+              ) : allError ? (
+                <TouchableOpacity
+                  style={styles.loadMoreButton}
+                  onPress={() =>
+                    void loadAllActivities(allCategory, allActivities.length)
+                  }
+                >
+                  <Text style={styles.loadMoreText}>
+                    {allError} Tap to try again.
+                  </Text>
+                </TouchableOpacity>
+              ) : allActivities.length === 0 ? (
+                <Text style={styles.activityEmptyText}>
+                  No activity here yet.
+                </Text>
+              ) : allNextOffset !== null ? (
+                <TouchableOpacity
+                  style={styles.loadMoreButton}
+                  onPress={() =>
+                    void loadAllActivities(allCategory, allNextOffset)
+                  }
+                >
+                  <Text style={styles.loadMoreText}>Load more</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.listFooterText}>
+                  Showing all {allActivities.length}
+                </Text>
               )}
             </ScrollView>
-
-            {/* FOOTER */}
-
-            <View style={styles.activitiesModalFooter}>
-              <TouchableOpacity
-                style={styles.activitiesModalDoneButton}
-                onPress={
-                  selectedActivity
-                    ? handleBackFromActivity
-                    : handleCloseActivities
-                }
-                activeOpacity={0.8}
-              >
-                <Text style={styles.activitiesModalDoneText}>
-                  {selectedActivity && showActivitiesModal ? "Back" : "Close"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+          </>
+        ) : modal?.view === "fine" ? (
+          <AdminFineDetails
+            fineId={modal.fineId}
+            onChanged={handleFineChanged}
+            onNoticesRead={() => {}}
+            onEdit={handleEditFine}
+          />
+        ) : null}
+      </AdminModal>
 
       {/* ======================================
           LOGOUT CONFIRMATION MODAL
@@ -1217,76 +1335,4 @@ function getProfilePictureUrl(uri: string | null | undefined) {
   }
 
   return `${API_BASE}${uri}`;
-}
-
-// ==========================================
-// ACTIVITY DATE
-// ==========================================
-
-function formatActivityDate(value: string | null | undefined) {
-  if (!value) {
-    return "--";
-  }
-
-  try {
-    let normalized = value.trim();
-
-    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
-      normalized = normalized.replace(" ", "T") + "Z";
-    }
-
-    const date = new Date(normalized);
-
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-
-    return date.toLocaleDateString("en-PH", {
-      month: "short",
-
-      day: "numeric",
-
-      year: "numeric",
-
-      timeZone: "Asia/Manila",
-    });
-  } catch {
-    return value;
-  }
-}
-
-// ==========================================
-// ACTIVITY TIME
-// ==========================================
-
-function formatActivityTime(value: string | null | undefined) {
-  if (!value) {
-    return "--";
-  }
-
-  try {
-    let normalized = value.trim();
-
-    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
-      normalized = normalized.replace(" ", "T") + "Z";
-    }
-
-    const date = new Date(normalized);
-
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-
-    return date.toLocaleTimeString("en-PH", {
-      hour: "numeric",
-
-      minute: "2-digit",
-
-      hour12: true,
-
-      timeZone: "Asia/Manila",
-    });
-  } catch {
-    return value;
-  }
 }

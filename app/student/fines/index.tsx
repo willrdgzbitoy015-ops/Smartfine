@@ -3,7 +3,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Modal,
@@ -15,11 +14,28 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeIn, PopIn, TabIndicator } from "@/components/motion";
+import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { haptics } from "@/utils/haptics";
 import { styles } from "../styles/student-fines.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
+import { HomeTabBadge } from "@/components/notification-badge";
+import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 
 type FineStatus = "UNPAID" | "PAID" | "PENDING";
+
+type FineFilter = FineStatus | "CANCELLED";
+
+type CancelledFine = {
+  id: number;
+  fineReference: string;
+  violationName: string;
+  amountCentavos: number;
+  recordedAt: string | null;
+  cancelledAt: string | null;
+  cancelledCashRequestReference: string | null;
+};
 
 type Fine = {
   id: number;
@@ -38,6 +54,7 @@ type FinesResponse = {
   success: boolean;
   message?: string;
   fines: Fine[];
+  cancelledFines?: CancelledFine[];
   summary: {
     outstandingAmountCentavos: number;
     payableAmountCentavos: number;
@@ -55,10 +72,11 @@ type CashRequest = {
   paidAt: string | null;
 };
 
-const filters: { label: string; value: FineStatus }[] = [
+const filters: { label: string; value: FineFilter }[] = [
   { label: "Unpaid", value: "UNPAID" },
   { label: "Paid", value: "PAID" },
   { label: "Pending", value: "PENDING" },
+  { label: "Cancelled", value: "CANCELLED" },
 ];
 
 const navigation = [
@@ -129,7 +147,7 @@ export default function StudentFinesScreen() {
   const router = useRouter();
 
   const [data, setData] = useState<FinesResponse | null>(null);
-  const [filter, setFilter] = useState<FineStatus>("UNPAID");
+  const [filter, setFilter] = useState<FineFilter>("UNPAID");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
@@ -325,6 +343,10 @@ export default function StudentFinesScreen() {
 
   const visibleFines =
     data?.fines.filter((fine) => {
+      if (filter === "CANCELLED") {
+        return false;
+      }
+
       const cashPending = !!pendingCashRequest(fine.id);
 
       if (filter === "PENDING") {
@@ -339,6 +361,10 @@ export default function StudentFinesScreen() {
 
       return fine.status === "PAID";
     }) ?? [];
+
+  const cancelledFines =
+    filter === "CANCELLED" ? (data?.cancelledFines ?? []) : [];
+  const listCount = visibleFines.length + cancelledFines.length;
 
   const outstanding = data?.summary.outstandingAmountCentavos;
   const payable = data?.summary.payableAmountCentavos ?? 0;
@@ -392,6 +418,7 @@ export default function StudentFinesScreen() {
         ),
       ]);
 
+      haptics.success();
       setCashFine(null);
       setCashFeedback({
         title: "Cash Request Saved",
@@ -401,6 +428,7 @@ export default function StudentFinesScreen() {
           "Your fine stays unpaid until the cash is received and confirmed.",
       });
     } catch (caught) {
+      haptics.error();
       setCashFine(null);
       setCashFeedback({
         title: "Request Not Confirmed",
@@ -463,6 +491,9 @@ export default function StudentFinesScreen() {
             }
           : current,
       );
+
+      // Reading the fine also reads its New Fine Issued notification.
+      void refreshNotificationCounts();
     } catch (caught) {
       Alert.alert(
         "Unable to update",
@@ -527,7 +558,13 @@ export default function StudentFinesScreen() {
                 style={[styles.filterButton, active && styles.filterActive]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                onPress={() => setFilter(item.value)}
+                onPress={() => {
+                  if (!active) {
+                    haptics.selection();
+                  }
+
+                  setFilter(item.value);
+                }}
               >
                 <Text
                   style={[styles.filterText, active && styles.filterTextActive]}
@@ -582,13 +619,41 @@ export default function StudentFinesScreen() {
           )}
 
           {loading && !data ? (
-            <View style={styles.loadingPanel}>
-              <ActivityIndicator size="large" color="#123266" />
-              <Text style={styles.helper}>Loading your fines…</Text>
-            </View>
+            // Placeholders in the shape of the total and the fine cards.
+            <SkeletonGroup label="Loading your fines">
+              <View style={styles.totalCard}>
+                <Skeleton width="42%" height={11} onDark />
+                <Skeleton
+                  width="55%"
+                  height={34}
+                  radius={8}
+                  onDark
+                  style={styles.skeletonGap}
+                />
+                <Skeleton
+                  width="68%"
+                  height={11}
+                  onDark
+                  style={styles.skeletonGap}
+                />
+              </View>
+
+              {[0, 1, 2].map((index) => (
+                <View key={index} style={[styles.fineCard, styles.skeletonCard]}>
+                  <Skeleton width="58%" height={15} />
+                  <Skeleton width="42%" height={11} style={styles.skeletonGap} />
+                  <Skeleton width="32%" height={11} style={styles.skeletonGap} />
+                  <View style={styles.fineDivider} />
+                  <View style={styles.fineSummary}>
+                    <Skeleton width={96} height={26} radius={8} />
+                    <Skeleton width={72} height={24} radius={12} />
+                  </View>
+                </View>
+              ))}
+            </SkeletonGroup>
           ) : (
             <>
-              <View style={styles.totalCard}>
+              <FadeIn style={styles.totalCard}>
                 <Text style={styles.totalLabel}>TOTAL OUTSTANDING</Text>
 
                 <Text style={styles.totalAmount}>
@@ -602,9 +667,9 @@ export default function StudentFinesScreen() {
                       ? "Includes pending fines."
                       : "Your current unpaid fine balance."}
                 </Text>
-              </View>
+              </FadeIn>
 
-              <View style={styles.paymentNote}>
+              <FadeIn style={styles.paymentNote} delay={60}>
                 <Text style={styles.paymentNoteTitle}>Pay at the cashier</Text>
 
                 <Text style={styles.paymentNoteText}>
@@ -618,7 +683,7 @@ export default function StudentFinesScreen() {
                     Cash request status unavailable: {cashError}
                   </Text>
                 )}
-              </View>
+              </FadeIn>
 
               <View style={styles.listHeader}>
                 <Text style={styles.listTitle}>
@@ -628,13 +693,12 @@ export default function StudentFinesScreen() {
                 </Text>
 
                 <Text style={styles.listCount}>
-                  {visibleFines.length}{" "}
-                  {visibleFines.length === 1 ? "fine" : "fines"}
+                  {listCount} {listCount === 1 ? "fine" : "fines"}
                 </Text>
               </View>
 
-              {visibleFines.map((fine) => (
-                <View key={fine.id} style={styles.fineCard}>
+              {visibleFines.map((fine, index) => (
+                <FadeIn key={fine.id} index={index} style={styles.fineCard}>
                   <View style={styles.fineHeader}>
                     <Text style={styles.violation}>{fine.violationName}</Text>
 
@@ -761,11 +825,62 @@ export default function StudentFinesScreen() {
                       </Text>
                     </TouchableOpacity>
                   )}
-                </View>
+                </FadeIn>
               ))}
 
-              {data && visibleFines.length === 0 && (
-                <View style={styles.emptyPanel}>
+              {cancelledFines.map((fine, index) => (
+                <FadeIn key={fine.id} index={index} style={styles.fineCard}>
+                  <View style={styles.fineHeader}>
+                    <Text style={styles.violation}>{fine.violationName}</Text>
+                  </View>
+
+                  <Text style={styles.reference}>
+                    Reference: {fine.fineReference}
+                  </Text>
+
+                  <Text style={styles.timestamp}>
+                    Issued {dateLabel(fine.recordedAt)}
+                  </Text>
+
+                  <Text style={styles.timestamp}>
+                    Cancelled {dateLabel(fine.cancelledAt)}
+                  </Text>
+
+                  {!!fine.cancelledCashRequestReference && (
+                    <Text style={styles.reference}>
+                      Cash request cancelled ·{" "}
+                      {fine.cancelledCashRequestReference}
+                    </Text>
+                  )}
+
+                  <View style={styles.fineDivider} />
+
+                  <View style={styles.fineSummary}>
+                    <View style={styles.amountArea}>
+                      <Text style={styles.amountLabel}>Amount</Text>
+
+                      <Text style={styles.amount}>
+                        {money(fine.amountCentavos)}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.statusBadge, styles.statusCancelled]}>
+                      <Text
+                        style={[styles.statusText, styles.statusTextCancelled]}
+                      >
+                        Cancelled
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.helper}>
+                    This fine was cancelled. No payment is needed.
+                  </Text>
+                </FadeIn>
+              ))}
+
+              {data && listCount === 0 && (
+                <FadeIn style={styles.emptyPanel}>
                   <Text style={styles.emptyTitle}>
                     No {filter.toLowerCase()} fines
                   </Text>
@@ -775,9 +890,11 @@ export default function StudentFinesScreen() {
                       ? "You have no unpaid fines."
                       : filter === "PAID"
                         ? "Paid fines will appear here."
-                        : "No pending cash requests or fines."}
+                        : filter === "CANCELLED"
+                          ? "Cancelled fines will appear here."
+                          : "No pending cash requests or fines."}
                   </Text>
-                </View>
+                </FadeIn>
               )}
             </>
           )}
@@ -813,12 +930,12 @@ export default function StudentFinesScreen() {
                   />
 
                   <Text style={styles.navLabel}>{item.label}</Text>
+                  <HomeTabBadge label={item.label} />
 
-                  <View
-                    style={[
-                      styles.indicator,
-                      !active && styles.hiddenIndicator,
-                    ]}
+                  <TabIndicator
+                    active={active}
+                    style={styles.indicator}
+                    hiddenStyle={styles.hiddenIndicator}
                   />
                 </TouchableOpacity>
               );
@@ -834,7 +951,7 @@ export default function StudentFinesScreen() {
         onRequestClose={() => setSelectedFine(null)}
       >
         <View style={notificationStyles.detailsOverlay}>
-          <View style={notificationStyles.detailsCard}>
+          <PopIn style={notificationStyles.detailsCard}>
             <Text style={notificationStyles.detailsTitle}>Fine Details</Text>
 
             {selectedFine && (
@@ -921,7 +1038,7 @@ export default function StudentFinesScreen() {
             >
               <Text style={notificationStyles.detailsCloseText}>Close</Text>
             </TouchableOpacity>
-          </View>
+          </PopIn>
         </View>
       </Modal>
 
@@ -936,7 +1053,7 @@ export default function StudentFinesScreen() {
         }}
       >
         <View style={notificationStyles.detailsOverlay}>
-          <View style={notificationStyles.detailsCard}>
+          <PopIn style={notificationStyles.detailsCard}>
             <Text style={notificationStyles.detailsTitle}>Pay at Cashier</Text>
 
             {cashFine && (
@@ -988,7 +1105,7 @@ export default function StudentFinesScreen() {
             >
               <Text style={styles.markReadText}>Cancel</Text>
             </TouchableOpacity>
-          </View>
+          </PopIn>
         </View>
       </Modal>
 
@@ -999,7 +1116,7 @@ export default function StudentFinesScreen() {
         onRequestClose={() => setCashFeedback(null)}
       >
         <View style={notificationStyles.detailsOverlay}>
-          <View style={notificationStyles.detailsCard}>
+          <PopIn style={notificationStyles.detailsCard}>
             <Text style={notificationStyles.detailsTitle}>
               {cashFeedback?.title}
             </Text>
@@ -1013,7 +1130,7 @@ export default function StudentFinesScreen() {
             >
               <Text style={notificationStyles.detailsCloseText}>OK</Text>
             </TouchableOpacity>
-          </View>
+          </PopIn>
         </View>
       </Modal>
     </SafeAreaView>

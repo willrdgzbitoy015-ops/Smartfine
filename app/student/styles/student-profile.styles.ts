@@ -145,6 +145,18 @@ export const styles = StyleSheet.create({
     height: "100%",
   },
 
+  // Dims the photo while a new one uploads.
+  avatarBusy: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(18, 50, 102, 0.55)",
+  },
+
   avatarInitials: {
     fontFamily: fonts.semibold,
     fontSize: 24,

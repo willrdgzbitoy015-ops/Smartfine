@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
   Image,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -14,8 +15,15 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/hooks/use-auth";
 import { API_BASE } from "@/constants/api";
+import { FadeIn } from "@/components/motion";
+import { SkeletonTable } from "@/components/skeleton";
+import { AdminModal, AdminNoticeList } from "@/components/admin-modal";
+import AdminFineDetails from "@/components/admin-modal/fine-details";
 import LogoutModal from "@/components/logout-modal";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 import WarningModal from "@/components/warningmodal";
+import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 import { styles } from "./fines.styles";
 // ==========================================
 // TYPES
@@ -53,6 +61,35 @@ type NavItem = {
   route: string;
   icon?: any;
 };
+type AdminNotice = {
+  id: number;
+  type: "FINE" | "PAYMENT";
+  title: string;
+  message: string;
+  fineId: number | null;
+  isRead: boolean;
+  createdAt: string;
+};
+// One pop-up: the notification list, or a fine (optionally reached from it).
+type FineModal =
+  | { view: "notices" }
+  | { view: "fine"; fineId: number; fromNotices: boolean }
+  | { view: "missing" }
+  | null;
+// Empty-table wording for each status filter.
+const STATUS_EMPTY_LABELS: Record<string, string> = {
+  ALL: "fines",
+  PENDING_CASH: "pending cash requests",
+  UNPAID: "unpaid fines",
+  PAID: "paid fines",
+  CANCELLED: "cancelled fines",
+};
+const NOTICE_FILTERS = [
+  { key: "ALL", label: "All", test: () => true },
+  { key: "UNREAD", label: "Unread", test: (n: AdminNotice) => !n.isRead },
+  { key: "FINE", label: "New fines", test: (n: AdminNotice) => n.type === "FINE" },
+  { key: "PAYMENT", label: "Cash requests", test: (n: AdminNotice) => n.type === "PAYMENT" },
+];
 // ==========================================
 // FINES DIRECTORY SCREEN
 // ==========================================
@@ -97,10 +134,41 @@ export default function FinesDirectory() {
   const [fineNotifications, setFineNotifications] = useState<Record<number, { id: number; isRead: boolean }>>({});
   const [paymentNotifications, setPaymentNotifications] = useState<Record<number, { id: number; isRead: boolean }>>({});
   const [pendingFineIds, setPendingFineIds] = useState<Set<number>>(new Set());
+  const [notices, setNotices] = useState<AdminNotice[]>([]);
+  const [modal, setModal] = useState<FineModal>(null);
+  // Reopens a fine's pop-up after returning from Edit Fine.
+  const reopenFineIdRef = useRef<number | null>(null);
   const [focusVersion, setFocusVersion] = useState(0);
   useFocusEffect(useCallback(() => {
     setFocusVersion((current) => current + 1);
+    const reopenId = reopenFineIdRef.current;
+    if (reopenId) {
+      reopenFineIdRef.current = null;
+      setModal({ view: "fine", fineId: reopenId, fromNotices: false });
+    }
   }, []));
+  // Links to /admin/fines/:id arrive here as ?fineId= and open the pop-up;
+  // dashboard cards pass ?status= to start on a filter.
+  const { fineId: fineIdParam, status: statusParam } = useLocalSearchParams<{
+    fineId?: string;
+    status?: string;
+  }>();
+  useEffect(() => {
+    const linkedId = Number(fineIdParam);
+    if (Number.isSafeInteger(linkedId) && linkedId > 0) {
+      setModal({ view: "fine", fineId: linkedId, fromNotices: false });
+      router.setParams({ fineId: undefined });
+    }
+  }, [fineIdParam]);
+  useEffect(() => {
+    if (
+      statusParam &&
+      ["ALL", "PENDING_CASH", "UNPAID", "PAID", "CANCELLED"].includes(statusParam)
+    ) {
+      setSelectedStatus(statusParam);
+      router.setParams({ status: undefined });
+    }
+  }, [statusParam]);
   // ==========================================
   // NAVIGATION ITEMS
   // ==========================================
@@ -161,11 +229,13 @@ export default function FinesDirectory() {
             setFineNotifications({});
             setPaymentNotifications({});
             setPendingFineIds(new Set());
+            setNotices([]);
           }
           return;
         }
         const fetchType = async (type: "FINE" | "PAYMENT") => {
           const byFine: Record<number, { id: number; isRead: boolean }> = {};
+          const items: AdminNotice[] = [];
           let offset = 0;
           let count = 0;
           while (true) {
@@ -181,9 +251,19 @@ export default function FinesDirectory() {
           if (offset === 0) count = Number(data.unreadCount);
           for (const item of data.notifications) {
             const fineId = Number(item.fineId);
-            if (Number.isSafeInteger(fineId) && fineId > 0 && !byFine[fineId]) {
+            const linked = Number.isSafeInteger(fineId) && fineId > 0;
+            if (linked && !byFine[fineId]) {
               byFine[fineId] = { id: Number(item.id), isRead: item.isRead === true };
             }
+            items.push({
+              id: Number(item.id),
+              type,
+              title: String(item.title || ""),
+              message: String(item.message || ""),
+              fineId: linked ? fineId : null,
+              isRead: item.isRead === true,
+              createdAt: String(item.createdAt || ""),
+            });
           }
           if (!data.hasMore) break;
           const next = Number(data.nextOffset);
@@ -192,7 +272,7 @@ export default function FinesDirectory() {
           }
           offset = next;
           }
-          return { byFine, count };
+          return { byFine, count, items };
         };
         const [fineResult, paymentResult, pendingResponse] = await Promise.all([
           fetchType("FINE"),
@@ -210,6 +290,7 @@ export default function FinesDirectory() {
           setFineNotifications(fineResult.byFine);
           setPaymentNotifications(paymentResult.byFine);
           setPendingFineIds(new Set(pendingData.payments.map((row: { fineId: number }) => Number(row.fineId))));
+          setNotices([...fineResult.items, ...paymentResult.items]);
           if (Number.isSafeInteger(fineResult.count) && Number.isSafeInteger(paymentResult.count)) {
             setUnreadCount(fineResult.count + paymentResult.count);
           }
@@ -367,10 +448,37 @@ export default function FinesDirectory() {
   // OPEN FINE DETAILS
   // ==========================================
   const handleOpenFine = (fineId: number) => {
-    if (loading || refreshing) {
-      return;
-    }
-    router.push(`/admin/fines/${fineId}` as any);
+    setModal({ view: "fine", fineId, fromNotices: false });
+  };
+  // The fine pop-up marks its notices read only after the fine loads.
+  const handleOpenNotice = (notice: AdminNotice) => {
+    setModal(
+      notice.fineId
+        ? { view: "fine", fineId: notice.fineId, fromNotices: true }
+        : { view: "missing" },
+    );
+  };
+  // A cancelled or paid fine refreshes the table, notices, and badges.
+  const handleFineChanged = () => {
+    void loadPageData(false);
+    setFocusVersion((current) => current + 1);
+    void refreshNotificationCounts();
+  };
+  const handleNoticesRead = () => {
+    setFocusVersion((current) => current + 1);
+  };
+  // Clears every filter, e.g. after arriving from a dashboard card.
+  const handleShowAllFines = () => {
+    setSelectedStatus("ALL");
+    setSelectedViolationId(null);
+    setSearchText("");
+    setStatusMenuOpen(false);
+    setViolationMenuOpen(false);
+  };
+  const handleEditFine = (fineId: number) => {
+    reopenFineIdRef.current = fineId;
+    setModal(null);
+    router.push(`/admin/fines/${fineId}/edit` as any);
   };
   // ==========================================
   // OPEN LOGOUT MODAL
@@ -470,13 +578,7 @@ export default function FinesDirectory() {
                     />
                   </View>
                   <Text style={styles.navText}>{item.label}</Text>
-                  {item.label === "Fines" && unreadCount > 0 && (
-                    <View style={styles.navBadge}>
-                      <Text style={styles.navBadgeText}>
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </Text>
-                    </View>
-                  )}
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -498,6 +600,14 @@ export default function FinesDirectory() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#173A73"
+              colors={["#173A73"]}
+            />
+          }
         >
           {/* ==================================
               MOBILE NAVIGATION
@@ -527,13 +637,7 @@ export default function FinesDirectory() {
                     >
                       {item.label}
                     </Text>
-                    {item.label === "Fines" && unreadCount > 0 && (
-                      <View style={styles.mobileNavBadge}>
-                        <Text style={styles.navBadgeText}>
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </Text>
-                      </View>
-                    )}
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -546,29 +650,41 @@ export default function FinesDirectory() {
             <Text style={styles.pageTitle}>Fines Directory</Text>
             <Text style={styles.pageSubtitle}>Review cashier requests and manage student fines.</Text>
           </View>
-          <View style={[styles.summaryRow, !isTablet && styles.summaryRowMobile]}>
-            <TouchableOpacity
-              style={[styles.summaryCard, styles.summaryCardPending]}
+          <SummaryCardRow>
+            <SummaryCard
+              label="Pending Cash Requests"
+              value={String(pendingCount)}
+              hint={pendingCount > 0 ? "Review these first" : "None waiting"}
+              tone="attention"
+              highlighted={pendingCount > 0}
+              loading={loading}
               onPress={() => setSelectedStatus("PENDING_CASH")}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={`View ${pendingCount} pending cashier requests`}
-            >
-              <Text style={styles.summaryLabel}>PENDING CASH REQUESTS</Text>
-              <Text style={styles.summaryNumber}>{pendingCount}</Text>
-              <Text style={styles.summaryHint}>Review these first  →</Text>
-            </TouchableOpacity>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>UNPAID FINES</Text>
-              <Text style={styles.summaryNumber}>{unpaidCount}</Text>
-              <Text style={styles.summaryHint}>Includes pending cashier requests</Text>
-            </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>ALL FINES</Text>
-              <Text style={styles.summaryNumber}>{fines.length}</Text>
-              <Text style={styles.summaryHint}>All recorded fines</Text>
-            </View>
-          </View>
+            />
+            <SummaryCard
+              label="Unpaid Fines"
+              value={String(unpaidCount)}
+              hint="Includes pending cashier requests"
+              tone="danger"
+              loading={loading}
+              onPress={() => setSelectedStatus("UNPAID")}
+            />
+            <SummaryCard
+              label="All Fines"
+              value={String(fines.length)}
+              hint="All recorded fines"
+              tone="info"
+              loading={loading}
+              onPress={handleShowAllFines}
+            />
+            <SummaryCard
+              label="Notifications"
+              value={String(unreadCount)}
+              hint={unreadCount > 0 ? "New · View all" : "All caught up · View all"}
+              tone="info"
+              highlighted={unreadCount > 0}
+              onPress={() => setModal({ view: "notices" })}
+            />
+          </SummaryCardRow>
           {/* ==================================
               TOOLBAR
           ================================== */}
@@ -744,7 +860,7 @@ export default function FinesDirectory() {
           ================================== */}
           <View style={styles.tableCard}>
             <View style={styles.tableIntro}>
-              <View>
+              <View style={styles.tableIntroText}>
                 <Text style={styles.tableIntroTitle}>Fine records</Text>
                 <Text style={styles.tableIntroSubtitle}>Pending cash requests appear first. Opening one marks its notice read; payment is recorded separately.</Text>
               </View>
@@ -752,12 +868,12 @@ export default function FinesDirectory() {
             </View>
             {/* INITIAL LOADING */}
             {loading ? (
-              <View style={styles.centerState}>
-                <ActivityIndicator size="large" color="#173A73" />
-                <Text style={styles.loadingText}>
-                  Loading fines and violation types...
-                </Text>
-              </View>
+              <SkeletonTable
+                label="Loading fines and violation types"
+                rows={7}
+                columns={6}
+                rowStyle={styles.tableRow}
+              />
             ) : errorMessage ? (
               /* ERROR */
               <View style={styles.centerState}>
@@ -801,106 +917,126 @@ export default function FinesDirectory() {
                   {/* EMPTY STATE */}
                   {filteredFines.length === 0 ? (
                     <View style={styles.emptyTable}>
-                      <Text style={styles.emptyTitle}>No fines found</Text>
-                      <Text style={styles.emptyText}>
-                        No fine records match the current filters.
+                      <Text style={styles.emptyTitle}>
+                        {fines.length === 0
+                          ? "No fines recorded yet"
+                          : `No ${STATUS_EMPTY_LABELS[selectedStatus] ?? "fines"}`}
                       </Text>
+                      <Text style={styles.emptyText}>
+                        {fines.length === 0
+                          ? "Recorded fines will appear here."
+                          : searchText.trim() || selectedViolationId !== null
+                            ? "No fines match your search and filters."
+                            : `There are no ${STATUS_EMPTY_LABELS[selectedStatus] ?? "fines"} right now. ${fines.length} other ${fines.length === 1 ? "fine is" : "fines are"} hidden by this filter.`}
+                      </Text>
+                      {fines.length > 0 && (
+                        <TouchableOpacity
+                          style={styles.emptyResetButton}
+                          onPress={handleShowAllFines}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.emptyResetText}>
+                            Show all fines
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   ) : (
                     /* FINE ROWS */
-                    filteredFines.map((fine) => (
-                      <TouchableOpacity
-                        key={fine.id}
-                        style={[
-                          styles.tableRow,
-                          pendingFineIds.has(Number(fine.id)) && styles.tableRowPending,
-                          (fineNotifications[fine.id]?.isRead === false || paymentNotifications[fine.id]?.isRead === false) && styles.tableRowUnread,
-                          refreshing && {
-                            opacity: 0.65,
-                          },
-                        ]}
-                        onPress={() => handleOpenFine(fine.id)}
-                        disabled={refreshing}
-                        activeOpacity={0.75}
-                      >
-                        {/* FINE ID */}
-                        <Text
+                    filteredFines.map((fine, index) => (
+                      <FadeIn key={fine.id} index={index}>
+                        <TouchableOpacity
                           style={[
-                            styles.cell,
-                            styles.fineIdColumn,
-                            styles.fineIdText,
+                            styles.tableRow,
+                            pendingFineIds.has(Number(fine.id)) && styles.tableRowPending,
+                            (fineNotifications[fine.id]?.isRead === false || paymentNotifications[fine.id]?.isRead === false) && styles.tableRowUnread,
+                            refreshing && {
+                              opacity: 0.65,
+                            },
                           ]}
+                          onPress={() => handleOpenFine(fine.id)}
+                          disabled={refreshing}
+                          activeOpacity={0.75}
                         >
-                          {fine.fine_reference}
-                          {pendingFineIds.has(Number(fine.id)) && (
-                            <Text style={styles.cashRequestedLabel}>{"\n"}CASH REQUESTED</Text>
-                          )}
-                          {fineNotifications[fine.id] && (
-                            <Text style={fineNotifications[fine.id].isRead ? styles.fineReadLabel : styles.fineUnreadLabel}>
-                              {"\n"}FINE {fineNotifications[fine.id].isRead ? "READ" : "NEW"}
-                            </Text>
-                          )}
-                          {paymentNotifications[fine.id] && (
-                            <Text style={paymentNotifications[fine.id].isRead ? styles.fineReadLabel : styles.fineUnreadLabel}>
-                              {"\n"}CASH REQUEST {paymentNotifications[fine.id].isRead ? "READ" : "NEW"}
-                            </Text>
-                          )}
-                        </Text>
-                        {/* VIOLATION */}
-                        <Text style={[styles.cell, styles.violationColumn]}>
-                          {fine.violation_name}
-                        </Text>
-                        {/* STUDENT */}
-                        <View
-                          style={[styles.cellContainer, styles.studentColumn]}
-                        >
-                          <Text style={styles.studentName}>
-                            {fine.student_name}
-                          </Text>
-                          <Text style={styles.studentNumber}>
-                            {fine.student_number || ""}
-                          </Text>
-                        </View>
-                        {/* AMOUNT */}
-                        <Text
-                          style={[
-                            styles.cell,
-                            styles.amountColumn,
-                            styles.amountText,
-                          ]}
-                        >
-                          {formatMoney(fine.amount)}
-                        </Text>
-                        {/* OFFICER */}
-                        <Text style={[styles.cell, styles.officerColumn]}>
-                          {fine.officer_name}
-                        </Text>
-                        {/* DATE */}
-                        <Text style={[styles.cell, styles.dateColumn]}>
-                          {formatDate(fine.issued_at)}
-                        </Text>
-                        {/* STATUS */}
-                        <View
-                          style={[styles.cellContainer, styles.statusColumn]}
-                        >
-                          <View
+                          {/* FINE ID */}
+                          <Text
                             style={[
-                              styles.statusBadge,
-                              pendingFineIds.has(Number(fine.id)) ? styles.statusBadgePending : getStatusBadgeStyle(fine.status),
+                              styles.cell,
+                              styles.fineIdColumn,
+                              styles.fineIdText,
                             ]}
                           >
-                            <Text
-                              style={[
-                                styles.statusText,
-                                pendingFineIds.has(Number(fine.id)) ? styles.statusTextPending : getStatusTextStyle(fine.status),
-                              ]}
-                            >
-                              {pendingFineIds.has(Number(fine.id)) ? "Pending Cash" : formatStatus(fine.status)}
+                            {fine.fine_reference}
+                            {pendingFineIds.has(Number(fine.id)) && (
+                              <Text style={styles.cashRequestedLabel}>{"\n"}CASH REQUESTED</Text>
+                            )}
+                            {fineNotifications[fine.id] && (
+                              <Text style={fineNotifications[fine.id].isRead ? styles.fineReadLabel : styles.fineUnreadLabel}>
+                                {"\n"}FINE {fineNotifications[fine.id].isRead ? "READ" : "NEW"}
+                              </Text>
+                            )}
+                            {paymentNotifications[fine.id] && (
+                              <Text style={paymentNotifications[fine.id].isRead ? styles.fineReadLabel : styles.fineUnreadLabel}>
+                                {"\n"}CASH REQUEST {paymentNotifications[fine.id].isRead ? "READ" : "NEW"}
+                              </Text>
+                            )}
+                          </Text>
+                          {/* VIOLATION */}
+                          <Text style={[styles.cell, styles.violationColumn]}>
+                            {fine.violation_name}
+                          </Text>
+                          {/* STUDENT */}
+                          <View
+                            style={[styles.cellContainer, styles.studentColumn]}
+                          >
+                            <Text style={styles.studentName}>
+                              {fine.student_name}
+                            </Text>
+                            <Text style={styles.studentNumber}>
+                              {fine.student_number || ""}
                             </Text>
                           </View>
-                          {pendingFineIds.has(Number(fine.id)) && <Text style={styles.pendingFineHint}>Fine is Unpaid</Text>}
-                        </View>
-                      </TouchableOpacity>
+                          {/* AMOUNT */}
+                          <Text
+                            style={[
+                              styles.cell,
+                              styles.amountColumn,
+                              styles.amountText,
+                            ]}
+                          >
+                            {formatMoney(fine.amount)}
+                          </Text>
+                          {/* OFFICER */}
+                          <Text style={[styles.cell, styles.officerColumn]}>
+                            {fine.officer_name}
+                          </Text>
+                          {/* DATE */}
+                          <Text style={[styles.cell, styles.dateColumn]}>
+                            {formatDate(fine.issued_at)}
+                          </Text>
+                          {/* STATUS */}
+                          <View
+                            style={[styles.cellContainer, styles.statusColumn]}
+                          >
+                            <View
+                              style={[
+                                styles.statusBadge,
+                                pendingFineIds.has(Number(fine.id)) ? styles.statusBadgePending : getStatusBadgeStyle(fine.status),
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.statusText,
+                                  pendingFineIds.has(Number(fine.id)) ? styles.statusTextPending : getStatusTextStyle(fine.status),
+                                ]}
+                              >
+                                {pendingFineIds.has(Number(fine.id)) ? "Pending Cash" : formatStatus(fine.status)}
+                              </Text>
+                            </View>
+                            {pendingFineIds.has(Number(fine.id)) && <Text style={styles.pendingFineHint}>Fine is Unpaid</Text>}
+                          </View>
+                        </TouchableOpacity>
+                      </FadeIn>
                     ))
                   )}
                 </View>
@@ -909,6 +1045,55 @@ export default function FinesDirectory() {
           </View>
         </ScrollView>
       </View>
+      {/* ======================================
+          NOTIFICATIONS AND FINE DETAILS POP-UP
+      ====================================== */}
+      <AdminModal
+        visible={modal !== null}
+        title={
+          modal?.view === "notices"
+            ? "Notifications"
+            : modal?.view === "missing"
+              ? "Fine unavailable"
+              : "Fine details"
+        }
+        subtitle={
+          modal?.view === "notices"
+            ? `${unreadCount} new · New fines and cashier requests`
+            : modal?.view === "fine"
+              ? "Fine record and actions"
+              : undefined
+        }
+        onClose={() => setModal(null)}
+        onBack={
+          (modal?.view === "fine" && modal.fromNotices) || modal?.view === "missing"
+            ? () => setModal({ view: "notices" })
+            : undefined
+        }
+      >
+        {modal?.view === "notices" ? (
+          <AdminNoticeList
+            notices={notices}
+            filters={NOTICE_FILTERS}
+            onOpen={handleOpenNotice}
+            emptyText="No notifications here yet."
+          />
+        ) : modal?.view === "fine" ? (
+          <AdminFineDetails
+            fineId={modal.fineId}
+            onChanged={handleFineChanged}
+            onNoticesRead={handleNoticesRead}
+            onEdit={handleEditFine}
+          />
+        ) : modal?.view === "missing" ? (
+          <View style={styles.centerState}>
+            <Text style={styles.emptyText}>
+              The fine for this notification is no longer available. The
+              notification stays unread.
+            </Text>
+          </View>
+        ) : null}
+      </AdminModal>
       {/* ======================================
           LOGOUT CONFIRMATION MODAL
       ====================================== */}

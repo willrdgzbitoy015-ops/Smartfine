@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Modal,
@@ -21,6 +20,9 @@ import QRCode from "react-native-qrcode-svg";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { FadeIn, PopIn } from "@/components/motion";
+import { SkeletonProfile } from "@/components/skeleton";
 
 import { styles } from "./student-profile.styles";
 
@@ -342,11 +344,11 @@ export default function StudentProfile() {
 
     if (loading) {
       return (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color="#173A73" />
-
-          <Text style={styles.stateText}>Loading student profile...</Text>
-        </View>
+        <SkeletonProfile
+          label="Loading student profile"
+          sections={2}
+          style={styles.skeleton}
+        />
       );
     }
 
@@ -699,7 +701,7 @@ export default function StudentProfile() {
               onPress={handleCloseFineModal}
             />
 
-            <View
+            <PopIn
               style={[styles.fineModal, isCompact && styles.fineModalCompact]}
             >
               {/* HEADER */}
@@ -837,7 +839,7 @@ export default function StudentProfile() {
                   <Text style={styles.fineManageButtonText}>Manage Fine</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </PopIn>
           </View>
         </Modal>
 
@@ -857,7 +859,7 @@ export default function StudentProfile() {
               onPress={handleCloseQRCode}
             />
 
-            <View style={[styles.qrModal, isCompact && styles.qrModalCompact]}>
+            <PopIn style={[styles.qrModal, isCompact && styles.qrModalCompact]}>
               {/* MODAL HEADER */}
 
               <View style={styles.qrModalHeader}>
@@ -923,7 +925,7 @@ export default function StudentProfile() {
               >
                 <Text style={styles.qrCloseButtonText}>Close</Text>
               </TouchableOpacity>
-            </View>
+            </PopIn>
           </View>
         </Modal>
       </>
@@ -969,6 +971,7 @@ export default function StudentProfile() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -1047,12 +1050,16 @@ export default function StudentProfile() {
                   >
                     {item.label}
                   </Text>
+                  <AdminNavBadge label={item.label} variant="menu" />
                 </TouchableOpacity>
               ))}
             </ScrollView>
           )}
 
-          {renderContent()}
+          {/* The loaded page fades in after the placeholder. */}
+          <FadeIn key={loading ? "loading" : "content"}>
+            {renderContent()}
+          </FadeIn>
         </ScrollView>
       </View>
     </View>

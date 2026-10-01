@@ -19,6 +19,10 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { PopIn, ScanLine } from "@/components/motion";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { SkeletonList } from "@/components/skeleton";
+import { haptics } from "@/utils/haptics";
 
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
@@ -331,6 +335,8 @@ export default function QRScanner() {
         ) || null;
 
       if (!student) {
+        haptics.error();
+
         setFoundStudent(null);
 
         setErrorMessage(
@@ -340,6 +346,8 @@ export default function QRScanner() {
         return;
       }
 
+      haptics.success();
+
       setFoundStudent(student);
 
       setManualStudentId(student.student_id);
@@ -347,6 +355,8 @@ export default function QRScanner() {
       setScanLocked(true);
     } catch (error) {
       console.error("Process student QR error:", error);
+
+      haptics.error();
 
       setErrorMessage("Could not process the student QR code.");
     } finally {
@@ -376,6 +386,8 @@ export default function QRScanner() {
     // ======================================
 
     if (!scannedValue.startsWith(QR_PREFIX)) {
+      haptics.error();
+
       setFoundStudent(null);
 
       setErrorMessage(
@@ -388,12 +400,17 @@ export default function QRScanner() {
     const permanentStudentId = scannedValue.slice(QR_PREFIX.length).trim();
 
     if (!permanentStudentId) {
+      haptics.error();
+
       setFoundStudent(null);
 
       setErrorMessage("Invalid SmartFine QR Code. Student ID is missing.");
 
       return;
     }
+
+    // A firm tap confirms the code was read.
+    haptics.impact();
 
     processStudentId(permanentStudentId);
   };
@@ -541,7 +558,7 @@ export default function QRScanner() {
       String(student.account_status || "").toUpperCase() === "ACTIVE";
 
     return (
-      <View style={styles.resultCard}>
+      <PopIn style={styles.resultCard} from={0.95}>
         {/* ==================================
               RESULT HEADER
           ================================== */}
@@ -678,7 +695,7 @@ export default function QRScanner() {
             This student is inactive. Fine recording is disabled.
           </Text>
         )}
-      </View>
+      </PopIn>
     );
   };
 
@@ -788,7 +805,9 @@ export default function QRScanner() {
           ================================== */}
 
         <View pointerEvents="none" style={styles.cameraOverlay}>
-          <View style={styles.scanFrame} />
+          <View style={styles.scanFrame}>
+            <ScanLine active={!scanLocked} />
+          </View>
 
           <Text style={styles.scanInstruction}>
             Position the SmartFine Student QR Code inside the frame
@@ -861,6 +880,7 @@ export default function QRScanner() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -918,6 +938,7 @@ export default function QRScanner() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -941,13 +962,11 @@ export default function QRScanner() {
           ================================== */}
 
           {loadingStudents ? (
-            <View style={styles.loadingCard}>
-              <ActivityIndicator size="large" color="#173A73" />
-
-              <Text style={styles.loadingText}>
-                Loading SmartFine student records...
-              </Text>
-            </View>
+            <SkeletonList
+              label="Loading SmartFine student records"
+              count={3}
+              style={styles.skeletonCard}
+            />
           ) : (
             <>
               {/* ==================================

@@ -119,6 +119,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 20,

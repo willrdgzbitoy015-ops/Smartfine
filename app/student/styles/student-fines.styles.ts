@@ -318,6 +318,9 @@ export const styles = StyleSheet.create({
   statusPending: {
     backgroundColor: "#FFF3D8",
   },
+  statusCancelled: {
+    backgroundColor: "#ECEFF3",
+  },
 
   statusText: {
     fontFamily: fonts.semibold,
@@ -334,6 +337,9 @@ export const styles = StyleSheet.create({
 
   statusTextPending: {
     color: colors.amber,
+  },
+  statusTextCancelled: {
+    color: colors.muted,
   },
 
   cardActions: {
@@ -377,6 +383,16 @@ export const styles = StyleSheet.create({
     paddingVertical: 30,
     alignItems: "center",
     gap: 10,
+  },
+
+  // Placeholders while fines load.
+  skeletonGap: {
+    marginTop: 9,
+  },
+
+  skeletonCard: {
+    marginTop: 12,
+    marginBottom: 0,
   },
 
   emptyPanel: {

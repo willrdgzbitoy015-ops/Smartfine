@@ -78,22 +78,6 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  navBadge: {
-    marginLeft: "auto",
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 5,
-    borderRadius: 11,
-    backgroundColor: COLORS.red,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navBadgeText: {
-    color: COLORS.white,
-    fontSize: 11,
-    fontWeight: "700",
-    textAlign: "center",
-  },
   logoutButton: {
     marginTop: "auto",
     borderWidth: 1,
@@ -137,50 +121,6 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 5,
   },
-  summaryRow: {
-    width: "100%",
-    maxWidth: 1220,
-    alignSelf: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 18,
-  },
-  summaryRowMobile: {
-    gap: 8,
-  },
-  summaryCard: {
-    flexGrow: 1,
-    flexBasis: 175,
-    minWidth: 155,
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: "#DDE5EE",
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 15,
-  },
-  summaryCardPending: {
-    backgroundColor: "#FFF5E8",
-    borderColor: "#F4BE75",
-  },
-  summaryLabel: {
-    color: "#5C6D82",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  summaryNumber: {
-    color: COLORS.navy,
-    fontSize: 25,
-    fontWeight: "800",
-    marginTop: 5,
-  },
-  summaryHint: {
-    color: "#687789",
-    fontSize: 11,
-    marginTop: 3,
-  },
   // ==========================================
   // MOBILE NAV
   // ==========================================
@@ -196,15 +136,6 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-  },
-  mobileNavBadge: {
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    backgroundColor: COLORS.red,
-    alignItems: "center",
-    justifyContent: "center",
   },
   mobileNavItemActive: {
     backgroundColor: COLORS.green,
@@ -370,6 +301,10 @@ export const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 18,
     paddingVertical: 15,
+  },
+  // Lets the subtitle wrap on phones.
+  tableIntroText: {
+    flexShrink: 1,
   },
   tableIntroTitle: {
     color: COLORS.navy,
@@ -593,6 +528,21 @@ export const styles = StyleSheet.create({
     color: COLORS.muted,
     fontSize: 13,
     marginTop: 7,
+  },
+  // "Show all fines" when a filter leaves the table empty.
+  emptyResetButton: {
+    marginTop: 16,
+    minHeight: 40,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: COLORS.navy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyResetText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: "800",
   },
 });
 // ==========================================

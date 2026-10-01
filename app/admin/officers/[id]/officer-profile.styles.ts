@@ -170,6 +170,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
 
     borderRadius: 18,
@@ -1238,6 +1240,13 @@ export const styles = StyleSheet.create({
   // ==========================================
   // LOADING / ERROR
   // ==========================================
+
+  // Placeholder while the page loads.
+  skeleton: {
+    width: "100%",
+    maxWidth: 1050,
+    alignSelf: "center",
+  },
 
   centerState: {
     width: "100%",

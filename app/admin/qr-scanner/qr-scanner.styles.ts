@@ -169,6 +169,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
 
     borderRadius: 18,
@@ -227,6 +229,16 @@ export const styles = StyleSheet.create({
   // ==========================================
   // LOADING
   // ==========================================
+
+  // Placeholder rows while student records load.
+  skeletonCard: {
+    width: "100%",
+    maxWidth: 1100,
+    alignSelf: "center",
+    padding: 18,
+    backgroundColor: COLORS.white,
+    borderRadius: 15,
+  },
 
   loadingCard: {
     width: "100%",

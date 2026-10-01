@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-    ActivityIndicator,
+    Animated,
     BackHandler,
     FlatList,
     Image,
@@ -24,9 +24,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import QRCode from "react-native-qrcode-svg";
 
+import { FadeIn, PopIn, TabIndicator, useSwitchFade } from "@/components/motion";
+import { SkeletonList } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 
 import { useResponsiveStyles } from "./student.styles";
+import { HomeTabBadge } from "@/components/notification-badge";
 
 // ==========================================
 // TYPES
@@ -343,6 +346,9 @@ export default function OfficerStudentsScreen() {
     setSelectedId(null);
   };
 
+  // The list and a student's profile fade in when switching between them.
+  const viewFade = useSwitchFade(selectedId);
+
   const addFine = () => {
     if (!selectedStudent || !canAddFine) return;
 
@@ -377,8 +383,8 @@ export default function OfficerStudentsScreen() {
           // ==================================
           // STUDENT PROFILE
           // ==================================
-          <ScrollView
-            style={styles.scroll}
+          <Animated.ScrollView
+            style={[styles.scroll, viewFade]}
             contentContainerStyle={styles.profileContent}
             showsVerticalScrollIndicator={false}
           >
@@ -456,12 +462,12 @@ export default function OfficerStudentsScreen() {
                 <Text style={styles.addFineText}>Add Fine</Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
+          </Animated.ScrollView>
         ) : (
           // ==================================
           // STUDENT LIST
           // ==================================
-          <View style={styles.listScreen}>
+          <Animated.View style={[styles.listScreen, viewFade]}>
             <View style={styles.searchArea}>
               <View style={styles.searchBox}>
                 <View style={styles.searchIcon}>
@@ -503,53 +509,61 @@ export default function OfficerStudentsScreen() {
               keyboardDismissMode="on-drag"
               refreshing={refreshing}
               onRefresh={() => void loadStudents(true)}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel={`View ${fullName(item)}`}
-                  activeOpacity={0.75}
-                  style={styles.studentCard}
-                  onPress={() => setSelectedId(item.id)}
-                >
-                  <StudentPhoto student={item} />
+              renderItem={({ item, index }) => (
+                <FadeIn index={index}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`View ${fullName(item)}`}
+                    activeOpacity={0.75}
+                    style={styles.studentCard}
+                    onPress={() => setSelectedId(item.id)}
+                  >
+                    <StudentPhoto student={item} />
 
-                  <View style={styles.studentDetails}>
-                    <Text style={styles.studentName}>{fullName(item)}</Text>
+                    <View style={styles.studentDetails}>
+                      <Text style={styles.studentName}>{fullName(item)}</Text>
 
-                    <Text style={styles.studentMeta}>{gradeSection(item)}</Text>
+                      <Text style={styles.studentMeta}>
+                        {gradeSection(item)}
+                      </Text>
 
-                    <Text style={styles.studentMeta}>
-                      Student ID: {item.student_id || "Unavailable"}
-                    </Text>
-                  </View>
+                      <Text style={styles.studentMeta}>
+                        Student ID: {item.student_id || "Unavailable"}
+                      </Text>
+                    </View>
 
-                  <View style={styles.chevron} />
-                </TouchableOpacity>
+                    <View style={styles.chevron} />
+                  </TouchableOpacity>
+                </FadeIn>
               )}
               ListEmptyComponent={
-                <View style={styles.emptyPanel}>
-                  {loading ? (
-                    <>
-                      <ActivityIndicator size="large" color="#123266" />
-                      <Text style={styles.helperText}>Loading students…</Text>
-                    </>
-                  ) : !error ? (
-                    <>
-                      <Text style={styles.emptyTitle}>
-                        {query ? "No matching students" : "No students yet"}
-                      </Text>
+                loading ? (
+                  // Placeholder rows in the shape of the student cards.
+                  <SkeletonList
+                    label="Loading students"
+                    count={5}
+                    itemStyle={styles.studentCard}
+                  />
+                ) : (
+                  <View style={styles.emptyPanel}>
+                    {!error ? (
+                      <>
+                        <Text style={styles.emptyTitle}>
+                          {query ? "No matching students" : "No students yet"}
+                        </Text>
 
-                      <Text style={styles.helperText}>
-                        {query
-                          ? "Try a different name or student ID."
-                          : "Registered students will appear here."}
-                      </Text>
-                    </>
-                  ) : null}
-                </View>
+                        <Text style={styles.helperText}>
+                          {query
+                            ? "Try a different name or student ID."
+                            : "Registered students will appear here."}
+                        </Text>
+                      </>
+                    ) : null}
+                  </View>
+                )
               }
             />
-          </View>
+          </Animated.View>
         )}
 
         {/* ==================================
@@ -589,12 +603,12 @@ export default function OfficerStudentsScreen() {
                   <Text style={[styles.navLabel, disabled && styles.disabled]}>
                     {item.label}
                   </Text>
+                  <HomeTabBadge label={item.label} />
 
-                  <View
-                    style={[
-                      styles.activeIndicator,
-                      !active && styles.hiddenIndicator,
-                    ]}
+                  <TabIndicator
+                    active={active}
+                    style={styles.activeIndicator}
+                    hiddenStyle={styles.hiddenIndicator}
                   />
                 </TouchableOpacity>
               );
@@ -613,7 +627,7 @@ export default function OfficerStudentsScreen() {
           onRequestClose={() => setShowQr(false)}
         >
           <SafeAreaView style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
+            <PopIn style={styles.modalCard}>
               <ScrollView
                 contentContainerStyle={styles.modalContent}
                 showsVerticalScrollIndicator={false}
@@ -649,7 +663,7 @@ export default function OfficerStudentsScreen() {
                   <Text style={styles.addFineText}>Close</Text>
                 </TouchableOpacity>
               </ScrollView>
-            </View>
+            </PopIn>
           </SafeAreaView>
         </Modal>
       </View>

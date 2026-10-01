@@ -85,6 +85,14 @@ export const styles = StyleSheet.create({
     color: "#626975",
     marginTop: 3,
   },
+  // Placeholders while the QR code loads.
+  qrSkeleton: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  skeletonGap: {
+    marginTop: 8,
+  },
   qrContainer: {
     alignItems: "center",
     justifyContent: "center",

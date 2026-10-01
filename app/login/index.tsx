@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,7 +18,9 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 
+import { FadeIn, useShake, useSwitchFade } from "@/components/motion";
 import { API_BASE } from "@/constants/api";
+import { haptics } from "@/utils/haptics";
 
 // ==========================================
 // TYPES
@@ -139,6 +142,16 @@ export default function LoginScreen() {
     currentUsername === lockedUsername.toLowerCase();
 
   // ==========================================
+  // ERROR SHAKE AND STEP FADE
+  // ==========================================
+
+  // A rejected login shakes the card; each step (login, forgot,
+  // verify, reset, success) fades in when it opens.
+  const { shake, shakeStyle } = useShake();
+
+  const modeFade = useSwitchFade(screenMode);
+
+  // ==========================================
   // SHOW ERROR
   // ==========================================
 
@@ -150,6 +163,10 @@ export default function LoginScreen() {
       hideAfter?: number;
     },
   ) => {
+    haptics.error();
+
+    shake();
+
     setErrorTitle(title);
 
     setErrorMessage(message);
@@ -634,6 +651,8 @@ export default function LoginScreen() {
       await saveLoginSession(data);
 
       const role = String(data.user.role).toUpperCase();
+
+      haptics.success();
 
       // ====================================
       // ROLE REDIRECTION
@@ -1765,7 +1784,7 @@ export default function LoginScreen() {
       >
         {/* BRAND */}
 
-        <View
+        <FadeIn
           style={[
             styles.brandSection,
 
@@ -1793,19 +1812,21 @@ export default function LoginScreen() {
             {"\n"}
             System
           </Text>
-        </View>
+        </FadeIn>
 
         {/* LOGIN / RECOVERY */}
 
-        <View
+        <Animated.View
           style={[
             styles.loginSection,
 
             isTablet ? styles.loginTablet : styles.loginPhone,
+
+            modeFade,
           ]}
         >
           {isTablet && (
-            <View style={styles.loginCardTablet}>
+            <Animated.View style={[styles.loginCardTablet, shakeStyle]}>
               {screenMode !== "success" && (
                 <View style={styles.smallLogoBox}>
                   <Image
@@ -1827,7 +1848,7 @@ export default function LoginScreen() {
               ) : (
                 RecoveryForm()
               )}
-            </View>
+            </Animated.View>
           )}
 
           {!isTablet && (
@@ -1838,12 +1859,16 @@ export default function LoginScreen() {
 
                   <Text style={styles.loginTitlePhone}>Login</Text>
 
-                  <View style={styles.loginCardPhone}>{LoginForm()}</View>
+                  <Animated.View style={[styles.loginCardPhone, shakeStyle]}>
+                    {LoginForm()}
+                  </Animated.View>
                 </>
               ) : (
-                <View style={styles.recoveryPhoneContainer}>
+                <Animated.View
+                  style={[styles.recoveryPhoneContainer, shakeStyle]}
+                >
                   {RecoveryForm()}
-                </View>
+                </Animated.View>
               )}
             </>
           )}
@@ -1859,7 +1884,7 @@ export default function LoginScreen() {
               Secure access for students and authorized school personnel
             </Text>
           )}
-        </View>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

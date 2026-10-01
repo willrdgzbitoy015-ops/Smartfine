@@ -16,6 +16,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { FadeIn, PopIn } from "@/components/motion";
+import { SkeletonProfile } from "@/components/skeleton";
 
 import DeleteModal from "@/components/deletationmodal";
 import LogoutModal from "@/components/logout-modal";
@@ -534,11 +537,11 @@ export default function OfficerProfile() {
   const renderContent = () => {
     if (loading) {
       return (
-        <View style={styles.centerState}>
-          <ActivityIndicator size="large" color="#173A73" />
-
-          <Text style={styles.stateText}>Loading officer profile...</Text>
-        </View>
+        <SkeletonProfile
+          label="Loading officer profile"
+          sections={2}
+          style={styles.skeleton}
+        />
       );
     }
 
@@ -987,6 +990,7 @@ export default function OfficerProfile() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -1074,13 +1078,17 @@ export default function OfficerProfile() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
           )}
 
-          {renderContent()}
+          {/* The loaded page fades in after the placeholder. */}
+          <FadeIn key={loading ? "loading" : "content"}>
+            {renderContent()}
+          </FadeIn>
         </ScrollView>
       </View>
 
@@ -1095,7 +1103,7 @@ export default function OfficerProfile() {
         onRequestClose={handleCloseFinePopup}
       >
         <View style={styles.fineModalBackdrop}>
-          <View
+          <PopIn
             style={[
               styles.fineModalCard,
 
@@ -1215,7 +1223,7 @@ export default function OfficerProfile() {
                 </TouchableOpacity>
               </>
             )}
-          </View>
+          </PopIn>
         </View>
       </Modal>
 

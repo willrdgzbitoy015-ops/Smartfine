@@ -120,6 +120,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
     borderRadius: 18,
     paddingHorizontal: 16,
@@ -609,6 +611,13 @@ export const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 12,
     fontFamily: FONT.medium,
+  },
+
+  // Placeholder card while the form loads.
+  formSkeleton: {
+    width: "100%",
+    maxWidth: 760,
+    paddingHorizontal: 20,
   },
 
   centerState: {

@@ -139,6 +139,15 @@ export const styles = StyleSheet.create({
     marginTop: 13,
   },
 
+  // Placeholders while the balance loads.
+  balanceSkeleton: {
+    marginTop: 17,
+  },
+
+  balanceStatusSkeleton: {
+    marginTop: 11,
+  },
+
   balanceStatus: {
     alignSelf: "flex-start",
     overflow: "hidden",

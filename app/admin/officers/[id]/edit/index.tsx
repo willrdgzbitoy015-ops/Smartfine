@@ -17,12 +17,14 @@ import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
 import { useAuth } from "@/hooks/use-auth";
 
 import DeleteModal from "@/components/deletationmodal";
 import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
+import { SkeletonForm } from "@/components/skeleton";
 
 import { styles } from "./edit-officer.styles";
 
@@ -1026,6 +1028,7 @@ export default function EditOfficer() {
                 </View>
 
                 <Text style={styles.navText}>{item.label}</Text>
+                <AdminNavBadge label={item.label} />
               </TouchableOpacity>
             ))}
           </View>
@@ -1043,9 +1046,11 @@ export default function EditOfficer() {
       <View style={styles.main}>
         {loading ? (
           <View style={styles.centerState}>
-            <ActivityIndicator size="large" color="#173A73" />
-
-            <Text style={styles.stateText}>Loading officer information…</Text>
+            <SkeletonForm
+              label="Loading officer information"
+              fields={6}
+              style={styles.formSkeleton}
+            />
           </View>
         ) : (
           <ScrollView
@@ -1115,6 +1120,7 @@ export default function EditOfficer() {
                       >
                         {item.label}
                       </Text>
+                      <AdminNavBadge label={item.label} variant="menu" />
                     </TouchableOpacity>
                   );
                 })}

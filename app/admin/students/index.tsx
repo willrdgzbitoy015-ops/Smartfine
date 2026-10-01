@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   ActivityIndicator,
   Image,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -17,7 +18,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -29,6 +30,10 @@ import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
 
 import { API_BASE } from "@/constants/api";
+import { FadeIn, PopIn } from "@/components/motion";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { SkeletonList, SkeletonTable } from "@/components/skeleton";
+import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 
 import { styles } from "./students.styles";
 
@@ -54,6 +59,8 @@ type Student = {
   total_fines: number;
 
   outstanding_balance: number;
+
+  profile_picture_uri?: string | null;
 };
 
 type NavItem = {
@@ -155,6 +162,182 @@ function isScientificNotation(value: string) {
 }
 
 // ==========================================
+// DIRECTORY HELPERS
+// ==========================================
+
+type StudentView =
+  | "ALL"
+  | "ACTIVE"
+  | "INACTIVE"
+  | "WITH_BALANCE"
+  | "NO_BALANCE";
+
+const VIEW_FILTERS: { key: StudentView; label: string }[] = [
+  { key: "ALL", label: "All" },
+  { key: "ACTIVE", label: "Active" },
+  { key: "INACTIVE", label: "Inactive" },
+  { key: "WITH_BALANCE", label: "With balance" },
+  { key: "NO_BALANCE", label: "No balance" },
+];
+
+const VIEW_EMPTY_LABELS: Record<StudentView, string> = {
+  ALL: "students",
+  ACTIVE: "active students",
+  INACTIVE: "inactive students",
+  WITH_BALANCE: "students with a balance",
+  NO_BALANCE: "students without a balance",
+};
+
+function isInactiveStudent(status: string) {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  return normalizedStatus === "INACTIVE" || normalizedStatus === "DEACTIVATED";
+}
+
+function getStatusLabel(status: string) {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  if (normalizedStatus === "ACTIVE") {
+    return "Active";
+  }
+
+  if (isInactiveStudent(status)) {
+    return "Inactive";
+  }
+
+  return status || "Unknown";
+}
+
+function studentBalance(student: Student) {
+  return Number(student.outstanding_balance) || 0;
+}
+
+function matchesView(student: Student, view: StudentView) {
+  switch (view) {
+    case "ACTIVE":
+      return String(student.account_status || "").toUpperCase() === "ACTIVE";
+    case "INACTIVE":
+      return isInactiveStudent(student.account_status);
+    case "WITH_BALANCE":
+      return studentBalance(student) > 0;
+    case "NO_BALANCE":
+      return studentBalance(student) <= 0;
+    default:
+      return true;
+  }
+}
+
+function countViews(list: Student[]) {
+  const counts: Record<StudentView, number> = {
+    ALL: 0,
+    ACTIVE: 0,
+    INACTIVE: 0,
+    WITH_BALANCE: 0,
+    NO_BALANCE: 0,
+  };
+
+  for (const student of list) {
+    for (const filter of VIEW_FILTERS) {
+      if (matchesView(student, filter.key)) {
+        counts[filter.key] += 1;
+      }
+    }
+  }
+
+  return counts;
+}
+
+function formatPeso(amount: number) {
+  return `₱${Number(amount || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+// "Grade 7" before "Grade 10".
+function sortNatural(values: string[]) {
+  return values.sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true }),
+  );
+}
+
+function formatClass(student: Student) {
+  if (student.grade_level && student.section) {
+    return `${student.grade_level} - ${student.section}`;
+  }
+
+  return student.grade_level || student.section || "";
+}
+
+function getInitials(fullName: string) {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "ST";
+  }
+
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+
+  return `${parts[0][0]}${last}`.toUpperCase();
+}
+
+function getProfilePictureUrl(uri: string | null | undefined) {
+  if (!uri) {
+    return null;
+  }
+
+  if (uri.startsWith("http://") || uri.startsWith("https://")) {
+    return uri;
+  }
+
+  return `${API_BASE}${uri}`;
+}
+
+// Photo when the student has one, initials otherwise.
+function StudentAvatar({ student }: { student: Student }) {
+  const [failed, setFailed] = useState(false);
+
+  const url = getProfilePictureUrl(student.profile_picture_uri);
+
+  if (url && !failed) {
+    return (
+      <Image
+        source={{ uri: url }}
+        style={styles.avatar}
+        resizeMode="cover"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.avatar}>
+      <Text style={styles.avatarText}>{getInitials(student.full_name)}</Text>
+    </View>
+  );
+}
+
+function StatusChip({ status }: { status: string }) {
+  const tone =
+    String(status || "").toUpperCase() === "ACTIVE"
+      ? "Active"
+      : isInactiveStudent(status)
+        ? "Inactive"
+        : "Other";
+
+  return (
+    <View style={[styles.statusChip, styles[`statusChip${tone}`]]}>
+      <Text style={[styles.statusChipText, styles[`statusChipText${tone}`]]}>
+        {getStatusLabel(status)}
+      </Text>
+    </View>
+  );
+}
+
+// ==========================================
 // COMPONENT
 // ==========================================
 
@@ -205,6 +388,13 @@ export default function StudentsDirectory() {
 
   const [error, setError] = useState("");
 
+  // Background reloads keep the list on screen.
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [refreshError, setRefreshError] = useState("");
+
+  const [focusVersion, setFocusVersion] = useState(0);
+
   // ========================================
   // SEARCH
   // ========================================
@@ -224,6 +414,8 @@ export default function StudentsDirectory() {
   const [selectedGrade, setSelectedGrade] = useState("ALL");
 
   const [selectedSection, setSelectedSection] = useState("ALL");
+
+  const [selectedView, setSelectedView] = useState<StudentView>("ALL");
 
   const [showGradeMenu, setShowGradeMenu] = useState(false);
 
@@ -405,18 +597,37 @@ export default function StudentsDirectory() {
   // LOAD STUDENTS
   // ========================================
 
-  const loadStudents = async () => {
+  // silent: keep the current list visible while reloading.
+  const loadStudents = async (silent = false) => {
+    const fail = (message: string) => {
+      if (silent) {
+        setRefreshError(`${message} Showing the last loaded list.`);
+      } else {
+        setError(message);
+      }
+    };
+
     try {
-      setLoading(true);
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       setError("");
 
-      const response = await fetch(`${API_BASE}/api/students`);
+      setRefreshError("");
+
+      const token = await AsyncStorage.getItem("token");
+
+      const response = await fetch(`${API_BASE}/api/students`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setError(data.message || "Failed to load students.");
+        fail(data.message || "Failed to load students.");
 
         return;
       }
@@ -425,15 +636,40 @@ export default function StudentsDirectory() {
     } catch (error) {
       console.error("Students connection error:", error);
 
-      setError("Could not connect to the SmartFine server.");
+      fail("Could not connect to the SmartFine server.");
     } finally {
       setLoading(false);
+
+      setRefreshing(false);
     }
   };
 
+  // Only a pull shows the pull-to-refresh spinner; focus reloads use the
+  // small indicator beside the student count.
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+
+  const handlePullRefresh = async () => {
+    setPullRefreshing(true);
+
+    await loadStudents(true);
+
+    setPullRefreshing(false);
+  };
+
+  // Reload whenever the screen regains focus (after Add or Edit Student).
+  useFocusEffect(
+    useCallback(() => {
+      setFocusVersion((current) => current + 1);
+    }, []),
+  );
+
   useEffect(() => {
-    loadStudents();
-  }, []);
+    if (focusVersion === 0) {
+      return;
+    }
+
+    loadStudents(focusVersion > 1);
+  }, [focusVersion]);
 
   // ========================================
   // FILTER OPTIONS
@@ -444,22 +680,28 @@ export default function StudentsDirectory() {
       .map((student) => student.grade_level)
       .filter((grade): grade is string => Boolean(grade));
 
-    return Array.from(new Set(grades));
+    return sortNatural(Array.from(new Set(grades)));
   }, [students]);
 
+  // Sections follow the selected grade.
   const sectionOptions = useMemo(() => {
     const sections = students
+      .filter(
+        (student) =>
+          selectedGrade === "ALL" || student.grade_level === selectedGrade,
+      )
       .map((student) => student.section)
       .filter((section): section is string => Boolean(section));
 
-    return Array.from(new Set(sections));
-  }, [students]);
+    return sortNatural(Array.from(new Set(sections)));
+  }, [students, selectedGrade]);
 
   // ========================================
   // FILTER STUDENTS
   // ========================================
 
-  const filteredStudents = useMemo(() => {
+  // Search, grade, and section; the view chips apply on top.
+  const matchingStudents = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
     return students.filter((student) => {
@@ -482,40 +724,65 @@ export default function StudentsDirectory() {
     });
   }, [students, search, selectedGrade, selectedSection]);
 
+  const filteredStudents = useMemo(
+    () =>
+      matchingStudents.filter((student) => matchesView(student, selectedView)),
+    [matchingStudents, selectedView],
+  );
+
+  // Chip counts match what each chip would show.
+  const viewCounts = useMemo(
+    () => countViews(matchingStudents),
+    [matchingStudents],
+  );
+
+  // Summary cards always describe every student.
+  const studentCounts = useMemo(() => countViews(students), [students]);
+
+  const outstandingTotal = useMemo(
+    () =>
+      students.reduce(
+        (centavos, student) =>
+          centavos + Math.round(studentBalance(student) * 100),
+        0,
+      ) / 100,
+    [students],
+  );
+
+  const filtersActive =
+    search.trim() !== "" ||
+    selectedGrade !== "ALL" ||
+    selectedSection !== "ALL" ||
+    selectedView !== "ALL";
+
   // ========================================
   // SELECTED STUDENTS
   // ========================================
 
+  // Only inactive students can be deleted, even if one changed since selection.
   const selectedStudents = useMemo(
-    () => students.filter((student) => selectedStudentIds.includes(student.id)),
+    () =>
+      students.filter(
+        (student) =>
+          selectedStudentIds.includes(student.id) &&
+          isInactiveStudent(student.account_status),
+      ),
     [students, selectedStudentIds],
   );
 
-  // ========================================
-  // STATUS HELPERS
-  // ========================================
+  const hiddenSelectedCount = useMemo(() => {
+    const visibleIds = new Set(filteredStudents.map((student) => student.id));
 
-  const isInactiveStudent = (status: string) => {
-    const normalizedStatus = String(status || "").toUpperCase();
+    return selectedStudents.filter((student) => !visibleIds.has(student.id))
+      .length;
+  }, [filteredStudents, selectedStudents]);
 
-    return (
-      normalizedStatus === "INACTIVE" || normalizedStatus === "DEACTIVATED"
-    );
-  };
+  // The compact list replaces the table where the table would not fit.
+  const compactList = width - (isTablet ? 220 : 0) - 44 < 720;
 
-  const getStatusLabel = (status: string) => {
-    const normalizedStatus = String(status || "").toUpperCase();
-
-    if (normalizedStatus === "ACTIVE") {
-      return "Active";
-    }
-
-    if (normalizedStatus === "INACTIVE" || normalizedStatus === "DEACTIVATED") {
-      return "Inactive";
-    }
-
-    return status || "Unknown";
-  };
+  const hasSelectableStudents = filteredStudents.some((student) =>
+    isInactiveStudent(student.account_status),
+  );
 
   // ========================================
   // NAVIGATION
@@ -545,6 +812,47 @@ export default function StudentsDirectory() {
 
       return [...currentIds, student.id];
     });
+  };
+
+  // ========================================
+  // FILTER HANDLERS
+  // ========================================
+
+  const handleShowAllStudents = () => {
+    setSearch("");
+
+    setSelectedGrade("ALL");
+
+    setSelectedSection("ALL");
+
+    setSelectedView("ALL");
+
+    setShowGradeMenu(false);
+
+    setShowSectionMenu(false);
+  };
+
+  const handleSelectGrade = (grade: string) => {
+    setSelectedGrade(grade);
+
+    setShowGradeMenu(false);
+
+    // Keep the section only if the new grade has it.
+    const sectionStillListed = students.some(
+      (student) =>
+        (grade === "ALL" || student.grade_level === grade) &&
+        student.section === selectedSection,
+    );
+
+    if (!sectionStillListed) {
+      setSelectedSection("ALL");
+    }
+  };
+
+  const handleSelectSection = (section: string) => {
+    setSelectedSection(section);
+
+    setShowSectionMenu(false);
   };
 
   // ========================================
@@ -1459,7 +1767,7 @@ export default function StudentsDirectory() {
 
       const completedSection = finalImportSection;
 
-      await loadStudents();
+      await loadStudents(true);
 
       setShowImportConfirmModal(false);
 
@@ -1562,7 +1870,7 @@ export default function StudentsDirectory() {
         }
       }
 
-      await loadStudents();
+      await loadStudents(true);
 
       setSelectedStudentIds([]);
 
@@ -1693,6 +2001,7 @@ export default function StudentsDirectory() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -1710,9 +2019,22 @@ export default function StudentsDirectory() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={pullRefreshing}
+              onRefresh={handlePullRefresh}
+              tintColor="#173A73"
+              colors={["#173A73"]}
+            />
+          }
         >
           <View style={styles.header}>
             <Text style={styles.pageTitle}>Students Directory</Text>
+
+            <Text style={styles.pageSubtitle}>
+              Find students, check balances, and manage accounts.
+            </Text>
           </View>
 
           {/* MOBILE NAV */}
@@ -1745,11 +2067,60 @@ export default function StudentsDirectory() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
           )}
+
+          {/* SUMMARY CARDS */}
+
+          <SummaryCardRow>
+            <SummaryCard
+              label="Total Students"
+              value={String(students.length)}
+              hint={`${studentCounts.ACTIVE} active · ${studentCounts.INACTIVE} inactive`}
+              tone="info"
+              loading={loading}
+              onPress={handleShowAllStudents}
+            />
+
+            <SummaryCard
+              label="With Balance"
+              value={String(studentCounts.WITH_BALANCE)}
+              hint={
+                studentCounts.WITH_BALANCE > 0
+                  ? `${formatPeso(outstandingTotal)} unpaid`
+                  : "No unpaid fines"
+              }
+              tone="danger"
+              loading={loading}
+              onPress={() => setSelectedView("WITH_BALANCE")}
+            />
+
+            <SummaryCard
+              label="No Balance"
+              value={String(studentCounts.NO_BALANCE)}
+              hint="Nothing left to pay"
+              tone="success"
+              loading={loading}
+              onPress={() => setSelectedView("NO_BALANCE")}
+            />
+
+            <SummaryCard
+              label="Inactive Accounts"
+              value={String(studentCounts.INACTIVE)}
+              hint={
+                studentCounts.INACTIVE > 0
+                  ? "Can be selected for deletion"
+                  : "None"
+              }
+              tone="neutral"
+              loading={loading}
+              onPress={() => setSelectedView("INACTIVE")}
+            />
+          </SummaryCardRow>
 
           {/* TOOLBAR */}
 
@@ -1764,6 +2135,17 @@ export default function StudentsDirectory() {
                 value={search}
                 onChangeText={setSearch}
               />
+
+              {search !== "" && (
+                <TouchableOpacity
+                  onPress={() => setSearch("")}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                >
+                  <Text style={styles.searchClear}>✕</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* FILTERS */}
@@ -1771,15 +2153,19 @@ export default function StudentsDirectory() {
             <View style={styles.filtersContainer}>
               <View style={styles.filterWrapper}>
                 <TouchableOpacity
-                  style={styles.filterButton}
+                  style={[
+                    styles.filterButton,
+
+                    selectedGrade !== "ALL" && styles.filterButtonActive,
+                  ]}
                   onPress={() => {
                     setShowGradeMenu(!showGradeMenu);
 
                     setShowSectionMenu(false);
                   }}
                 >
-                  <Text style={styles.filterText}>
-                    {selectedGrade === "ALL" ? "Grade" : selectedGrade}
+                  <Text style={styles.filterText} numberOfLines={1}>
+                    {selectedGrade === "ALL" ? "All Grades" : selectedGrade}
                   </Text>
 
                   <Text style={styles.filterArrow}>▼</Text>
@@ -1787,45 +2173,54 @@ export default function StudentsDirectory() {
 
                 {showGradeMenu && (
                   <View style={styles.filterMenu}>
-                    <TouchableOpacity
-                      style={styles.filterOption}
-                      onPress={() => {
-                        setSelectedGrade("ALL");
-
-                        setShowGradeMenu(false);
-                      }}
+                    <ScrollView
+                      style={styles.filterMenuScroll}
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
                     >
-                      <Text style={styles.filterOptionText}>All Grades</Text>
-                    </TouchableOpacity>
-
-                    {gradeOptions.map((grade) => (
                       <TouchableOpacity
-                        key={grade}
                         style={styles.filterOption}
-                        onPress={() => {
-                          setSelectedGrade(grade);
-
-                          setShowGradeMenu(false);
-                        }}
+                        onPress={() => handleSelectGrade("ALL")}
                       >
-                        <Text style={styles.filterOptionText}>{grade}</Text>
+                        <Text style={styles.filterOptionText}>All Grades</Text>
                       </TouchableOpacity>
-                    ))}
+
+                      {gradeOptions.map((grade) => (
+                        <TouchableOpacity
+                          key={grade}
+                          style={[
+                            styles.filterOption,
+
+                            grade === selectedGrade &&
+                              styles.filterOptionActive,
+                          ]}
+                          onPress={() => handleSelectGrade(grade)}
+                        >
+                          <Text style={styles.filterOptionText}>{grade}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   </View>
                 )}
               </View>
 
               <View style={styles.filterWrapper}>
                 <TouchableOpacity
-                  style={styles.filterButton}
+                  style={[
+                    styles.filterButton,
+
+                    selectedSection !== "ALL" && styles.filterButtonActive,
+                  ]}
                   onPress={() => {
                     setShowSectionMenu(!showSectionMenu);
 
                     setShowGradeMenu(false);
                   }}
                 >
-                  <Text style={styles.filterText}>
-                    {selectedSection === "ALL" ? "Section" : selectedSection}
+                  <Text style={styles.filterText} numberOfLines={1}>
+                    {selectedSection === "ALL"
+                      ? "All Sections"
+                      : selectedSection}
                   </Text>
 
                   <Text style={styles.filterArrow}>▼</Text>
@@ -1833,30 +2228,37 @@ export default function StudentsDirectory() {
 
                 {showSectionMenu && (
                   <View style={styles.filterMenu}>
-                    <TouchableOpacity
-                      style={styles.filterOption}
-                      onPress={() => {
-                        setSelectedSection("ALL");
-
-                        setShowSectionMenu(false);
-                      }}
+                    <ScrollView
+                      style={styles.filterMenuScroll}
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
                     >
-                      <Text style={styles.filterOptionText}>All Sections</Text>
-                    </TouchableOpacity>
-
-                    {sectionOptions.map((section) => (
                       <TouchableOpacity
-                        key={section}
                         style={styles.filterOption}
-                        onPress={() => {
-                          setSelectedSection(section);
-
-                          setShowSectionMenu(false);
-                        }}
+                        onPress={() => handleSelectSection("ALL")}
                       >
-                        <Text style={styles.filterOptionText}>{section}</Text>
+                        <Text style={styles.filterOptionText}>
+                          All Sections
+                        </Text>
                       </TouchableOpacity>
-                    ))}
+
+                      {sectionOptions.map((section) => (
+                        <TouchableOpacity
+                          key={section}
+                          style={[
+                            styles.filterOption,
+
+                            section === selectedSection &&
+                              styles.filterOptionActive,
+                          ]}
+                          onPress={() => handleSelectSection(section)}
+                        >
+                          <Text style={styles.filterOptionText}>
+                            {section}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   </View>
                 )}
               </View>
@@ -1901,95 +2303,283 @@ export default function StudentsDirectory() {
             </View>
           </View>
 
-          {/* STUDENT TABLE */}
+          {/* STUDENT LIST */}
 
           <View style={styles.tableCard}>
-            {loading ? (
-              <View style={styles.centerState}>
-                <ActivityIndicator size="large" color="#173A73" />
+            <View style={styles.tableIntro}>
+              <View style={styles.tableIntroText}>
+                <Text style={styles.tableIntroTitle}>Student accounts</Text>
 
-                <Text style={styles.stateText}>Loading students...</Text>
+                <Text style={styles.tableIntroSubtitle}>
+                  Tap a student to open their profile.
+                </Text>
               </View>
+
+              <View style={styles.tableIntroActions}>
+                {filtersActive && (
+                  <TouchableOpacity
+                    onPress={handleShowAllStudents}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.clearFiltersText}>Clear filters</Text>
+                  </TouchableOpacity>
+                )}
+
+                {refreshing && (
+                  <ActivityIndicator size="small" color="#173A73" />
+                )}
+
+                <Text style={styles.resultCount}>
+                  {filteredStudents.length === students.length
+                    ? `${students.length} ${
+                        students.length === 1 ? "student" : "students"
+                      }`
+                    : `${filteredStudents.length} of ${students.length} shown`}
+                </Text>
+              </View>
+            </View>
+
+            {loading ? (
+              // Placeholder rows in the shape of the list or the table.
+              compactList ? (
+                <SkeletonList
+                  label="Loading students"
+                  count={5}
+                  itemStyle={styles.compactRow}
+                  style={styles.compactList}
+                />
+              ) : (
+                <SkeletonTable
+                  label="Loading students"
+                  rows={6}
+                  columns={5}
+                  rowStyle={styles.studentRow}
+                />
+              )
             ) : error ? (
               <View style={styles.centerState}>
                 <Text style={styles.errorText}>{error}</Text>
 
                 <TouchableOpacity
                   style={styles.retryButton}
-                  onPress={loadStudents}
+                  onPress={() => loadStudents()}
                 >
                   <Text style={styles.retryText}>Try Again</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.table}>
-                    <View style={styles.tableHeader}>
-                      <View style={styles.selectColumn} />
+                {/* VIEW CHIPS */}
 
-                      <Text style={[styles.headerCell, styles.studentIdColumn]}>
-                        Student ID
-                      </Text>
+                <View style={styles.viewChips}>
+                  {VIEW_FILTERS.map((filter) => {
+                    const active = selectedView === filter.key;
 
-                      <Text style={[styles.headerCell, styles.nameColumn]}>
-                        Full Name
-                      </Text>
-
-                      <Text
-                        style={[styles.headerCell, styles.gradeSectionColumn]}
+                    return (
+                      <TouchableOpacity
+                        key={filter.key}
+                        style={[styles.viewChip, active && styles.viewChipActive]}
+                        onPress={() => setSelectedView(filter.key)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
                       >
-                        Grade / Section
-                      </Text>
+                        <Text
+                          style={[
+                            styles.viewChipText,
 
-                      <Text style={[styles.headerCell, styles.totalColumn]}>
-                        Total Fines
-                      </Text>
+                            active && styles.viewChipTextActive,
+                          ]}
+                        >
+                          {filter.label} ({viewCounts[filter.key]})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-                      <Text style={[styles.headerCell, styles.balanceColumn]}>
-                        Outstanding Balance
-                      </Text>
+                {refreshError !== "" && (
+                  <Text style={styles.refreshError}>{refreshError}</Text>
+                )}
 
-                      <Text style={[styles.headerCell, styles.statusColumn]}>
-                        Status
-                      </Text>
-                    </View>
+                {filteredStudents.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyTitle}>
+                      {students.length === 0
+                        ? "No students yet"
+                        : `No ${VIEW_EMPTY_LABELS[selectedView]} found`}
+                    </Text>
 
-                    {filteredStudents.length === 0 ? (
-                      <View style={styles.emptyRow}>
-                        <Text style={styles.emptyText}>No students found.</Text>
+                    <Text style={styles.emptyText}>
+                      {students.length === 0
+                        ? "Add a student or import a class list to get started."
+                        : search.trim() !== "" ||
+                            selectedGrade !== "ALL" ||
+                            selectedSection !== "ALL"
+                          ? "No students match your search and filters."
+                          : `There are no ${VIEW_EMPTY_LABELS[selectedView]} right now.`}
+                    </Text>
+
+                    {students.length > 0 && (
+                      <TouchableOpacity
+                        style={styles.emptyResetButton}
+                        onPress={handleShowAllStudents}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.emptyResetText}>
+                          Show all students
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : compactList ? (
+                  /* PHONE AND PORTRAIT TABLET: one card per student */
+                  <View style={styles.compactList}>
+                    {filteredStudents.map((student, index) => {
+                      const isInactive = isInactiveStudent(
+                        student.account_status,
+                      );
+
+                      const isSelected =
+                        isInactive && selectedStudentIds.includes(student.id);
+
+                      const balance = studentBalance(student);
+
+                      const classLabel = formatClass(student);
+
+                      return (
+                        <FadeIn
+                          key={student.id}
+                          index={index}
+                          style={[
+                            styles.compactRow,
+
+                            isSelected && styles.studentRowSelected,
+                          ]}
+                        >
+                          {/* Same slot on every row keeps avatars aligned. */}
+                          {hasSelectableStudents && (
+                            <View style={styles.compactSelectSlot}>
+                              {isInactive && (
+                                <TouchableOpacity
+                                  style={[
+                                    styles.selectCircle,
+
+                                    isSelected && styles.selectCircleSelected,
+                                  ]}
+                                  onPress={() => handleSelectStudent(student)}
+                                  activeOpacity={0.8}
+                                  hitSlop={10}
+                                  accessibilityRole="checkbox"
+                                  accessibilityState={{ checked: isSelected }}
+                                  accessibilityLabel={`Select ${student.full_name} for deletion`}
+                                />
+                              )}
+                            </View>
+                          )}
+
+                          <TouchableOpacity
+                            style={styles.compactMain}
+                            onPress={() => handleStudentPress(student.id)}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Open ${student.full_name}`}
+                          >
+                            <StudentAvatar
+                              key={student.profile_picture_uri || "initials"}
+                              student={student}
+                            />
+
+                            <View style={styles.compactText}>
+                              <View style={styles.compactTitleRow}>
+                                <Text
+                                  style={[styles.studentName, styles.compactName]}
+                                  numberOfLines={1}
+                                >
+                                  {student.full_name}
+                                </Text>
+
+                                <StatusChip status={student.account_status} />
+                              </View>
+
+                              <Text style={styles.studentMeta} numberOfLines={1}>
+                                {student.student_id} ·{" "}
+                                {classLabel || "Not assigned"}
+                              </Text>
+
+                              <Text style={styles.compactMoney} numberOfLines={1}>
+                                Balance{" "}
+                                <Text
+                                  style={
+                                    balance > 0
+                                      ? styles.balanceDanger
+                                      : styles.balanceZero
+                                  }
+                                >
+                                  {formatPeso(balance)}
+                                </Text>
+                                {"  ·  "}Fines{" "}
+                                {formatPeso(Number(student.total_fines) || 0)}
+                              </Text>
+                            </View>
+
+                            <Text style={styles.rowChevron}>›</Text>
+                          </TouchableOpacity>
+                        </FadeIn>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  /* WIDE SCREENS: table */
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tableScrollContent}
+                  >
+                    <View style={styles.table}>
+                      <View style={styles.tableHeader}>
+                        <View style={styles.selectColumn} />
+
+                        <Text style={[styles.headerCell, styles.nameColumn]}>
+                          Student
+                        </Text>
+
+                        <Text
+                          style={[styles.headerCell, styles.gradeSectionColumn]}
+                        >
+                          Grade / Section
+                        </Text>
+
+                        <Text style={[styles.headerCell, styles.moneyColumn]}>
+                          Total Fines
+                        </Text>
+
+                        <Text style={[styles.headerCell, styles.moneyColumn]}>
+                          Balance
+                        </Text>
+
+                        <Text style={[styles.headerCell, styles.statusColumn]}>
+                          Status
+                        </Text>
+
+                        <View style={styles.chevronColumn} />
                       </View>
-                    ) : (
-                      filteredStudents.map((student) => {
-                        const normalizedStatus = String(
-                          student.account_status || "",
-                        ).toUpperCase();
 
-                        const isActive = normalizedStatus === "ACTIVE";
-
+                      {filteredStudents.map((student, index) => {
                         const isInactive = isInactiveStudent(
                           student.account_status,
                         );
 
-                        const isSelected = selectedStudentIds.includes(
-                          student.id,
-                        );
+                        const isSelected =
+                          isInactive && selectedStudentIds.includes(student.id);
 
-                        const balance =
-                          Number(student.outstanding_balance) || 0;
+                        const balance = studentBalance(student);
 
-                        const gradeSection =
-                          student.grade_level && student.section
-                            ? `${student.grade_level} - ${student.section}`
-                            : student.grade_level
-                              ? student.grade_level
-                              : student.section
-                                ? student.section
-                                : "Not Assigned";
+                        const classLabel = formatClass(student);
 
                         return (
-                          <View
+                          <FadeIn
                             key={student.id}
+                            index={index}
                             style={[
                               styles.studentRow,
 
@@ -2006,6 +2596,10 @@ export default function StudentsDirectory() {
                                   ]}
                                   onPress={() => handleSelectStudent(student)}
                                   activeOpacity={0.8}
+                                  hitSlop={10}
+                                  accessibilityRole="checkbox"
+                                  accessibilityState={{ checked: isSelected }}
+                                  accessibilityLabel={`Select ${student.full_name} for deletion`}
                                 />
                               )}
                             </View>
@@ -2014,89 +2608,107 @@ export default function StudentsDirectory() {
                               style={styles.rowMain}
                               onPress={() => handleStudentPress(student.id)}
                               activeOpacity={0.7}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Open ${student.full_name}`}
                             >
-                              <Text
-                                style={[
-                                  styles.bodyCell,
-                                  styles.studentIdColumn,
-                                ]}
-                              >
-                                {student.student_id}
-                              </Text>
+                              <View style={[styles.studentCell, styles.nameColumn]}>
+                                <StudentAvatar
+                                  key={student.profile_picture_uri || "initials"}
+                                  student={student}
+                                />
 
-                              <Text
-                                style={[
-                                  styles.bodyCell,
-                                  styles.nameColumn,
-                                  styles.studentName,
-                                ]}
-                              >
-                                {student.full_name}
-                              </Text>
+                                <View style={styles.studentText}>
+                                  <Text
+                                    style={styles.studentName}
+                                    numberOfLines={1}
+                                  >
+                                    {student.full_name}
+                                  </Text>
+
+                                  <Text
+                                    style={styles.studentMeta}
+                                    numberOfLines={1}
+                                  >
+                                    {student.student_id}
+                                  </Text>
+                                </View>
+                              </View>
 
                               <Text
                                 style={[
                                   styles.bodyCell,
                                   styles.gradeSectionColumn,
+
+                                  !classLabel && styles.mutedCell,
                                 ]}
+                                numberOfLines={2}
                               >
-                                {gradeSection}
+                                {classLabel || "Not assigned"}
                               </Text>
 
-                              <Text
-                                style={[styles.bodyCell, styles.totalColumn]}
-                              >
-                                ₱{Number(student.total_fines || 0).toFixed(2)}
+                              <Text style={[styles.bodyCell, styles.moneyColumn]}>
+                                {formatPeso(Number(student.total_fines) || 0)}
                               </Text>
 
                               <Text
                                 style={[
                                   styles.bodyCell,
-                                  styles.balanceColumn,
+                                  styles.moneyColumn,
 
                                   balance > 0
                                     ? styles.balanceDanger
                                     : styles.balanceZero,
                                 ]}
                               >
-                                ₱{balance.toFixed(2)}
+                                {formatPeso(balance)}
                               </Text>
+
+                              <View style={styles.statusColumn}>
+                                <StatusChip status={student.account_status} />
+                              </View>
 
                               <Text
-                                style={[
-                                  styles.bodyCell,
-                                  styles.statusColumn,
-
-                                  isActive
-                                    ? styles.statusActive
-                                    : isInactive
-                                      ? styles.statusInactive
-                                      : styles.statusOther,
-                                ]}
+                                style={[styles.rowChevron, styles.chevronColumn]}
                               >
-                                {getStatusLabel(student.account_status)}
+                                ›
                               </Text>
                             </TouchableOpacity>
-                          </View>
+                          </FadeIn>
                         );
-                      })
-                    )}
-                  </View>
-                </ScrollView>
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
 
                 {/* TABLE FOOTER */}
 
                 <View style={styles.tableFooter}>
-                  <View>
+                  <View style={styles.footerInfo}>
                     <Text style={styles.totalStudentsText}>
-                      Total Students: {students.length}
+                      Showing {filteredStudents.length} of {students.length}{" "}
+                      {students.length === 1 ? "student" : "students"}
                     </Text>
 
                     {selectedStudents.length > 0 && (
-                      <Text style={styles.selectedStudentText}>
-                        {selectedStudents.length} student
-                        {selectedStudents.length === 1 ? "" : "s"} selected
-                      </Text>
+                      <View style={styles.selectionRow}>
+                        <Text style={styles.selectedStudentText}>
+                          {selectedStudents.length} selected
+                          {hiddenSelectedCount > 0
+                            ? ` (${hiddenSelectedCount} hidden by filters)`
+                            : ""}
+                        </Text>
+
+                        <TouchableOpacity
+                          onPress={() => setSelectedStudentIds([])}
+                          disabled={deleteLoading}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.clearSelectionText}>
+                            Clear selection
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </View>
 
@@ -2142,7 +2754,7 @@ export default function StudentsDirectory() {
         onRequestClose={handleCloseImportStudents}
       >
         <View style={styles.importOverlay}>
-          <View style={styles.importModal}>
+          <PopIn style={styles.importModal}>
             <ScrollView
               contentContainerStyle={styles.importModalContent}
               showsVerticalScrollIndicator={false}
@@ -2800,7 +3412,7 @@ export default function StudentsDirectory() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
-          </View>
+          </PopIn>
         </View>
       </Modal>
 
@@ -2819,7 +3431,7 @@ export default function StudentsDirectory() {
         }}
       >
         <View style={styles.confirmOverlay}>
-          <View style={styles.confirmModal}>
+          <PopIn style={styles.confirmModal}>
             {/* IMPORT ICON */}
 
             <View style={styles.confirmIcon}>
@@ -2889,7 +3501,7 @@ export default function StudentsDirectory() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </PopIn>
         </View>
       </Modal>
 

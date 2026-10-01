@@ -453,23 +453,34 @@ export default function RootLayout() {
   // ========================================
   // MAIN APP
   //
-  // IMPORTANT:
-  // Keep Stack configuration simple here.
-  // Screen-specific animations will be
-  // handled inside each module instead.
+  // Only screen transitions are set here;
+  // content animations live in each module.
   // ========================================
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack
-        screenOptions={{
+        screenOptions={({ route }) => ({
           headerShown: false,
-        }}
+
+          animation: slidesIn(route.name) ? "slide_from_right" : "fade",
+        })}
       />
 
       <StatusBar style="auto" />
     </ThemeProvider>
   );
+}
+
+// ==========================================
+// SCREEN TRANSITIONS
+// ==========================================
+
+// Detail, add, and edit screens slide in over the list they came from.
+// Everything else (tabs, sidebar modules, login) cross-fades, so switching
+// sections feels like changing tabs rather than opening a new page.
+function slidesIn(routeName: string) {
+  return /\[|\/(add|edit)(\/|$)/.test(routeName);
 }
 
 // ==========================================

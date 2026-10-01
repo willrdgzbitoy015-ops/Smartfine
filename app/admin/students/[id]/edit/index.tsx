@@ -20,8 +20,10 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
 
 import SuccessModal from "@/components/success-modal";
+import { SkeletonForm } from "@/components/skeleton";
 
 import { styles } from "./edit-student.styles";
 
@@ -938,9 +940,11 @@ export default function EditStudent() {
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color="#173A73" />
-
-        <Text style={styles.loadingText}>Loading student information...</Text>
+        <SkeletonForm
+          label="Loading student information"
+          fields={6}
+          style={styles.formSkeleton}
+        />
       </View>
     );
   }
@@ -984,6 +988,7 @@ export default function EditStudent() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -1058,6 +1063,7 @@ export default function EditStudent() {
                   >
                     {item.label}
                   </Text>
+                  <AdminNavBadge label={item.label} variant="menu" />
                 </TouchableOpacity>
               ))}
             </ScrollView>

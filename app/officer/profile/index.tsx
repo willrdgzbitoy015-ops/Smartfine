@@ -6,10 +6,10 @@ import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -22,12 +22,16 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import LogoutModal from "@/components/logout-modal";
+import { TabIndicator, useSwitchFade } from "@/components/motion";
+import { SkeletonProfile } from "@/components/skeleton";
 import SuccessModal from "@/components/success-modal";
 
 import { API_BASE } from "@/constants/api";
 import { useAuth } from "@/hooks/use-auth";
+import { haptics } from "@/utils/haptics";
 
 import { useResponsiveStyles } from "./profile.styles";
+import { HomeTabBadge } from "@/components/notification-badge";
 
 // ==========================================
 // TYPES
@@ -536,8 +540,12 @@ export default function OfficerProfile() {
 
       await AsyncStorage.setItem("userEmail", body.user.email);
 
+      haptics.success();
+
       Alert.alert("Success", "Your profile has been updated.");
     } catch (caught) {
+      haptics.error();
+
       setError(
         controller.signal.aborted
           ? "The request timed out. Reload your profile to check whether it saved."
@@ -607,6 +615,8 @@ export default function OfficerProfile() {
 
       setPasswordSuccessVisible(true);
     } catch (caught) {
+      haptics.error();
+
       setError(
         controller.signal.aborted
           ? "The request timed out. The password may have changed; verify it before retrying."
@@ -970,6 +980,8 @@ export default function OfficerProfile() {
   // PAGE TITLE
   // ==========================================
 
+  const pageFade = useSwitchFade(page);
+
   const title = {
     profile: "My Profile",
 
@@ -1013,17 +1025,15 @@ export default function OfficerProfile() {
           style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <ScrollView
+          {/* Fades in again when moving between profile pages. */}
+          <Animated.ScrollView
+            style={pageFade}
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {loading ? (
-              <View style={styles.loading}>
-                <ActivityIndicator size="large" color="#123266" />
-
-                <Text style={styles.helper}>Loading your profile…</Text>
-              </View>
+              <SkeletonProfile label="Loading your profile" />
             ) : (
               <>
                 {/* ERROR */}
@@ -1432,7 +1442,7 @@ export default function OfficerProfile() {
                 )}
               </>
             )}
-          </ScrollView>
+          </Animated.ScrollView>
         </KeyboardAvoidingView>
 
         {/* ==================================
@@ -1461,13 +1471,12 @@ export default function OfficerProfile() {
                 <Image source={item.icon} style={styles.navIcon} />
 
                 <Text style={styles.navLabel}>{item.label}</Text>
+                <HomeTabBadge label={item.label} />
 
-                <View
-                  style={[
-                    styles.activeIndicator,
-
-                    item.label !== "Profile" && styles.hiddenIndicator,
-                  ]}
+                <TabIndicator
+                  active={item.label === "Profile"}
+                  style={styles.activeIndicator}
+                  hiddenStyle={styles.hiddenIndicator}
                 />
               </TouchableOpacity>
             ))}

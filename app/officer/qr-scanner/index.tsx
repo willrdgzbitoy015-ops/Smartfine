@@ -19,7 +19,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { FadeIn, PopIn, ScanLine } from "@/components/motion";
 import { API_BASE } from "@/constants/api";
+import { haptics } from "@/utils/haptics";
 import { useResponsiveStyles } from "./qr-scanner.styles";
 
 type Student = {
@@ -143,6 +145,7 @@ export default function OfficerQRScanner() {
     const value = String(data || "").trim();
 
     if (!value.startsWith(QR_PREFIX)) {
+      haptics.error();
       setError("Please scan a valid SmartFine Student QR Code.");
       return;
     }
@@ -150,10 +153,13 @@ export default function OfficerQRScanner() {
     const id = value.slice(QR_PREFIX.length).trim();
 
     if (!id) {
+      haptics.error();
       setError("This QR code does not contain a Student ID.");
       return;
     }
 
+    // A firm tap confirms the code was read.
+    haptics.impact();
     setCandidateId(id);
   };
 
@@ -237,12 +243,14 @@ export default function OfficerQRScanner() {
 
       if (requestRef.current !== controller) return;
 
+      haptics.success();
       setStudent(found);
       setImageFailed(false);
     } catch (caught) {
       if (requestRef.current !== controller) return;
       if (controller.signal.aborted && !timedOut) return;
 
+      haptics.error();
       setError(
         timedOut
           ? "The server took too long to respond. Please try again."
@@ -335,17 +343,17 @@ export default function OfficerQRScanner() {
           contentContainerStyle={styles.resultContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.successCircle}>
+          <PopIn style={styles.successCircle} from={0.4}>
             <Image
               source={require("../../../assets/icons/check.png")}
               style={styles.successIcon}
               resizeMode="contain"
             />
-          </View>
+          </PopIn>
 
           <Text style={styles.identifiedTitle}>Student Identified</Text>
 
-          <View style={styles.avatar}>
+          <FadeIn style={styles.avatar} delay={120}>
             {avatarUri && !imageFailed ? (
               <Image
                 source={{ uri: avatarUri }}
@@ -356,7 +364,7 @@ export default function OfficerQRScanner() {
             ) : (
               <Text style={styles.avatarInitials}>{initials}</Text>
             )}
-          </View>
+          </FadeIn>
 
           <Text style={styles.studentName}>{studentName}</Text>
 
@@ -448,6 +456,8 @@ export default function OfficerQRScanner() {
                 )}
               </View>
             )}
+
+            <ScanLine active={Boolean(showCamera)} />
 
             <View pointerEvents="none" style={styles.frameBorder} />
           </View>

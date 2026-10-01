@@ -1,17 +1,23 @@
+import { AdminModal, AdminNoticeList } from "@/components/admin-modal";
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
+import { FadeIn } from "@/components/motion";
+import { SkeletonDetails, SkeletonTable } from "@/components/skeleton";
 import { useAuth } from "@/hooks/use-auth";
+import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Modal,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -82,6 +88,25 @@ type PaymentDetail = PaymentTransaction & {
   status_message?: string;
   confirmed_by_name?: string | null;
 };
+const ACTIVITY_FILTERS = [
+  { key: "ALL", label: "All", test: () => true },
+  { key: "UNREAD", label: "Unread", test: (n: ReportNotice) => !n.isRead },
+  { key: "READ", label: "Read", test: (n: ReportNotice) => n.isRead },
+];
+type StatusFilter = "ALL" | "PAID" | "PENDING" | "CANCELLED";
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: "ALL", label: "All" },
+  { key: "PAID", label: "Paid" },
+  { key: "PENDING", label: "Pending" },
+  { key: "CANCELLED", label: "Cancelled" },
+];
+function transactionStatus(payment: PaymentTransaction): StatusFilter | null {
+  const status = String(payment.payment_status || "").toUpperCase();
+  if (payment.paid_at || status === "SUCCESS" || status === "PAID") return "PAID";
+  if (status === "PENDING") return "PENDING";
+  if (status === "CANCELLED") return "CANCELLED";
+  return null;
+}
 // EMPTY SUMMARY
 // ==========================================
 const EMPTY_SUMMARY: PaymentSummary = {
@@ -122,7 +147,11 @@ export default function PaymentReports() {
   const [noticeCount, setNoticeCount] = useState(0);
   const [noticeError, setNoticeError] = useState("");
   const [noticeBusy, setNoticeBusy] = useState(false);
-  const [detailVisible, setDetailVisible] = useState(false);
+  // One pop-up: the activity list, or a transaction (optionally from it).
+  const [modalView, setModalView] = useState<"activity" | "transaction" | null>(
+    null,
+  );
+  const [detailFromActivity, setDetailFromActivity] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [detailPayment, setDetailPayment] = useState<PaymentDetail | null>(
@@ -130,6 +159,28 @@ export default function PaymentReports() {
   );
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
   const [totalTransactions, setTotalTransactions] = useState(0);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const visibleTransactions = useMemo(() => {
+    const search = searchText.trim().toLowerCase();
+    return transactions.filter((payment) => {
+      if (statusFilter !== "ALL" && transactionStatus(payment) !== statusFilter) {
+        return false;
+      }
+      if (!search) return true;
+      return [
+        payment.payment_reference,
+        payment.student_name,
+        payment.student_number,
+        payment.fine_reference,
+        payment.violation_name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
+    });
+  }, [transactions, searchText, statusFilter]);
   // ==========================================
   // PAGE STATE
   // ==========================================
@@ -264,9 +315,10 @@ export default function PaymentReports() {
   // ==========================================
   // OPEN TRANSACTION DETAIL
   // ==========================================
-  const openPaymentDetail = async (paymentId: number) => {
+  const openPaymentDetail = async (paymentId: number, fromActivity = false) => {
     if (detailLoading) return;
-    setDetailVisible(true);
+    setModalView("transaction");
+    setDetailFromActivity(fromActivity);
     setDetailLoading(true);
     setDetailError("");
     setDetailPayment(null);
@@ -302,6 +354,7 @@ export default function PaymentReports() {
             ),
           );
           setNoticeCount((count) => Math.max(0, count - 1));
+          void refreshNotificationCounts();
         }
       }
     } catch (error) {
@@ -331,6 +384,7 @@ export default function PaymentReports() {
         current.map((item) => ({ ...item, isRead: true })),
       );
       setNoticeCount(0);
+      void refreshNotificationCounts();
     } catch {
       setWarningTitle("Activity Unavailable");
       setWarningMessage("Could not mark activity as read. Please try again.");
@@ -419,6 +473,7 @@ export default function PaymentReports() {
                     />
                   </View>
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -439,7 +494,10 @@ export default function PaymentReports() {
       <View style={styles.main}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            !isTablet && styles.scrollContentPhone,
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -477,6 +535,7 @@ export default function PaymentReports() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -510,12 +569,64 @@ export default function PaymentReports() {
             </TouchableOpacity>
           </View>
           {/* ==================================
+              SUMMARY CARDS
+              (shown while loading, values pulse until ready)
+          ================================== */}
+          {!error && (
+            <SummaryCardRow>
+              {/* Tapping a card filters the transactions below. */}
+              <SummaryCard
+                label="Total Collected"
+                loading={loading}
+                value={formatMoney(summary.totalCollected)}
+                hint={`${summary.totalCollectedCount} ${summary.totalCollectedCount === 1 ? "payment" : "payments"} · Show paid`}
+                tone="success"
+                onPress={() => setStatusFilter("PAID")}
+              />
+              <SummaryCard
+                label="Pending Payments"
+                loading={loading}
+                value={formatMoney(summary.pendingPayments)}
+                hint={
+                  summary.pendingPaymentCount > 0
+                    ? `${summary.pendingPaymentCount} pending · Show pending`
+                    : "None waiting"
+                }
+                tone="attention"
+                highlighted={summary.pendingPaymentCount > 0}
+                onPress={() => setStatusFilter("PENDING")}
+              />
+              <SummaryCard
+                label="Today's Payment"
+                loading={loading}
+                value={formatMoney(summary.todayPayment)}
+                hint={`${summary.todayPaymentCount} ${summary.todayPaymentCount === 1 ? "payment" : "payments"} today`}
+                tone="money"
+              />
+              <SummaryCard
+                label="Payment Activity"
+                loading={loading}
+                value={`${noticeCount} new`}
+                hint={`${notices.length} ${notices.length === 1 ? "collection" : "collections"} · View all`}
+                tone="info"
+                highlighted={noticeCount > 0}
+                onPress={() => setModalView("activity")}
+              />
+            </SummaryCardRow>
+          )}
+          {/* ==================================
               LOADING
           ================================== */}
           {loading ? (
-            <View style={styles.centerState}>
-              <ActivityIndicator size="large" color="#173A73" />
-              <Text style={styles.stateText}>Loading payment reports...</Text>
+            <View style={styles.transactionsCard}>
+              <SkeletonTable
+                label="Loading payment reports"
+                rows={6}
+                columns={6}
+                avatar={false}
+                rowStyle={styles.skeletonRow}
+                style={styles.skeletonTable}
+              />
             </View>
           ) : error ? (
             // ==================================
@@ -534,117 +645,6 @@ export default function PaymentReports() {
           ) : (
             <>
               {/* ==================================
-                  SUMMARY CARDS
-              ================================== */}
-              <View style={styles.noticeCard}>
-                <View style={styles.noticeHeading}>
-                  <View style={styles.noticeHeadingText}>
-                    <Text style={styles.noticeTitle}>
-                      Recent payment activity
-                    </Text>
-                    <Text style={styles.noticeSubtitle}>
-                      Confirmed cash collections appear here.
-                    </Text>
-                  </View>
-                  {noticeCount > 0 && (
-                    <Text style={styles.noticeBadge}>{noticeCount} new</Text>
-                  )}
-                  {noticeCount > 0 && (
-                    <TouchableOpacity
-                      onPress={markAllRead}
-                      disabled={noticeBusy}
-                    >
-                      <Text style={styles.noticeAction}>Mark all read</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                {noticeError ? (
-                  <Text style={styles.noticeEmpty}>{noticeError}</Text>
-                ) : notices.length === 0 ? (
-                  <Text style={styles.noticeEmpty}>
-                    No confirmed payments yet.
-                  </Text>
-                ) : (
-                  notices.map((notice) => (
-                    <TouchableOpacity
-                      key={notice.id}
-                      onPress={() => openPaymentDetail(notice.paymentId)}
-                      disabled={noticeBusy}
-                      style={[
-                        styles.noticeRow,
-                        !notice.isRead && styles.noticeUnread,
-                      ]}
-                    >
-                      <View style={styles.noticeBody}>
-                        <Text style={styles.noticeItemTitle}>
-                          {notice.title}
-                        </Text>
-                        <Text style={styles.noticeMessage}>
-                          {notice.message}
-                        </Text>
-                        <Text style={styles.noticeDate}>
-                          {formatDate(notice.createdAt)}
-                        </Text>
-                      </View>
-                      <Text
-                        style={
-                          notice.isRead
-                            ? styles.noticeReadLabel
-                            : styles.noticeNewLabel
-                        }
-                      >
-                        {notice.isRead ? "READ" : "NEW"}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </View>
-              <View style={styles.summaryRow}>
-                {/* TOTAL COLLECTED */}
-                <View style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>Total Collected</Text>
-                  <Text
-                    style={styles.summaryAmountRed}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {formatMoney(summary.totalCollected)}
-                  </Text>
-                  <Text style={styles.summaryCount}>
-                    {summary.totalCollectedCount}{" "}
-                    {summary.totalCollectedCount === 1 ? "payment" : "payments"}
-                  </Text>
-                </View>
-                {/* PENDING */}
-                <View style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>Pending Payments</Text>
-                  <Text
-                    style={styles.summaryAmountRed}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {formatMoney(summary.pendingPayments)}
-                  </Text>
-                  <Text style={styles.summaryCount}>
-                    {summary.pendingPaymentCount} pending
-                  </Text>
-                </View>
-                {/* TODAY */}
-                <View style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>Today&apos;s Payment</Text>
-                  <Text
-                    style={styles.summaryAmountGreen}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {formatMoney(summary.todayPayment)}
-                  </Text>
-                  <Text style={styles.summaryCount}>
-                    {summary.todayPaymentCount} today
-                  </Text>
-                </View>
-              </View>
-              {/* ==================================
                   TRANSACTIONS CARD
               ================================== */}
               <View style={styles.transactionsCard}>
@@ -659,9 +659,53 @@ export default function PaymentReports() {
                     </Text>
                   </View>
                   <Text style={styles.transactionCount}>
-                    {totalTransactions}{" "}
-                    {totalTransactions === 1 ? "Transaction" : "Transactions"}
+                    {visibleTransactions.length === totalTransactions
+                      ? `${totalTransactions} ${totalTransactions === 1 ? "Transaction" : "Transactions"}`
+                      : `${visibleTransactions.length} of ${totalTransactions} Transactions`}
                   </Text>
+                </View>
+                {/* SEARCH AND STATUS FILTER */}
+                <View style={styles.filterBar}>
+                  <TextInput
+                    style={styles.filterSearch}
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    placeholder="Search student, fine, or transaction ID"
+                    placeholderTextColor="#8C939F"
+                  />
+                  <View style={styles.filterChips}>
+                    {STATUS_FILTERS.map((filter) => {
+                      const active = statusFilter === filter.key;
+                      const count =
+                        filter.key === "ALL"
+                          ? transactions.length
+                          : transactions.filter(
+                              (payment) =>
+                                transactionStatus(payment) === filter.key,
+                            ).length;
+                      return (
+                        <TouchableOpacity
+                          key={filter.key}
+                          style={[
+                            styles.filterChip,
+                            active && styles.filterChipActive,
+                          ]}
+                          onPress={() => setStatusFilter(filter.key)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                        >
+                          <Text
+                            style={[
+                              styles.filterChipText,
+                              active && styles.filterChipTextActive,
+                            ]}
+                          >
+                            {filter.label} ({count})
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
                 {/* ==================================
                     TABLE
@@ -698,7 +742,7 @@ export default function PaymentReports() {
                     {/* ==================================
                         EMPTY STATE
                     ================================== */}
-                    {transactions.length === 0 ? (
+                    {visibleTransactions.length === 0 ? (
                       <View style={styles.emptyState}>
                         <View style={styles.emptyIcon}>
                           <Text style={styles.emptyIconText}>₱</Text>
@@ -707,15 +751,16 @@ export default function PaymentReports() {
                           No payment transactions found
                         </Text>
                         <Text style={styles.emptyText}>
-                          Payment transactions will appear here once students
-                          begin making payments.
+                          {transactions.length === 0
+                            ? "Payment transactions will appear here once students begin making payments."
+                            : "No transactions match your search or filter."}
                         </Text>
                       </View>
                     ) : (
                       // ==================================
                       // TRANSACTIONS
                       // ==================================
-                      transactions.map((payment) => {
+                      visibleTransactions.map((payment, index) => {
                         // ==================================
                         // DISPLAY STATUS
                         // ==================================
@@ -727,134 +772,135 @@ export default function PaymentReports() {
                             Number(item.paymentId) === Number(payment.id),
                         );
                         return (
-                          <TouchableOpacity
-                            key={payment.id}
-                            style={[
-                              styles.transactionRow,
-                              reportNotice &&
-                                !reportNotice.isRead &&
-                                styles.transactionUnread,
-                            ]}
-                            activeOpacity={0.7}
-                            onPress={() => handleTransactionPress(payment)}
-                          >
-                            {/* ==================================
-                                  TRANSACTION
-                              ================================== */}
-                            <View style={styles.transactionColumn}>
-                              <Text
-                                style={styles.transactionReference}
-                                numberOfLines={1}
-                              >
-                                {payment.payment_reference ||
-                                  `PAY-${payment.id}`}
-                              </Text>
-                              {payment.gateway_transaction_id && (
+                          <FadeIn key={payment.id} index={index}>
+                            <TouchableOpacity
+                              style={[
+                                styles.transactionRow,
+                                reportNotice &&
+                                  !reportNotice.isRead &&
+                                  styles.transactionUnread,
+                              ]}
+                              activeOpacity={0.7}
+                              onPress={() => handleTransactionPress(payment)}
+                            >
+                              {/* ==================================
+                                    TRANSACTION
+                                ================================== */}
+                              <View style={styles.transactionColumn}>
                                 <Text
-                                  style={styles.gatewayText}
+                                  style={styles.transactionReference}
                                   numberOfLines={1}
                                 >
-                                  {payment.gateway_transaction_id}
+                                  {payment.payment_reference ||
+                                    `PAY-${payment.id}`}
                                 </Text>
-                              )}
-                              {reportNotice && (
-                                <Text
-                                  style={
-                                    reportNotice.isRead
-                                      ? styles.rowReadLabel
-                                      : styles.rowNewLabel
-                                  }
-                                >
-                                  {reportNotice.isRead ? "READ" : "NEW"}
+                                {payment.gateway_transaction_id && (
+                                  <Text
+                                    style={styles.gatewayText}
+                                    numberOfLines={1}
+                                  >
+                                    {payment.gateway_transaction_id}
+                                  </Text>
+                                )}
+                                {reportNotice && (
+                                  <Text
+                                    style={
+                                      reportNotice.isRead
+                                        ? styles.rowReadLabel
+                                        : styles.rowNewLabel
+                                    }
+                                  >
+                                    {reportNotice.isRead ? "READ" : "NEW"}
+                                  </Text>
+                                )}
+                              </View>
+                              {/* ==================================
+                                    METHOD
+                                ================================== */}
+                              <View style={styles.methodColumn}>
+                                <Text style={styles.bodyCell} numberOfLines={1}>
+                                  {formatPaymentMethod(payment.payment_method)}
                                 </Text>
-                              )}
-                            </View>
-                            {/* ==================================
-                                  METHOD
-                              ================================== */}
-                            <View style={styles.methodColumn}>
-                              <Text style={styles.bodyCell} numberOfLines={1}>
-                                {formatPaymentMethod(payment.payment_method)}
-                              </Text>
-                              <View
-                                style={[
-                                  styles.paymentStatusBadge,
-                                  getPaymentStatusBadgeStyle(displayStatus),
-                                ]}
-                              >
-                                <Text
+                                <View
                                   style={[
-                                    styles.paymentStatusText,
-                                    getPaymentStatusTextStyle(displayStatus),
+                                    styles.paymentStatusBadge,
+                                    getPaymentStatusBadgeStyle(displayStatus),
                                   ]}
                                 >
-                                  {formatPaymentStatus(displayStatus)}
-                                </Text>
+                                  <Text
+                                    style={[
+                                      styles.paymentStatusText,
+                                      getPaymentStatusTextStyle(displayStatus),
+                                    ]}
+                                  >
+                                    {formatPaymentStatus(displayStatus)}
+                                  </Text>
+                                </View>
                               </View>
-                            </View>
-                            {/* ==================================
-                                  STUDENT
-                              ================================== */}
-                            <View style={styles.studentColumn}>
-                              <Text
-                                style={styles.studentName}
-                                numberOfLines={1}
-                              >
-                                {payment.student_name || "Unknown Student"}
-                              </Text>
-                              <Text
-                                style={styles.studentNumber}
-                                numberOfLines={1}
-                              >
-                                {payment.student_number || "No Student ID"}
-                              </Text>
-                            </View>
-                            {/* ==================================
-                                  AMOUNT
-                              ================================== */}
-                            <Text
-                              style={[
-                                styles.bodyCell,
-                                styles.amountColumn,
-                                styles.amountText,
-                              ]}
-                            >
-                              {formatMoney(payment.amount)}
-                            </Text>
-                            {/* ==================================
-                                  FINE
-                              ================================== */}
-                            <View style={styles.fineColumn}>
-                              <Text
-                                style={[styles.bodyCell, styles.fineReference]}
-                                numberOfLines={1}
-                              >
-                                {payment.fine_reference ||
-                                  `Fine #${payment.fine_id}`}
-                              </Text>
-                              {payment.violation_name && (
+                              {/* ==================================
+                                    STUDENT
+                                ================================== */}
+                              <View style={styles.studentColumn}>
                                 <Text
-                                  style={styles.gatewayText}
+                                  style={styles.studentName}
                                   numberOfLines={1}
                                 >
-                                  {payment.violation_name}
+                                  {payment.student_name || "Unknown Student"}
                                 </Text>
-                              )}
-                            </View>
-                            {/* ==================================
-                                  DATE
-                              ================================== */}
-                            <Text
-                              style={[
-                                styles.bodyCell,
-                                styles.dateColumn,
-                                styles.dateText,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {formatDate(payment.transaction_date)}
-                            </Text>
-                          </TouchableOpacity>
+                                <Text
+                                  style={styles.studentNumber}
+                                  numberOfLines={1}
+                                >
+                                  {payment.student_number || "No Student ID"}
+                                </Text>
+                              </View>
+                              {/* ==================================
+                                    AMOUNT
+                                ================================== */}
+                              <Text
+                                style={[
+                                  styles.bodyCell,
+                                  styles.amountColumn,
+                                  styles.amountText,
+                                ]}
+                              >
+                                {formatMoney(payment.amount)}
+                              </Text>
+                              {/* ==================================
+                                    FINE
+                                ================================== */}
+                              <View style={styles.fineColumn}>
+                                <Text
+                                  style={[styles.bodyCell, styles.fineReference]}
+                                  numberOfLines={1}
+                                >
+                                  {payment.fine_reference ||
+                                    `Fine #${payment.fine_id}`}
+                                </Text>
+                                {payment.violation_name && (
+                                  <Text
+                                    style={styles.gatewayText}
+                                    numberOfLines={1}
+                                  >
+                                    {payment.violation_name}
+                                  </Text>
+                                )}
+                              </View>
+                              {/* ==================================
+                                    DATE
+                                ================================== */}
+                              <Text
+                                style={[
+                                  styles.bodyCell,
+                                  styles.dateColumn,
+                                  styles.dateText,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {formatDate(payment.transaction_date)}
+                              </Text>
+                            </TouchableOpacity>
+                          </FadeIn>
                         );
                       })
                     )}
@@ -882,36 +928,49 @@ export default function PaymentReports() {
         </ScrollView>
       </View>
       {/* ======================================
-          LOGOUT MODAL
+          ACTIVITY AND TRANSACTION POP-UP
       ====================================== */}
-      <Modal
-        visible={detailVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDetailVisible(false)}
+      <AdminModal
+        visible={modalView !== null}
+        title={
+          modalView === "activity" ? "Payment activity" : "Transaction details"
+        }
+        subtitle={
+          modalView === "activity"
+            ? `${noticeCount} new · Confirmed cash collections`
+            : "Payment record and confirmation"
+        }
+        onClose={() => setModalView(null)}
+        onBack={
+          modalView === "transaction" && detailFromActivity
+            ? () => setModalView("activity")
+            : undefined
+        }
       >
-        <View style={styles.detailOverlay}>
-          <View style={styles.detailCard}>
-            <View style={styles.detailHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.detailTitle}>Transaction details</Text>
-                <Text style={styles.detailSubtitle}>
-                  Payment record and confirmation
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setDetailVisible(false)}
-                style={styles.detailCloseButton}
-                accessibilityLabel="Close transaction details"
-              >
-                <Text style={styles.detailCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            {detailLoading ? (
-              <View style={styles.detailState}>
-                <ActivityIndicator color="#173A73" />
-                <Text style={styles.detailHint}>Loading transaction...</Text>
-              </View>
+            {modalView === "activity" ? (
+              <AdminNoticeList
+                notices={notices}
+                filters={ACTIVITY_FILTERS}
+                error={noticeError}
+                onRetry={() => void loadReports(true)}
+                onOpen={(notice) => void openPaymentDetail(notice.paymentId, true)}
+                emptyText="No payment activity here yet."
+                action={
+                  noticeCount > 0
+                    ? {
+                        label: "Mark all read",
+                        onPress: () => void markAllRead(),
+                        disabled: noticeBusy,
+                      }
+                    : undefined
+                }
+              />
+            ) : detailLoading ? (
+              <SkeletonDetails
+                label="Loading transaction"
+                rows={6}
+                style={styles.detailContent}
+              />
             ) : detailError ? (
               <View style={styles.detailState}>
                 <Text style={styles.errorTitle}>
@@ -920,9 +979,15 @@ export default function PaymentReports() {
                 <Text style={styles.detailHint}>{detailError}</Text>
                 <TouchableOpacity
                   style={styles.retryButton}
-                  onPress={() => setDetailVisible(false)}
+                  onPress={() =>
+                    detailFromActivity
+                      ? setModalView("activity")
+                      : setModalView(null)
+                  }
                 >
-                  <Text style={styles.retryButtonText}>Close</Text>
+                  <Text style={styles.retryButtonText}>
+                    {detailFromActivity ? "Back to activity" : "Close"}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : detailPayment ? (
@@ -939,7 +1004,11 @@ export default function PaymentReports() {
                       styles.detailStatus,
                       detailPayment.paid_at
                         ? styles.detailPaid
-                        : styles.detailPending,
+                        : ["CANCELLED", "FAILED"].includes(
+                              String(detailPayment.payment_status).toUpperCase(),
+                            )
+                          ? styles.detailCancelled
+                          : styles.detailPending,
                     ]}
                   >
                     {detailPayment.payment_status_label ||
@@ -1019,9 +1088,7 @@ export default function PaymentReports() {
                 </View>
               </ScrollView>
             ) : null}
-          </View>
-        </View>
-      </Modal>
+      </AdminModal>
       <LogoutModal
         visible={showLogoutModal}
         loading={logoutLoading}

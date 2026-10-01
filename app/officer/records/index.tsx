@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
 import {
-    ActivityIndicator,
     Image,
     RefreshControl,
     ScrollView,
@@ -21,9 +20,13 @@ import {
     useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import { FadeIn, TabIndicator } from "@/components/motion";
+import { SkeletonList } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { haptics } from "@/utils/haptics";
 
 import { useResponsiveStyles } from "./records.styles";
+import { HomeTabBadge } from "@/components/notification-badge";
 
 // ==========================================
 // TYPES
@@ -323,7 +326,13 @@ export default function OfficerRecordsScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
                   activeOpacity={0.75}
-                  onPress={() => setFilter(item.value)}
+                  onPress={() => {
+                    if (!active) {
+                      haptics.selection();
+                    }
+
+                    setFilter(item.value);
+                  }}
                   style={styles.filterTouch}
                 >
                   <View
@@ -375,13 +384,15 @@ export default function OfficerRecordsScreen() {
           )}
 
           {loading && records.length === 0 ? (
-            <View style={styles.loadingPanel}>
-              <ActivityIndicator size="large" color="#173A73" />
-              <Text style={styles.helperText}>Loading recorded fines…</Text>
-            </View>
+            <SkeletonList
+              label="Loading recorded fines"
+              count={4}
+              avatar={false}
+              itemStyle={styles.card}
+            />
           ) : (
             <>
-              {visibleRecords.map((fine) => {
+              {visibleRecords.map((fine, index) => {
                 const status = statusLabel(fine.status);
 
                 const recordedAt = fine.recordedAt || fine.created_at;
@@ -392,7 +403,7 @@ export default function OfficerRecordsScreen() {
                   .join(" - ");
 
                 return (
-                  <View key={fine.id} style={styles.card}>
+                  <FadeIn key={fine.id} index={index} style={styles.card}>
                     <View style={styles.details}>
                       <Text style={styles.studentName}>
                         {fine.student_name}
@@ -447,12 +458,12 @@ export default function OfficerRecordsScreen() {
                         </View>
                       )}
                     </View>
-                  </View>
+                  </FadeIn>
                 );
               })}
 
               {!loading && !error && visibleRecords.length === 0 && (
-                <View style={styles.emptyPanel}>
+                <FadeIn style={styles.emptyPanel}>
                   <Text style={styles.emptyTitle}>
                     {filter === "ALL"
                       ? "No recorded fines yet"
@@ -464,7 +475,7 @@ export default function OfficerRecordsScreen() {
                       ? "Fines you record will appear here."
                       : "Try another filter to view your records."}
                   </Text>
-                </View>
+                </FadeIn>
               )}
             </>
           )}
@@ -496,12 +507,12 @@ export default function OfficerRecordsScreen() {
                   />
 
                   <Text style={styles.navLabel}>{item.label}</Text>
+                  <HomeTabBadge label={item.label} />
 
-                  <View
-                    style={[
-                      styles.activeIndicator,
-                      !active && styles.hiddenIndicator,
-                    ]}
+                  <TabIndicator
+                    active={active}
+                    style={styles.activeIndicator}
+                    hiddenStyle={styles.hiddenIndicator}
                   />
                 </TouchableOpacity>
               );

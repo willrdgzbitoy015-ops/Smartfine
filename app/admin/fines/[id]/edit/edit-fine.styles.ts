@@ -35,6 +35,13 @@ export const styles = StyleSheet.create({
   // LOADING
   // ==========================================
 
+  // Placeholder card while the form loads.
+  formSkeleton: {
+    width: "100%",
+    maxWidth: 760,
+    paddingHorizontal: 20,
+  },
+
   loadingScreen: {
     flex: 1,
 
@@ -187,6 +194,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
 
     borderRadius: 18,
@@ -230,36 +239,25 @@ export const styles = StyleSheet.create({
     marginBottom: 35,
   },
 
+  // Plain arrow, matching the Student Profile back button.
   backButton: {
-    width: 52,
-
-    height: 52,
-
-    borderRadius: 12,
-
-    backgroundColor: COLORS.white,
-
-    borderWidth: 1,
-
-    borderColor: "#DADDE2",
-
-    alignItems: "center",
+    minHeight: 44,
 
     justifyContent: "center",
 
-    marginRight: 14,
+    marginRight: 10,
   },
 
-  backArrow: {
-    color: "#111111",
+  backIconImage: {
+    width: 22,
 
-    fontSize: 42,
+    height: 22,
 
-    lineHeight: 44,
-
-    fontWeight: "500",
-
-    marginTop: -3,
+    transform: [
+      {
+        rotate: "180deg",
+      },
+    ],
   },
 
   pageTitle: {

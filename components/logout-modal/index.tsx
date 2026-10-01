@@ -6,6 +6,8 @@ import {
     View,
 } from "react-native";
 
+import { PopIn } from "@/components/motion";
+
 import { styles } from "./logout-modal.styles";
 
 type LogoutModalProps = {
@@ -34,7 +36,7 @@ export default function LogoutModal({
       }}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalCard}>
+        <PopIn style={styles.modalCard}>
           {/* TITLE */}
 
           <Text style={styles.title}>Log Out?</Text>
@@ -71,7 +73,7 @@ export default function LogoutModal({
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </PopIn>
       </View>
     </Modal>
   );

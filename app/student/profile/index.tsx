@@ -7,10 +7,10 @@ import { fetch as expoFetch } from "expo/fetch";
 import { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Animated,
     Image,
     Modal,
     Platform,
-    ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
@@ -19,9 +19,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import LogoutModal from "@/components/logout-modal";
+import { PopIn, TabIndicator, useSwitchFade } from "@/components/motion";
+import { SkeletonProfile } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { haptics } from "@/utils/haptics";
 import { useAuth } from "@/hooks/use-auth";
 import { styles } from "../styles/student-profile.styles";
+import { HomeTabBadge } from "@/components/notification-badge";
 
 type Page = "profile" | "edit" | "password" | "about" | "privacy";
 
@@ -306,8 +310,10 @@ export default function StudentProfileScreen() {
 
       setProfile(result.user);
       setPage("profile");
+      haptics.success();
       setNotice("Your personal information was updated.");
     } catch (caught) {
+      haptics.error();
       setError(
         caught instanceof Error
           ? caught.message
@@ -358,8 +364,10 @@ export default function StudentProfileScreen() {
       });
 
       setPage("profile");
+      haptics.success();
       setNotice("Your password was updated.");
     } catch (caught) {
+      haptics.error();
       setError(
         caught instanceof Error
           ? caught.message
@@ -490,8 +498,10 @@ export default function StudentProfileScreen() {
           : current,
       );
 
+      haptics.success();
       setNotice("Your profile picture was updated.");
     } catch (caught) {
+      haptics.error();
       setError(
         caught instanceof Error
           ? caught.message
@@ -571,6 +581,8 @@ export default function StudentProfileScreen() {
     </View>
   );
 
+  const pageFade = useSwitchFade(page);
+
   const title = {
     profile: "My Profile",
     edit: "Edit Profile",
@@ -598,16 +610,14 @@ export default function StudentProfileScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView
-          style={styles.scroll}
+        {/* Fades in again when moving between profile pages. */}
+        <Animated.ScrollView
+          style={[styles.scroll, pageFade]}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
           {loading ? (
-            <View style={styles.loading}>
-              <ActivityIndicator color="#123266" />
-              <Text style={styles.helper}>Loading your profile…</Text>
-            </View>
+            <SkeletonProfile label="Loading your profile" />
           ) : (
             <>
               {!!error && (
@@ -643,6 +653,13 @@ export default function StudentProfileScreen() {
                         <Text style={styles.avatarInitials}>
                           {initials(profile.fullName)}
                         </Text>
+                      )}
+
+                      {/* Shown while a new photo uploads. */}
+                      {busy && (
+                        <View style={styles.avatarBusy}>
+                          <ActivityIndicator color="#FFFFFF" />
+                        </View>
                       )}
                     </TouchableOpacity>
 
@@ -973,7 +990,7 @@ export default function StudentProfileScreen() {
               )}
             </>
           )}
-        </ScrollView>
+        </Animated.ScrollView>
 
         <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
           <View style={styles.bottomNavigation}>
@@ -997,11 +1014,11 @@ export default function StudentProfileScreen() {
                 >
                   <Image source={item.icon} style={styles.navIcon} />
                   <Text style={styles.navLabel}>{item.label}</Text>
-                  <View
-                    style={[
-                      styles.indicator,
-                      !active && styles.hiddenIndicator,
-                    ]}
+                  <HomeTabBadge label={item.label} />
+                  <TabIndicator
+                    active={active}
+                    style={styles.indicator}
+                    hiddenStyle={styles.hiddenIndicator}
                   />
                 </TouchableOpacity>
               );
@@ -1017,7 +1034,7 @@ export default function StudentProfileScreen() {
         onRequestClose={() => setNotice("")}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <PopIn style={styles.modalCard}>
             <Text style={styles.modalTitle}>SmartFine</Text>
             <Text style={styles.modalMessage}>{notice}</Text>
             <TouchableOpacity
@@ -1026,7 +1043,7 @@ export default function StudentProfileScreen() {
             >
               <Text style={styles.primaryText}>OK</Text>
             </TouchableOpacity>
-          </View>
+          </PopIn>
         </View>
       </Modal>
 

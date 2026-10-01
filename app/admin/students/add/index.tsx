@@ -20,6 +20,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
 
 import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
@@ -857,6 +858,7 @@ export default function AddStudent() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -1037,6 +1039,7 @@ export default function AddStudent() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}

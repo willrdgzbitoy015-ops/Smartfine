@@ -16,10 +16,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
 
 import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
+import { SkeletonForm } from "@/components/skeleton";
 
 import { styles } from "./edit-fine.styles";
 
@@ -642,15 +644,24 @@ export default function EditFine() {
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
 
-    router.replace(`/admin/fines/${fineId}` as any);
+    returnToFine();
   };
 
   // ==========================================
   // BACK / CANCEL
   // ==========================================
 
+  // The Fines Directory reopens this fine's pop-up when it regains focus.
+  const returnToFine = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(`/admin/fines/${fineId}` as any);
+    }
+  };
+
   const handleBack = () => {
-    router.replace(`/admin/fines/${fineId}` as any);
+    returnToFine();
   };
 
   // ==========================================
@@ -708,9 +719,11 @@ export default function EditFine() {
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color="#173A73" />
-
-        <Text style={styles.loadingText}>Loading fine information...</Text>
+        <SkeletonForm
+          label="Loading fine information"
+          fields={5}
+          style={styles.formSkeleton}
+        />
       </View>
     );
   }
@@ -755,6 +768,7 @@ export default function EditFine() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -812,6 +826,7 @@ export default function EditFine() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -827,8 +842,14 @@ export default function EditFine() {
               style={styles.backButton}
               onPress={handleBack}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Back to Fine details"
             >
-              <Text style={styles.backArrow}>‹</Text>
+              <Image
+                source={require("../../../../../assets/icons/back_icon.png")}
+                style={styles.backIconImage}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
 
             <View>

@@ -16,10 +16,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { AdminNavBadge } from "@/components/notification-badge";
 
 import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
+import { SkeletonForm } from "@/components/skeleton";
 
 import { styles } from "./add-fine.styles";
 
@@ -696,9 +698,11 @@ export default function AddFine() {
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color="#173A73" />
-
-        <Text style={styles.loadingText}>Loading Add Fine form...</Text>
+        <SkeletonForm
+          label="Loading the Add Fine form"
+          fields={5}
+          style={styles.formSkeleton}
+        />
       </View>
     );
   }
@@ -743,6 +747,7 @@ export default function AddFine() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -829,6 +834,7 @@ export default function AddFine() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}

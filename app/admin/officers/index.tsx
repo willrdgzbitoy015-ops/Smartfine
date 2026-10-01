@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -16,6 +17,9 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { FadeIn } from "@/components/motion";
+import { AdminNavBadge } from "@/components/notification-badge";
+import { SkeletonTable } from "@/components/skeleton";
 
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
@@ -457,6 +461,7 @@ export default function OfficersDirectory() {
                   </View>
 
                   <Text style={styles.navText}>{item.label}</Text>
+                  <AdminNavBadge label={item.label} />
                 </TouchableOpacity>
               );
             })}
@@ -482,6 +487,14 @@ export default function OfficersDirectory() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#173A73"
+              colors={["#173A73"]}
+            />
+          }
         >
           {/* ==================================
               MOBILE NAV
@@ -516,6 +529,7 @@ export default function OfficersDirectory() {
                     >
                       {item.label}
                     </Text>
+                    <AdminNavBadge label={item.label} variant="menu" />
                   </TouchableOpacity>
                 );
               })}
@@ -780,13 +794,13 @@ export default function OfficersDirectory() {
             ================================== */}
 
             {loading ? (
-              <View style={styles.centerState}>
-                <ActivityIndicator size="large" color="#173A73" />
-
-                <Text style={styles.stateText}>
-                  Loading officer accounts...
-                </Text>
-              </View>
+              <SkeletonTable
+                label="Loading officer accounts"
+                rows={6}
+                columns={6}
+                avatar={false}
+                rowStyle={styles.officerRow}
+              />
             ) : error ? (
               // ==================================
               // ERROR
@@ -854,7 +868,7 @@ export default function OfficersDirectory() {
                       // OFFICER ROWS
                       // ==================================
 
-                      filteredOfficers.map((officer) => {
+                      filteredOfficers.map((officer, index) => {
                         const normalizedStatus = String(
                           officer.account_status || "",
                         ).toUpperCase();
@@ -862,114 +876,115 @@ export default function OfficersDirectory() {
                         const isActive = normalizedStatus === "ACTIVE";
 
                         return (
-                          <TouchableOpacity
-                            key={officer.id}
-                            style={[
-                              styles.officerRow,
-
-                              refreshing && {
-                                opacity: 0.65,
-                              },
-                            ]}
-                            activeOpacity={0.7}
-                            disabled={refreshing}
-                            onPress={() => handleOfficerPress(officer)}
-                          >
-                            {/* EMPLOYEE NUMBER */}
-
-                            <Text
+                          <FadeIn key={officer.id} index={index}>
+                            <TouchableOpacity
                               style={[
-                                styles.bodyCell,
+                                styles.officerRow,
 
-                                styles.employeeColumn,
-
-                                styles.employeeNumber,
+                                refreshing && {
+                                  opacity: 0.65,
+                                },
                               ]}
+                              activeOpacity={0.7}
+                              disabled={refreshing}
+                              onPress={() => handleOfficerPress(officer)}
                             >
-                              {officer.employee_number}
-                            </Text>
+                              {/* EMPLOYEE NUMBER */}
 
-                            {/* NAME */}
-
-                            <View style={styles.nameColumn}>
                               <Text
-                                style={styles.officerName}
-                                numberOfLines={1}
-                              >
-                                {officer.full_name}
-                              </Text>
-
-                              <Text style={styles.usernameText}>
-                                Username: {officer.username}
-                              </Text>
-                            </View>
-
-                            {/* AREA */}
-
-                            <Text
-                              style={[styles.bodyCell, styles.areaColumn]}
-                              numberOfLines={2}
-                            >
-                              {officer.assigned_area || "Not Assigned"}
-                            </Text>
-
-                            {/* EMAIL */}
-
-                            <Text
-                              style={[styles.bodyCell, styles.emailColumn]}
-                              numberOfLines={1}
-                            >
-                              {officer.email || "Not provided"}
-                            </Text>
-
-                            {/* CONTACT */}
-
-                            <Text
-                              style={[styles.bodyCell, styles.contactColumn]}
-                            >
-                              {officer.contact_number || "—"}
-                            </Text>
-
-                            {/* FINES */}
-
-                            <Text
-                              style={[
-                                styles.bodyCell,
-
-                                styles.finesColumn,
-
-                                styles.finesRecorded,
-                              ]}
-                            >
-                              {Number(officer.total_fines_recorded || 0)}
-                            </Text>
-
-                            {/* STATUS */}
-
-                            <View style={styles.statusColumn}>
-                              <View
                                 style={[
-                                  styles.statusBadge,
+                                  styles.bodyCell,
 
-                                  isActive
-                                    ? styles.activeBadge
-                                    : styles.inactiveBadge,
+                                  styles.employeeColumn,
+
+                                  styles.employeeNumber,
                                 ]}
                               >
-                                <Text
-                                  style={[
-                                    styles.statusText,
+                                {officer.employee_number}
+                              </Text>
 
-                                    isActive
-                                      ? styles.activeStatusText
-                                      : styles.inactiveStatusText,
-                                  ]}
+                              {/* NAME */}
+
+                              <View style={styles.nameColumn}>
+                                <Text
+                                  style={styles.officerName}
+                                  numberOfLines={1}
                                 >
-                                  {getStatusLabel(officer.account_status)}
+                                  {officer.full_name}
+                                </Text>
+
+                                <Text style={styles.usernameText}>
+                                  Username: {officer.username}
                                 </Text>
                               </View>
-                            </View>
-                          </TouchableOpacity>
+
+                              {/* AREA */}
+
+                              <Text
+                                style={[styles.bodyCell, styles.areaColumn]}
+                                numberOfLines={2}
+                              >
+                                {officer.assigned_area || "Not Assigned"}
+                              </Text>
+
+                              {/* EMAIL */}
+
+                              <Text
+                                style={[styles.bodyCell, styles.emailColumn]}
+                                numberOfLines={1}
+                              >
+                                {officer.email || "Not provided"}
+                              </Text>
+
+                              {/* CONTACT */}
+
+                              <Text
+                                style={[styles.bodyCell, styles.contactColumn]}
+                              >
+                                {officer.contact_number || "—"}
+                              </Text>
+
+                              {/* FINES */}
+
+                              <Text
+                                style={[
+                                  styles.bodyCell,
+
+                                  styles.finesColumn,
+
+                                  styles.finesRecorded,
+                                ]}
+                              >
+                                {Number(officer.total_fines_recorded || 0)}
+                              </Text>
+
+                              {/* STATUS */}
+
+                              <View style={styles.statusColumn}>
+                                <View
+                                  style={[
+                                    styles.statusBadge,
+
+                                    isActive
+                                      ? styles.activeBadge
+                                      : styles.inactiveBadge,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.statusText,
+
+                                      isActive
+                                        ? styles.activeStatusText
+                                        : styles.inactiveStatusText,
+                                    ]}
+                                  >
+                                    {getStatusLabel(officer.account_status)}
+                                  </Text>
+                                </View>
+                              </View>
+                            </TouchableOpacity>
+                          </FadeIn>
                         );
                       })
                     )}

@@ -3,8 +3,8 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
+  Animated,
   Image,
   Modal,
   RefreshControl,
@@ -15,9 +15,32 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  FadeIn,
+  PopIn,
+  PressableScale,
+  TabIndicator,
+  useSwitchFade,
+} from "@/components/motion";
+import {
+  Skeleton,
+  SkeletonDetails,
+  SkeletonGroup,
+  SkeletonList,
+} from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { styles } from "../styles/student-dashboard.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
+import {
+  HomeTabBadge,
+  NotificationBadge,
+} from "@/components/notification-badge";
+import {
+  formatNotificationTime,
+  markNotificationRead,
+  refreshNotificationCounts,
+  useNotificationCounts,
+} from "@/hooks/use-notification-counts";
 
 type StudentUser = {
   id: number;
@@ -56,12 +79,36 @@ type DashboardData = {
     paidAmountCentavos: number;
     outstandingAmountCentavos: number;
     unpaidCount: number;
-    unreadFineCount?: number;
   };
   activities: Activity[];
 };
 
-type ModalMode = "notifications" | "activities" | "details" | null;
+type Notice = {
+  id: number;
+  notificationType: "FINE" | "PAYMENT" | "SYSTEM" | "ACCOUNT";
+  title: string;
+  message: string;
+  fineId: number | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+// The fine a notification links to, including cancelled and paid fines.
+type NoticeFine = {
+  id: number;
+  fineReference: string;
+  violationName: string;
+  amountCentavos: number;
+  recordedAt: string | null;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  remarks: string | null;
+  status: "UNPAID" | "PAID" | "PENDING" | "CANCELLED";
+  cashRequestReference: string | null;
+  cashRequestStatus: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED" | null;
+};
+
+type ModalMode = "notifications" | "notice" | "activities" | "details" | null;
 
 type NotificationFilter = "ALL" | "UNREAD" | "READ";
 
@@ -178,7 +225,7 @@ function ActivityCard({
             paid ? styles.greenText : styles.redText,
           ]}
         >
-          {paid ? "Fine marked paid" : "Fine issued"}
+          {paid ? "Fine paid" : "Fine issued"}
         </Text>
 
         {isRead !== null && (
@@ -227,6 +274,15 @@ export default function StudentDashboard() {
   const [fineRecords, setFineRecords] = useState<FineRecord[]>([]);
   const [selectedFine, setSelectedFine] = useState<FineRecord | null>(null);
   const [readError, setReadError] = useState("");
+
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [noticesLoading, setNoticesLoading] = useState(false);
+  const [noticesError, setNoticesError] = useState("");
+  const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+  const [noticeFine, setNoticeFine] = useState<NoticeFine | null>(null);
+  const [noticeLoading, setNoticeLoading] = useState(false);
+  const [noticeError, setNoticeError] = useState("");
+  const counts = useNotificationCounts();
 
   const markingReadRef = useRef(new Set<number>());
   const requestRef = useRef<AbortController | null>(null);
@@ -329,13 +385,7 @@ export default function StudentDashboard() {
           return;
         }
 
-        const fines = finesBody.fines as FineRecord[];
-
-        setFineRecords(fines);
-
-        body.stats.unreadFineCount = fines.filter(
-          (fine) => !fine.isRead,
-        ).length;
+        setFineRecords(finesBody.fines as FineRecord[]);
       } catch {
         // Balance and activities can still load.
       }
@@ -380,6 +430,9 @@ export default function StudentDashboard() {
     setModalMode(null);
     setSelectedFine(null);
     setReadError("");
+    setSelectedNotice(null);
+    setNoticeFine(null);
+    setNoticeError("");
   };
 
   const markFineRead = async (fineId: number) => {
@@ -450,20 +503,8 @@ export default function StudentDashboard() {
           : current,
       );
 
-      setData((current) =>
-        current
-          ? {
-              ...current,
-              stats: {
-                ...current.stats,
-                unreadFineCount: Math.max(
-                  0,
-                  (current.stats.unreadFineCount ?? 0) - 1,
-                ),
-              },
-            }
-          : current,
-      );
+      // Reading the fine also reads its New Fine Issued notification.
+      void refreshNotificationCounts();
     } catch (caught) {
       setReadError(
         caught instanceof Error ? caught.message : "Please try again.",
@@ -498,6 +539,167 @@ export default function StudentDashboard() {
     openFine(fine);
   };
 
+  const loadNotices = async () => {
+    setNoticesLoading(true);
+    setNoticesError("");
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Please sign in again.");
+      }
+
+      const response = await fetch(`${API_BASE}/api/notifications?limit=50`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
+
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok || !body?.success || !Array.isArray(body.notifications)) {
+        throw new Error(body?.message || "Could not load your notifications.");
+      }
+
+      setNotices(body.notifications as Notice[]);
+    } catch (caught) {
+      setNoticesError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not load your notifications.",
+      );
+    } finally {
+      setNoticesLoading(false);
+    }
+  };
+
+  const openNotifications = () => {
+    setSelectedFine(null);
+    setSelectedNotice(null);
+    setNoticeFine(null);
+    setNoticeError("");
+    setNotificationFilter("ALL");
+    setModalMode("notifications");
+    void loadNotices();
+  };
+
+  const backToNotifications = () => {
+    setSelectedNotice(null);
+    setNoticeFine(null);
+    setNoticeError("");
+    setReadError("");
+    setModalMode("notifications");
+  };
+
+  // Marks only this notification read, after its fine has loaded.
+  const markNoticeRead = async (notice: Notice) => {
+    try {
+      await markNotificationRead(notice.id);
+      setReadError("");
+
+      setNotices((current) =>
+        current.map((item) =>
+          item.id === notice.id ? { ...item, isRead: true } : item,
+        ),
+      );
+      setSelectedNotice((current) =>
+        current?.id === notice.id ? { ...current, isRead: true } : current,
+      );
+
+      // The server also marks the fine read in My Fines for this notice.
+      if (notice.title === "New Fine Issued" && notice.fineId) {
+        setFineRecords((current) =>
+          current.map((fine) =>
+            fine.id === notice.fineId ? { ...fine, isRead: true } : fine,
+          ),
+        );
+      }
+    } catch (caught) {
+      setReadError(
+        caught instanceof Error ? caught.message : "Please try again.",
+      );
+    }
+  };
+
+  const openNotice = async (notice: Notice) => {
+    setSelectedNotice(notice);
+    setNoticeFine(null);
+    setNoticeError("");
+    setReadError("");
+    setModalMode("notice");
+
+    if (!notice.fineId) {
+      setNoticeError(
+        "This notification has no fine to show. It stays unread.",
+      );
+      return;
+    }
+
+    setNoticeLoading(true);
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Please sign in again.");
+      }
+
+      const response = await fetch(
+        `${API_BASE}/api/fines/my-fines/${notice.fineId}`,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
+          },
+        },
+      );
+
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok || !body?.success || !body.fine) {
+        throw new Error(body?.message || "This fine could not be loaded.");
+      }
+
+      setNoticeFine(body.fine as NoticeFine);
+
+      if (!notice.isRead) {
+        await markNoticeRead(notice);
+      }
+    } catch (caught) {
+      setNoticeError(
+        `${caught instanceof Error ? caught.message : "This fine could not be loaded."} The notification stays unread.`,
+      );
+    } finally {
+      setNoticeLoading(false);
+    }
+  };
+
+  const noticeFineStatus = (fine: NoticeFine) => {
+    if (fine.status === "CANCELLED") return "Cancelled — no payment needed";
+    if (fine.status === "PAID") return "Paid";
+    if (fine.cashRequestStatus === "PENDING") return "Unpaid — cash requested";
+    return fine.status === "PENDING" ? "Pending" : "Unpaid";
+  };
+
+  const cashRequestLabel = (fine: NoticeFine) => {
+    if (!fine.cashRequestReference || !fine.cashRequestStatus) return null;
+
+    const status =
+      fine.cashRequestStatus === "SUCCESS"
+        ? "Paid"
+        : fine.cashRequestStatus === "CANCELLED"
+          ? "Cancelled"
+          : fine.cashRequestStatus === "FAILED"
+            ? "Failed"
+            : "Pending";
+
+    return `${status} · ${fine.cashRequestReference}`;
+  };
+
   const name = data?.user.fullName || data?.user.username || "Student";
   const avatar = imageUrl(data?.user.profilePictureUri);
   const outstanding = data?.stats.outstandingAmountCentavos;
@@ -505,10 +707,10 @@ export default function StudentDashboard() {
   const activities = data?.activities ?? [];
   const recentActivities = activities.slice(0, 3);
 
-  const visibleNotifications = fineRecords.filter(
-    (fine) =>
+  const visibleNotifications = notices.filter(
+    (notice) =>
       notificationFilter === "ALL" ||
-      (notificationFilter === "UNREAD" ? !fine.isRead : !!fine.isRead),
+      (notificationFilter === "UNREAD" ? !notice.isRead : notice.isRead),
   );
 
   const readStatusForActivity = (activity: Activity): boolean | null => {
@@ -523,6 +725,11 @@ export default function StudentDashboard() {
   useEffect(() => {
     setImageFailed(false);
   }, [avatar]);
+
+  // The pop-up fades in again when it opens another view or record.
+  const modalFade = useSwitchFade(
+    `${modalMode}:${selectedFine?.id ?? ""}:${selectedNotice?.id ?? ""}`,
+  );
 
   const upcoming = (module: string) => {
     Alert.alert(module, "This feature is not available yet.");
@@ -584,13 +791,9 @@ export default function StudentDashboard() {
 
             <TouchableOpacity
               style={styles.notificationButton}
-              onPress={() => {
-                setSelectedFine(null);
-                setNotificationFilter("ALL");
-                setModalMode("notifications");
-              }}
+              onPress={openNotifications}
               accessibilityRole="button"
-              accessibilityLabel="View fine notifications"
+              accessibilityLabel="View notifications"
             >
               <Image
                 source={icons.notification}
@@ -598,16 +801,7 @@ export default function StudentDashboard() {
                 resizeMode="contain"
               />
 
-              {!!data?.stats.unreadFineCount &&
-                data.stats.unreadFineCount > 0 && (
-                  <View style={notificationStyles.bellBadge}>
-                    <Text style={notificationStyles.badgeText}>
-                      {data.stats.unreadFineCount > 99
-                        ? "99+"
-                        : data.stats.unreadFineCount}
-                    </Text>
-                  </View>
-                )}
+              <NotificationBadge count={counts.total} variant="bell" />
             </TouchableOpacity>
           </View>
 
@@ -642,33 +836,50 @@ export default function StudentDashboard() {
             </View>
           )}
 
-          {loading && !data && (
-            <View style={styles.loadingPanel}>
-              <ActivityIndicator size="large" color="#123266" />
-              <Text style={styles.helper}>Loading your dashboard…</Text>
-            </View>
-          )}
-
-          <View style={styles.balanceCard}>
+          {/* The balance pulses while the first load is in progress. */}
+          <FadeIn style={styles.balanceCard}>
             <Text style={styles.balanceTitle}>Outstanding Fine</Text>
 
-            <Text
-              style={[
-                styles.balanceValue,
-                data && !hasBalance && styles.greenText,
-              ]}
-            >
-              {outstanding !== undefined ? money(outstanding) : "—"}
-            </Text>
+            {loading && !data ? (
+              <SkeletonGroup label="Loading your balance">
+                <Skeleton
+                  width={170}
+                  height={36}
+                  radius={8}
+                  style={styles.balanceSkeleton}
+                />
+                <Skeleton
+                  width={96}
+                  height={20}
+                  radius={6}
+                  style={styles.balanceStatusSkeleton}
+                />
+              </SkeletonGroup>
+            ) : (
+              <>
+                <Text
+                  style={[
+                    styles.balanceValue,
+                    data && !hasBalance && styles.greenText,
+                  ]}
+                >
+                  {outstanding !== undefined ? money(outstanding) : "—"}
+                </Text>
 
-            <Text
-              style={[
-                styles.balanceStatus,
-                data && !hasBalance && styles.greenText,
-              ]}
-            >
-              {data ? (hasBalance ? "Unpaid" : "No outstanding fines") : " "}
-            </Text>
+                <Text
+                  style={[
+                    styles.balanceStatus,
+                    data && !hasBalance && styles.greenText,
+                  ]}
+                >
+                  {data
+                    ? hasBalance
+                      ? "Unpaid"
+                      : "No outstanding fines"
+                    : " "}
+                </Text>
+              </>
+            )}
 
             {data && hasBalance && (
               <Text style={styles.balanceHint}>
@@ -676,10 +887,10 @@ export default function StudentDashboard() {
                 {data.stats.unpaidCount === 1 ? "fine" : "fines"}
               </Text>
             )}
-          </View>
+          </FadeIn>
 
-          <View style={styles.quickActions}>
-            <TouchableOpacity
+          <FadeIn style={styles.quickActions} delay={80}>
+            <PressableScale
               style={styles.quickCard}
               onPress={() => router.push("/student/fines")}
               accessibilityRole="button"
@@ -690,9 +901,9 @@ export default function StudentDashboard() {
                 resizeMode="contain"
               />
               <Text style={styles.quickLabel}>My Fines</Text>
-            </TouchableOpacity>
+            </PressableScale>
 
-            <TouchableOpacity
+            <PressableScale
               style={styles.quickCard}
               onPress={() => upcoming("Payment")}
               accessibilityRole="button"
@@ -703,8 +914,8 @@ export default function StudentDashboard() {
                 resizeMode="contain"
               />
               <Text style={styles.quickLabel}>Payment</Text>
-            </TouchableOpacity>
-          </View>
+            </PressableScale>
+          </FadeIn>
 
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activities</Text>
@@ -722,22 +933,32 @@ export default function StudentDashboard() {
             </TouchableOpacity>
           </View>
 
+          {loading && !data && (
+            <SkeletonList
+              label="Loading recent activities"
+              count={3}
+              avatar={false}
+              itemStyle={styles.activityCard}
+            />
+          )}
+
           {data && activities.length === 0 && (
-            <View style={styles.emptyPanel}>
+            <FadeIn style={styles.emptyPanel}>
               <Text style={styles.emptyTitle}>No recent activities</Text>
               <Text style={styles.helper}>
                 Your fine and payment updates will appear here.
               </Text>
-            </View>
+            </FadeIn>
           )}
 
-          {recentActivities.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              isRead={readStatusForActivity(activity)}
-              onPress={() => openActivity(activity)}
-            />
+          {recentActivities.map((activity, index) => (
+            <FadeIn key={activity.id} index={index}>
+              <ActivityCard
+                activity={activity}
+                isRead={readStatusForActivity(activity)}
+                onPress={() => openActivity(activity)}
+              />
+            </FadeIn>
           ))}
         </ScrollView>
 
@@ -772,11 +993,11 @@ export default function StudentDashboard() {
                     resizeMode="contain"
                   />
                   <Text style={styles.navLabel}>{item.label}</Text>
-                  <View
-                    style={[
-                      styles.indicator,
-                      !active && styles.hiddenIndicator,
-                    ]}
+                  <HomeTabBadge label={item.label} />
+                  <TabIndicator
+                    active={active}
+                    style={styles.indicator}
+                    hiddenStyle={styles.hiddenIndicator}
                   />
                 </TouchableOpacity>
               );
@@ -792,14 +1013,16 @@ export default function StudentDashboard() {
         onRequestClose={closeModal}
       >
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalCard} accessibilityViewIsModal>
+          <PopIn style={styles.modalCard} accessibilityViewIsModal>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {modalMode === "details"
                   ? "Fine Details"
                   : modalMode === "notifications"
                     ? "Notifications"
-                    : "Recent Activities"}
+                    : modalMode === "notice"
+                      ? "Notification"
+                      : "Recent Activities"}
               </Text>
             </View>
 
@@ -839,12 +1062,15 @@ export default function StudentDashboard() {
               <Text style={styles.modalHelper}>
                 {modalMode === "details"
                   ? "Your recorded fine information"
-                  : "Tap an activity to view its fine details"}
+                  : modalMode === "notice"
+                    ? "The fine this notification is about"
+                    : "Tap an activity to view its fine details"}
               </Text>
             )}
 
-            <ScrollView
-              style={styles.modalScroll}
+            {/* Fades in again whenever the pop-up switches view or record. */}
+            <Animated.ScrollView
+              style={[styles.modalScroll, modalFade]}
               contentContainerStyle={styles.modalList}
               showsVerticalScrollIndicator={false}
             >
@@ -929,83 +1155,262 @@ export default function StudentDashboard() {
                     {selectedFine.isRead ? "READ" : "NEW"}
                   </Text>
                 </>
+              ) : modalMode === "notice" && selectedNotice ? (
+                <>
+                  <Text style={notificationStyles.detailsViolation}>
+                    {selectedNotice.title}
+                  </Text>
+
+                  <Text style={styles.activityDescription}>
+                    {selectedNotice.message}
+                  </Text>
+
+                  <Text style={styles.timestamp}>
+                    {formatNotificationTime(selectedNotice.createdAt)}
+                  </Text>
+
+                  {noticeLoading ? (
+                    <SkeletonDetails label="Loading the fine" rows={5} />
+                  ) : noticeFine ? (
+                    <>
+                      <View style={notificationStyles.detailsRow}>
+                        <Text style={notificationStyles.detailsLabel}>
+                          Violation
+                        </Text>
+                        <Text style={notificationStyles.detailsValue}>
+                          {noticeFine.violationName}
+                        </Text>
+                      </View>
+
+                      <View style={notificationStyles.detailsRow}>
+                        <Text style={notificationStyles.detailsLabel}>
+                          Reference
+                        </Text>
+                        <Text style={notificationStyles.detailsValue}>
+                          {noticeFine.fineReference}
+                        </Text>
+                      </View>
+
+                      <View style={notificationStyles.detailsRow}>
+                        <Text style={notificationStyles.detailsLabel}>
+                          Amount
+                        </Text>
+                        <Text style={notificationStyles.detailsValue}>
+                          {money(noticeFine.amountCentavos)}
+                        </Text>
+                      </View>
+
+                      <View style={notificationStyles.detailsRow}>
+                        <Text style={notificationStyles.detailsLabel}>
+                          Status
+                        </Text>
+                        <Text style={notificationStyles.detailsValue}>
+                          {noticeFineStatus(noticeFine)}
+                        </Text>
+                      </View>
+
+                      {!!cashRequestLabel(noticeFine) && (
+                        <View style={notificationStyles.detailsRow}>
+                          <Text style={notificationStyles.detailsLabel}>
+                            Cash request
+                          </Text>
+                          <Text style={notificationStyles.detailsValue}>
+                            {cashRequestLabel(noticeFine)}
+                          </Text>
+                        </View>
+                      )}
+
+                      <View style={notificationStyles.detailsRow}>
+                        <Text style={notificationStyles.detailsLabel}>
+                          Recorded
+                        </Text>
+                        <Text style={notificationStyles.detailsValue}>
+                          {recordedLabel(noticeFine.recordedAt)}
+                        </Text>
+                      </View>
+
+                      {noticeFine.paidAt && (
+                        <View style={notificationStyles.detailsRow}>
+                          <Text style={notificationStyles.detailsLabel}>
+                            Paid
+                          </Text>
+                          <Text style={notificationStyles.detailsValue}>
+                            {recordedLabel(noticeFine.paidAt)}
+                          </Text>
+                        </View>
+                      )}
+
+                      {noticeFine.cancelledAt && (
+                        <View style={notificationStyles.detailsRow}>
+                          <Text style={notificationStyles.detailsLabel}>
+                            Cancelled
+                          </Text>
+                          <Text style={notificationStyles.detailsValue}>
+                            {recordedLabel(noticeFine.cancelledAt)}
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  ) : null}
+
+                  {!!noticeError && (
+                    <View style={notificationStyles.readErrorBox}>
+                      <Text style={notificationStyles.readErrorText}>
+                        {noticeError}
+                      </Text>
+                      {!!selectedNotice.fineId && (
+                        <TouchableOpacity
+                          onPress={() => void openNotice(selectedNotice)}
+                          accessibilityRole="button"
+                        >
+                          <Text style={notificationStyles.readRetryText}>
+                            Try again
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+
+                  {!!readError && (
+                    <View style={notificationStyles.readErrorBox}>
+                      <Text style={notificationStyles.readErrorText}>
+                        {readError}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => void markNoticeRead(selectedNotice)}
+                        accessibilityRole="button"
+                      >
+                        <Text style={notificationStyles.readRetryText}>
+                          Try again
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  <Text
+                    style={[
+                      notificationStyles.detailsReadStatus,
+                      selectedNotice.isRead
+                        ? notificationStyles.readLabel
+                        : notificationStyles.newLabel,
+                    ]}
+                  >
+                    {selectedNotice.isRead ? "READ" : "NEW"}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={backToNotifications}
+                    accessibilityRole="button"
+                  >
+                    <Text style={notificationStyles.readRetryText}>
+                      Back to notifications
+                    </Text>
+                  </TouchableOpacity>
+                </>
               ) : modalMode === "notifications" ? (
-                visibleNotifications.length === 0 ? (
+                noticesLoading && notices.length === 0 ? (
+                  <SkeletonList
+                    label="Loading notifications"
+                    count={4}
+                    avatar={false}
+                    itemStyle={styles.activityCard}
+                  />
+                ) : noticesError ? (
+                  <View style={notificationStyles.readErrorBox}>
+                    <Text style={notificationStyles.readErrorText}>
+                      {noticesError}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => void loadNotices()}
+                      accessibilityRole="button"
+                    >
+                      <Text style={notificationStyles.readRetryText}>
+                        Try again
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : visibleNotifications.length === 0 ? (
                   <View style={styles.emptyPanel}>
                     <Text style={styles.emptyTitle}>
                       {notificationFilter === "UNREAD"
-                        ? "No unread fines"
+                        ? "No unread notifications"
                         : notificationFilter === "READ"
-                          ? "No read fines"
-                          : "No fine notifications"}
+                          ? "No read notifications"
+                          : "No notifications yet"}
                     </Text>
                     <Text style={styles.helper}>
                       {notificationFilter === "UNREAD"
                         ? "You are all caught up."
-                        : "Your fine updates will appear here."}
+                        : "New fines, payments, and cancellations will appear here."}
                     </Text>
                   </View>
                 ) : (
-                  visibleNotifications.map((fine) => (
-                    <TouchableOpacity
-                      key={fine.id}
-                      onPress={() => openFine(fine)}
-                      style={[
-                        styles.activityCard,
-                        !fine.isRead && notificationStyles.unreadActivityCard,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`View ${fine.violationName} fine details`}
-                    >
-                      <View style={notificationStyles.activityTitleRow}>
-                        <Text
-                          style={[
-                            styles.activityTitle,
-                            fine.status === "PAID"
-                              ? styles.greenText
-                              : styles.redText,
-                          ]}
-                        >
-                          {fine.status === "PAID"
-                            ? "Fine marked paid"
-                            : "Fine issued"}
-                        </Text>
-                        <View style={notificationStyles.activityReadState}>
-                          {!fine.isRead && (
-                            <View style={notificationStyles.unreadDot} />
-                          )}
+                  visibleNotifications.map((notice, index) => (
+                    <FadeIn key={notice.id} index={index}>
+                      <TouchableOpacity
+                        onPress={() => void openNotice(notice)}
+                        style={[
+                          styles.activityCard,
+                          !notice.isRead &&
+                            notificationStyles.unreadActivityCard,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${notice.title}. ${notice.isRead ? "Read" : "New"}`}
+                      >
+                        <View style={notificationStyles.activityTitleRow}>
                           <Text
                             style={[
-                              notificationStyles.activityReadText,
-                              fine.isRead
-                                ? notificationStyles.readLabel
-                                : notificationStyles.newLabel,
+                              styles.activityTitle,
+                              notice.notificationType === "PAYMENT"
+                                ? styles.greenText
+                                : notice.title === "New Fine Issued"
+                                  ? styles.redText
+                                  : null,
                             ]}
                           >
-                            {fine.isRead ? "READ" : "NEW"}
+                            {notice.title}
+                          </Text>
+                          <View style={notificationStyles.activityReadState}>
+                            {!notice.isRead && (
+                              <View style={notificationStyles.unreadDot} />
+                            )}
+                            <Text
+                              style={[
+                                notificationStyles.activityReadText,
+                                notice.isRead
+                                  ? notificationStyles.readLabel
+                                  : notificationStyles.newLabel,
+                              ]}
+                            >
+                              {notice.isRead ? "READ" : "NEW"}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.activityDescription}>
+                          {notice.message}
+                        </Text>
+                        <View style={styles.activityFooter}>
+                          <Text style={styles.timestamp}>
+                            {formatNotificationTime(notice.createdAt)}
                           </Text>
                         </View>
-                      </View>
-                      <Text style={styles.activityDescription}>
-                        {fine.violationName}
-                      </Text>
-                      <View style={styles.activityFooter}>
-                        <Text style={styles.timestamp}>
-                          {recordedLabel(fine.recordedAt)}
-                        </Text>
-                        <Text style={styles.activityAmount}>
-                          {money(fine.amountCentavos)}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                    </FadeIn>
                   ))
                 )
               ) : !data ? (
-                <Text style={styles.helper}>
-                  {loading
-                    ? "Loading activities…"
-                    : error || "Activities are currently unavailable."}
-                </Text>
+                loading ? (
+                  <SkeletonList
+                    label="Loading activities"
+                    count={3}
+                    avatar={false}
+                    itemStyle={styles.activityCard}
+                  />
+                ) : (
+                  <Text style={styles.helper}>
+                    {error || "Activities are currently unavailable."}
+                  </Text>
+                )
               ) : activities.length === 0 ? (
                 <View style={styles.emptyPanel}>
                   <Text style={styles.emptyTitle}>No recent activities</Text>
@@ -1015,16 +1420,17 @@ export default function StudentDashboard() {
                   </Text>
                 </View>
               ) : (
-                activities.map((activity) => (
-                  <ActivityCard
-                    key={activity.id}
-                    activity={activity}
-                    isRead={readStatusForActivity(activity)}
-                    onPress={() => openActivity(activity)}
-                  />
+                activities.map((activity, index) => (
+                  <FadeIn key={activity.id} index={index}>
+                    <ActivityCard
+                      activity={activity}
+                      isRead={readStatusForActivity(activity)}
+                      onPress={() => openActivity(activity)}
+                    />
+                  </FadeIn>
                 ))
               )}
-            </ScrollView>
+            </Animated.ScrollView>
 
             <TouchableOpacity
               style={styles.modalCloseButton}
@@ -1033,7 +1439,7 @@ export default function StudentDashboard() {
             >
               <Text style={styles.modalCloseText}>Close</Text>
             </TouchableOpacity>
-          </View>
+          </PopIn>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>

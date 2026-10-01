@@ -150,16 +150,23 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 
+  // Same spacing as the Fines Directory.
   scrollContent: {
     flexGrow: 1,
 
-    paddingHorizontal: 38,
+    paddingHorizontal: 22,
 
-    paddingVertical: 35,
+    paddingVertical: 28,
   },
 
   header: {
-    marginBottom: 35,
+    width: "100%",
+
+    maxWidth: 1220,
+
+    alignSelf: "center",
+
+    marginBottom: 20,
   },
 
   pageTitle: {
@@ -168,6 +175,16 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
 
     color: COLORS.text,
+  },
+
+  pageSubtitle: {
+    color: "#66758B",
+
+    fontFamily: "Poppins_400Regular",
+
+    fontSize: 13,
+
+    marginTop: 5,
   },
 
   // ========================================
@@ -181,6 +198,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.white,
 
     borderRadius: 18,
@@ -213,7 +232,7 @@ export const styles = StyleSheet.create({
   toolbar: {
     width: "100%",
 
-    maxWidth: 1050,
+    maxWidth: 1220,
 
     alignSelf: "center",
 
@@ -225,7 +244,7 @@ export const styles = StyleSheet.create({
 
     gap: 14,
 
-    marginBottom: 35,
+    marginBottom: 18,
 
     zIndex: 100,
   },
@@ -276,6 +295,16 @@ export const styles = StyleSheet.create({
     outlineStyle: "none",
   } as any,
 
+  searchClear: {
+    color: COLORS.muted,
+
+    fontSize: 14,
+
+    fontWeight: "700",
+
+    paddingLeft: 8,
+  },
+
   // ========================================
   // FILTERS
   // ========================================
@@ -295,7 +324,9 @@ export const styles = StyleSheet.create({
   },
 
   filterButton: {
-    minWidth: 125,
+    minWidth: 135,
+
+    maxWidth: 220,
 
     height: 46,
 
@@ -316,7 +347,16 @@ export const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
+  // A chosen grade or section stands out from the defaults.
+  filterButtonActive: {
+    backgroundColor: "#EDF3FA",
+
+    borderWidth: 2,
+  },
+
   filterText: {
+    flexShrink: 1,
+
     color: "#333333",
 
     fontFamily: "Poppins_600SemiBold",
@@ -339,7 +379,7 @@ export const styles = StyleSheet.create({
 
     left: 0,
 
-    minWidth: 150,
+    minWidth: 170,
 
     backgroundColor: COLORS.white,
 
@@ -354,6 +394,22 @@ export const styles = StyleSheet.create({
     zIndex: 1000,
 
     elevation: 10,
+
+    shadowColor: "#000000",
+
+    shadowOpacity: 0.12,
+
+    shadowRadius: 8,
+
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+  },
+
+  // Long section lists scroll inside the menu.
+  filterMenuScroll: {
+    maxHeight: 280,
   },
 
   filterOption: {
@@ -364,6 +420,10 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
 
     borderBottomColor: "#EEEEEE",
+  },
+
+  filterOptionActive: {
+    backgroundColor: "#EDF3FA",
   },
 
   filterOptionText: {
@@ -378,8 +438,13 @@ export const styles = StyleSheet.create({
   // ACTIONS
   // ========================================
 
+  // Shrinks to the screen width so the buttons wrap on phones.
   actionButtons: {
     marginLeft: "auto",
+
+    flexShrink: 1,
+
+    maxWidth: "100%",
 
     flexDirection: "row",
 
@@ -435,13 +500,13 @@ export const styles = StyleSheet.create({
   },
 
   // ========================================
-  // DIRECTORY TABLE
+  // DIRECTORY CARD
   // ========================================
 
   tableCard: {
     width: "100%",
 
-    maxWidth: 1050,
+    maxWidth: 1220,
 
     minHeight: 470,
 
@@ -449,19 +514,182 @@ export const styles = StyleSheet.create({
 
     backgroundColor: COLORS.white,
 
+    borderWidth: 1,
+
+    borderColor: "#DFE5EC",
+
     borderRadius: 14,
 
-    overflow: "visible",
+    overflow: "hidden",
+  },
+
+  tableIntro: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    justifyContent: "space-between",
+
+    alignItems: "center",
+
+    gap: 10,
+
+    paddingHorizontal: 18,
+
+    paddingTop: 16,
+
+    paddingBottom: 10,
+  },
+
+  tableIntroText: {
+    flexShrink: 1,
+  },
+
+  tableIntroTitle: {
+    color: COLORS.navy,
+
+    fontSize: 16,
+
+    fontWeight: "800",
+  },
+
+  tableIntroSubtitle: {
+    color: "#6B7788",
+
+    fontFamily: "Poppins_400Regular",
+
+    fontSize: 11,
+
+    marginTop: 3,
+  },
+
+  tableIntroActions: {
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    gap: 12,
+
+    marginLeft: "auto",
+  },
+
+  clearFiltersText: {
+    color: COLORS.navy,
+
+    fontFamily: "Poppins_600SemiBold",
+
+    fontSize: 12,
+
+    textDecorationLine: "underline",
+  },
+
+  resultCount: {
+    color: COLORS.navy,
+
+    fontSize: 11,
+
+    fontWeight: "700",
+
+    backgroundColor: "#EDF3FA",
+
+    borderRadius: 20,
+
+    overflow: "hidden",
+
+    paddingHorizontal: 10,
+
+    paddingVertical: 5,
+  },
+
+  // ========================================
+  // VIEW CHIPS
+  // ========================================
+
+  viewChips: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    gap: 8,
+
+    paddingHorizontal: 18,
+
+    paddingBottom: 14,
+  },
+
+  viewChip: {
+    paddingHorizontal: 13,
+
+    paddingVertical: 7,
+
+    borderRadius: 16,
+
+    borderWidth: 1,
+
+    borderColor: "#D3D7DD",
+
+    backgroundColor: COLORS.white,
+  },
+
+  viewChipActive: {
+    backgroundColor: COLORS.navy,
+
+    borderColor: COLORS.navy,
+  },
+
+  viewChipText: {
+    color: COLORS.navy,
+
+    fontSize: 11,
+
+    fontWeight: "700",
+  },
+
+  viewChipTextActive: {
+    color: COLORS.white,
+  },
+
+  refreshError: {
+    marginHorizontal: 18,
+
+    marginBottom: 12,
+
+    color: "#9A5B00",
+
+    backgroundColor: COLORS.lightOrange,
+
+    borderRadius: 8,
+
+    overflow: "hidden",
+
+    paddingHorizontal: 12,
+
+    paddingVertical: 8,
+
+    fontFamily: "Poppins_400Regular",
+
+    fontSize: 12,
+  },
+
+  // ========================================
+  // WIDE TABLE
+  // ========================================
+
+  // Fills the card on wide screens; scrolls sideways only if squeezed.
+  tableScrollContent: {
+    flexGrow: 1,
   },
 
   table: {
-    minWidth: 1000,
+    flex: 1,
 
-    width: "100%",
+    minWidth: 700,
   },
 
   tableHeader: {
-    minHeight: 55,
+    minHeight: 50,
+
+    marginHorizontal: 10,
 
     backgroundColor: COLORS.navy,
 
@@ -469,11 +697,7 @@ export const styles = StyleSheet.create({
 
     alignItems: "center",
 
-    paddingHorizontal: 10,
-
-    borderTopLeftRadius: 14,
-
-    borderTopRightRadius: 14,
+    borderRadius: 10,
   },
 
   headerCell: {
@@ -494,34 +718,34 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  studentIdColumn: {
-    width: 120,
-  },
-
   nameColumn: {
-    width: 200,
+    flex: 2.4,
   },
 
   gradeSectionColumn: {
-    width: 180,
+    flex: 1.5,
   },
 
-  totalColumn: {
-    width: 120,
-  },
+  moneyColumn: {
+    flex: 1,
 
-  balanceColumn: {
-    width: 190,
+    textAlign: "right",
   },
 
   statusColumn: {
-    width: 105,
+    width: 110,
+
+    alignItems: "center",
 
     textAlign: "center",
   },
 
+  chevronColumn: {
+    width: 26,
+  },
+
   studentRow: {
-    minHeight: 62,
+    minHeight: 64,
 
     marginHorizontal: 10,
 
@@ -531,7 +755,7 @@ export const styles = StyleSheet.create({
 
     borderWidth: 1,
 
-    borderColor: "#444444",
+    borderColor: "#D7DEE8",
 
     borderRadius: 10,
 
@@ -553,7 +777,7 @@ export const styles = StyleSheet.create({
   rowMain: {
     flex: 1,
 
-    minHeight: 60,
+    minHeight: 62,
 
     flexDirection: "row",
 
@@ -570,10 +794,206 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
 
+  mutedCell: {
+    color: COLORS.muted,
+
+    fontStyle: "italic",
+  },
+
+  studentCell: {
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    gap: 10,
+
+    paddingHorizontal: 8,
+
+    paddingVertical: 10,
+  },
+
+  studentText: {
+    flex: 1,
+
+    minWidth: 0,
+  },
+
   studentName: {
     color: "#333333",
 
     fontFamily: "Poppins_600SemiBold",
+
+    fontSize: 13,
+  },
+
+  studentMeta: {
+    color: COLORS.muted,
+
+    fontFamily: "Poppins_400Regular",
+
+    fontSize: 11,
+
+    marginTop: 2,
+  },
+
+  rowChevron: {
+    color: "#A0AAB8",
+
+    fontSize: 20,
+
+    fontWeight: "700",
+
+    textAlign: "center",
+  },
+
+  // ========================================
+  // AVATAR
+  // ========================================
+
+  avatar: {
+    width: 38,
+
+    height: 38,
+
+    borderRadius: 19,
+
+    backgroundColor: "#E6F0FC",
+
+    alignItems: "center",
+
+    justifyContent: "center",
+
+    overflow: "hidden",
+  },
+
+  avatarText: {
+    color: COLORS.navy,
+
+    fontFamily: "Poppins_700Bold",
+
+    fontSize: 13,
+  },
+
+  // ========================================
+  // STATUS CHIPS
+  // ========================================
+
+  statusChip: {
+    alignSelf: "center",
+
+    paddingHorizontal: 10,
+
+    paddingVertical: 4,
+
+    borderRadius: 20,
+  },
+
+  statusChipActive: {
+    backgroundColor: "#E7F8EA",
+  },
+
+  statusChipInactive: {
+    backgroundColor: "#FFEAEA",
+  },
+
+  statusChipOther: {
+    backgroundColor: "#ECEFF4",
+  },
+
+  statusChipText: {
+    fontFamily: "Poppins_700Bold",
+
+    fontSize: 11,
+  },
+
+  statusChipTextActive: {
+    color: "#2E9D43",
+  },
+
+  statusChipTextInactive: {
+    color: "#D32F2F",
+  },
+
+  statusChipTextOther: {
+    color: "#606775",
+  },
+
+  // ========================================
+  // COMPACT LIST (phones, portrait tablets)
+  // ========================================
+
+  compactList: {
+    paddingHorizontal: 10,
+
+    gap: 10,
+  },
+
+  compactRow: {
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    backgroundColor: COLORS.white,
+
+    borderWidth: 1,
+
+    borderColor: "#D7DEE8",
+
+    borderRadius: 10,
+
+    paddingLeft: 10,
+
+    overflow: "hidden",
+  },
+
+  compactSelectSlot: {
+    width: 30,
+
+    alignItems: "flex-start",
+
+    justifyContent: "center",
+  },
+
+  compactMain: {
+    flex: 1,
+
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    gap: 10,
+
+    paddingVertical: 12,
+
+    paddingRight: 8,
+  },
+
+  compactText: {
+    flex: 1,
+
+    minWidth: 0,
+  },
+
+  compactTitleRow: {
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    gap: 8,
+  },
+
+  compactName: {
+    flexShrink: 1,
+  },
+
+  compactMoney: {
+    color: "#5E6776",
+
+    fontFamily: "Poppins_400Regular",
+
+    fontSize: 12,
+
+    marginTop: 4,
   },
 
   // ========================================
@@ -611,32 +1031,12 @@ export const styles = StyleSheet.create({
     color: "#666666",
   },
 
-  statusActive: {
-    color: COLORS.green,
-
-    fontFamily: "Poppins_700Bold",
-  },
-
-  statusInactive: {
-    color: COLORS.red,
-
-    fontFamily: "Poppins_700Bold",
-  },
-
-  statusOther: {
-    color: "#666666",
-
-    fontFamily: "Poppins_700Bold",
-  },
-
   // ========================================
   // TABLE FOOTER
   // ========================================
 
   tableFooter: {
     marginTop: "auto",
-
-    minHeight: 95,
 
     flexDirection: "row",
 
@@ -648,11 +1048,17 @@ export const styles = StyleSheet.create({
 
     gap: 15,
 
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
 
-    paddingTop: 25,
+    paddingTop: 22,
 
-    paddingBottom: 15,
+    paddingBottom: 10,
+  },
+
+  footerInfo: {
+    flexShrink: 1,
+
+    gap: 5,
   },
 
   totalStudentsText: {
@@ -663,14 +1069,32 @@ export const styles = StyleSheet.create({
     fontSize: 13,
   },
 
+  selectionRow: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    alignItems: "center",
+
+    gap: 12,
+  },
+
   selectedStudentText: {
     color: COLORS.red,
 
     fontFamily: "Poppins_600SemiBold",
 
     fontSize: 11,
+  },
 
-    marginTop: 5,
+  clearSelectionText: {
+    color: COLORS.navy,
+
+    fontFamily: "Poppins_600SemiBold",
+
+    fontSize: 11,
+
+    textDecorationLine: "underline",
   },
 
   deleteButton: {
@@ -710,7 +1134,7 @@ export const styles = StyleSheet.create({
 
     textAlign: "right",
 
-    paddingRight: 24,
+    paddingHorizontal: 20,
 
     paddingBottom: 18,
   },
@@ -767,12 +1191,24 @@ export const styles = StyleSheet.create({
     fontFamily: "Poppins_700Bold",
   },
 
-  emptyRow: {
-    minHeight: 220,
+  emptyState: {
+    minHeight: 260,
 
     alignItems: "center",
 
     justifyContent: "center",
+
+    paddingHorizontal: 24,
+  },
+
+  emptyTitle: {
+    color: COLORS.navy,
+
+    fontSize: 18,
+
+    fontWeight: "800",
+
+    textAlign: "center",
   },
 
   emptyText: {
@@ -780,7 +1216,36 @@ export const styles = StyleSheet.create({
 
     fontFamily: "Poppins_400Regular",
 
-    fontSize: 14,
+    fontSize: 13,
+
+    marginTop: 7,
+
+    textAlign: "center",
+  },
+
+  // "Show all students" when filters leave the list empty.
+  emptyResetButton: {
+    marginTop: 16,
+
+    minHeight: 40,
+
+    paddingHorizontal: 20,
+
+    borderRadius: 8,
+
+    backgroundColor: COLORS.navy,
+
+    alignItems: "center",
+
+    justifyContent: "center",
+  },
+
+  emptyResetText: {
+    color: COLORS.white,
+
+    fontSize: 12,
+
+    fontWeight: "800",
   },
 
   // ========================================

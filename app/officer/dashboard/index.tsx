@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-  ActivityIndicator,
+  Animated,
   Image,
   Modal,
   RefreshControl,
@@ -19,9 +19,29 @@ import { StatusBar } from "expo-status-bar";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  FadeIn,
+  PopIn,
+  TabIndicator,
+  useSwitchFade,
+} from "@/components/motion";
+import {
+  Skeleton,
+  SkeletonDetails,
+  SkeletonList,
+} from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 
 import { useResponsiveStyles } from "./dashboard-styles";
+import {
+  HomeTabBadge,
+  NotificationBadge,
+} from "@/components/notification-badge";
+import {
+  formatNotificationTime,
+  markNotificationRead,
+  useNotificationCounts,
+} from "@/hooks/use-notification-counts";
 
 // ==========================================
 // TYPES
@@ -57,6 +77,30 @@ type DashboardResponse = {
   activities?: FineActivity[];
 };
 
+type Notice = {
+  id: number;
+  notificationType: "FINE" | "PAYMENT" | "SYSTEM" | "ACCOUNT";
+  title: string;
+  message: string;
+  fineId: number | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+// The fine a notification links to (GET /api/fines/:id).
+type NoticeFine = {
+  id: number;
+  fine_reference: string;
+  student_name: string;
+  student_number: string | null;
+  violation_name: string;
+  amount_centavos: number;
+  status: "UNPAID" | "PAID" | "CANCELLED";
+  paid_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+};
+
 type NavigationItem = {
   label: string;
   icon: any;
@@ -80,6 +124,8 @@ const icons = {
   records: require("../../../assets/icons/reports.png"),
 
   back: require("../../../assets/icons/back_icon.png"),
+
+  notification: require("../../../assets/icons/notification.png"),
 };
 
 // ==========================================
@@ -325,6 +371,153 @@ export default function OfficerDashboard() {
   const [showAllActivities, setShowAllActivities] = useState(false);
 
   // ========================================
+  // NOTIFICATIONS
+  // ========================================
+
+  const counts = useNotificationCounts();
+
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const [notices, setNotices] = useState<Notice[]>([]);
+
+  const [noticesLoading, setNoticesLoading] = useState(false);
+
+  const [noticesError, setNoticesError] = useState("");
+
+  const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+
+  const [noticeFine, setNoticeFine] = useState<NoticeFine | null>(null);
+
+  const [noticeLoading, setNoticeLoading] = useState(false);
+
+  const [noticeError, setNoticeError] = useState("");
+
+  const loadNotices = async () => {
+    setNoticesLoading(true);
+    setNoticesError("");
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Please log in again.");
+      }
+
+      const response = await fetch(`${API_BASE}/api/notifications?limit=50`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
+
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok || !body?.success || !Array.isArray(body.notifications)) {
+        throw new Error(body?.message || "Could not load notifications.");
+      }
+
+      setNotices(body.notifications as Notice[]);
+    } catch (caught) {
+      setNoticesError(
+        caught instanceof Error ? caught.message : "Could not load notifications.",
+      );
+    } finally {
+      setNoticesLoading(false);
+    }
+  };
+
+  const openNotifications = () => {
+    setSelectedNotice(null);
+    setNoticeFine(null);
+    setNoticeError("");
+    setShowNotifications(true);
+    void loadNotices();
+  };
+
+  const closeNotifications = () => {
+    setShowNotifications(false);
+    setSelectedNotice(null);
+    setNoticeFine(null);
+    setNoticeError("");
+  };
+
+  const backToNotices = () => {
+    setSelectedNotice(null);
+    setNoticeFine(null);
+    setNoticeError("");
+  };
+
+  // Opens the linked fine; only after it loads is this one notice marked read.
+  const openNotice = async (notice: Notice) => {
+    setSelectedNotice(notice);
+    setNoticeFine(null);
+    setNoticeError("");
+
+    if (!notice.fineId) {
+      setNoticeError("This notification has no fine to show. It stays unread.");
+      return;
+    }
+
+    setNoticeLoading(true);
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      const response = await fetch(`${API_BASE}/api/fines/${notice.fineId}`, {
+        headers: {
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
+
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok || !body?.success || !body.fine) {
+        throw new Error(body?.message || "This fine could not be loaded.");
+      }
+
+      setNoticeFine(body.fine as NoticeFine);
+    } catch (caught) {
+      setNoticeError(
+        `${caught instanceof Error ? caught.message : "This fine could not be loaded."} The notification stays unread.`,
+      );
+      return;
+    } finally {
+      setNoticeLoading(false);
+    }
+
+    if (notice.isRead) return;
+
+    try {
+      await markNotificationRead(notice.id);
+
+      setNotices((current) =>
+        current.map((item) =>
+          item.id === notice.id ? { ...item, isRead: true } : item,
+        ),
+      );
+      setSelectedNotice((current) =>
+        current?.id === notice.id ? { ...current, isRead: true } : current,
+      );
+    } catch (caught) {
+      setNoticeError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not mark the notification read.",
+      );
+    }
+  };
+
+  const noticeFineStatus = (fine: NoticeFine) =>
+    fine.status === "CANCELLED"
+      ? "Cancelled"
+      : fine.status === "PAID"
+        ? "Paid"
+        : "Unpaid";
+
+  // ========================================
   // LOAD DASHBOARD
   // ========================================
 
@@ -459,6 +652,9 @@ export default function OfficerDashboard() {
 
   const recentActivities = activities.slice(0, 3);
 
+  // The notifications pop-up fades in again when it opens a notice.
+  const noticeFade = useSwitchFade(selectedNotice?.id ?? "list");
+
   const officerName = officer?.fullName || officer?.username || "Fines Officer";
 
   // ========================================
@@ -540,6 +736,21 @@ export default function OfficerDashboard() {
                 {officer ? `Officer ${officerName}` : "Fines Officer"}
               </Text>
             </View>
+
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={openNotifications}
+              accessibilityRole="button"
+              accessibilityLabel="View notifications"
+            >
+              <Image
+                source={icons.notification}
+                style={styles.notificationIcon}
+                resizeMode="contain"
+              />
+
+              <NotificationBadge count={counts.total} variant="bell" />
+            </TouchableOpacity>
           </View>
 
           {/* =================================
@@ -577,50 +788,56 @@ export default function OfficerDashboard() {
           ) : null}
 
           {/* =================================
-              INITIAL LOADING
-          ================================= */}
-
-          {loading && !data ? (
-            <View style={styles.loadingPanel}>
-              <ActivityIndicator size="large" color="#173A73" />
-
-              <Text style={styles.helper}>Loading your dashboard…</Text>
-            </View>
-          ) : null}
-
-          {/* =================================
               TOTAL STUDENTS
+              (values pulse until the first load finishes)
           ================================= */}
 
-          <View style={styles.totalCard}>
+          <FadeIn style={styles.totalCard}>
             <Text style={styles.cardLabel}>Total Students</Text>
 
-            <Text style={styles.totalValue}>
-              {stats ? stats.totalStudents.toLocaleString("en-PH") : "—"}
-            </Text>
-          </View>
+            {loading && !data ? (
+              <Skeleton
+                width={90}
+                height={34}
+                radius={8}
+                style={styles.valueSkeleton}
+              />
+            ) : (
+              <Text style={styles.totalValue}>
+                {stats ? stats.totalStudents.toLocaleString("en-PH") : "—"}
+              </Text>
+            )}
+          </FadeIn>
 
           {/* =================================
               FINES SUMMARY
           ================================= */}
 
-          <View style={styles.summaryRow}>
+          <FadeIn style={styles.summaryRow} delay={80}>
             <View style={styles.smallCard}>
               <Text style={styles.smallLabel}>Fines Recorded</Text>
 
-              <Text style={styles.countValue}>
-                {stats ? stats.finesRecorded.toLocaleString("en-PH") : "—"}
-              </Text>
+              {loading && !data ? (
+                <Skeleton width={56} height={26} radius={8} />
+              ) : (
+                <Text style={styles.countValue}>
+                  {stats ? stats.finesRecorded.toLocaleString("en-PH") : "—"}
+                </Text>
+              )}
             </View>
 
             <View style={styles.smallCard}>
               <Text style={styles.smallLabel}>Today’s Fines</Text>
 
-              <Text style={styles.moneyValue}>
-                {stats ? money(stats.todayAmountCentavos) : "—"}
-              </Text>
+              {loading && !data ? (
+                <Skeleton width={96} height={26} radius={8} />
+              ) : (
+                <Text style={styles.moneyValue}>
+                  {stats ? money(stats.todayAmountCentavos) : "—"}
+                </Text>
+              )}
             </View>
-          </View>
+          </FadeIn>
 
           {/* =================================
               RECENT ACTIVITIES
@@ -628,18 +845,28 @@ export default function OfficerDashboard() {
 
           <Text style={styles.sectionTitle}>Recent Activities</Text>
 
+          {loading && !data ? (
+            <SkeletonList
+              label="Loading recent activities"
+              count={3}
+              itemStyle={styles.activityCard}
+            />
+          ) : null}
+
           {data && activities.length === 0 ? (
-            <View style={styles.emptyPanel}>
+            <FadeIn style={styles.emptyPanel}>
               <Text style={styles.emptyTitle}>No recorded fines yet</Text>
 
               <Text style={styles.helper}>
                 Fines you record will appear here.
               </Text>
-            </View>
+            </FadeIn>
           ) : null}
 
-          {recentActivities.map((activity) => (
-            <ActivityCard key={activity.id} activity={activity} />
+          {recentActivities.map((activity, index) => (
+            <FadeIn key={activity.id} index={index}>
+              <ActivityCard activity={activity} />
+            </FadeIn>
           ))}
 
           {/* =================================
@@ -709,13 +936,12 @@ export default function OfficerDashboard() {
                   >
                     {item.label}
                   </Text>
+                  <HomeTabBadge label={item.label} />
 
-                  <View
-                    style={[
-                      styles.activeIndicator,
-
-                      !active && styles.hiddenIndicator,
-                    ]}
+                  <TabIndicator
+                    active={active}
+                    style={styles.activeIndicator}
+                    hiddenStyle={styles.hiddenIndicator}
                   />
                 </TouchableOpacity>
               );
@@ -736,7 +962,7 @@ export default function OfficerDashboard() {
         onRequestClose={() => setShowAllActivities(false)}
       >
         <View style={styles.modalBackdrop}>
-          <SafeAreaView style={styles.modalCard}>
+          <PopIn style={styles.modalCard}>
             {/* MODAL HEADER */}
 
             <View style={styles.modalHeader}>
@@ -783,12 +1009,244 @@ export default function OfficerDashboard() {
                   </Text>
                 </View>
               ) : (
-                activities.map((activity) => (
-                  <ActivityCard key={activity.id} activity={activity} />
+                activities.map((activity, index) => (
+                  <FadeIn key={activity.id} index={index}>
+                    <ActivityCard activity={activity} />
+                  </FadeIn>
                 ))
               )}
             </ScrollView>
-          </SafeAreaView>
+          </PopIn>
+        </View>
+      </Modal>
+
+      {/* ======================================
+          NOTIFICATIONS MODAL
+      ====================================== */}
+
+      <Modal
+        visible={showNotifications}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={selectedNotice ? backToNotices : closeNotifications}
+      >
+        <View style={styles.modalBackdrop}>
+          <PopIn style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.modalBackButton}
+                onPress={selectedNotice ? backToNotices : closeNotifications}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  selectedNotice ? "Back to notifications" : "Close notifications"
+                }
+              >
+                <Image
+                  source={icons.back}
+                  style={styles.modalBackIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+
+              <View style={styles.modalTitleArea}>
+                <Text style={styles.modalTitle}>
+                  {selectedNotice ? "Notification" : "Notifications"}
+                </Text>
+
+                <Text style={styles.modalSubtitle}>
+                  {selectedNotice
+                    ? "The fine this notification is about"
+                    : counts.total > 0
+                      ? `${counts.total} unread`
+                      : "Updates on fines you recorded"}
+                </Text>
+              </View>
+
+              <View style={styles.modalHeaderSpacer} />
+            </View>
+
+            {/* Fades in again when moving between the list and a notice. */}
+            <Animated.ScrollView
+              style={[styles.modalScroll, noticeFade]}
+              contentContainerStyle={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {selectedNotice ? (
+                <>
+                  <View style={styles.noticeTitleRow}>
+                    <Text style={styles.noticeTitle}>{selectedNotice.title}</Text>
+
+                    <Text
+                      style={
+                        selectedNotice.isRead
+                          ? styles.noticeReadLabel
+                          : styles.noticeNewLabel
+                      }
+                    >
+                      {selectedNotice.isRead ? "READ" : "NEW"}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.noticeMessage}>
+                    {selectedNotice.message}
+                  </Text>
+
+                  <Text style={styles.timestamp}>
+                    {formatNotificationTime(selectedNotice.createdAt)}
+                  </Text>
+
+                  {noticeLoading ? (
+                    <SkeletonDetails label="Loading the fine" rows={5} />
+                  ) : noticeFine ? (
+                    <View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Reference</Text>
+                        <Text style={styles.detailValue}>
+                          {noticeFine.fine_reference}
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Student</Text>
+                        <Text style={styles.detailValue}>
+                          {noticeFine.student_name}
+                          {noticeFine.student_number
+                            ? ` (${noticeFine.student_number})`
+                            : ""}
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Violation</Text>
+                        <Text style={styles.detailValue}>
+                          {noticeFine.violation_name}
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Amount</Text>
+                        <Text style={styles.detailValue}>
+                          {money(noticeFine.amount_centavos)}
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Status</Text>
+                        <Text style={styles.detailValue}>
+                          {noticeFineStatus(noticeFine)}
+                        </Text>
+                      </View>
+
+                      {noticeFine.paid_at && noticeFine.status === "PAID" && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Paid</Text>
+                          <Text style={styles.detailValue}>
+                            {formatNotificationTime(noticeFine.paid_at)}
+                          </Text>
+                        </View>
+                      )}
+
+                      {noticeFine.cancelled_at && (
+                        <>
+                          <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Cancelled</Text>
+                            <Text style={styles.detailValue}>
+                              {formatNotificationTime(noticeFine.cancelled_at)}
+                            </Text>
+                          </View>
+
+                          <View style={styles.detailRow}>
+                            <Text style={styles.detailLabel}>Reason</Text>
+                            <Text style={styles.detailValue}>
+                              {noticeFine.cancellation_reason ||
+                                "No reason provided."}
+                            </Text>
+                          </View>
+                        </>
+                      )}
+                    </View>
+                  ) : null}
+
+                  {!!noticeError && (
+                    <Text style={styles.noticeError} accessibilityRole="alert">
+                      {noticeError}
+                    </Text>
+                  )}
+
+                  {!!noticeError && !!selectedNotice.fineId && (
+                    <TouchableOpacity
+                      onPress={() => void openNotice(selectedNotice)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.noticeLink}>Try again</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : noticesLoading && notices.length === 0 ? (
+                <SkeletonList
+                  label="Loading notifications"
+                  count={4}
+                  avatar={false}
+                  itemStyle={styles.noticeCard}
+                />
+              ) : noticesError ? (
+                <View style={styles.modalEmptyPanel}>
+                  <Text style={styles.noticeError}>{noticesError}</Text>
+
+                  <TouchableOpacity
+                    onPress={() => void loadNotices()}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.noticeLink}>Try again</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : notices.length === 0 ? (
+                <View style={styles.modalEmptyPanel}>
+                  <Text style={styles.emptyTitle}>No notifications yet</Text>
+
+                  <Text style={styles.helper}>
+                    You will be told when a fine you recorded is paid or
+                    cancelled.
+                  </Text>
+                </View>
+              ) : (
+                notices.map((notice, index) => (
+                  <FadeIn key={notice.id} index={index}>
+                    <TouchableOpacity
+                      style={[
+                        styles.noticeCard,
+                        !notice.isRead && styles.noticeUnread,
+                      ]}
+                      onPress={() => void openNotice(notice)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${notice.title}. ${notice.isRead ? "Read" : "New"}`}
+                    >
+                      <View style={styles.noticeTitleRow}>
+                        <Text style={styles.noticeTitle}>{notice.title}</Text>
+
+                        <Text
+                          style={
+                            notice.isRead
+                              ? styles.noticeReadLabel
+                              : styles.noticeNewLabel
+                          }
+                        >
+                          {notice.isRead ? "READ" : "NEW"}
+                        </Text>
+                      </View>
+
+                      <Text style={styles.noticeMessage}>{notice.message}</Text>
+
+                      <Text style={styles.timestamp}>
+                        {formatNotificationTime(notice.createdAt)}
+                      </Text>
+                    </TouchableOpacity>
+                  </FadeIn>
+                ))
+              )}
+            </Animated.ScrollView>
+          </PopIn>
         </View>
       </Modal>
     </SafeAreaView>

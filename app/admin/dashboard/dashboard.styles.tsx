@@ -133,22 +133,6 @@ export const styles = StyleSheet.create({
     color: COLORS.white,
   },
 
-  navBadge: {
-    marginLeft: "auto",
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 5,
-    borderRadius: 11,
-    backgroundColor: COLORS.red,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navBadgeText: {
-    color: COLORS.white,
-    fontSize: 11,
-    fontWeight: "700",
-    textAlign: "center",
-  },
     logoutButton: {
     marginTop: "auto",
 
@@ -191,12 +175,18 @@ export const styles = StyleSheet.create({
   // HEADER
   // ==========================================
 
+  // Wraps on phones so the profile moves under the title instead of
+  // running off the screen.
   header: {
     flexDirection: "row",
+
+    flexWrap: "wrap",
 
     justifyContent: "space-between",
 
     alignItems: "center",
+
+    gap: 12,
 
     marginBottom: 32,
   },
@@ -221,6 +211,8 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
 
     alignItems: "center",
+
+    marginLeft: "auto",
   },
 
   profileTextArea: {
@@ -300,15 +292,6 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
 
-  mobileNavBadge: {
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    backgroundColor: COLORS.red,
-    alignItems: "center",
-    justifyContent: "center",
-  },
     mobileNavItemActive: {
     backgroundColor: COLORS.green,
   },
@@ -329,121 +312,9 @@ export const styles = StyleSheet.create({
   // SUMMARY CARDS
   // ==========================================
 
-  cardsContainer: {
-    flexDirection: "row",
-
-    flexWrap: "wrap",
-
-    gap: 16,
-
-    justifyContent: "space-between",
-
-    marginBottom: 24,
-  },
-
-  summaryCard: {
-    flexGrow: 1,
-
-    flexBasis: 170,
-
-    minWidth: 150,
-
-    minHeight: 132,
-
-    backgroundColor: COLORS.white,
-
-    borderWidth: 1,
-
-    borderColor: "#DCE4ED",
-
-    borderRadius: 14,
-
-    paddingHorizontal: 18,
-
-    paddingVertical: 18,
-
-    justifyContent: "space-between",
-
-    borderTopWidth: 4,
-
-    shadowColor: COLORS.navyDark,
-
-    shadowOffset: { width: 0, height: 3 },
-
-    shadowOpacity: 0.05,
-
-    shadowRadius: 8,
-
-    elevation: 2,
-  },
-
-  cardSuccess: {
-    borderTopColor: COLORS.green,
-  },
-
-  cardDanger: {
-    borderTopColor: COLORS.red,
-  },
-
-  cardMoney: {
-    borderTopColor: COLORS.navy,
-  },
-
-  cardLabel: {
-    color: COLORS.text,
-
-    fontSize: 13,
-
-    fontWeight: "700",
-  },
-
-  cardValue: {
-    textAlign: "left",
-
-    fontSize: 30,
-
-    fontWeight: "800",
-
-    marginTop: 12,
-  },
-
-  valueSuccess: {
-    color: "#00B72A",
-  },
-
-  valueDanger: {
-    color: COLORS.red,
-  },
-
-  valueMoney: {
-    color: "#00B72A",
-  },
-
   // ==========================================
   // SUMMARY CARD LOADING
   // ==========================================
-
-  cardLoadingArea: {
-    flex: 1,
-
-    minHeight: 55,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    marginTop: 10,
-  },
-
-  cardLoadingText: {
-    marginTop: 6,
-
-    color: COLORS.muted,
-
-    fontSize: 10,
-
-    fontWeight: "500",
-  },
 
   // ==========================================
   // RECENT ACTIVITIES
@@ -523,81 +394,6 @@ export const styles = StyleSheet.create({
     alignItems: "center",
 
     justifyContent: "space-between",
-  },
-
-  activityDetailContent: {
-    gap: 0,
-  },
-
-  activityDetailSummary: {
-    backgroundColor: "#F5F7FA",
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    marginBottom: 12,
-  },
-
-  activityDetailBadge: {
-    alignSelf: "flex-start",
-    overflow: "hidden",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    fontSize: 11,
-    fontWeight: "700",
-    marginBottom: 14,
-  },
-
-  activityDetailPaidBadge: {
-    color: "#18833B",
-    backgroundColor: "#E6F7EA",
-  },
-
-  activityDetailFineBadge: {
-    color: "#B42318",
-    backgroundColor: "#FFEDEC",
-  },
-
-  activityDetailName: {
-    color: COLORS.text,
-    fontSize: 19,
-    fontWeight: "800",
-  },
-
-  activityDetailDescription: {
-    color: "#4D5B6B",
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 5,
-  },
-
-  activityDetailAmount: {
-    fontSize: 24,
-    fontWeight: "800",
-    marginTop: 18,
-  },
-
-  activityDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 14,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E6EBF2",
-  },
-
-  activityDetailLabel: {
-    color: "#7B8795",
-    fontSize: 13,
-  },
-
-  activityDetailValue: {
-    flex: 1,
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "right",
   },
 
   activityTextArea: {
@@ -703,187 +499,245 @@ export const styles = StyleSheet.create({
   },
 
   // ==========================================
-  // ALL ACTIVITIES MODAL
+  // HEADER GREETING
   // ==========================================
 
-  activitiesModalOverlay: {
-    flex: 1,
+  greetingText: {
+    marginTop: 4,
 
-    backgroundColor: "rgba(0, 0, 0, 0.48)",
+    color: COLORS.text,
+
+    fontSize: 14,
+
+    fontWeight: "600",
+  },
+
+  // ==========================================
+  // SUMMARY CARD EXTRAS (tappable cards)
+  // ==========================================
+
+  // The whole card is one touch target; the hint stays at the bottom.
+  statsError: {
+    alignSelf: "flex-start",
+
+    marginBottom: 16,
+  },
+
+  // ==========================================
+  // QUICK ACTIONS
+  // ==========================================
+
+  quickActions: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    gap: 10,
+
+    marginBottom: 24,
+  },
+
+  quickAction: {
+    flexGrow: 1,
+
+    flexBasis: 150,
+
+    flexDirection: "row",
+
+    gap: 8,
+
+    minHeight: 46,
+
+    borderRadius: 10,
+
+    borderWidth: 1,
+
+    borderColor: "#D5DEE9",
+
+    backgroundColor: COLORS.white,
 
     alignItems: "center",
 
     justifyContent: "center",
 
-    paddingHorizontal: 20,
-
-    paddingVertical: 30,
+    paddingHorizontal: 14,
   },
 
-  activitiesModal: {
-    width: "88%",
+  quickActionPrimary: {
+    backgroundColor: COLORS.green,
 
-    maxWidth: 760,
-
-    maxHeight: "82%",
-
-    backgroundColor: COLORS.white,
-
-    borderRadius: 18,
-
-    borderWidth: 1,
-
-    borderColor: COLORS.navy,
-
-    overflow: "hidden",
-
-    shadowColor: "#000000",
-
-    shadowOffset: {
-      width: 0,
-
-      height: 10,
-    },
-
-    shadowOpacity: 0.2,
-
-    shadowRadius: 20,
-
-    elevation: 10,
+    borderColor: COLORS.green,
   },
 
-  activitiesModalHeader: {
-    minHeight: 88,
+  // Icons are single-colour PNGs, tinted to match each button.
+  quickActionIcon: {
+    width: 20,
 
-    flexDirection: "row",
+    height: 20,
 
-    alignItems: "center",
-
-    justifyContent: "space-between",
-
-    paddingHorizontal: 28,
-
-    paddingVertical: 20,
-
-    borderBottomWidth: 1,
-
-    borderBottomColor: "#E5E9EF",
-
-    backgroundColor: COLORS.white,
+    tintColor: COLORS.navy,
   },
 
-  activitiesModalHeaderText: {
-    flex: 1,
-
-    paddingRight: 20,
+  quickActionIconPrimary: {
+    tintColor: COLORS.white,
   },
 
-  activitiesModalTitle: {
-    color: COLORS.text,
+  quickActionText: {
+    color: COLORS.navy,
 
-    fontSize: 20,
+    fontSize: 13,
 
     fontWeight: "800",
   },
 
-  activitiesModalSubtitle: {
-    marginTop: 4,
+  quickActionTextPrimary: {
+    color: COLORS.white,
+  },
 
-    color: COLORS.muted,
+  // ==========================================
+  // ACTIVITY ROWS
+  // ==========================================
+
+  activitySubtitle: {
+    marginTop: 3,
+
+    color: "#7B8795",
 
     fontSize: 11,
   },
 
-  activitiesModalCloseButton: {
-    width: 38,
+  activityChip: {
+    alignSelf: "flex-start",
 
-    height: 38,
+    overflow: "hidden",
 
-    borderRadius: 19,
+    borderRadius: 10,
 
-    backgroundColor: "#EFF3F8",
+    paddingHorizontal: 8,
 
-    alignItems: "center",
+    paddingVertical: 3,
 
-    justifyContent: "center",
+    fontSize: 10,
+
+    fontWeight: "800",
+
+    marginBottom: 5,
   },
 
-  activitiesModalCloseText: {
+  toneRed: { color: "#B42318", backgroundColor: "#FFEDEC" },
+
+  toneAmber: { color: "#9A5B00", backgroundColor: "#FFF1D6" },
+
+  toneGreen: { color: "#18833B", backgroundColor: "#E6F7EA" },
+
+  toneGrey: { color: "#5E6776", backgroundColor: "#ECEFF4" },
+
+  toneBlue: { color: "#1C5FA8", backgroundColor: "#E6F0FC" },
+
+  amountAmber: {
+    color: "#B26A00",
+  },
+
+  amountMuted: {
+    color: COLORS.muted,
+  },
+
+  // ==========================================
+  // ALL ACTIVITIES POP-UP (inside AdminModal)
+  // ==========================================
+
+  filterRow: {
+    flexDirection: "row",
+
+    flexWrap: "wrap",
+
+    gap: 8,
+
+    paddingHorizontal: 22,
+
+    paddingVertical: 12,
+
+    borderBottomWidth: 1,
+
+    borderBottomColor: "#E7ECF2",
+  },
+
+  filterChip: {
+    paddingHorizontal: 13,
+
+    paddingVertical: 7,
+
+    borderRadius: 16,
+
+    borderWidth: 1,
+
+    borderColor: "#D3D7DD",
+
+    backgroundColor: COLORS.white,
+  },
+
+  filterChipActive: {
+    backgroundColor: COLORS.navy,
+
+    borderColor: COLORS.navy,
+  },
+
+  filterChipText: {
     color: COLORS.navy,
 
-    fontSize: 25,
+    fontSize: 11,
 
-    lineHeight: 28,
-
-    fontWeight: "500",
+    fontWeight: "700",
   },
 
-  activitiesModalScroll: {
-    maxHeight: 520,
+  filterChipTextActive: {
+    color: COLORS.white,
   },
 
-  activitiesModalContent: {
-    paddingHorizontal: 28,
-
-    paddingVertical: 22,
-
-    gap: 14,
+  modalList: {
+    flexShrink: 1,
   },
 
-  activitiesModalEmptyText: {
-    color: COLORS.muted,
+  modalListContent: {
+    gap: 10,
 
-    fontSize: 13,
-
-    textAlign: "center",
-
-    paddingVertical: 40,
+    padding: 18,
   },
 
-  modalLoadingContainer: {
-    minHeight: 220,
+  loadMoreButton: {
+    alignSelf: "center",
 
-    alignItems: "center",
-
-    justifyContent: "center",
-  },
-
-  activitiesModalFooter: {
-    paddingHorizontal: 28,
-
-    paddingVertical: 16,
-
-    alignItems: "flex-end",
-
-    borderTopWidth: 1,
-
-    borderTopColor: "#E5E9EF",
-
-    backgroundColor: "#FAFBFC",
-  },
-
-  activitiesModalDoneButton: {
-    minWidth: 110,
-
-    height: 40,
+    minHeight: 40,
 
     borderRadius: 8,
 
-    backgroundColor: COLORS.navy,
+    backgroundColor: "#EDF3FA",
+
+    paddingHorizontal: 20,
 
     alignItems: "center",
 
     justifyContent: "center",
 
-    paddingHorizontal: 20,
+    marginTop: 6,
   },
 
-  activitiesModalDoneText: {
-    color: COLORS.white,
+  loadMoreText: {
+    color: COLORS.text,
 
-    fontSize: 13,
+    fontSize: 12,
 
-    fontWeight: "700",
+    fontWeight: "800",
+  },
+
+  listFooterText: {
+    color: COLORS.muted,
+
+    fontSize: 11,
+
+    textAlign: "center",
+
+    marginTop: 4,
   },
 });
 

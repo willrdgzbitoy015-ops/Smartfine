@@ -1,4 +1,8 @@
+import { useEffect } from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
+
+import { PopIn } from "@/components/motion";
+import { haptics } from "@/utils/haptics";
 
 import { styles } from "./warningmodal.styles";
 
@@ -17,6 +21,13 @@ export default function WarningModal({
   buttonText = "OK",
   onClose,
 }: WarningModalProps) {
+  // A "needs attention" vibration as the pop-up appears.
+  useEffect(() => {
+    if (visible) {
+      haptics.warning();
+    }
+  }, [visible]);
+
   return (
     <Modal
       visible={visible}
@@ -26,14 +37,14 @@ export default function WarningModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalCard}>
+        <PopIn style={styles.modalCard}>
           {/* ======================================
-              WARNING ICON
+              WARNING ICON (pops in after the card)
           ====================================== */}
 
-          <View style={styles.warningIconContainer}>
+          <PopIn style={styles.warningIconContainer} delay={120} from={0.4}>
             <Text style={styles.warningIcon}>!</Text>
-          </View>
+          </PopIn>
 
           {/* ======================================
               TITLE
@@ -58,7 +69,7 @@ export default function WarningModal({
           >
             <Text style={styles.okButtonText}>{buttonText}</Text>
           </TouchableOpacity>
-        </View>
+        </PopIn>
       </View>
     </Modal>
   );

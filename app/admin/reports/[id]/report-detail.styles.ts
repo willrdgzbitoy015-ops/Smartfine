@@ -151,6 +151,8 @@ export const styles = StyleSheet.create({
   },
 
   mobileNavItem: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
 
     paddingVertical: 9,
@@ -200,16 +202,19 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  // Same back arrow image as the Student Profile screen.
   headerBackIcon: {
-    color: "#173A73",
+    width: 22,
 
-    fontSize: 27,
+    height: 22,
 
-    fontWeight: "700",
+    marginRight: 8,
 
-    marginRight: 5,
-
-    marginTop: -2,
+    transform: [
+      {
+        rotate: "180deg",
+      },
+    ],
   },
 
   headerBackText: {
@@ -591,6 +596,13 @@ export const styles = StyleSheet.create({
   // ========================================
   // STATES
   // ========================================
+
+  // Placeholder while the page loads.
+  skeleton: {
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+  },
 
   centerState: {
     width: "100%",
