@@ -379,6 +379,11 @@ export const styles = StyleSheet.create({
     color: colors.text,
   },
 
+  // Border colour only, so focusing never shifts the layout.
+  inputFocused: {
+    borderColor: "#173A73",
+  },
+
   readOnlyInput: {
     backgroundColor: "#F3F4F6",
     color: colors.muted,

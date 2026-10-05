@@ -89,6 +89,24 @@ function requireAdmin(
     });
   }
 
+  // A deactivated or deleted administrator's session stops working at once.
+  const user = db
+    .prepare('SELECT role, account_status FROM users WHERE id = ?')
+    .get(req.authUser?.userId);
+
+  if (
+    !user ||
+    user.role !== 'ADMIN' ||
+    user.account_status !== 'ACTIVE'
+  ) {
+    return res.status(403).json({
+      success: false,
+      code: 'ADMIN_INACTIVE',
+      message:
+        'This administrator account is no longer active. Please contact another SmartFine administrator.',
+    });
+  }
+
   next();
 }
 

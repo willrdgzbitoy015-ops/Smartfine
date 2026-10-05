@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import {
   ActivityIndicator,
   Image,
@@ -94,7 +95,7 @@ const NOTICE_FILTERS = [
 // FINES DIRECTORY SCREEN
 // ==========================================
 export default function FinesDirectory() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { logout } = useAuth();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;

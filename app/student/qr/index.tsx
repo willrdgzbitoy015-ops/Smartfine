@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import * as Sharing from "expo-sharing";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useRef, useState } from "react";
@@ -59,7 +60,7 @@ const navigation = [
 ];
 
 export default function StudentQRScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { width } = useWindowDimensions();
 
   const [data, setData] = useState<StudentQRData | null>(null);
@@ -82,8 +83,8 @@ export default function StudentQRScreen() {
     const controller = new AbortController();
     requestRef.current = controller;
 
+    // The current QR stays on screen while it refreshes.
     setLoading(true);
-    setData(null);
     setError("");
     setSaveError("");
     setNotice("");
@@ -144,6 +145,8 @@ export default function StudentQRScreen() {
       if (requestRef.current !== controller) return;
       if (controller.signal.aborted && !timedOut) return;
 
+      // A failed refresh never leaves an old QR code available.
+      setData(null);
       setError(
         timedOut
           ? "The server took too long to respond. Please try again."
@@ -373,7 +376,7 @@ export default function StudentQRScreen() {
             Your SmartFine student identification
           </Text>
 
-          {loading ? (
+          {loading && !data ? (
             // Placeholder in the shape of the QR card.
             <SkeletonGroup label="Loading your QR code" style={styles.qrCard}>
               <Skeleton width={130} height={18} />

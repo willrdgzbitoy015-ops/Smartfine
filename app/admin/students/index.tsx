@@ -18,7 +18,8 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -342,7 +343,7 @@ function StatusChip({ status }: { status: string }) {
 // ==========================================
 
 export default function StudentsDirectory() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const { logout } = useAuth();
 

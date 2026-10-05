@@ -15,7 +15,8 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -55,7 +56,7 @@ function profileUrl(uri: string | null): string | null {
 
 export default function OfficerQRScanner() {
   const styles = useResponsiveStyles();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const [permission, requestPermission] = useCameraPermissions();
 
   const [focused, setFocused] = useState(false);
@@ -71,6 +72,8 @@ export default function OfficerQRScanner() {
   const [student, setStudent] = useState<Student | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  // The scan line starts only once the camera is actually streaming.
+  const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState("");
 
   const scanLockRef = useRef(false);
@@ -330,6 +333,13 @@ export default function OfficerQRScanner() {
     !manualOpen &&
     !cameraError;
 
+  // A camera that is unmounted has to report ready again before scanning.
+  useEffect(() => {
+    if (!showCamera) {
+      setCameraReady(false);
+    }
+  }, [showCamera]);
+
   // ========================================
   // STUDENT IDENTIFIED
   // ========================================
@@ -437,6 +447,7 @@ export default function OfficerQRScanner() {
                 facing="back"
                 barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
                 onBarcodeScanned={handleBarcodeScanned}
+                onCameraReady={() => setCameraReady(true)}
                 onMountError={() =>
                   setCameraError(
                     "The camera could not start. Try again or use Student ID.",
@@ -457,7 +468,7 @@ export default function OfficerQRScanner() {
               </View>
             )}
 
-            <ScanLine active={Boolean(showCamera)} />
+            <ScanLine active={Boolean(showCamera) && cameraReady} />
 
             <View pointerEvents="none" style={styles.frameBorder} />
           </View>

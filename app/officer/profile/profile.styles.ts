@@ -289,6 +289,11 @@ export const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
+  // Border colour only, so focusing never shifts the layout.
+  inputFocused: {
+    borderColor: "#173A73",
+  },
+
   // ==========================================
   // CHANGE PASSWORD PAGE
   // ==========================================

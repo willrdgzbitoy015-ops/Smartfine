@@ -17,7 +17,8 @@ import {
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -27,6 +28,8 @@ import { SkeletonProfile } from "@/components/skeleton";
 import SuccessModal from "@/components/success-modal";
 
 import { API_BASE } from "@/constants/api";
+import { useActionLock } from "@/hooks/use-action-lock";
+import { useFieldFocus } from "@/hooks/use-field-focus";
 import { useAuth } from "@/hooks/use-auth";
 import { haptics } from "@/utils/haptics";
 
@@ -232,7 +235,13 @@ async function profileRequest(
 export default function OfficerProfile() {
   const styles = useResponsiveStyles();
 
-  const router = useRouter();
+  const router = useGuardedRouter();
+
+  // Saving, paying and changing records run once per tap.
+  const runLocked = useActionLock();
+
+  // Highlights the field being typed in.
+  const { focused: focusedField, bind: bindFocus } = useFieldFocus();
 
   const { logout } = useAuth();
 
@@ -463,173 +472,175 @@ export default function OfficerProfile() {
   // SAVE PROFILE
   // ==========================================
 
-  const saveProfile = async () => {
-    if (!draft || busy) {
-      return;
-    }
-
-    const normalizedName = fullNameInput.trim().replace(/\s+/g, " ");
-
-    const originalName = [draft.firstName, draft.middleName, draft.lastName]
-      .filter(Boolean)
-      .join(" ")
-      .trim()
-      .replace(/\s+/g, " ");
-
-    let firstName = draft.firstName;
-
-    let middleName = draft.middleName;
-
-    let lastName = draft.lastName;
-
-    if (normalizedName !== originalName) {
-      const nameParts = normalizedName.split(" ").filter(Boolean);
-
-      if (nameParts.length < 2) {
-        setError("Please enter both your first name and last name.");
-
+  const saveProfile = () =>
+    runLocked(async () => {
+      if (!draft || busy) {
         return;
       }
 
-      firstName = nameParts[0];
+      const normalizedName = fullNameInput.trim().replace(/\s+/g, " ");
 
-      lastName = nameParts[nameParts.length - 1];
+      const originalName = [draft.firstName, draft.middleName, draft.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim()
+        .replace(/\s+/g, " ");
 
-      middleName = nameParts.slice(1, -1).join(" ");
-    }
+      let firstName = draft.firstName;
 
-    setSaving(true);
+      let middleName = draft.middleName;
 
-    setError("");
+      let lastName = draft.lastName;
 
-    const controller = new AbortController();
+      if (normalizedName !== originalName) {
+        const nameParts = normalizedName.split(" ").filter(Boolean);
 
-    const timeout = setTimeout(() => controller.abort(), 15000);
+        if (nameParts.length < 2) {
+          setError("Please enter both your first name and last name.");
 
-    try {
-      const body = await profileRequest(
-        "/me",
-        "PUT",
-        {
-          firstName,
+          return;
+        }
 
-          middleName,
+        firstName = nameParts[0];
 
-          lastName,
+        lastName = nameParts[nameParts.length - 1];
 
-          username: draft.username,
-
-          email: draft.email,
-
-          contactNumber: draft.contactNumber,
-        },
-        controller.signal,
-      );
-
-      if (!body.user) {
-        throw new Error("The server returned no updated profile.");
+        middleName = nameParts.slice(1, -1).join(" ");
       }
 
-      setOfficer(body.user);
+      setSaving(true);
 
-      setDraft(body.user);
+      setError("");
 
-      setFullNameInput(body.user.fullName);
+      const controller = new AbortController();
 
-      setPage("profile");
+      const timeout = setTimeout(() => controller.abort(), 15000);
 
-      await AsyncStorage.setItem("userEmail", body.user.email);
+      try {
+        const body = await profileRequest(
+          "/me",
+          "PUT",
+          {
+            firstName,
 
-      haptics.success();
+            middleName,
 
-      Alert.alert("Success", "Your profile has been updated.");
-    } catch (caught) {
-      haptics.error();
+            lastName,
 
-      setError(
-        controller.signal.aborted
-          ? "The request timed out. Reload your profile to check whether it saved."
-          : caught instanceof Error
-            ? caught.message
-            : "Unable to update your profile.",
-      );
-    } finally {
-      clearTimeout(timeout);
+            username: draft.username,
 
-      setSaving(false);
-    }
-  };
+            email: draft.email,
+
+            contactNumber: draft.contactNumber,
+          },
+          controller.signal,
+        );
+
+        if (!body.user) {
+          throw new Error("The server returned no updated profile.");
+        }
+
+        setOfficer(body.user);
+
+        setDraft(body.user);
+
+        setFullNameInput(body.user.fullName);
+
+        setPage("profile");
+
+        await AsyncStorage.setItem("userEmail", body.user.email);
+
+        haptics.success();
+
+        Alert.alert("Success", "Your profile has been updated.");
+      } catch (caught) {
+        haptics.error();
+
+        setError(
+          controller.signal.aborted
+            ? "The request timed out. Reload your profile to check whether it saved."
+            : caught instanceof Error
+              ? caught.message
+              : "Unable to update your profile.",
+        );
+      } finally {
+        clearTimeout(timeout);
+
+        setSaving(false);
+      }
+    });
 
   // ==========================================
   // SAVE PASSWORD
   // ==========================================
 
-  const savePassword = async () => {
-    if (busy) {
-      return;
-    }
-
-    setError("");
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("Please complete all password fields.");
-
-      return;
-    }
-
-    const passwordError = validatePassword(newPassword);
-
-    if (passwordError) {
-      setError(passwordError);
-
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match.");
-
-      return;
-    }
-
-    setSaving(true);
-
-    const controller = new AbortController();
-
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
-    try {
-      await profileRequest(
-        "/me/password",
-        "PUT",
-        {
-          currentPassword,
-          newPassword,
-          confirmPassword,
-        },
-        controller.signal,
-      );
-
-      clearPasswords();
+  const savePassword = () =>
+    runLocked(async () => {
+      if (busy) {
+        return;
+      }
 
       setError("");
 
-      setPasswordSuccessVisible(true);
-    } catch (caught) {
-      haptics.error();
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        setError("Please complete all password fields.");
 
-      setError(
-        controller.signal.aborted
-          ? "The request timed out. The password may have changed; verify it before retrying."
-          : caught instanceof Error
-            ? caught.message
-            : "Unable to change your password.",
-      );
-    } finally {
-      clearTimeout(timeout);
+        return;
+      }
 
-      setSaving(false);
-    }
-  };
+      const passwordError = validatePassword(newPassword);
+
+      if (passwordError) {
+        setError(passwordError);
+
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        setError("New password and confirmation do not match.");
+
+        return;
+      }
+
+      setSaving(true);
+
+      const controller = new AbortController();
+
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        await profileRequest(
+          "/me/password",
+          "PUT",
+          {
+            currentPassword,
+            newPassword,
+            confirmPassword,
+          },
+          controller.signal,
+        );
+
+        clearPasswords();
+
+        setError("");
+
+        setPasswordSuccessVisible(true);
+      } catch (caught) {
+        haptics.error();
+
+        setError(
+          controller.signal.aborted
+            ? "The request timed out. The password may have changed; verify it before retrying."
+            : caught instanceof Error
+              ? caught.message
+              : "Unable to change your password.",
+        );
+      } finally {
+        clearTimeout(timeout);
+
+        setSaving(false);
+      }
+    });
 
   // ==========================================
   // PASSWORD SUCCESS
@@ -938,8 +949,14 @@ export default function OfficerProfile() {
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
 
-      <View style={styles.passwordInputContainer}>
+      <View
+        style={[
+          styles.passwordInputContainer,
+          focusedField === label && styles.inputFocused,
+        ]}
+      >
         <TextInput
+          {...bindFocus(label)}
           style={styles.passwordInput}
           value={value}
           onChangeText={(text) => {
@@ -1032,7 +1049,9 @@ export default function OfficerProfile() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {loading ? (
+            {/* Placeholders only before the first load; returning to the
+                tab refreshes the profile in place. */}
+            {loading && !officer ? (
               <SkeletonProfile label="Loading your profile" />
             ) : (
               <>
@@ -1189,7 +1208,11 @@ export default function OfficerProfile() {
                       <Text style={styles.label}>Full Name</Text>
 
                       <TextInput
-                        style={styles.input}
+                        {...bindFocus("fullName")}
+                        style={[
+                          styles.input,
+                          focusedField === "fullName" && styles.inputFocused,
+                        ]}
                         value={fullNameInput}
                         onChangeText={(value) => {
                           setFullNameInput(value);
@@ -1213,7 +1236,11 @@ export default function OfficerProfile() {
                         <Text style={styles.label}>{label}</Text>
 
                         <TextInput
-                          style={styles.input}
+                          {...bindFocus(key)}
+                          style={[
+                            styles.input,
+                            focusedField === key && styles.inputFocused,
+                          ]}
                           value={draft[key]}
                           onChangeText={(value) => editField(key, value)}
                           editable={!busy}

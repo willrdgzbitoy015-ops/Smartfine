@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useRef, useState } from "react";
 import * as Linking from "expo-linking";
@@ -18,9 +19,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { FadeIn, PopIn, TabIndicator } from "@/components/motion";
+import {
+  FadeIn,
+  PopIn,
+  TabIndicator,
+  useRetainedValue,
+} from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { useActionLock } from "@/hooks/use-action-lock";
 import { haptics } from "@/utils/haptics";
 import { styles } from "../styles/student-fines.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
@@ -194,7 +201,10 @@ function dateLabel(value: string | null) {
 }
 
 export default function StudentFinesScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
+
+  // Saving, paying and changing records run once per tap.
+  const runLocked = useActionLock();
 
   const [data, setData] = useState<FinesResponse | null>(null);
   const [filter, setFilter] = useState<FineFilter>("UNPAID");
@@ -228,6 +238,12 @@ export default function StudentFinesScreen() {
     title: string;
     message: string;
   } | null>(null);
+
+  // Pop-ups keep showing their record while they fade out.
+  const shownSelectedFine = useRetainedValue(selectedFine);
+  const shownCashFine = useRetainedValue(cashFine);
+  const shownGcashFine = useRetainedValue(gcashFine);
+  const shownCashFeedback = useRetainedValue(cashFeedback);
 
   const requestRef = useRef<AbortController | null>(null);
   const cashRequestRef = useRef<AbortController | null>(null);
@@ -522,36 +538,37 @@ export default function StudentFinesScreen() {
     await confirmOnlinePayment(paymentId);
   };
 
-  const startGcashPayment = async (fine: Fine) => {
-    setGcashFine(null);
-    setStartingGcashFineId(fine.id);
+  const startGcashPayment = (fine: Fine) =>
+    runLocked(async () => {
+      setGcashFine(null);
+      setStartingGcashFineId(fine.id);
 
-    try {
-      const body = await apiRequest("/api/payments/online/checkout", {
-        method: "POST",
-        body: JSON.stringify({
-          fineId: fine.id,
-          returnUrl: Linking.createURL(PAYMENT_RETURN_PATH),
-        }),
-      });
+      try {
+        const body = await apiRequest("/api/payments/online/checkout", {
+          method: "POST",
+          body: JSON.stringify({
+            fineId: fine.id,
+            returnUrl: Linking.createURL(PAYMENT_RETURN_PATH),
+          }),
+        });
 
-      void loadOnlinePayments();
-      setStartingGcashFineId(null);
+        void loadOnlinePayments();
+        setStartingGcashFineId(null);
 
-      await openCheckout(body.checkoutUrl, body.payment.id);
-    } catch (caught) {
-      haptics.error();
-      setCashFeedback({
-        title: "GCash Unavailable",
-        message:
-          caught instanceof Error
-            ? caught.message
-            : "GCash checkout could not be opened. Please try again.",
-      });
-    } finally {
-      setStartingGcashFineId(null);
-    }
-  };
+        await openCheckout(body.checkoutUrl, body.payment.id);
+      } catch (caught) {
+        haptics.error();
+        setCashFeedback({
+          title: "GCash Unavailable",
+          message:
+            caught instanceof Error
+              ? caught.message
+              : "GCash checkout could not be opened. Please try again.",
+        });
+      } finally {
+        setStartingGcashFineId(null);
+      }
+    });
 
   const cancelOnlinePayment = async (payment: OnlinePayment) => {
     setConfirmingPaymentId(payment.id);
@@ -685,78 +702,79 @@ export default function StudentFinesScreen() {
   const outstanding = data?.summary.outstandingAmountCentavos;
   const payable = data?.summary.payableAmountCentavos ?? 0;
 
-  const submitCashRequest = async (fine: Fine) => {
-    if (requestingFineId !== null || fine.status !== "UNPAID") {
-      return;
-    }
-
-    try {
-      setRequestingFineId(fine.id);
-
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        throw new Error("Please sign in again.");
+  const submitCashRequest = (fine: Fine) =>
+    runLocked(async () => {
+      if (requestingFineId !== null || fine.status !== "UNPAID") {
+        return;
       }
 
-      const response = await fetch(`${API_BASE}/api/payments/cash-requests`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify({ fineId: fine.id }),
-      });
+      try {
+        setRequestingFineId(fine.id);
 
-      const body = await response.json();
+        const token = await AsyncStorage.getItem("token");
 
-      if (!response.ok || !body?.success || !body.payment) {
-        throw new Error(body?.message || "Could not save your cash request.");
+        if (!token) {
+          throw new Error("Please sign in again.");
+        }
+
+        const response = await fetch(`${API_BASE}/api/payments/cash-requests`, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify({ fineId: fine.id }),
+        });
+
+        const body = await response.json();
+
+        if (!response.ok || !body?.success || !body.payment) {
+          throw new Error(body?.message || "Could not save your cash request.");
+        }
+
+        const payment: CashRequest = {
+          id: Number(body.payment.id),
+          paymentReference: String(body.payment.paymentReference),
+          fineId: fine.id,
+          fineReference: fine.fineReference,
+          amountCentavos: fine.amountCentavos,
+          status: "PENDING",
+          createdAt: new Date().toISOString(),
+          paidAt: null,
+        };
+
+        setCashRequests((current) => [
+          payment,
+          ...current.filter(
+            (item) => item.fineId !== fine.id || item.status !== "PENDING",
+          ),
+        ]);
+
+        haptics.success();
+        setCashFine(null);
+        setCashFeedback({
+          title: "Cash Request Saved",
+          message:
+            `Bring ${money(fine.amountCentavos)} to the cashier or student treasurer. ` +
+            `Show fine ${fine.fineReference} and payment reference ${payment.paymentReference}. ` +
+            "Your fine stays unpaid until the cash is received and confirmed.",
+        });
+      } catch (caught) {
+        haptics.error();
+        setCashFine(null);
+        setCashFeedback({
+          title: "Request Not Confirmed",
+          message:
+            caught instanceof Error
+              ? caught.message
+              : "Refresh your fines before trying again.",
+        });
+      } finally {
+        setRequestingFineId(null);
       }
-
-      const payment: CashRequest = {
-        id: Number(body.payment.id),
-        paymentReference: String(body.payment.paymentReference),
-        fineId: fine.id,
-        fineReference: fine.fineReference,
-        amountCentavos: fine.amountCentavos,
-        status: "PENDING",
-        createdAt: new Date().toISOString(),
-        paidAt: null,
-      };
-
-      setCashRequests((current) => [
-        payment,
-        ...current.filter(
-          (item) => item.fineId !== fine.id || item.status !== "PENDING",
-        ),
-      ]);
-
-      haptics.success();
-      setCashFine(null);
-      setCashFeedback({
-        title: "Cash Request Saved",
-        message:
-          `Bring ${money(fine.amountCentavos)} to the cashier or student treasurer. ` +
-          `Show fine ${fine.fineReference} and payment reference ${payment.paymentReference}. ` +
-          "Your fine stays unpaid until the cash is received and confirmed.",
-      });
-    } catch (caught) {
-      haptics.error();
-      setCashFine(null);
-      setCashFeedback({
-        title: "Request Not Confirmed",
-        message:
-          caught instanceof Error
-            ? caught.message
-            : "Refresh your fines before trying again.",
-      });
-    } finally {
-      setRequestingFineId(null);
-    }
-  };
+    });
 
   const markFineRead = async (fineId: number) => {
     try {
@@ -1274,43 +1292,43 @@ export default function StudentFinesScreen() {
           <PopIn style={notificationStyles.detailsCard}>
             <Text style={notificationStyles.detailsTitle}>Fine Details</Text>
 
-            {selectedFine && (
+            {shownSelectedFine && (
               <>
                 <Text style={notificationStyles.detailsViolation}>
-                  {selectedFine.violationName}
+                  {shownSelectedFine.violationName}
                 </Text>
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Reference</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {selectedFine.fineReference}
+                    {shownSelectedFine.fineReference}
                   </Text>
                 </View>
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Amount</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {money(selectedFine.amountCentavos)}
+                    {money(shownSelectedFine.amountCentavos)}
                   </Text>
                 </View>
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Status</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {pendingCashRequest(selectedFine.id)
+                    {pendingCashRequest(shownSelectedFine.id)
                       ? "Unpaid — cash requested"
-                      : selectedFine.status}
+                      : shownSelectedFine.status}
                   </Text>
                 </View>
 
-                {pendingCashRequest(selectedFine.id) && (
+                {pendingCashRequest(shownSelectedFine.id) && (
                   <View style={notificationStyles.detailsRow}>
                     <Text style={notificationStyles.detailsLabel}>
                       Cash request
                     </Text>
                     <Text style={notificationStyles.detailsValue}>
                       Pending ·{" "}
-                      {pendingCashRequest(selectedFine.id)?.paymentReference}
+                      {pendingCashRequest(shownSelectedFine.id)?.paymentReference}
                     </Text>
                   </View>
                 )}
@@ -1318,15 +1336,15 @@ export default function StudentFinesScreen() {
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Issued</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {dateLabel(selectedFine.recordedAt)}
+                    {dateLabel(shownSelectedFine.recordedAt)}
                   </Text>
                 </View>
 
-                {selectedFine.paidAt && (
+                {shownSelectedFine.paidAt && (
                   <View style={notificationStyles.detailsRow}>
                     <Text style={notificationStyles.detailsLabel}>Paid</Text>
                     <Text style={notificationStyles.detailsValue}>
-                      {dateLabel(selectedFine.paidAt)}
+                      {dateLabel(shownSelectedFine.paidAt)}
                     </Text>
                   </View>
                 )}
@@ -1334,19 +1352,19 @@ export default function StudentFinesScreen() {
                 <View style={notificationStyles.detailsRemarks}>
                   <Text style={notificationStyles.detailsLabel}>Remarks</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {selectedFine.remarks || "No additional remarks."}
+                    {shownSelectedFine.remarks || "No additional remarks."}
                   </Text>
                 </View>
 
                 <Text
                   style={[
                     notificationStyles.detailsReadStatus,
-                    selectedFine.isRead
+                    shownSelectedFine.isRead
                       ? notificationStyles.readLabel
                       : notificationStyles.newLabel,
                   ]}
                 >
-                  {selectedFine.isRead ? "READ" : "NEW"}
+                  {shownSelectedFine.isRead ? "READ" : "NEW"}
                 </Text>
               </>
             )}
@@ -1376,23 +1394,23 @@ export default function StudentFinesScreen() {
           <PopIn style={notificationStyles.detailsCard}>
             <Text style={notificationStyles.detailsTitle}>Pay at Cashier</Text>
 
-            {cashFine && (
+            {shownCashFine && (
               <>
                 <Text style={notificationStyles.detailsViolation}>
-                  {cashFine.violationName}
+                  {shownCashFine.violationName}
                 </Text>
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Fine</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {cashFine.fineReference}
+                    {shownCashFine.fineReference}
                   </Text>
                 </View>
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Amount</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {money(cashFine.amountCentavos)}
+                    {money(shownCashFine.amountCentavos)}
                   </Text>
                 </View>
 
@@ -1405,11 +1423,13 @@ export default function StudentFinesScreen() {
                 <TouchableOpacity
                   style={notificationStyles.detailsCloseButton}
                   disabled={requestingFineId !== null}
-                  onPress={() => void submitCashRequest(cashFine)}
+                  onPress={() => {
+                    if (cashFine) void submitCashRequest(cashFine);
+                  }}
                   accessibilityRole="button"
                 >
                   <Text style={notificationStyles.detailsCloseText}>
-                    {requestingFineId === cashFine.id
+                    {requestingFineId === shownCashFine.id
                       ? "Saving request..."
                       : "Request Cash Payment"}
                   </Text>
@@ -1440,23 +1460,23 @@ export default function StudentFinesScreen() {
           <PopIn style={notificationStyles.detailsCard}>
             <Text style={notificationStyles.detailsTitle}>Pay with GCash</Text>
 
-            {gcashFine && (
+            {shownGcashFine && (
               <>
                 <Text style={notificationStyles.detailsViolation}>
-                  {gcashFine.violationName}
+                  {shownGcashFine.violationName}
                 </Text>
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Fine</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {gcashFine.fineReference}
+                    {shownGcashFine.fineReference}
                   </Text>
                 </View>
 
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Amount</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {money(gcashFine.amountCentavos)}
+                    {money(shownGcashFine.amountCentavos)}
                   </Text>
                 </View>
 
@@ -1470,14 +1490,16 @@ export default function StudentFinesScreen() {
                   You will pay on PayMongo&apos;s secure GCash page. Your fine is
                   marked paid only after SmartFine confirms the payment with
                   PayMongo.
-                  {pendingCashRequest(gcashFine.id)
+                  {pendingCashRequest(shownGcashFine.id)
                     ? " Your cashier request is closed once the payment is confirmed."
                     : ""}
                 </Text>
 
                 <TouchableOpacity
                   style={styles.gcashButton}
-                  onPress={() => void startGcashPayment(gcashFine)}
+                  onPress={() => {
+                    if (gcashFine) void startGcashPayment(gcashFine);
+                  }}
                   accessibilityRole="button"
                 >
                   <Text style={styles.gcashButtonText}>Continue to GCash</Text>
@@ -1526,10 +1548,10 @@ export default function StudentFinesScreen() {
             ) : (
               <>
                 <Text style={notificationStyles.detailsTitle}>
-                  {cashFeedback?.title}
+                  {shownCashFeedback?.title}
                 </Text>
 
-                <Text style={styles.helper}>{cashFeedback?.message}</Text>
+                <Text style={styles.helper}>{shownCashFeedback?.message}</Text>
 
                 <TouchableOpacity
                   style={notificationStyles.detailsCloseButton}

@@ -13,7 +13,8 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { StatusBar } from "expo-status-bar";
 
@@ -348,7 +349,7 @@ function ActivityCard({ activity }: { activity: FineActivity }) {
 export default function OfficerDashboard() {
   const styles = useResponsiveStyles();
 
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   // ========================================
   // DASHBOARD STATE
@@ -435,11 +436,10 @@ export default function OfficerDashboard() {
     void loadNotices();
   };
 
+  // Only hides the pop-up, so the open notice stays on the card while it
+  // fades out; openNotifications starts the next opening from the list.
   const closeNotifications = () => {
     setShowNotifications(false);
-    setSelectedNotice(null);
-    setNoticeFine(null);
-    setNoticeError("");
   };
 
   const backToNotices = () => {

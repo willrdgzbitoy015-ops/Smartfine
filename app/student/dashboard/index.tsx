@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -19,6 +20,7 @@ import {
   PopIn,
   PressableScale,
   TabIndicator,
+  useRetainedValue,
   useSwitchFade,
 } from "@/components/motion";
 import {
@@ -259,7 +261,7 @@ function ActivityCard({
 }
 
 export default function StudentDashboard() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -278,6 +280,11 @@ export default function StudentDashboard() {
   const [noticesLoading, setNoticesLoading] = useState(false);
   const [noticesError, setNoticesError] = useState("");
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+
+  // The pop-up keeps showing its view while it fades out.
+  const shownModalMode = useRetainedValue(modalMode);
+  const shownSelectedFine = useRetainedValue(selectedFine);
+  const shownSelectedNotice = useRetainedValue(selectedNotice);
   const [noticeFine, setNoticeFine] = useState<NoticeFine | null>(null);
   const [noticeLoading, setNoticeLoading] = useState(false);
   const [noticeError, setNoticeError] = useState("");
@@ -727,7 +734,7 @@ export default function StudentDashboard() {
 
   // The pop-up fades in again when it opens another view or record.
   const modalFade = useSwitchFade(
-    `${modalMode}:${selectedFine?.id ?? ""}:${selectedNotice?.id ?? ""}`,
+    `${shownModalMode}:${shownSelectedFine?.id ?? ""}:${shownSelectedNotice?.id ?? ""}`,
   );
 
 
@@ -1012,17 +1019,17 @@ export default function StudentDashboard() {
           <PopIn style={styles.modalCard} accessibilityViewIsModal>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {modalMode === "details"
+                {shownModalMode === "details"
                   ? "Fine Details"
-                  : modalMode === "notifications"
+                  : shownModalMode === "notifications"
                     ? "Notifications"
-                    : modalMode === "notice"
+                    : shownModalMode === "notice"
                       ? "Notification"
                       : "Recent Activities"}
               </Text>
             </View>
 
-            {modalMode === "notifications" ? (
+            {shownModalMode === "notifications" ? (
               <View style={notificationStyles.notificationFilters}>
                 {(["ALL", "UNREAD", "READ"] as const).map((item) => (
                   <TouchableOpacity
@@ -1056,9 +1063,9 @@ export default function StudentDashboard() {
               </View>
             ) : (
               <Text style={styles.modalHelper}>
-                {modalMode === "details"
+                {shownModalMode === "details"
                   ? "Your recorded fine information"
-                  : modalMode === "notice"
+                  : shownModalMode === "notice"
                     ? "The fine this notification is about"
                     : "Tap an activity to view its fine details"}
               </Text>
@@ -1070,10 +1077,10 @@ export default function StudentDashboard() {
               contentContainerStyle={styles.modalList}
               showsVerticalScrollIndicator={false}
             >
-              {modalMode === "details" && selectedFine ? (
+              {shownModalMode === "details" && shownSelectedFine ? (
                 <>
                   <Text style={notificationStyles.detailsViolation}>
-                    {selectedFine.violationName}
+                    {shownSelectedFine.violationName}
                   </Text>
 
                   <View style={notificationStyles.detailsRow}>
@@ -1081,21 +1088,21 @@ export default function StudentDashboard() {
                       Reference
                     </Text>
                     <Text style={notificationStyles.detailsValue}>
-                      {selectedFine.fineReference}
+                      {shownSelectedFine.fineReference}
                     </Text>
                   </View>
 
                   <View style={notificationStyles.detailsRow}>
                     <Text style={notificationStyles.detailsLabel}>Amount</Text>
                     <Text style={notificationStyles.detailsValue}>
-                      {money(selectedFine.amountCentavos)}
+                      {money(shownSelectedFine.amountCentavos)}
                     </Text>
                   </View>
 
                   <View style={notificationStyles.detailsRow}>
                     <Text style={notificationStyles.detailsLabel}>Status</Text>
                     <Text style={notificationStyles.detailsValue}>
-                      {selectedFine.status}
+                      {shownSelectedFine.status}
                     </Text>
                   </View>
 
@@ -1104,15 +1111,15 @@ export default function StudentDashboard() {
                       Recorded
                     </Text>
                     <Text style={notificationStyles.detailsValue}>
-                      {recordedLabel(selectedFine.recordedAt)}
+                      {recordedLabel(shownSelectedFine.recordedAt)}
                     </Text>
                   </View>
 
-                  {selectedFine.paidAt && (
+                  {shownSelectedFine.paidAt && (
                     <View style={notificationStyles.detailsRow}>
                       <Text style={notificationStyles.detailsLabel}>Paid</Text>
                       <Text style={notificationStyles.detailsValue}>
-                        {recordedLabel(selectedFine.paidAt)}
+                        {recordedLabel(shownSelectedFine.paidAt)}
                       </Text>
                     </View>
                   )}
@@ -1120,7 +1127,7 @@ export default function StudentDashboard() {
                   <View style={notificationStyles.detailsRemarks}>
                     <Text style={notificationStyles.detailsLabel}>Remarks</Text>
                     <Text style={notificationStyles.detailsValue}>
-                      {selectedFine.remarks || "No additional remarks."}
+                      {shownSelectedFine.remarks || "No additional remarks."}
                     </Text>
                   </View>
 
@@ -1130,7 +1137,7 @@ export default function StudentDashboard() {
                         {readError}
                       </Text>
                       <TouchableOpacity
-                        onPress={() => void markFineRead(selectedFine.id)}
+                        onPress={() => void markFineRead(shownSelectedFine.id)}
                         accessibilityRole="button"
                       >
                         <Text style={notificationStyles.readRetryText}>
@@ -1143,26 +1150,26 @@ export default function StudentDashboard() {
                   <Text
                     style={[
                       notificationStyles.detailsReadStatus,
-                      selectedFine.isRead
+                      shownSelectedFine.isRead
                         ? notificationStyles.readLabel
                         : notificationStyles.newLabel,
                     ]}
                   >
-                    {selectedFine.isRead ? "READ" : "NEW"}
+                    {shownSelectedFine.isRead ? "READ" : "NEW"}
                   </Text>
                 </>
-              ) : modalMode === "notice" && selectedNotice ? (
+              ) : shownModalMode === "notice" && shownSelectedNotice ? (
                 <>
                   <Text style={notificationStyles.detailsViolation}>
-                    {selectedNotice.title}
+                    {shownSelectedNotice.title}
                   </Text>
 
                   <Text style={styles.activityDescription}>
-                    {selectedNotice.message}
+                    {shownSelectedNotice.message}
                   </Text>
 
                   <Text style={styles.timestamp}>
-                    {formatNotificationTime(selectedNotice.createdAt)}
+                    {formatNotificationTime(shownSelectedNotice.createdAt)}
                   </Text>
 
                   {noticeLoading ? (
@@ -1254,9 +1261,9 @@ export default function StudentDashboard() {
                       <Text style={notificationStyles.readErrorText}>
                         {noticeError}
                       </Text>
-                      {!!selectedNotice.fineId && (
+                      {!!shownSelectedNotice.fineId && (
                         <TouchableOpacity
-                          onPress={() => void openNotice(selectedNotice)}
+                          onPress={() => void openNotice(shownSelectedNotice)}
                           accessibilityRole="button"
                         >
                           <Text style={notificationStyles.readRetryText}>
@@ -1273,7 +1280,7 @@ export default function StudentDashboard() {
                         {readError}
                       </Text>
                       <TouchableOpacity
-                        onPress={() => void markNoticeRead(selectedNotice)}
+                        onPress={() => void markNoticeRead(shownSelectedNotice)}
                         accessibilityRole="button"
                       >
                         <Text style={notificationStyles.readRetryText}>
@@ -1286,12 +1293,12 @@ export default function StudentDashboard() {
                   <Text
                     style={[
                       notificationStyles.detailsReadStatus,
-                      selectedNotice.isRead
+                      shownSelectedNotice.isRead
                         ? notificationStyles.readLabel
                         : notificationStyles.newLabel,
                     ]}
                   >
-                    {selectedNotice.isRead ? "READ" : "NEW"}
+                    {shownSelectedNotice.isRead ? "READ" : "NEW"}
                   </Text>
 
                   <TouchableOpacity
@@ -1303,7 +1310,7 @@ export default function StudentDashboard() {
                     </Text>
                   </TouchableOpacity>
                 </>
-              ) : modalMode === "notifications" ? (
+              ) : shownModalMode === "notifications" ? (
                 noticesLoading && notices.length === 0 ? (
                   <SkeletonList
                     label="Loading notifications"

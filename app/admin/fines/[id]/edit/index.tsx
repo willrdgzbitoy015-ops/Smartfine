@@ -11,7 +11,8 @@ import {
   View,
 } from "react-native";
 
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -124,7 +125,7 @@ type NavItem = {
 // ==========================================
 
 export default function EditFine() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const params = useLocalSearchParams();
 

@@ -9,7 +9,7 @@ import { SkeletonDetails, SkeletonTable } from "@/components/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -124,7 +124,7 @@ const EMPTY_SUMMARY: PaymentSummary = {
 // PAYMENT REPORTS
 // ==========================================
 export default function PaymentReports() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { logout } = useAuth();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;

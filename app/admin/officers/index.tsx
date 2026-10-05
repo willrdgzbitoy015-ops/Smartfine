@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -75,7 +75,7 @@ type NavItem = {
 // ==========================================
 
 export default function OfficersDirectory() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const { logout } = useAuth();
 

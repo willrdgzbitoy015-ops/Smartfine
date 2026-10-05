@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { File as ExpoFile } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { fetch as expoFetch } from "expo/fetch";
 import { useCallback, useRef, useState } from "react";
@@ -19,9 +20,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import LogoutModal from "@/components/logout-modal";
-import { PopIn, TabIndicator, useSwitchFade } from "@/components/motion";
+import {
+  PopIn,
+  TabIndicator,
+  useRetainedValue,
+  useSwitchFade,
+} from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { useActionLock } from "@/hooks/use-action-lock";
+import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
 import { useAuth } from "@/hooks/use-auth";
 import { styles } from "../styles/student-profile.styles";
@@ -134,7 +142,13 @@ async function responseBody(response: Response) {
 }
 
 export default function StudentProfileScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
+
+  // Saving, paying and changing records run once per tap.
+  const runLocked = useActionLock();
+
+  // Highlights the field being typed in.
+  const { focused: focusedField, bind: bindFocus } = useFieldFocus();
   const { logout } = useAuth();
 
   const [page, setPage] = useState<Page>("profile");
@@ -160,6 +174,8 @@ export default function StudentProfileScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // The notice stays on its pop-up while the pop-up fades out.
+  const shownNotice = useRetainedValue(notice || null);
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const logoutLock = useRef(false);
@@ -278,68 +294,21 @@ export default function StudentProfileScreen() {
     setPage("password");
   };
 
-  const saveProfile = async () => {
-    if (busy) return;
+  const saveProfile = () =>
+    runLocked(async () => {
+      if (busy) return;
 
-    setBusy(true);
-    setError("");
+      setBusy(true);
+      setError("");
 
-    try {
-      const token = await AsyncStorage.getItem("token");
+      try {
+        const token = await AsyncStorage.getItem("token");
 
-      if (!token) {
-        throw new Error("Please sign in again.");
-      }
+        if (!token) {
+          throw new Error("Please sign in again.");
+        }
 
-      const response = await fetch(`${baseUrl}/api/student-profile/me`, {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(draft),
-      });
-
-      const result = (await responseBody(response)) as ProfileResponse;
-
-      if (!response.ok || !result.success || !result.user) {
-        throw new Error(result.message || "Unable to save your profile.");
-      }
-
-      setProfile(result.user);
-      setPage("profile");
-      haptics.success();
-      setNotice("Your personal information was updated.");
-    } catch (caught) {
-      haptics.error();
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Unable to save your profile.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const changePassword = async () => {
-    if (busy) return;
-
-    setBusy(true);
-    setError("");
-
-    try {
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        throw new Error("Please sign in again.");
-      }
-
-      const response = await fetch(
-        `${baseUrl}/api/student-profile/me/password`,
-        {
+        const response = await fetch(`${baseUrl}/api/student-profile/me`, {
           method: "PUT",
           headers: {
             Accept: "application/json",
@@ -347,36 +316,85 @@ export default function StudentProfileScreen() {
             Authorization: `Bearer ${token}`,
             "ngrok-skip-browser-warning": "true",
           },
-          body: JSON.stringify(password),
-        },
-      );
+          body: JSON.stringify(draft),
+        });
 
-      const result = await responseBody(response);
+        const result = (await responseBody(response)) as ProfileResponse;
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Unable to change your password.");
+        if (!response.ok || !result.success || !result.user) {
+          throw new Error(result.message || "Unable to save your profile.");
+        }
+
+        setProfile(result.user);
+        setPage("profile");
+        haptics.success();
+        setNotice("Your personal information was updated.");
+      } catch (caught) {
+        haptics.error();
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Unable to save your profile.",
+        );
+      } finally {
+        setBusy(false);
       }
+    });
 
-      setPassword({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
+  const changePassword = () =>
+    runLocked(async () => {
+      if (busy) return;
 
-      setPage("profile");
-      haptics.success();
-      setNotice("Your password was updated.");
-    } catch (caught) {
-      haptics.error();
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Unable to change your password.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
+      setBusy(true);
+      setError("");
+
+      try {
+        const token = await AsyncStorage.getItem("token");
+
+        if (!token) {
+          throw new Error("Please sign in again.");
+        }
+
+        const response = await fetch(
+          `${baseUrl}/api/student-profile/me/password`,
+          {
+            method: "PUT",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify(password),
+          },
+        );
+
+        const result = await responseBody(response);
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Unable to change your password.");
+        }
+
+        setPassword({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+
+        setPage("profile");
+        haptics.success();
+        setNotice("Your password was updated.");
+      } catch (caught) {
+        haptics.error();
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Unable to change your password.",
+        );
+      } finally {
+        setBusy(false);
+      }
+    });
 
   const changePhoto = async () => {
     if (busy) return;
@@ -555,8 +573,14 @@ export default function StudentProfileScreen() {
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
 
-      <View style={styles.passwordRow}>
+      <View
+        style={[
+          styles.passwordRow,
+          focusedField === label && styles.inputFocused,
+        ]}
+      >
         <TextInput
+          {...bindFocus(label)}
           style={styles.passwordInput}
           value={value}
           onChangeText={onChangeText}
@@ -616,7 +640,9 @@ export default function StudentProfileScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          {loading ? (
+          {/* Placeholders only before the first load; returning to the
+              tab refreshes the profile in place. */}
+          {loading && !profile ? (
             <SkeletonProfile label="Loading your profile" />
           ) : (
             <>
@@ -807,7 +833,11 @@ export default function StudentProfileScreen() {
                     <View style={styles.field} key={key}>
                       <Text style={styles.label}>{label}</Text>
                       <TextInput
-                        style={styles.input}
+                        {...bindFocus(key)}
+                        style={[
+                          styles.input,
+                          focusedField === key && styles.inputFocused,
+                        ]}
                         value={draft[key]}
                         onChangeText={(value) =>
                           setDraft((current) => ({
@@ -1036,7 +1066,7 @@ export default function StudentProfileScreen() {
         <View style={styles.modalOverlay}>
           <PopIn style={styles.modalCard}>
             <Text style={styles.modalTitle}>SmartFine</Text>
-            <Text style={styles.modalMessage}>{notice}</Text>
+            <Text style={styles.modalMessage}>{shownNotice}</Text>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => setNotice("")}

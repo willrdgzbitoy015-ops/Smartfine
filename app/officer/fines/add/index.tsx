@@ -16,11 +16,17 @@ import {
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { FadeIn, PopIn, useSwitchFade } from "@/components/motion";
+import {
+  FadeIn,
+  PopIn,
+  useRetainedValue,
+  useSwitchFade,
+} from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
@@ -120,7 +126,7 @@ function formatRecordedAt(value?: string) {
 
 export default function OfficerAddFine() {
   const styles = useResponsiveStyles();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const params = useLocalSearchParams();
   const rawId = params.studentId;
   const studentId = Number(Array.isArray(rawId) ? rawId[0] : rawId);
@@ -300,7 +306,10 @@ export default function OfficerAddFine() {
     }
   };
 
-  const stepFade = useSwitchFade(modal);
+  // The pop-up keeps its last step on screen while it fades out.
+  const shownModal = useRetainedValue(modal);
+
+  const stepFade = useSwitchFade(shownModal);
 
   const avatarUri = pictureUrl(student?.profile_picture_uri);
 
@@ -492,7 +501,7 @@ export default function OfficerAddFine() {
               contentContainerStyle={styles.modalContent}
               showsVerticalScrollIndicator={false}
             >
-              {modal === "violations" && (
+              {shownModal === "violations" && (
                 <>
                   <Text style={styles.modalTitle}>Select Violation</Text>
 
@@ -535,7 +544,7 @@ export default function OfficerAddFine() {
                 </>
               )}
 
-              {modal === "confirm" && (
+              {shownModal === "confirm" && (
                 <>
                   <Text style={styles.modalTitle}>Fine Details</Text>
 
@@ -585,7 +594,7 @@ export default function OfficerAddFine() {
                 </>
               )}
 
-              {modal === "success" && (
+              {shownModal === "success" && (
                 <>
                   <PopIn style={styles.successCircle} delay={80} from={0.4}>
                     <Image

@@ -51,15 +51,6 @@ export const styles = StyleSheet.create({
     backgroundColor: "#56C85C",
   },
 
-  navIcon: {
-    width: 28,
-    color: "#FFFFFF",
-    fontSize: 21,
-    fontWeight: "700",
-    textAlign: "center",
-    marginRight: 10,
-  },
-
   navIconContainer: {
     width: 28,
     height: 28,
@@ -109,6 +100,11 @@ export const styles = StyleSheet.create({
     paddingBottom: 50,
   },
 
+  scrollContentPhone: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+
   // ========================================
   // MOBILE NAV
   // ========================================
@@ -149,7 +145,7 @@ export const styles = StyleSheet.create({
   // ========================================
 
   pageHeader: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
 
   pageTitle: {
@@ -160,7 +156,7 @@ export const styles = StyleSheet.create({
 
   pageSubtitle: {
     color: "#7E8794",
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 5,
   },
 
@@ -172,11 +168,37 @@ export const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 28,
+    gap: 24,
   },
 
   settingsLayoutStacked: {
     flexDirection: "column",
+    alignItems: "stretch",
+  },
+
+  rightColumn: {
+    flex: 1,
+    width: "100%",
+    minWidth: 0,
+    gap: 16,
+  },
+
+  tabStack: {
+    gap: 16,
+  },
+
+  inlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  textStart: {
+    textAlign: "left",
+  },
+
+  rowStart: {
+    justifyContent: "flex-start",
   },
 
   // ========================================
@@ -184,31 +206,79 @@ export const styles = StyleSheet.create({
   // ========================================
 
   profileCard: {
-    width: 320,
-    minHeight: 485,
+    width: 300,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 28,
-    paddingVertical: 30,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E3E8EF",
+    paddingHorizontal: 24,
+    paddingVertical: 28,
     alignItems: "center",
   },
 
   profileCardStacked: {
     width: "100%",
-    minHeight: 0,
+  },
+
+  profileCardRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 26,
+    paddingVertical: 24,
   },
 
   avatarWrapper: {
-    width: 132,
-    height: 132,
+    width: 124,
+    height: 124,
     position: "relative",
-    marginBottom: 17,
+    marginBottom: 16,
+  },
+
+  avatarWrapperRow: {
+    marginBottom: 0,
+  },
+
+  // Phone-sized profile card.
+  profileCardCompact: {
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+  },
+
+  avatarWrapperCompact: {
+    width: 84,
+    height: 84,
+  },
+
+  avatarCompact: {
+    width: 84,
+    height: 84,
+    borderRadius: 26,
+  },
+
+  avatarInitialsCompact: {
+    fontSize: 26,
+  },
+
+  cameraButtonCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+  },
+
+  profileNameCompact: {
+    fontSize: 18,
+  },
+
+  photoActionsCompact: {
+    marginTop: 12,
   },
 
   avatar: {
-    width: 132,
-    height: 132,
-    borderRadius: 40,
+    width: 124,
+    height: 124,
+    borderRadius: 36,
     backgroundColor: "#E8ECF2",
   },
 
@@ -238,30 +308,59 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  cameraIcon: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "800",
+  profileDetails: {
+    width: "100%",
+    alignItems: "center",
+  },
+
+  profileDetailsRow: {
+    flex: 1,
+    width: "auto",
+    minWidth: 0,
+    alignItems: "flex-start",
   },
 
   profileName: {
     color: "#123266",
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     textAlign: "center",
   },
 
-  profileRole: {
-    color: "#51698A",
-    fontSize: 11,
-    marginTop: 3,
-    textAlign: "center",
+  profileChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+
+  roleChip: {
+    overflow: "hidden",
+    borderRadius: 11,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#EAF0FA",
+    color: "#173A73",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+
+  activeChip: {
+    overflow: "hidden",
+    borderRadius: 11,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#E7F8EA",
+    color: "#2E9D43",
+    fontSize: 10,
+    fontWeight: "800",
   },
 
   profileUsername: {
     color: "#8C939F",
-    fontSize: 10,
-    marginTop: 5,
+    fontSize: 11,
+    marginTop: 8,
     textAlign: "center",
   },
 
@@ -269,25 +368,45 @@ export const styles = StyleSheet.create({
     width: "100%",
     height: 1,
     backgroundColor: "#E3E6EA",
-    marginVertical: 24,
+    marginVertical: 20,
+  },
+
+  dividerRow: {
+    marginVertical: 14,
+  },
+
+  profileInfoList: {
+    width: "100%",
+    gap: 14,
+  },
+
+  infoListRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: 28,
+    rowGap: 10,
   },
 
   profileInfoBlock: {
     width: "100%",
-    marginBottom: 17,
     alignItems: "center",
+  },
+
+  infoBlockRow: {
+    width: "auto",
+    alignItems: "flex-start",
   },
 
   profileInfoLabel: {
     color: "#9299A3",
     fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    marginBottom: 5,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    marginBottom: 4,
   },
 
   profileInfoValue: {
-    color: "#525861",
+    color: "#3F4650",
     fontSize: 12,
     textAlign: "center",
   },
@@ -297,13 +416,14 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     justifyContent: "center",
-    marginTop: 6,
+    marginTop: 20,
   },
 
   changePhotoButton: {
     minHeight: 38,
     flexGrow: 1,
-    borderRadius: 7,
+    maxWidth: 200,
+    borderRadius: 8,
     backgroundColor: "#173A73",
     alignItems: "center",
     justifyContent: "center",
@@ -312,13 +432,13 @@ export const styles = StyleSheet.create({
 
   changePhotoButtonText: {
     color: "#FFFFFF",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
 
   removePhotoButton: {
     minHeight: 38,
-    borderRadius: 7,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#D32F2F",
     backgroundColor: "#FFFFFF",
@@ -329,52 +449,104 @@ export const styles = StyleSheet.create({
 
   removePhotoButtonText: {
     color: "#D32F2F",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
 
   photoHint: {
     color: "#9A9FA8",
-    fontSize: 8,
+    fontSize: 9,
     marginTop: 9,
     textAlign: "center",
   },
 
   // ========================================
-  // RIGHT COLUMN
+  // TABS
   // ========================================
 
-  rightColumn: {
-    flex: 1,
-    width: "100%",
-    gap: 26,
+  tabBarScroll: {
+    flexGrow: 0,
   },
 
-  sectionTitle: {
-    color: "#123266",
-    fontSize: 15,
-    fontWeight: "800",
-    marginLeft: 14,
-    marginBottom: 9,
-  },
-
-  settingsCard: {
-    width: "100%",
+  tabBar: {
+    flexGrow: 1,
+    flexDirection: "row",
+    gap: 4,
+    padding: 5,
+    borderRadius: 13,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    borderWidth: 1,
+    borderColor: "#E3E8EF",
+  },
+
+  tab: {
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 9,
+  },
+
+  tabActive: {
+    backgroundColor: "#173A73",
+  },
+
+  tabIcon: {
+    width: 15,
+    height: 15,
+    tintColor: "#6C7A90",
+  },
+
+  tabIconActive: {
+    tintColor: "#FFFFFF",
+  },
+
+  tabText: {
+    color: "#4D5B70",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  tabTextActive: {
+    color: "#FFFFFF",
+  },
+
+  // Unsaved changes on that tab.
+  tabDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#F2A93B",
   },
 
   // ========================================
   // FORM
   // ========================================
 
+  groupLabel: {
+    color: "#7E8794",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+
+  groupLabelGap: {
+    marginTop: 6,
+  },
+
   formRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 18,
-    marginBottom: 18,
+    gap: 16,
+    marginBottom: 16,
+  },
+
+  formRowLast: {
+    marginBottom: 0,
   },
 
   formField: {
@@ -382,23 +554,38 @@ export const styles = StyleSheet.create({
     minWidth: 220,
   },
 
+  formFieldThird: {
+    flex: 1,
+    minWidth: 170,
+  },
+
   inputLabel: {
     color: "#3F434A",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     marginBottom: 7,
   },
 
+  requiredMark: {
+    color: "#D32F2F",
+  },
+
   input: {
     width: "100%",
-    height: 43,
+    height: 44,
     borderWidth: 1,
     borderColor: "#D8DEE8",
-    borderRadius: 7,
+    borderRadius: 8,
     backgroundColor: "#F5F7FA",
     color: "#333840",
-    fontSize: 11,
+    fontSize: 13,
     paddingHorizontal: 13,
+  },
+
+  // Same 1 px border, so focusing never shifts the layout.
+  inputFocused: {
+    borderColor: "#173A73",
+    backgroundColor: "#FFFFFF",
   },
 
   readOnlyInput: {
@@ -408,211 +595,136 @@ export const styles = StyleSheet.create({
 
   readOnlyText: {
     color: "#7E8794",
+    fontSize: 13,
+  },
+
+  fieldHint: {
+    color: "#8C939F",
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 5,
+  },
+
+  unsavedText: {
+    color: "#B26B00",
     fontSize: 11,
+    fontWeight: "700",
+    marginRight: "auto",
   },
 
-  cardActionRow: {
-    alignItems: "flex-end",
-    marginTop: 2,
-  },
-
-  // ========================================
-  // BUTTONS
-  // ========================================
-
-  primaryButton: {
-    minWidth: 155,
-    height: 40,
-    borderRadius: 7,
-    backgroundColor: "#173A73",
+  infoNotice: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 18,
+    gap: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#EEF3FA",
+    marginBottom: 16,
   },
 
-  primaryButtonText: {
+  infoNoticeIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#173A73",
     color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "800",
+    textAlign: "center",
+    lineHeight: 20,
   },
 
-  secondaryButton: {
-    minWidth: 135,
-    height: 40,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: "#173A73",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 17,
-  },
-
-  secondaryButtonText: {
-    color: "#173A73",
-    fontSize: 10,
-    fontWeight: "800",
-  },
-
-  cancelButton: {
-    minWidth: 90,
-    height: 40,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: "#C8CDD5",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 15,
-  },
-
-  cancelButtonText: {
-    color: "#656C76",
-    fontSize: 10,
-    fontWeight: "700",
+  infoNoticeText: {
+    flex: 1,
+    color: "#536780",
+    fontSize: 11,
+    lineHeight: 16,
   },
 
   // ========================================
-  // PASSWORD
+  // SECURITY
   // ========================================
 
-  passwordClosedRow: {
+  securityRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     flexWrap: "wrap",
-    gap: 18,
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
   },
 
-  passwordDescription: {
+  securityText: {
     flex: 1,
     minWidth: 220,
   },
 
-  passwordTitle: {
-    color: "#353A42",
-    fontSize: 12,
-    fontWeight: "700",
+  securityTitle: {
+    color: "#30353D",
+    fontSize: 13,
+    fontWeight: "800",
   },
 
-  passwordSubtitle: {
-    color: "#8C939F",
-    fontSize: 9,
-    lineHeight: 15,
-    marginTop: 4,
-    maxWidth: 430,
-  },
-
-  passwordActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    flexWrap: "wrap",
-    gap: 9,
-    marginTop: 3,
-  },
-
-  // ========================================
-  // FINE TYPES HEADER
-  // ========================================
-
-  fineTypesSectionHeader: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 9,
-  },
-
-  fineTypesSectionHeading: {
-    flex: 1,
-    minWidth: 240,
-  },
-
-  fineTypesSectionTitle: {
-    marginBottom: 3,
-  },
-
-  fineTypesDescription: {
+  securityHint: {
     color: "#7E8794",
-    fontSize: 9,
-    lineHeight: 15,
-    marginLeft: 14,
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 4,
+    maxWidth: 480,
   },
 
-  addFineTypeButton: {
-    minHeight: 40,
-    borderRadius: 7,
-    backgroundColor: "#45B94F",
+  protectionItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingBottom: 14,
+    marginBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF1F5",
+  },
+
+  protectionItemLast: {
+    paddingBottom: 0,
+    marginBottom: 0,
+    borderBottomWidth: 0,
+  },
+
+  protectionCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#E7F8EA",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 17,
+    marginTop: 1,
   },
 
-  addFineTypeButtonText: {
-    color: "#FFFFFF",
-    fontSize: 10,
+  protectionCheckText: {
+    color: "#2E9D43",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+
+  protectionText: {
+    flex: 1,
+  },
+
+  protectionTitle: {
+    color: "#30353D",
+    fontSize: 12,
     fontWeight: "800",
+  },
+
+  protectionBody: {
+    color: "#7E8794",
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 3,
   },
 
   // ========================================
   // FINE TYPE FORM
   // ========================================
-
-  fineTypeModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(8, 24, 46, 0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-  },
-
-  fineTypeModalCard: {
-    width: "100%",
-    maxWidth: 760,
-    maxHeight: "90%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: "#082B52",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 22,
-    elevation: 12,
-  },
-
-  fineTypeModalClose: {
-    alignSelf: "flex-end",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F0F3F8",
-  },
-
-  fineTypeModalCloseText: {
-    color: "#173A73",
-    fontSize: 22,
-    lineHeight: 25,
-  },
-
-  fineTypeModalScroll: {
-    flexShrink: 1,
-  },
-
-  fineTypeModalScrollContent: {
-    paddingBottom: 4,
-  },
-
-  fineTypeModalForm: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 0,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    marginBottom: 0,
-  },
 
   fineTypeFormError: {
     color: "#B42318",
@@ -624,56 +736,21 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  fineTypeForm: {
-    width: "100%",
-    backgroundColor: "#F7F9FC",
-    borderWidth: 1,
-    borderColor: "#DDE4EE",
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    marginBottom: 18,
-  },
-
-  fineTypeFormHeader: {
-    marginBottom: 17,
-  },
-
-  fineTypeFormTitle: {
-    color: "#123266",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-
-  fineTypeFormSubtitle: {
-    color: "#7E8794",
-    fontSize: 9,
-    lineHeight: 15,
-    marginTop: 3,
-  },
-
   fineDescriptionField: {
-    marginBottom: 17,
+    marginBottom: 12,
   },
 
   fineDescriptionInput: {
     width: "100%",
-    minHeight: 86,
+    minHeight: 90,
     borderWidth: 1,
     borderColor: "#D8DEE8",
-    borderRadius: 7,
+    borderRadius: 8,
     backgroundColor: "#FFFFFF",
     color: "#333840",
-    fontSize: 11,
+    fontSize: 13,
     paddingHorizontal: 13,
     paddingVertical: 11,
-  },
-
-  fineTypeFormActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    flexWrap: "wrap",
-    gap: 9,
   },
 
   // ========================================
@@ -682,19 +759,19 @@ export const styles = StyleSheet.create({
 
   amountInputContainer: {
     width: "100%",
-    height: 43,
+    height: 44,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#D8DEE8",
-    borderRadius: 7,
+    borderRadius: 8,
     backgroundColor: "#F5F7FA",
     overflow: "hidden",
   },
 
   amountPeso: {
     color: "#173A73",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
     marginLeft: 13,
     marginRight: 5,
@@ -704,7 +781,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#333840",
-    fontSize: 11,
+    fontSize: 13,
     paddingRight: 13,
     outlineStyle: "none",
   } as any,
@@ -714,11 +791,11 @@ export const styles = StyleSheet.create({
   // ========================================
 
   statusSelector: {
-    height: 43,
+    height: 44,
     flexDirection: "row",
     borderWidth: 1,
     borderColor: "#D8DEE8",
-    borderRadius: 7,
+    borderRadius: 8,
     backgroundColor: "#F5F7FA",
     overflow: "hidden",
   },
@@ -740,7 +817,7 @@ export const styles = StyleSheet.create({
 
   statusSelectorText: {
     color: "#7E8794",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
   },
 
@@ -753,37 +830,15 @@ export const styles = StyleSheet.create({
   },
 
   // ========================================
-  // FINE TYPE NOTICE
-  // ========================================
-
-  fineTypeNotice: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 7,
-    backgroundColor: "#EEF3FA",
-    marginBottom: 18,
-  },
-
-  fineTypeNoticeText: {
-    flex: 1,
-    color: "#536780",
-    fontSize: 9,
-    lineHeight: 14,
-  },
-
-  // ========================================
   // FINE TYPES TABLE
   // ========================================
 
   fineTypesTable: {
     width: "100%",
-    minWidth: 780,
+    minWidth: 570,
     borderWidth: 1,
     borderColor: "#E1E5EB",
-    borderRadius: 9,
+    borderRadius: 10,
     overflow: "hidden",
   },
 
@@ -796,13 +851,13 @@ export const styles = StyleSheet.create({
 
   fineTypesHeaderText: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "800",
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
 
   fineTypesTableRow: {
-    minHeight: 68,
+    minHeight: 66,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
@@ -810,54 +865,58 @@ export const styles = StyleSheet.create({
     borderBottomColor: "#E7E9ED",
   },
 
+  fineTypesTableRowAlt: {
+    backgroundColor: "#FAFBFD",
+  },
+
   fineCodeColumn: {
-    width: 100,
-    paddingHorizontal: 12,
+    width: 70,
+    paddingHorizontal: 10,
   },
 
   fineNameColumn: {
-    width: 255,
-    paddingHorizontal: 12,
+    flex: 1,
+    minWidth: 150,
+    paddingHorizontal: 10,
   },
 
   fineAmountColumn: {
-    width: 125,
-    paddingHorizontal: 12,
+    width: 92,
+    paddingHorizontal: 10,
   },
 
   fineStatusColumn: {
-    width: 115,
-    paddingHorizontal: 12,
+    width: 90,
+    paddingHorizontal: 10,
   },
 
   fineActionColumn: {
-    flex: 1,
-    minWidth: 185,
-    paddingHorizontal: 12,
+    width: 164,
+    paddingHorizontal: 10,
   },
 
   fineCodeText: {
     color: "#173A73",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "800",
   },
 
   fineNameText: {
     color: "#30353D",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
   },
 
   fineDescriptionText: {
     color: "#8C939F",
-    fontSize: 8,
-    lineHeight: 12,
+    fontSize: 10,
+    lineHeight: 14,
     marginTop: 3,
   },
 
   fineAmountText: {
     color: "#123266",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
   },
 
@@ -881,7 +940,7 @@ export const styles = StyleSheet.create({
   },
 
   fineStatusText: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "800",
   },
 
@@ -904,9 +963,9 @@ export const styles = StyleSheet.create({
   },
 
   editFineTypeButton: {
-    minWidth: 60,
+    minWidth: 52,
     height: 32,
-    borderRadius: 6,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: "#173A73",
     backgroundColor: "#FFFFFF",
@@ -917,14 +976,14 @@ export const styles = StyleSheet.create({
 
   editFineTypeText: {
     color: "#173A73",
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "800",
   },
 
   fineStatusActionButton: {
-    minWidth: 90,
+    minWidth: 84,
     height: 32,
-    borderRadius: 6,
+    borderRadius: 7,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -942,7 +1001,7 @@ export const styles = StyleSheet.create({
   },
 
   fineStatusActionText: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "800",
   },
 
@@ -958,18 +1017,6 @@ export const styles = StyleSheet.create({
   // FINE TYPES STATES
   // ========================================
 
-  fineTypesLoading: {
-    minHeight: 100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  fineTypesLoadingText: {
-    color: "#7E8794",
-    fontSize: 9,
-    marginTop: 9,
-  },
-
   fineTypesErrorBox: {
     minHeight: 100,
     alignItems: "center",
@@ -981,7 +1028,7 @@ export const styles = StyleSheet.create({
 
   fineTypesErrorText: {
     color: "#B42318",
-    fontSize: 9,
+    fontSize: 11,
     textAlign: "center",
   },
 
@@ -989,7 +1036,7 @@ export const styles = StyleSheet.create({
     minWidth: 90,
     height: 32,
     marginTop: 10,
-    borderRadius: 6,
+    borderRadius: 7,
     backgroundColor: "#173A73",
     alignItems: "center",
     justifyContent: "center",
@@ -997,7 +1044,7 @@ export const styles = StyleSheet.create({
 
   fineTypesRetryText: {
     color: "#FFFFFF",
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "800",
   },
 
@@ -1010,54 +1057,15 @@ export const styles = StyleSheet.create({
 
   fineTypesEmptyTitle: {
     color: "#123266",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
   },
 
   fineTypesEmptyText: {
     color: "#8C939F",
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 4,
     textAlign: "center",
-  },
-
-  // ========================================
-  // SYSTEM SETTINGS
-  // ========================================
-
-  systemInput: {
-    color: "#8C939F",
-    backgroundColor: "#ECEFF3",
-  },
-
-  systemNotice: {
-    marginTop: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 7,
-    backgroundColor: "#EEF3FA",
-  },
-
-  systemNoticeIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#173A73",
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "800",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-
-  systemNoticeText: {
-    flex: 1,
-    color: "#536780",
-    fontSize: 9,
-    lineHeight: 14,
   },
 
   // ========================================
@@ -1067,16 +1075,10 @@ export const styles = StyleSheet.create({
   centerState: {
     minHeight: 420,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     padding: 35,
-  },
-
-  stateText: {
-    color: "#7E8794",
-    fontSize: 12,
-    marginTop: 14,
   },
 
   errorTitle: {
@@ -1089,8 +1091,8 @@ export const styles = StyleSheet.create({
   errorText: {
     maxWidth: 430,
     color: "#7E8794",
-    fontSize: 11,
-    lineHeight: 17,
+    fontSize: 12,
+    lineHeight: 18,
     textAlign: "center",
   },
 
@@ -1098,7 +1100,7 @@ export const styles = StyleSheet.create({
     minWidth: 105,
     height: 40,
     marginTop: 18,
-    borderRadius: 7,
+    borderRadius: 8,
     backgroundColor: "#173A73",
     alignItems: "center",
     justifyContent: "center",
@@ -1107,7 +1109,7 @@ export const styles = StyleSheet.create({
 
   retryButtonText: {
     color: "#FFFFFF",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "800",
   },
 });

@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import * as ImagePicker from "expo-image-picker";
 
@@ -70,7 +70,7 @@ function validatePassword(password: string): string | null {
 // ==========================================
 
 export default function AddStudent() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const { logout } = useAuth();
 

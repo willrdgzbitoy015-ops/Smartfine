@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 
 import { FadeIn, useShake, useSwitchFade } from "@/components/motion";
 import { API_BASE } from "@/constants/api";
+import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
 
 // ==========================================
@@ -70,6 +71,11 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
+
+  // Highlights the sign-in field being typed in.
+  const { focused: focusedField, bind: bindFocus } = useFieldFocus<
+    "username" | "password"
+  >();
 
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -1268,7 +1274,12 @@ export default function LoginScreen() {
     <>
       {/* USERNAME */}
 
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputContainer,
+          focusedField === "username" && styles.inputContainerFocused,
+        ]}
+      >
         <View style={styles.iconContainer}>
           <Image
             source={require("../../assets/icons/user.png")}
@@ -1279,6 +1290,7 @@ export default function LoginScreen() {
 
         <TextInput
           ref={usernameRef}
+          {...bindFocus("username")}
           style={styles.input}
           placeholder="Enter your ID or Username"
           placeholderTextColor="#6E6E6E"
@@ -1313,7 +1325,12 @@ export default function LoginScreen() {
 
       {/* PASSWORD */}
 
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputContainer,
+          focusedField === "password" && styles.inputContainerFocused,
+        ]}
+      >
         <View style={styles.iconContainer}>
           <Image
             source={require("../../assets/icons/padlock.png")}
@@ -1324,6 +1341,7 @@ export default function LoginScreen() {
 
         <TextInput
           ref={passwordRef}
+          {...bindFocus("password")}
           style={styles.passwordInput}
           placeholder={
             isCurrentAccountLocked
@@ -2081,10 +2099,17 @@ const styles = StyleSheet.create({
     height: 43,
     backgroundColor: "#FFFFFF",
     borderRadius: 6,
+    // Transparent until focused, so the highlight never shifts the layout.
+    borderWidth: 2,
+    borderColor: "transparent",
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 29,
     overflow: "hidden",
+  },
+
+  inputContainerFocused: {
+    borderColor: "#20C95C",
   },
 
   iconContainer: {

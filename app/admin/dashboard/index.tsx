@@ -16,7 +16,8 @@ import {
   View,
 } from "react-native";
 
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -294,7 +295,7 @@ function ActivityRow({
 // ==========================================
 
 export default function AdminDashboard() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const { logout } = useAuth();
 

@@ -16,7 +16,8 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { type Href, useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { StatusBar } from "expo-status-bar";
 
@@ -168,7 +169,7 @@ function StudentPhoto({
 
 export default function OfficerStudentsScreen() {
   const styles = useResponsiveStyles();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { width } = useWindowDimensions();
 
   const [students, setStudents] = useState<Student[]>([]);

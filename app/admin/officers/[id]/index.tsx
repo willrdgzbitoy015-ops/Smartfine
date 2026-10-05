@@ -11,13 +11,14 @@ import {
   View,
 } from "react-native";
 
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
-import { FadeIn, PopIn } from "@/components/motion";
+import { FadeIn, PopIn, useRetainedValue } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
 
 import DeleteModal from "@/components/deletationmodal";
@@ -110,7 +111,7 @@ type NavItem = {
 // ==========================================
 
 export default function OfficerProfile() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const params = useLocalSearchParams();
 
@@ -946,8 +947,11 @@ export default function OfficerProfile() {
   // SELECTED FINE STATUS
   // ==========================================
 
-  const selectedFineStatus = selectedFine
-    ? normalizeFineStatus(selectedFine.fine_status)
+  // The fine pop-up keeps showing its fine while it fades out.
+  const shownSelectedFine = useRetainedValue(selectedFine);
+
+  const selectedFineStatus = shownSelectedFine
+    ? normalizeFineStatus(shownSelectedFine.fine_status)
     : "UNPAID";
 
   // ==========================================
@@ -1132,7 +1136,7 @@ export default function OfficerProfile() {
               </TouchableOpacity>
             </View>
 
-            {selectedFine && (
+            {shownSelectedFine && (
               <>
                 {/* FINE REFERENCE */}
 
@@ -1140,7 +1144,7 @@ export default function OfficerProfile() {
                   <Text style={styles.fineReferenceLabel}>Fine Reference</Text>
 
                   <Text style={styles.fineReferenceValue}>
-                    {selectedFine.fine_reference}
+                    {shownSelectedFine.fine_reference}
                   </Text>
                 </View>
 
@@ -1153,7 +1157,7 @@ export default function OfficerProfile() {
                     <Text style={styles.fineModalLabel}>Student</Text>
 
                     <Text style={styles.fineModalValue}>
-                      {selectedFine.student_name}
+                      {shownSelectedFine.student_name}
                     </Text>
                   </View>
 
@@ -1161,7 +1165,7 @@ export default function OfficerProfile() {
                     <Text style={styles.fineModalLabel}>Student ID</Text>
 
                     <Text style={styles.fineModalValue}>
-                      {selectedFine.student_number}
+                      {shownSelectedFine.student_number}
                     </Text>
                   </View>
 
@@ -1169,7 +1173,7 @@ export default function OfficerProfile() {
                     <Text style={styles.fineModalLabel}>Violation</Text>
 
                     <Text style={styles.fineModalValue}>
-                      {selectedFine.violation_name}
+                      {shownSelectedFine.violation_name}
                     </Text>
                   </View>
 
@@ -1177,7 +1181,7 @@ export default function OfficerProfile() {
                     <Text style={styles.fineModalLabel}>Date Issued</Text>
 
                     <Text style={styles.fineModalValue}>
-                      {formatDate(selectedFine.issued_at)}
+                      {formatDate(shownSelectedFine.issued_at)}
                     </Text>
                   </View>
 
@@ -1185,7 +1189,7 @@ export default function OfficerProfile() {
                     <Text style={styles.fineModalLabel}>Amount</Text>
 
                     <Text style={styles.fineModalAmount}>
-                      {formatMoney(selectedFine.amount)}
+                      {formatMoney(shownSelectedFine.amount)}
                     </Text>
                   </View>
 

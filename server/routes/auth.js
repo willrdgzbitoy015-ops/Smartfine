@@ -414,7 +414,60 @@ function requireAdmin(req, res, next) {
     });
   }
 
+  // A deactivated or deleted administrator's session stops working at once.
+  const user = db
+    .prepare("SELECT role, account_status FROM users WHERE id = ?")
+    .get(req.authUser?.userId);
+
+  if (!user || user.role !== "ADMIN" || user.account_status !== "ACTIVE") {
+    return res.status(403).json({
+      success: false,
+      code: "ADMIN_INACTIVE",
+      message:
+        "This administrator account is no longer active. Please contact another SmartFine administrator.",
+    });
+  }
+
   next();
+}
+
+// ==========================================
+// PERSON NAME
+// ==========================================
+
+// Letters (any language), spaces, periods, apostrophes and hyphens.
+const NAME_PATTERN = /^\p{L}[\p{L} .'-]*$/u;
+
+// Returns an error response body, or null when the names are valid.
+function validatePersonName({ firstName, middleName, lastName }) {
+  const checks = [
+    ["First name", firstName, true, "INVALID_FIRST_NAME"],
+    ["Middle name", middleName, false, "INVALID_MIDDLE_NAME"],
+    ["Last name", lastName, true, "INVALID_LAST_NAME"],
+  ];
+
+  for (const [label, value, required, code] of checks) {
+    if (!value) {
+      if (required) {
+        return { code, message: `${label} is required.` };
+      }
+
+      continue;
+    }
+
+    if (value.length < 2 || value.length > 50) {
+      return { code, message: `${label} must be 2 to 50 characters.` };
+    }
+
+    if (!NAME_PATTERN.test(value)) {
+      return {
+        code,
+        message: `${label} may only contain letters, spaces, periods, apostrophes and hyphens.`,
+      };
+    }
+  }
+
+  return null;
 }
 
 // ==========================================
@@ -1481,6 +1534,24 @@ router.put(
         req.body.contactNumber ?? currentUser.contact_number ?? "",
       ).trim();
 
+      const firstName = String(
+        req.body.firstName ?? currentUser.first_name ?? "",
+      ).trim();
+
+      const middleName = String(
+        req.body.middleName ?? currentUser.middle_name ?? "",
+      ).trim();
+
+      const lastName = String(
+        req.body.lastName ?? currentUser.last_name ?? "",
+      ).trim();
+
+      const nameError = validatePersonName({ firstName, middleName, lastName });
+
+      if (nameError) {
+        return res.status(400).json({ success: false, ...nameError });
+      }
+
       if (!username) {
         return res.status(400).json({
           success: false,
@@ -1553,13 +1624,24 @@ router.put(
 
         SET
           username = ?,
+          first_name = ?,
+          middle_name = ?,
+          last_name = ?,
           email = ?,
           contact_number = ?,
           updated_at = CURRENT_TIMESTAMP
 
         WHERE id = ?
         `,
-      ).run(username, email, contactNumber || null, userId);
+      ).run(
+        username,
+        firstName,
+        middleName || null,
+        lastName,
+        email,
+        contactNumber || null,
+        userId,
+      );
 
       const updatedUser = getCurrentUser(userId);
 
@@ -2202,3 +2284,13 @@ router.get("/student-dashboard", authenticateToken, (req, res) => {
 module.exports = router;
 
 module.exports.authenticateToken = authenticateToken;
+
+module.exports.requireAdmin = requireAdmin;
+
+module.exports.validatePasswordPolicy = validatePasswordPolicy;
+
+module.exports.validatePersonName = validatePersonName;
+
+module.exports.formatUser = formatUser;
+
+module.exports.removeAdminProfileFile = removeAdminProfileFile;

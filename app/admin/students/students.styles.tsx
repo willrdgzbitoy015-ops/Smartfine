@@ -2388,3 +2388,11 @@ export const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
+
+// ==========================================
+// EXPO ROUTER DEFAULT EXPORT
+// ==========================================
+
+export default function StudentsStylesRoute() {
+  return null;
+}

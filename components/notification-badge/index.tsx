@@ -1,5 +1,7 @@
-import { Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Text } from "react-native";
 
+import { MOTION, NATIVE_DRIVER, useReducedMotion } from "@/components/motion";
 import {
   NotificationCounts,
   useNotificationCounts,
@@ -8,6 +10,10 @@ import { styles } from "./notification-badge.styles";
 
 type Variant = "sidebar" | "menu" | "tab" | "bell";
 
+// A badge pops in when unread notices arrive, bumps once when the count
+// changes and shrinks away when everything is read. Polling that returns the
+// same count does nothing, and a screen that opens with unread notices shows
+// the badge without animating.
 export function NotificationBadge({
   count,
   variant,
@@ -15,19 +21,122 @@ export function NotificationBadge({
   count: number;
   variant: Variant;
 }) {
-  if (!count || count <= 0) return null;
+  const reduced = useReducedMotion();
+
+  const unread = count > 0 ? count : 0;
+
+  // The last unread count stays on the badge while it shrinks away.
+  const [shownCount, setShownCount] = useState(unread);
+
+  const [mounted, setMounted] = useState(unread > 0);
+
+  const [scale] = useState(() => new Animated.Value(unread > 0 ? 1 : 0));
+
+  const previous = useRef(unread);
+
+  useEffect(() => {
+    const before = previous.current;
+
+    previous.current = unread;
+
+    if (unread === before) {
+      return;
+    }
+
+    let animation: Animated.CompositeAnimation;
+
+    if (unread > 0) {
+      setShownCount(unread);
+      setMounted(true);
+
+      if (reduced) {
+        scale.setValue(1);
+        return;
+      }
+
+      if (before === 0) {
+        scale.setValue(0.4);
+
+        animation = Animated.spring(scale, {
+          toValue: 1,
+          ...MOTION.spring.press,
+          useNativeDriver: NATIVE_DRIVER,
+        });
+      } else {
+        animation = Animated.sequence([
+          Animated.timing(scale, {
+            toValue: 1.18,
+            duration: MOTION.duration.quick / 2,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: NATIVE_DRIVER,
+          }),
+          Animated.spring(scale, {
+            toValue: 1,
+            ...MOTION.spring.press,
+            useNativeDriver: NATIVE_DRIVER,
+          }),
+        ]);
+      }
+
+      animation.start();
+
+      return () => animation.stop();
+    }
+
+    // Everything was read.
+    if (reduced) {
+      setMounted(false);
+      return;
+    }
+
+    animation = Animated.timing(scale, {
+      toValue: 0,
+      duration: MOTION.duration.quick,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: NATIVE_DRIVER,
+    });
+
+    animation.start(({ finished }) => {
+      if (finished) {
+        setMounted(false);
+      }
+    });
+
+    return () => animation.stop();
+  }, [unread, reduced, scale]);
+
+  if (!mounted) return null;
 
   const admin = variant === "sidebar" || variant === "menu";
 
+  const label = unread > 0 ? unread : shownCount;
+
   return (
-    <View
-      style={[styles.base, styles[variant]]}
-      accessibilityLabel={`${count} unread ${count === 1 ? "notification" : "notifications"}`}
+    <Animated.View
+      style={[
+        styles.base,
+        styles[variant],
+        {
+          opacity: scale.interpolate({
+            inputRange: [0, 0.5, 1],
+            outputRange: [0, 1, 1],
+            extrapolate: "clamp",
+          }),
+          transform: [{ scale }],
+        },
+      ]}
+      accessibilityLabel={
+        unread > 0
+          ? `${unread} unread ${unread === 1 ? "notification" : "notifications"}`
+          : undefined
+      }
+      accessibilityElementsHidden={unread === 0}
+      importantForAccessibility={unread === 0 ? "no-hide-descendants" : "auto"}
     >
       <Text style={admin ? styles.adminText : styles.phoneText}>
-        {count > 99 ? "99+" : count}
+        {label > 99 ? "99+" : label}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 

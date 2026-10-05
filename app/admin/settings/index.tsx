@@ -1,12 +1,11 @@
 import { File as ExpoFile } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
   Animated,
   Image,
-  Modal,
   Platform,
   ScrollView,
   Text,
@@ -16,7 +15,7 @@ import {
   View,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -25,14 +24,27 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { useActionLock } from "@/hooks/use-action-lock";
+import { useFieldFocus } from "@/hooks/use-field-focus";
 import { AdminNavBadge } from "@/components/notification-badge";
 
+import {
+  AdministratorsPanel,
+  formatDate,
+  initialsOf,
+  pictureUrl,
+} from "@/components/admin-settings/administrators-panel";
+import { ChangePasswordModal } from "@/components/admin-settings/change-password-modal";
+import { FormPopup, PopupButton } from "@/components/admin-settings/form";
+import { SectionCard } from "@/components/admin-settings/section-card";
+import type { AdminAccount } from "@/components/admin-settings/types";
 import DeleteModal from "@/components/deletationmodal";
 import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
-import { PopIn } from "@/components/motion";
+import { useSwitchFade } from "@/components/motion";
 import { SkeletonProfile, SkeletonTable } from "@/components/skeleton";
+import { haptics } from "@/utils/haptics";
 
 import { styles } from "./settings.styles";
 
@@ -44,32 +56,6 @@ type NavItem = {
   label: string;
   route: string;
   icon?: any;
-};
-
-type AdminUser = {
-  id: number;
-
-  username: string | null;
-
-  firstName: string | null;
-  middleName: string | null;
-  lastName: string | null;
-
-  fullName: string | null;
-
-  email: string | null;
-  contactNumber: string | null;
-
-  role: string | null;
-
-  accountStatus: string | null;
-
-  isVerified: boolean;
-
-  profilePictureUri: string | null;
-
-  createdAt: string | null;
-  updatedAt: string | null;
 };
 
 type SystemSettings = {
@@ -103,7 +89,7 @@ type FineType = {
 type MeResponse = {
   success: boolean;
 
-  user?: AdminUser;
+  user?: AdminAccount;
 
   message?: string;
 };
@@ -133,19 +119,57 @@ type BasicResponse = {
 
   message?: string;
 
-  user?: AdminUser;
+  user?: AdminAccount;
 
   profilePictureUri?: string;
 
   settings?: SystemSettings;
 };
 
+const FINE_TABLE_MIN_WIDTH = 570;
+
+type SettingsTab = "account" | "security" | "admins" | "fineTypes" | "system";
+
+const TABS: { key: SettingsTab; label: string; icon: any }[] = [
+  {
+    key: "account",
+    label: "Account",
+    icon: require("../../../assets/icons/user.png"),
+  },
+  {
+    key: "security",
+    label: "Security",
+    icon: require("../../../assets/icons/padlock.png"),
+  },
+  {
+    key: "admins",
+    label: "Administrators",
+    icon: require("../../../assets/icons/officers.png"),
+  },
+  {
+    key: "fineTypes",
+    label: "Fine Types",
+    icon: require("../../../assets/icons/fines.png"),
+  },
+  {
+    key: "system",
+    label: "System",
+    icon: require("../../../assets/icons/settings.png"),
+  },
+];
+
 // ==========================================
 // ADMIN SETTINGS
 // ==========================================
 
 export default function AdminSettings() {
-  const router = useRouter();
+  const router = useGuardedRouter();
+
+  // Saving, paying and changing records run once per tap.
+  const runLocked = useActionLock();
+
+  // Highlights the field being typed in.
+  const { focused: focusedField, bind: bindFocus } = useFieldFocus();
 
   const { logout } = useAuth();
 
@@ -153,7 +177,36 @@ export default function AdminSettings() {
 
   const isTablet = width >= 768;
 
-  const isWide = width >= 1050;
+  // Profile card beside the tabs only when the tabs keep about 620 px.
+  const isWide = width >= 1250;
+
+  // Below the wide layout the profile card spans the page as a row. Phones
+  // get a compact card (the contact details are in the Account tab) so the
+  // tabs stay near the top.
+  const profileInRow = !isWide;
+
+  const compactProfile = width < 560;
+
+  // Tab icons only where all five tabs fit with them.
+  const showTabIcons = width >= 1000;
+
+  // ========================================
+  // TABS
+  // ========================================
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>("account");
+
+  const tabFade = useSwitchFade(activeTab);
+
+  const selectTab = (tab: SettingsTab) => {
+    if (tab === activeTab) {
+      return;
+    }
+
+    haptics.selection();
+
+    setActiveTab(tab);
+  };
 
   // ========================================
   // SUCCESS MODAL
@@ -193,11 +246,17 @@ export default function AdminSettings() {
   // ADMIN
   // ========================================
 
-  const [admin, setAdmin] = useState<AdminUser | null>(null);
+  const [admin, setAdmin] = useState<AdminAccount | null>(null);
 
   // ========================================
   // ACCOUNT SETTINGS
   // ========================================
+
+  const [firstName, setFirstName] = useState("");
+
+  const [middleName, setMiddleName] = useState("");
+
+  const [lastName, setLastName] = useState("");
 
   const [username, setUsername] = useState("");
 
@@ -209,27 +268,7 @@ export default function AdminSettings() {
   // PASSWORD
   // ========================================
 
-  const [currentPassword, setCurrentPassword] = useState("");
-
-  const [newPassword, setNewPassword] = useState("");
-
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-
-  const passwordFormProgress = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (showPasswordForm) {
-      passwordFormProgress.setValue(0);
-
-      Animated.timing(passwordFormProgress, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [showPasswordForm, passwordFormProgress]);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // ========================================
   // SYSTEM SETTINGS
@@ -240,6 +279,12 @@ export default function AdminSettings() {
   const [academicYear, setAcademicYear] = useState("");
 
   const [systemName, setSystemName] = useState("SmartFine");
+
+  const [savedSystem, setSavedSystem] = useState({
+    schoolName: "",
+    academicYear: "",
+    systemName: "SmartFine",
+  });
 
   // ========================================
   // FINE TYPES
@@ -254,20 +299,6 @@ export default function AdminSettings() {
   const [fineTypesError, setFineTypesError] = useState("");
 
   const [showFineTypeForm, setShowFineTypeForm] = useState(false);
-
-  const fineTypeFormProgress = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (showFineTypeForm) {
-      fineTypeFormProgress.setValue(0);
-
-      Animated.timing(fineTypeFormProgress, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [showFineTypeForm, fineTypeFormProgress]);
 
   const [editingFineTypeId, setEditingFineTypeId] = useState<number | null>(
     null,
@@ -293,6 +324,11 @@ export default function AdminSettings() {
     number | null
   >(null);
 
+  // The table fills the card and scrolls sideways only below its minimum
+  // width; a horizontal ScrollView would otherwise let long descriptions
+  // stretch the name column.
+  const [fineTableWidth, setFineTableWidth] = useState(0);
+
   // ========================================
   // PAGE STATE
   // ========================================
@@ -300,8 +336,6 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
 
   const [savingAccount, setSavingAccount] = useState(false);
-
-  const [changingPassword, setChangingPassword] = useState(false);
 
   const [savingSystemSettings, setSavingSystemSettings] = useState(false);
 
@@ -425,6 +459,54 @@ export default function AdminSettings() {
 
       headers,
     });
+  };
+
+  // ========================================
+  // ACCOUNT FORM
+  // ========================================
+
+  const fillAccountForm = (user: AdminAccount) => {
+    setFirstName(user.firstName || "");
+
+    setMiddleName(user.middleName || "");
+
+    setLastName(user.lastName || "");
+
+    setUsername(user.username || "");
+
+    setEmail(user.email || "");
+
+    setContactNumber(user.contactNumber || "");
+  };
+
+  const accountDirty =
+    !!admin &&
+    (firstName.trim() !== (admin.firstName || "") ||
+      middleName.trim() !== (admin.middleName || "") ||
+      lastName.trim() !== (admin.lastName || "") ||
+      username.trim() !== (admin.username || "") ||
+      email.trim() !== (admin.email || "") ||
+      contactNumber.trim() !== (admin.contactNumber || ""));
+
+  const systemDirty =
+    schoolName.trim() !== savedSystem.schoolName ||
+    academicYear.trim() !== savedSystem.academicYear ||
+    systemName.trim() !== savedSystem.systemName;
+
+  const applySystemSettings = (settings: SystemSettings) => {
+    const values = {
+      schoolName: settings.schoolName || "",
+      academicYear: settings.academicYear || "",
+      systemName: settings.systemName || "SmartFine",
+    };
+
+    setSchoolName(values.schoolName);
+
+    setAcademicYear(values.academicYear);
+
+    setSystemName(values.systemName);
+
+    setSavedSystem(values);
   };
 
   // ========================================
@@ -574,21 +656,13 @@ export default function AdminSettings() {
 
       setAdmin(adminData.user);
 
-      setUsername(adminData.user.username || "");
-
-      setEmail(adminData.user.email || "");
-
-      setContactNumber(adminData.user.contactNumber || "");
+      fillAccountForm(adminData.user);
 
       // ==================================
       // SYSTEM
       // ==================================
 
-      setSchoolName(settingsData.settings.schoolName || "");
-
-      setAcademicYear(settingsData.settings.academicYear || "");
-
-      setSystemName(settingsData.settings.systemName || "SmartFine");
+      applySystemSettings(settingsData.settings);
 
       setImageFailed(false);
 
@@ -620,145 +694,147 @@ export default function AdminSettings() {
   // SAVE ACCOUNT
   // ========================================
 
-  const handleSaveAccount = async () => {
-    const cleanedUsername = username.trim();
+  const handleSaveAccount = () =>
+    runLocked(async () => {
+      const cleaned = {
+        firstName: firstName.trim(),
+        middleName: middleName.trim(),
+        lastName: lastName.trim(),
+        username: username.trim(),
+        email: email.trim(),
+        contactNumber: contactNumber.trim(),
+      };
 
-    const cleanedEmail = email.trim();
-
-    const cleanedContact = contactNumber.trim();
-
-    if (!cleanedUsername) {
-      showMessage("Validation", "Username is required.");
-
-      return;
-    }
-
-    if (!cleanedEmail) {
-      showMessage("Validation", "Email address is required.");
-
-      return;
-    }
-
-    if (!isValidEmail(cleanedEmail)) {
-      showMessage("Validation", "Please enter a valid email address.");
-
-      return;
-    }
-
-    if (cleanedContact && !/^\+?[0-9]{7,15}$/.test(cleanedContact)) {
-      showMessage("Validation", "Please enter a valid contact number.");
-
-      return;
-    }
-
-    try {
-      setSavingAccount(true);
-
-      const response = await authenticatedFetch(`${API_BASE}/api/auth/me`, {
-        method: "PUT",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          username: cleanedUsername,
-
-          email: cleanedEmail,
-
-          contactNumber: cleanedContact,
-        }),
-      });
-
-      const data: BasicResponse = await response.json();
-
-      if (!response.ok || !data.success) {
-        showMessage(
-          "Unable to Save",
-          data.message || "Failed to update account settings.",
-        );
+      if (!cleaned.firstName || !cleaned.lastName) {
+        showMessage("Validation", "First name and last name are required.");
 
         return;
       }
 
-      if (data.user) {
-        setAdmin(data.user);
+      const names: [string, string][] = [
+        ["First name", cleaned.firstName],
+        ["Middle name", cleaned.middleName],
+        ["Last name", cleaned.lastName],
+      ];
 
-        setUsername(data.user.username || "");
+      for (const [label, value] of names) {
+        if (value && (value.length < 2 || value.length > 50)) {
+          showMessage("Validation", `${label} must be 2 to 50 characters.`);
 
-        setEmail(data.user.email || "");
-
-        setContactNumber(data.user.contactNumber || "");
-
-        await AsyncStorage.setItem(
-          "userEmail",
-
-          data.user.email || data.user.username || "",
-        );
+          return;
+        }
       }
 
-      showMessage(
-        "Success",
-        data.message || "Account settings updated successfully.",
-      );
-    } catch (error) {
-      console.error("Save account settings error:", error);
+      if (!cleaned.username) {
+        showMessage("Validation", "Username is required.");
 
-      showMessage(
-        "Connection Error",
-        "Could not connect to the SmartFine server.",
-      );
-    } finally {
-      setSavingAccount(false);
-    }
-  };
+        return;
+      }
+
+      if (!cleaned.email) {
+        showMessage("Validation", "Email address is required.");
+
+        return;
+      }
+
+      if (!isValidEmail(cleaned.email)) {
+        showMessage("Validation", "Please enter a valid email address.");
+
+        return;
+      }
+
+      if (cleaned.contactNumber && !/^\+?[0-9]{7,15}$/.test(cleaned.contactNumber)) {
+        showMessage("Validation", "Please enter a valid contact number.");
+
+        return;
+      }
+
+      try {
+        setSavingAccount(true);
+
+        const response = await authenticatedFetch(`${API_BASE}/api/auth/me`, {
+          method: "PUT",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify(cleaned),
+        });
+
+        const data: BasicResponse = await response.json();
+
+        if (!response.ok || !data.success) {
+          showMessage(
+            "Unable to Save",
+            data.message || "Failed to update account settings.",
+          );
+
+          return;
+        }
+
+        if (data.user) {
+          setAdmin(data.user);
+
+          fillAccountForm(data.user);
+
+          await AsyncStorage.setItem(
+            "userEmail",
+
+            data.user.email || data.user.username || "",
+          );
+        }
+
+        showMessage(
+          "Success",
+          data.message || "Account settings updated successfully.",
+        );
+      } catch (error) {
+        console.error("Save account settings error:", error);
+
+        showMessage(
+          "Connection Error",
+          "Could not connect to the SmartFine server.",
+        );
+      } finally {
+        setSavingAccount(false);
+      }
+    });
 
   // ========================================
-  // CHANGE PASSWORD
+  // SAVE SYSTEM SETTINGS
   // ========================================
 
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      showMessage("Validation", "Please complete all password fields.");
+  const handleSaveSystemSettings = () =>
+    runLocked(async () => {
+      const cleanedSchoolName = schoolName.trim();
 
-      return;
-    }
+      const cleanedAcademicYear = academicYear.trim();
 
-    if (newPassword.length < 8) {
-      showMessage(
-        "Validation",
-        "New password must contain at least 8 characters.",
-      );
+      const cleanedSystemName = systemName.trim();
 
-      return;
-    }
+      if (!cleanedSchoolName) {
+        showMessage("Validation", "School name is required.");
 
-    if (
-      !/[a-z]/.test(newPassword) ||
-      !/[A-Z]/.test(newPassword) ||
-      !/[0-9]/.test(newPassword) ||
-      !/[^A-Za-z0-9\s]/.test(newPassword)
-    ) {
-      showMessage(
-        "Validation",
-        "New password must contain uppercase, lowercase, number, and special character.",
-      );
+        return;
+      }
 
-      return;
-    }
+      if (!cleanedAcademicYear) {
+        showMessage("Validation", "Academic year is required.");
 
-    if (newPassword !== confirmPassword) {
-      showMessage("Validation", "New password and confirmation do not match.");
+        return;
+      }
 
-      return;
-    }
+      if (!cleanedSystemName) {
+        showMessage("Validation", "System name is required.");
 
-    try {
-      setChangingPassword(true);
+        return;
+      }
 
-      const response = await authenticatedFetch(
-        `${API_BASE}/api/auth/me/password`,
-        {
+      try {
+        setSavingSystemSettings(true);
+
+        const response = await authenticatedFetch(`${API_BASE}/api/settings`, {
           method: "PUT",
 
           headers: {
@@ -766,145 +842,50 @@ export default function AdminSettings() {
           },
 
           body: JSON.stringify({
-            currentPassword,
+            schoolName: cleanedSchoolName,
 
-            newPassword,
+            academicYear: cleanedAcademicYear,
 
-            confirmPassword,
+            systemName: cleanedSystemName,
           }),
-        },
-      );
+        });
 
-      const data: BasicResponse = await response.json();
+        const data: BasicResponse = await response.json();
 
-      if (!response.ok || !data.success) {
+        if (!response.ok || !data.success) {
+          showMessage(
+            "Unable to Save",
+            data.message || "Failed to update system settings.",
+          );
+
+          return;
+        }
+
+        if (data.settings) {
+          applySystemSettings(data.settings);
+        }
+
         showMessage(
-          "Unable to Change Password",
-          data.message || "Failed to change password.",
+          "Success",
+          data.message || "System settings updated successfully.",
         );
+      } catch (error) {
+        console.error("Save system settings error:", error);
 
-        return;
+        showMessage("Connection Error", "Could not save system settings.");
+      } finally {
+        setSavingSystemSettings(false);
       }
-
-      setCurrentPassword("");
-
-      setNewPassword("");
-
-      setConfirmPassword("");
-
-      setShowPasswordForm(false);
-
-      showMessage("Success", data.message || "Password changed successfully.");
-    } catch (error) {
-      console.error("Change password error:", error);
-
-      showMessage(
-        "Connection Error",
-        "Could not connect to the SmartFine server.",
-      );
-    } finally {
-      setChangingPassword(false);
-    }
-  };
-
-  // ========================================
-  // SAVE SYSTEM SETTINGS
-  // ========================================
-
-  const handleSaveSystemSettings = async () => {
-    const cleanedSchoolName = schoolName.trim();
-
-    const cleanedAcademicYear = academicYear.trim();
-
-    const cleanedSystemName = systemName.trim();
-
-    if (!cleanedSchoolName) {
-      showMessage("Validation", "School name is required.");
-
-      return;
-    }
-
-    if (!cleanedAcademicYear) {
-      showMessage("Validation", "Academic year is required.");
-
-      return;
-    }
-
-    if (!cleanedSystemName) {
-      showMessage("Validation", "System name is required.");
-
-      return;
-    }
-
-    try {
-      setSavingSystemSettings(true);
-
-      const response = await authenticatedFetch(`${API_BASE}/api/settings`, {
-        method: "PUT",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          schoolName: cleanedSchoolName,
-
-          academicYear: cleanedAcademicYear,
-
-          systemName: cleanedSystemName,
-        }),
-      });
-
-      const data: BasicResponse = await response.json();
-
-      if (!response.ok || !data.success) {
-        showMessage(
-          "Unable to Save",
-          data.message || "Failed to update system settings.",
-        );
-
-        return;
-      }
-
-      if (data.settings) {
-        setSchoolName(data.settings.schoolName || "");
-
-        setAcademicYear(data.settings.academicYear || "");
-
-        setSystemName(data.settings.systemName || "SmartFine");
-      }
-
-      showMessage(
-        "Success",
-        data.message || "System settings updated successfully.",
-      );
-    } catch (error) {
-      console.error("Save system settings error:", error);
-
-      showMessage("Connection Error", "Could not save system settings.");
-    } finally {
-      setSavingSystemSettings(false);
-    }
-  };
+    });
 
   // ========================================
   // RESET FINE TYPE FORM
   // ========================================
 
+  // Closes the form. The fields stay as they are while the pop-up fades out;
+  // Add and Edit fill every field again when the form next opens.
   const resetFineTypeForm = () => {
     setFineTypeFormError("");
-
-    setEditingFineTypeId(null);
-
-    setFineCode("");
-
-    setFineName("");
-
-    setFineDescription("");
-
-    setFineAmount("");
-
-    setFineActive(true);
 
     setShowFineTypeForm(false);
   };
@@ -973,149 +954,151 @@ export default function AdminSettings() {
   // SAVE FINE TYPE
   // ========================================
 
-  const handleSaveFineType = async () => {
-    const cleanedName = fineName.trim();
+  const handleSaveFineType = () =>
+    runLocked(async () => {
+      const cleanedName = fineName.trim();
 
-    const cleanedDescription = fineDescription.trim();
+      const cleanedDescription = fineDescription.trim();
 
-    const amount = Number(fineAmount);
+      const amount = Number(fineAmount);
 
-    if (!cleanedName) {
-      setFineTypeFormError("Fine type name is required.");
-
-      return;
-    }
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setFineTypeFormError("Fine amount must be greater than zero.");
-
-      return;
-    }
-
-    try {
-      setFineTypeFormError("");
-
-      setSavingFineType(true);
-
-      const isEditing = editingFineTypeId !== null;
-
-      const url = isEditing
-        ? `${API_BASE}/api/fines/maintenance/violation-types/${editingFineTypeId}`
-        : `${API_BASE}/api/fines/maintenance/violation-types`;
-
-      const response = await authenticatedFetch(url, {
-        method: isEditing ? "PUT" : "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          violationName: cleanedName,
-
-          description: cleanedDescription,
-
-          amount,
-
-          isActive: fineActive,
-        }),
-      });
-
-      const data: FineTypesResponse = await response.json();
-
-      if (!response.ok || !data.success) {
-        setFineTypeFormError(data.message || "Failed to save the fine type.");
+      if (!cleanedName) {
+        setFineTypeFormError("Fine type name is required.");
 
         return;
       }
 
-      if (data.nextCode) {
-        setNextFineCode(data.nextCode);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setFineTypeFormError("Fine amount must be greater than zero.");
+
+        return;
       }
 
-      resetFineTypeForm();
+      try {
+        setFineTypeFormError("");
 
-      await loadFineTypes(false, true);
+        setSavingFineType(true);
 
-      showMessage(
-        "Success",
+        const isEditing = editingFineTypeId !== null;
 
-        data.message ||
-          (isEditing
-            ? "Fine type updated successfully."
-            : "Fine type added successfully."),
-      );
-    } catch (error) {
-      console.error("Save fine type error:", error);
+        const url = isEditing
+          ? `${API_BASE}/api/fines/maintenance/violation-types/${editingFineTypeId}`
+          : `${API_BASE}/api/fines/maintenance/violation-types`;
 
-      setFineTypeFormError("Could not save the fine type.");
-    } finally {
-      setSavingFineType(false);
-    }
-  };
-
-  // ========================================
-  // ACTIVATE / DEACTIVATE FINE TYPE
-  // ========================================
-
-  const handleToggleFineTypeStatus = async (fineType: FineType) => {
-    if (fineTypesRefreshing || savingFineType) {
-      return;
-    }
-
-    try {
-      setChangingFineStatusId(fineType.id);
-
-      const currentlyActive = Number(fineType.is_active) === 1;
-
-      const response = await authenticatedFetch(
-        `${API_BASE}/api/fines/maintenance/violation-types/${fineType.id}/status`,
-        {
-          method: "PATCH",
+        const response = await authenticatedFetch(url, {
+          method: isEditing ? "PUT" : "POST",
 
           headers: {
             "Content-Type": "application/json",
           },
 
           body: JSON.stringify({
-            isActive: !currentlyActive,
+            violationName: cleanedName,
+
+            description: cleanedDescription,
+
+            amount,
+
+            isActive: fineActive,
           }),
-        },
-      );
+        });
 
-      const data: FineTypesResponse = await response.json();
+        const data: FineTypesResponse = await response.json();
 
-      if (!response.ok || !data.success) {
+        if (!response.ok || !data.success) {
+          setFineTypeFormError(data.message || "Failed to save the fine type.");
+
+          return;
+        }
+
+        if (data.nextCode) {
+          setNextFineCode(data.nextCode);
+        }
+
+        resetFineTypeForm();
+
+        await loadFineTypes(false, true);
+
         showMessage(
-          "Unable to Update Status",
-          data.message || "Failed to update the fine type status.",
-        );
+          "Success",
 
+          data.message ||
+            (isEditing
+              ? "Fine type updated successfully."
+              : "Fine type added successfully."),
+        );
+      } catch (error) {
+        console.error("Save fine type error:", error);
+
+        setFineTypeFormError("Could not save the fine type.");
+      } finally {
+        setSavingFineType(false);
+      }
+    });
+
+  // ========================================
+  // ACTIVATE / DEACTIVATE FINE TYPE
+  // ========================================
+
+  const handleToggleFineTypeStatus = (fineType: FineType) =>
+    runLocked(async () => {
+      if (fineTypesRefreshing || savingFineType) {
         return;
       }
 
-      if (data.nextCode) {
-        setNextFineCode(data.nextCode);
+      try {
+        setChangingFineStatusId(fineType.id);
+
+        const currentlyActive = Number(fineType.is_active) === 1;
+
+        const response = await authenticatedFetch(
+          `${API_BASE}/api/fines/maintenance/violation-types/${fineType.id}/status`,
+          {
+            method: "PATCH",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+              isActive: !currentlyActive,
+            }),
+          },
+        );
+
+        const data: FineTypesResponse = await response.json();
+
+        if (!response.ok || !data.success) {
+          showMessage(
+            "Unable to Update Status",
+            data.message || "Failed to update the fine type status.",
+          );
+
+          return;
+        }
+
+        if (data.nextCode) {
+          setNextFineCode(data.nextCode);
+        }
+
+        await loadFineTypes(false, true);
+
+        showMessage(
+          "Success",
+
+          data.message ||
+            (currentlyActive
+              ? "Fine type deactivated successfully."
+              : "Fine type activated successfully."),
+        );
+      } catch (error) {
+        console.error("Update fine type status error:", error);
+
+        showMessage("Connection Error", "Could not update the fine type status.");
+      } finally {
+        setChangingFineStatusId(null);
       }
-
-      await loadFineTypes(false, true);
-
-      showMessage(
-        "Success",
-
-        data.message ||
-          (currentlyActive
-            ? "Fine type deactivated successfully."
-            : "Fine type activated successfully."),
-      );
-    } catch (error) {
-      console.error("Update fine type status error:", error);
-
-      showMessage("Connection Error", "Could not update the fine type status.");
-    } finally {
-      setChangingFineStatusId(null);
-    }
-  };
+    });
 
   // ========================================
   // CHOOSE PHOTO
@@ -1285,55 +1268,56 @@ export default function AdminSettings() {
   // REMOVE PROFILE PICTURE
   // ========================================
 
-  const performRemovePhoto = async () => {
-    try {
-      setRemovingPhoto(true);
+  const performRemovePhoto = () =>
+    runLocked(async () => {
+      try {
+        setRemovingPhoto(true);
 
-      const response = await authenticatedFetch(
-        `${API_BASE}/api/auth/me/profile-picture`,
-        {
-          method: "DELETE",
-        },
-      );
+        const response = await authenticatedFetch(
+          `${API_BASE}/api/auth/me/profile-picture`,
+          {
+            method: "DELETE",
+          },
+        );
 
-      const data: BasicResponse = await response.json();
+        const data: BasicResponse = await response.json();
 
-      if (!response.ok || !data.success) {
+        if (!response.ok || !data.success) {
+          setShowRemovePhotoModal(false);
+
+          showMessage(
+            "Unable to Remove Photo",
+
+            data.message || "Failed to remove profile picture.",
+          );
+
+          return;
+        }
+
+        if (data.user) {
+          setAdmin(data.user);
+        } else {
+          await loadSettings();
+        }
+
+        setImageFailed(false);
+
         setShowRemovePhotoModal(false);
 
         showMessage(
-          "Unable to Remove Photo",
-
-          data.message || "Failed to remove profile picture.",
+          "Success",
+          data.message || "Profile picture removed successfully.",
         );
+      } catch (error) {
+        console.error("Remove profile picture error:", error);
 
-        return;
+        setShowRemovePhotoModal(false);
+
+        showMessage("Connection Error", "Could not remove the profile picture.");
+      } finally {
+        setRemovingPhoto(false);
       }
-
-      if (data.user) {
-        setAdmin(data.user);
-      } else {
-        await loadSettings();
-      }
-
-      setImageFailed(false);
-
-      setShowRemovePhotoModal(false);
-
-      showMessage(
-        "Success",
-        data.message || "Profile picture removed successfully.",
-      );
-    } catch (error) {
-      console.error("Remove profile picture error:", error);
-
-      setShowRemovePhotoModal(false);
-
-      showMessage("Connection Error", "Could not remove the profile picture.");
-    } finally {
-      setRemovingPhoto(false);
-    }
-  };
+    });
 
   const handleRemovePhoto = () => {
     if (!admin?.profilePictureUri) {
@@ -1403,9 +1387,883 @@ export default function AdminSettings() {
   // PROFILE
   // ========================================
 
-  const profilePictureUrl = getProfilePictureUrl(admin?.profilePictureUri);
+  const profilePictureUrl = pictureUrl(admin?.profilePictureUri);
 
-  const initials = getInitials(admin);
+  const initials = initialsOf(admin);
+
+  const memberSince = formatDate(admin?.createdAt);
+
+  const photoBusy = uploadingPhoto || removingPhoto;
+
+  const fineTypesBusy =
+    fineTypesLoading ||
+    fineTypesRefreshing ||
+    savingFineType ||
+    changingFineStatusId !== null;
+
+  // ========================================
+  // PROFILE CARD
+  // ========================================
+
+  const renderProfileCard = () => (
+    <View
+      style={[
+        styles.profileCard,
+
+        !isWide && styles.profileCardStacked,
+
+        profileInRow && styles.profileCardRow,
+
+        compactProfile && styles.profileCardCompact,
+      ]}
+    >
+      <View
+        style={[
+          styles.avatarWrapper,
+          profileInRow && styles.avatarWrapperRow,
+          compactProfile && styles.avatarWrapperCompact,
+        ]}
+      >
+        {profilePictureUrl && !imageFailed ? (
+          <Image
+            source={{
+              uri: profilePictureUrl,
+            }}
+            style={[styles.avatar, compactProfile && styles.avatarCompact]}
+            resizeMode="cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <View
+            style={[
+              styles.avatar,
+              compactProfile && styles.avatarCompact,
+              styles.avatarFallback,
+            ]}
+          >
+            <Text
+              style={[
+                styles.avatarInitials,
+                compactProfile && styles.avatarInitialsCompact,
+              ]}
+            >
+              {initials}
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[
+            styles.cameraButton,
+            compactProfile && styles.cameraButtonCompact,
+            photoBusy && { opacity: 0.65 },
+          ]}
+          onPress={handleChoosePhoto}
+          disabled={photoBusy}
+          accessibilityLabel="Change profile photo"
+          activeOpacity={0.8}
+        >
+          {uploadingPhoto ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Image
+              source={require("../../../assets/icons/edit-image.png")}
+              style={{
+                width: 18,
+
+                height: 18,
+              }}
+              resizeMode="contain"
+            />
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <View
+        style={[styles.profileDetails, profileInRow && styles.profileDetailsRow]}
+      >
+        <Text
+          style={[
+            styles.profileName,
+            profileInRow && styles.textStart,
+            compactProfile && styles.profileNameCompact,
+          ]}
+          numberOfLines={2}
+        >
+          {admin?.fullName || admin?.username || "Administrator"}
+        </Text>
+
+        <View style={[styles.profileChips, profileInRow && styles.rowStart]}>
+          <Text style={styles.roleChip}>Administrator</Text>
+
+          <Text style={styles.activeChip}>● Active</Text>
+        </View>
+
+        <Text style={[styles.profileUsername, profileInRow && styles.textStart]}>
+          @{admin?.username || "admin"}
+        </Text>
+
+        {!compactProfile && (
+          <>
+            <View
+              style={[styles.profileDivider, profileInRow && styles.dividerRow]}
+            />
+
+            <View
+              style={[styles.profileInfoList, profileInRow && styles.infoListRow]}
+            >
+              <ProfileInfo
+                label="EMAIL"
+                value={admin?.email || "Not provided"}
+                alignStart={profileInRow}
+              />
+
+              <ProfileInfo
+                label="CONTACT NUMBER"
+                value={admin?.contactNumber || "Not provided"}
+                alignStart={profileInRow}
+              />
+
+              {memberSince ? (
+                <ProfileInfo
+                  label="MEMBER SINCE"
+                  value={memberSince}
+                  alignStart={profileInRow}
+                />
+              ) : null}
+            </View>
+          </>
+        )}
+
+        <View
+          style={[
+            styles.photoActions,
+            profileInRow && styles.rowStart,
+            compactProfile && styles.photoActionsCompact,
+          ]}
+        >
+          <TouchableOpacity
+            style={[styles.changePhotoButton, photoBusy && { opacity: 0.65 }]}
+            onPress={handleChoosePhoto}
+            disabled={photoBusy}
+            activeOpacity={0.8}
+          >
+            {uploadingPhoto ? (
+              <View style={styles.inlineRow}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+
+                <Text style={styles.changePhotoButtonText}>Uploading...</Text>
+              </View>
+            ) : (
+              <Text style={styles.changePhotoButtonText}>
+                {admin?.profilePictureUri ? "Change Photo" : "Add Photo"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {admin?.profilePictureUri && (
+            <TouchableOpacity
+              style={[styles.removePhotoButton, photoBusy && { opacity: 0.65 }]}
+              onPress={handleRemovePhoto}
+              disabled={photoBusy}
+              activeOpacity={0.8}
+            >
+              {removingPhoto ? (
+                <View style={styles.inlineRow}>
+                  <ActivityIndicator size="small" color="#D32F2F" />
+
+                  <Text style={styles.removePhotoButtonText}>Removing...</Text>
+                </View>
+              ) : (
+                <Text style={styles.removePhotoButtonText}>Remove</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={[styles.photoHint, profileInRow && styles.textStart]}>
+          JPG, PNG or WEBP • Max 5 MB
+        </Text>
+      </View>
+    </View>
+  );
+
+  // ========================================
+  // TAB BAR
+  // ========================================
+
+  const renderTabBar = () => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.tabBarScroll}
+      contentContainerStyle={styles.tabBar}
+      accessibilityRole="tablist"
+    >
+      {TABS.map((tab) => {
+        const active = tab.key === activeTab;
+
+        const unsaved =
+          (tab.key === "account" && accountDirty) ||
+          (tab.key === "system" && systemDirty);
+
+        return (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tab, active && styles.tabActive]}
+            onPress={() => selectTab(tab.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={unsaved ? `${tab.label}, unsaved changes` : tab.label}
+            activeOpacity={0.8}
+          >
+            {showTabIcons && (
+              <Image
+                source={tab.icon}
+                style={[styles.tabIcon, active && styles.tabIconActive]}
+                resizeMode="contain"
+              />
+            )}
+
+            <Text style={[styles.tabText, active && styles.tabTextActive]}>
+              {tab.label}
+            </Text>
+
+            {unsaved && <View style={styles.tabDot} />}
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+
+  // ========================================
+  // ACCOUNT TAB
+  // ========================================
+
+  const renderAccountTab = () => (
+    <SectionCard
+      title="Profile Details"
+      description="Your name, sign-in username and contact details. Your name appears on your profile and in the administrators list."
+      icon={require("../../../assets/icons/user.png")}
+      footer={
+        <>
+          {accountDirty && (
+            <Text style={styles.unsavedText}>● Unsaved changes</Text>
+          )}
+
+          <PopupButton
+            label="Discard"
+            variant="outline"
+            disabled={!accountDirty || savingAccount}
+            onPress={() => admin && fillAccountForm(admin)}
+          />
+
+          <PopupButton
+            label="Save Changes"
+            busyLabel="Saving..."
+            busy={savingAccount}
+            disabled={!accountDirty}
+            onPress={handleSaveAccount}
+          />
+        </>
+      }
+    >
+      <Text style={styles.groupLabel}>NAME</Text>
+
+      <View style={styles.formRow}>
+        <View style={styles.formFieldThird}>
+          <Text style={styles.inputLabel}>
+            First Name <Text style={styles.requiredMark}>*</Text>
+          </Text>
+
+          <TextInput
+            value={firstName}
+            {...bindFocus("firstName")}
+            onChangeText={setFirstName}
+            placeholder="First name"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "firstName" && styles.inputFocused,
+            ]}
+            maxLength={50}
+            editable={!savingAccount}
+          />
+        </View>
+
+        <View style={styles.formFieldThird}>
+          <Text style={styles.inputLabel}>Middle Name</Text>
+
+          <TextInput
+            value={middleName}
+            {...bindFocus("middleName")}
+            onChangeText={setMiddleName}
+            placeholder="Optional"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "middleName" && styles.inputFocused,
+            ]}
+            maxLength={50}
+            editable={!savingAccount}
+          />
+        </View>
+
+        <View style={styles.formFieldThird}>
+          <Text style={styles.inputLabel}>
+            Last Name <Text style={styles.requiredMark}>*</Text>
+          </Text>
+
+          <TextInput
+            value={lastName}
+            {...bindFocus("lastName")}
+            onChangeText={setLastName}
+            placeholder="Last name"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "lastName" && styles.inputFocused,
+            ]}
+            maxLength={50}
+            editable={!savingAccount}
+          />
+        </View>
+      </View>
+
+      <Text style={[styles.groupLabel, styles.groupLabelGap]}>
+        SIGN-IN & CONTACT
+      </Text>
+
+      <View style={styles.formRow}>
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>
+            Username <Text style={styles.requiredMark}>*</Text>
+          </Text>
+
+          <TextInput
+            value={username}
+            {...bindFocus("username")}
+            onChangeText={setUsername}
+            placeholder="Username"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "username" && styles.inputFocused,
+            ]}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!savingAccount}
+          />
+
+          <Text style={styles.fieldHint}>Used to sign in to SmartFine.</Text>
+        </View>
+
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>
+            Primary Email <Text style={styles.requiredMark}>*</Text>
+          </Text>
+
+          <TextInput
+            value={email}
+            {...bindFocus("email")}
+            onChangeText={setEmail}
+            placeholder="Email address"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "email" && styles.inputFocused,
+            ]}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!savingAccount}
+          />
+
+          <Text style={styles.fieldHint}>Receives password reset codes.</Text>
+        </View>
+      </View>
+
+      <View style={[styles.formRow, styles.formRowLast]}>
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>Contact Number</Text>
+
+          <TextInput
+            value={contactNumber}
+            {...bindFocus("contactNumber")}
+            onChangeText={setContactNumber}
+            placeholder="09xxxxxxxxx"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "contactNumber" && styles.inputFocused,
+            ]}
+            keyboardType="phone-pad"
+            editable={!savingAccount}
+          />
+        </View>
+
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>Account Role</Text>
+
+          <View style={[styles.input, styles.readOnlyInput]}>
+            <Text style={styles.readOnlyText}>Administrator</Text>
+          </View>
+        </View>
+      </View>
+    </SectionCard>
+  );
+
+  // ========================================
+  // SECURITY TAB
+  // ========================================
+
+  const renderSecurityTab = () => (
+    <View style={styles.tabStack}>
+      <SectionCard
+        title="Password"
+        description="Change the password you use to sign in to SmartFine."
+        icon={require("../../../assets/icons/padlock.png")}
+      >
+        <View style={styles.securityRow}>
+          <View style={styles.securityText}>
+            <Text style={styles.securityTitle}>Sign-in password</Text>
+
+            <Text style={styles.securityHint}>
+              Use at least 8 characters with uppercase and lowercase letters,
+              a number and a symbol. You&apos;ll need your current password to
+              change it.
+            </Text>
+          </View>
+
+          <PopupButton
+            label="Change Password"
+            onPress={() => setShowPasswordModal(true)}
+          />
+        </View>
+      </SectionCard>
+
+      <SectionCard
+        title="Sign-in Protection"
+        description="How SmartFine protects administrator accounts."
+        icon={require("../../../assets/icons/policy-icon.png")}
+      >
+        <ProtectionItem
+          title="Lockout after wrong passwords"
+          text="After 3 wrong passwords, sign-in pauses for 30 seconds. Each further lockout lasts longer, up to 5 minutes, until the next successful sign-in."
+        />
+
+        <ProtectionItem
+          title="Sessions expire"
+          text="You're signed out 8 hours after signing in and need to sign in again."
+        />
+
+        <ProtectionItem
+          title="Forgot your password?"
+          text={`Choose Forgot Password on the sign-in screen to get a reset code by email${admin?.email ? ` at ${admin.email}` : ""}.`}
+          last
+        />
+      </SectionCard>
+    </View>
+  );
+
+  // ========================================
+  // FINE TYPES TAB
+  // ========================================
+
+  const renderFineTypesTab = () => (
+    <SectionCard
+      title="Fine Types"
+      description="Violation types and the official fine amounts used when recording new fines."
+      icon={require("../../../assets/icons/fines.png")}
+      actions={
+        <>
+          <PopupButton
+            label="↻ Refresh"
+            busyLabel="Refreshing..."
+            variant="outline"
+            busy={fineTypesRefreshing}
+            disabled={fineTypesBusy}
+            onPress={handleRefreshFineTypes}
+          />
+
+          <PopupButton
+            label="+ Add Fine Type"
+            variant="green"
+            disabled={fineTypesLoading || fineTypesRefreshing || savingFineType}
+            onPress={handleAddFineType}
+          />
+        </>
+      }
+    >
+      <View style={styles.infoNotice}>
+        <Text style={styles.infoNoticeIcon}>i</Text>
+
+        <Text style={styles.infoNoticeText}>
+          Only Active fine types are available when recording new fines.
+          Existing fine records keep their original saved amount even if the
+          official amount changes later.
+        </Text>
+      </View>
+
+      {fineTypesLoading ? (
+        <SkeletonTable
+          label="Loading fine types"
+          rows={4}
+          columns={4}
+          avatar={false}
+        />
+      ) : fineTypesError ? (
+        <View style={styles.fineTypesErrorBox}>
+          <Text style={styles.fineTypesErrorText}>{fineTypesError}</Text>
+
+          <TouchableOpacity
+            style={styles.fineTypesRetryButton}
+            onPress={() => loadFineTypes(true, false)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fineTypesRetryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          onLayout={(event) =>
+            setFineTableWidth(Math.round(event.nativeEvent.layout.width))
+          }
+        >
+          <View
+            style={[
+              styles.fineTypesTable,
+              fineTableWidth > 0 && {
+                width: Math.max(fineTableWidth, FINE_TABLE_MIN_WIDTH),
+              },
+            ]}
+          >
+            {/* HEADER */}
+
+            <View style={styles.fineTypesTableHeader}>
+              <Text style={[styles.fineTypesHeaderText, styles.fineCodeColumn]}>
+                Code
+              </Text>
+
+              <Text style={[styles.fineTypesHeaderText, styles.fineNameColumn]}>
+                Fine Type
+              </Text>
+
+              <Text
+                style={[styles.fineTypesHeaderText, styles.fineAmountColumn]}
+              >
+                Amount
+              </Text>
+
+              <Text
+                style={[styles.fineTypesHeaderText, styles.fineStatusColumn]}
+              >
+                Status
+              </Text>
+
+              <Text
+                style={[styles.fineTypesHeaderText, styles.fineActionColumn]}
+              >
+                Actions
+              </Text>
+            </View>
+
+            {/* ROWS */}
+
+            {fineTypes.length === 0 ? (
+              <View style={styles.fineTypesEmpty}>
+                <Text style={styles.fineTypesEmptyTitle}>
+                  No fine types found
+                </Text>
+
+                <Text style={styles.fineTypesEmptyText}>
+                  Add your first fine type to begin using it in SmartFine.
+                </Text>
+              </View>
+            ) : (
+              fineTypes.map((fineType, index) => {
+                const active = Number(fineType.is_active) === 1;
+
+                const changingStatus = changingFineStatusId === fineType.id;
+
+                const rowDisabled =
+                  changingStatus || savingFineType || fineTypesRefreshing;
+
+                return (
+                  <View
+                    key={fineType.id}
+                    style={[
+                      styles.fineTypesTableRow,
+
+                      index % 2 === 1 && styles.fineTypesTableRowAlt,
+
+                      fineTypesRefreshing && {
+                        opacity: 0.7,
+                      },
+                    ]}
+                  >
+                    {/* CODE */}
+
+                    <View style={styles.fineCodeColumn}>
+                      <Text style={styles.fineCodeText}>
+                        {fineType.violation_code}
+                      </Text>
+                    </View>
+
+                    {/* NAME */}
+
+                    <View style={styles.fineNameColumn}>
+                      <Text style={styles.fineNameText}>
+                        {fineType.violation_name}
+                      </Text>
+
+                      {fineType.description ? (
+                        <Text
+                          numberOfLines={2}
+                          style={styles.fineDescriptionText}
+                        >
+                          {fineType.description}
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    {/* AMOUNT */}
+
+                    <View style={styles.fineAmountColumn}>
+                      <Text style={styles.fineAmountText}>
+                        ₱
+                        {Number(
+                          fineType.amount ??
+                            Number(fineType.amount_centavos) / 100,
+                        ).toFixed(2)}
+                      </Text>
+                    </View>
+
+                    {/* STATUS */}
+
+                    <View style={styles.fineStatusColumn}>
+                      <View
+                        style={[
+                          styles.fineStatusBadge,
+
+                          active
+                            ? styles.fineStatusActiveBadge
+                            : styles.fineStatusInactiveBadge,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.fineStatusText,
+
+                            active
+                              ? styles.fineStatusActiveText
+                              : styles.fineStatusInactiveText,
+                          ]}
+                        >
+                          {active ? "Active" : "Inactive"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* ACTIONS */}
+
+                    <View style={styles.fineActionColumn}>
+                      <View style={styles.fineActionButtons}>
+                        <TouchableOpacity
+                          style={[
+                            styles.editFineTypeButton,
+
+                            rowDisabled && {
+                              opacity: 0.55,
+                            },
+                          ]}
+                          onPress={() => handleEditFineType(fineType)}
+                          disabled={rowDisabled}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.editFineTypeText}>Edit</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.fineStatusActionButton,
+
+                            active
+                              ? styles.deactivateFineTypeButton
+                              : styles.activateFineTypeButton,
+
+                            rowDisabled && {
+                              opacity: 0.6,
+                            },
+                          ]}
+                          onPress={() => handleToggleFineTypeStatus(fineType)}
+                          disabled={rowDisabled}
+                          activeOpacity={0.8}
+                        >
+                          {changingStatus ? (
+                            <View style={styles.inlineRow}>
+                              <ActivityIndicator
+                                size="small"
+                                color={active ? "#D32F2F" : "#2E9D43"}
+                              />
+
+                              <Text
+                                style={[
+                                  styles.fineStatusActionText,
+
+                                  active
+                                    ? styles.deactivateFineTypeText
+                                    : styles.activateFineTypeText,
+                                ]}
+                              >
+                                Updating...
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text
+                              style={[
+                                styles.fineStatusActionText,
+
+                                active
+                                  ? styles.deactivateFineTypeText
+                                  : styles.activateFineTypeText,
+                              ]}
+                            >
+                              {active ? "Deactivate" : "Activate"}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        </ScrollView>
+      )}
+    </SectionCard>
+  );
+
+  // ========================================
+  // SYSTEM TAB
+  // ========================================
+
+  const renderSystemTab = () => (
+    <SectionCard
+      title="School & System"
+      description="SmartFine's system-wide school information."
+      icon={require("../../../assets/icons/settings.png")}
+      footer={
+        <>
+          {systemDirty && (
+            <Text style={styles.unsavedText}>● Unsaved changes</Text>
+          )}
+
+          <PopupButton
+            label="Discard"
+            variant="outline"
+            disabled={!systemDirty || savingSystemSettings}
+            onPress={() => {
+              setSchoolName(savedSystem.schoolName);
+
+              setAcademicYear(savedSystem.academicYear);
+
+              setSystemName(savedSystem.systemName);
+            }}
+          />
+
+          <PopupButton
+            label="Save System Settings"
+            busyLabel="Saving..."
+            busy={savingSystemSettings}
+            disabled={!systemDirty}
+            onPress={handleSaveSystemSettings}
+          />
+        </>
+      }
+    >
+      <View style={styles.formRow}>
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>
+            School Name <Text style={styles.requiredMark}>*</Text>
+          </Text>
+
+          <TextInput
+            value={schoolName}
+            {...bindFocus("schoolName")}
+            onChangeText={setSchoolName}
+            placeholder="Enter school name"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "schoolName" && styles.inputFocused,
+            ]}
+            editable={!savingSystemSettings}
+          />
+        </View>
+
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>
+            Academic Year <Text style={styles.requiredMark}>*</Text>
+          </Text>
+
+          <TextInput
+            value={academicYear}
+            {...bindFocus("academicYear")}
+            onChangeText={setAcademicYear}
+            placeholder="Example: 2026 - 2027"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "academicYear" && styles.inputFocused,
+            ]}
+            editable={!savingSystemSettings}
+          />
+        </View>
+      </View>
+
+      <View style={styles.formRow}>
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>
+            System Name <Text style={styles.requiredMark}>*</Text>
+          </Text>
+
+          <TextInput
+            value={systemName}
+            {...bindFocus("systemName")}
+            onChangeText={setSystemName}
+            placeholder="SmartFine"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.input,
+              focusedField === "systemName" && styles.inputFocused,
+            ]}
+            editable={!savingSystemSettings}
+          />
+        </View>
+
+        <View style={styles.formField}>
+          <Text style={styles.inputLabel}>Currency</Text>
+
+          <View style={[styles.input, styles.readOnlyInput]}>
+            <Text style={styles.readOnlyText}>Philippine Peso (₱)</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.infoNotice}>
+        <Text style={styles.infoNoticeIcon}>i</Text>
+
+        <Text style={styles.infoNoticeText}>
+          These values are used as SmartFine&apos;s system-wide school
+          information.
+        </Text>
+      </View>
+    </SectionCard>
+  );
 
   // ========================================
   // UI
@@ -1469,7 +2327,10 @@ export default function AdminSettings() {
 
       <View style={styles.main}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            !isTablet && styles.scrollContentPhone,
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -1519,8 +2380,8 @@ export default function AdminSettings() {
             <Text style={styles.pageTitle}>Settings</Text>
 
             <Text style={styles.pageSubtitle}>
-              Manage your administrator account, system preferences, and fine
-              types
+              Manage your account, security, administrators, fine types and
+              school information
             </Text>
           </View>
 
@@ -1548,1016 +2409,28 @@ export default function AdminSettings() {
                 !isWide && styles.settingsLayoutStacked,
               ]}
             >
-              {/* =============================
-                  PROFILE
-              ============================== */}
-
-              <View
-                style={[
-                  styles.profileCard,
-
-                  !isWide && styles.profileCardStacked,
-                ]}
-              >
-                <View style={styles.avatarWrapper}>
-                  {profilePictureUrl && !imageFailed ? (
-                    <Image
-                      source={{
-                        uri: profilePictureUrl,
-                      }}
-                      style={styles.avatar}
-                      resizeMode="cover"
-                      onError={() => setImageFailed(true)}
-                    />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarFallback]}>
-                      <Text style={styles.avatarInitials}>{initials}</Text>
-                    </View>
-                  )}
-
-                  <TouchableOpacity
-                    style={[
-                      styles.cameraButton,
-
-                      (uploadingPhoto || removingPhoto) && {
-                        opacity: 0.65,
-                      },
-                    ]}
-                    onPress={handleChoosePhoto}
-                    disabled={uploadingPhoto || removingPhoto}
-                    activeOpacity={0.8}
-                  >
-                    {uploadingPhoto ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Image
-                        source={require("../../../assets/icons/edit-image.png")}
-                        style={{
-                          width: 18,
-
-                          height: 18,
-                        }}
-                        resizeMode="contain"
-                      />
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.profileName}>
-                  {admin?.fullName || "System Administrator"}
-                </Text>
-
-                <Text style={styles.profileRole}>System Administrator</Text>
-
-                <Text style={styles.profileUsername}>
-                  @{admin?.username || "admin"}
-                </Text>
-
-                <View style={styles.profileDivider} />
-
-                <View style={styles.profileInfoBlock}>
-                  <Text style={styles.profileInfoLabel}>CONTACT NUMBER</Text>
-
-                  <Text style={styles.profileInfoValue}>
-                    {admin?.contactNumber || "Not provided"}
-                  </Text>
-                </View>
-
-                <View style={styles.profileInfoBlock}>
-                  <Text style={styles.profileInfoLabel}>EMAIL</Text>
-
-                  <Text style={styles.profileInfoValue}>
-                    {admin?.email || "Not provided"}
-                  </Text>
-                </View>
-
-                <View style={styles.photoActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.changePhotoButton,
-
-                      (uploadingPhoto || removingPhoto) && {
-                        opacity: 0.65,
-                      },
-                    ]}
-                    onPress={handleChoosePhoto}
-                    disabled={uploadingPhoto || removingPhoto}
-                    activeOpacity={0.8}
-                  >
-                    {uploadingPhoto ? (
-                      <View
-                        style={{
-                          flexDirection: "row",
-
-                          alignItems: "center",
-
-                          gap: 7,
-                        }}
-                      >
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-
-                        <Text style={styles.changePhotoButtonText}>
-                          Uploading...
-                        </Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.changePhotoButtonText}>
-                        {admin?.profilePictureUri
-                          ? "Change Photo"
-                          : "Add Photo"}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-
-                  {admin?.profilePictureUri && (
-                    <TouchableOpacity
-                      style={[
-                        styles.removePhotoButton,
-
-                        (uploadingPhoto || removingPhoto) && {
-                          opacity: 0.65,
-                        },
-                      ]}
-                      onPress={handleRemovePhoto}
-                      disabled={uploadingPhoto || removingPhoto}
-                      activeOpacity={0.8}
-                    >
-                      {removingPhoto ? (
-                        <View
-                          style={{
-                            flexDirection: "row",
-
-                            alignItems: "center",
-
-                            gap: 6,
-                          }}
-                        >
-                          <ActivityIndicator size="small" color="#D32F2F" />
-
-                          <Text style={styles.removePhotoButtonText}>
-                            Removing...
-                          </Text>
-                        </View>
-                      ) : (
-                        <Text style={styles.removePhotoButtonText}>Remove</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <Text style={styles.photoHint}>
-                  JPG, PNG or WEBP • Max 5 MB
-                </Text>
-              </View>
+              {renderProfileCard()}
 
               {/* =============================
-                  RIGHT COLUMN
+                  TABS
               ============================== */}
 
               <View style={styles.rightColumn}>
-                {/* =============================
-                    ACCOUNT SETTINGS
-                ============================== */}
+                {renderTabBar()}
 
-                <View>
-                  <Text style={styles.sectionTitle}>Account Settings</Text>
+                <Animated.View style={tabFade}>
+                  {activeTab === "account" && renderAccountTab()}
 
-                  <View style={styles.settingsCard}>
-                    <View style={styles.formRow}>
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>Username</Text>
+                  {activeTab === "security" && renderSecurityTab()}
 
-                        <TextInput
-                          value={username}
-                          onChangeText={setUsername}
-                          placeholder="Username"
-                          placeholderTextColor="#A0A7B2"
-                          style={styles.input}
-                          autoCapitalize="none"
-                          editable={!savingAccount}
-                        />
-                      </View>
+                  {activeTab === "admins" && (
+                    <AdministratorsPanel onMessage={showMessage} />
+                  )}
 
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>Primary Email</Text>
+                  {activeTab === "fineTypes" && renderFineTypesTab()}
 
-                        <TextInput
-                          value={email}
-                          onChangeText={setEmail}
-                          placeholder="Email address"
-                          placeholderTextColor="#A0A7B2"
-                          style={styles.input}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          editable={!savingAccount}
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.formRow}>
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>Contact Number</Text>
-
-                        <TextInput
-                          value={contactNumber}
-                          onChangeText={setContactNumber}
-                          placeholder="09xxxxxxxxx"
-                          placeholderTextColor="#A0A7B2"
-                          style={styles.input}
-                          keyboardType="phone-pad"
-                          editable={!savingAccount}
-                        />
-                      </View>
-
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>Account Role</Text>
-
-                        <View style={[styles.input, styles.readOnlyInput]}>
-                          <Text style={styles.readOnlyText}>
-                            System Administrator
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.cardActionRow}>
-                      <TouchableOpacity
-                        style={[
-                          styles.primaryButton,
-
-                          savingAccount && {
-                            opacity: 0.7,
-                          },
-                        ]}
-                        onPress={handleSaveAccount}
-                        disabled={savingAccount}
-                        activeOpacity={0.8}
-                      >
-                        {savingAccount ? (
-                          <View
-                            style={{
-                              flexDirection: "row",
-
-                              alignItems: "center",
-
-                              gap: 8,
-                            }}
-                          >
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-
-                            <Text style={styles.primaryButtonText}>
-                              Saving...
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.primaryButtonText}>
-                            Save Account Changes
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-
-                {/* =============================
-                    PASSWORD
-                ============================== */}
-
-                <View>
-                  <Text style={styles.sectionTitle}>Password & Security</Text>
-
-                  <View style={styles.settingsCard}>
-                    {!showPasswordForm ? (
-                      <View style={styles.passwordClosedRow}>
-                        <View style={styles.passwordDescription}>
-                          <Text style={styles.passwordTitle}>
-                            Change Password
-                          </Text>
-
-                          <Text style={styles.passwordSubtitle}>
-                            Update the password used to access your SmartFine
-                            administrator account.
-                          </Text>
-                        </View>
-
-                        <TouchableOpacity
-                          style={styles.secondaryButton}
-                          onPress={() => setShowPasswordForm(true)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.secondaryButtonText}>
-                            Change Password
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <Animated.View
-                        style={{
-                          opacity: passwordFormProgress,
-                          transform: [
-                            {
-                              translateY: passwordFormProgress.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [6, 0],
-                              }),
-                            },
-                          ],
-                        }}
-                      >
-                        <View style={styles.formRow}>
-                          <View style={styles.formField}>
-                            <Text style={styles.inputLabel}>
-                              Current Password
-                            </Text>
-
-                            <TextInput
-                              value={currentPassword}
-                              onChangeText={setCurrentPassword}
-                              secureTextEntry
-                              placeholder="Enter current password"
-                              placeholderTextColor="#A0A7B2"
-                              style={styles.input}
-                              editable={!changingPassword}
-                            />
-                          </View>
-
-                          <View style={styles.formField}>
-                            <Text style={styles.inputLabel}>New Password</Text>
-
-                            <TextInput
-                              value={newPassword}
-                              onChangeText={setNewPassword}
-                              secureTextEntry
-                              placeholder="At least 8 characters"
-                              placeholderTextColor="#A0A7B2"
-                              style={styles.input}
-                              editable={!changingPassword}
-                            />
-                          </View>
-                        </View>
-
-                        <View style={styles.formRow}>
-                          <View style={styles.formField}>
-                            <Text style={styles.inputLabel}>
-                              Confirm New Password
-                            </Text>
-
-                            <TextInput
-                              value={confirmPassword}
-                              onChangeText={setConfirmPassword}
-                              secureTextEntry
-                              placeholder="Repeat new password"
-                              placeholderTextColor="#A0A7B2"
-                              style={styles.input}
-                              editable={!changingPassword}
-                            />
-                          </View>
-
-                          <View style={styles.formField} />
-                        </View>
-
-                        <View style={styles.passwordActions}>
-                          <TouchableOpacity
-                            style={[
-                              styles.cancelButton,
-
-                              changingPassword && {
-                                opacity: 0.6,
-                              },
-                            ]}
-                            disabled={changingPassword}
-                            onPress={() => {
-                              setCurrentPassword("");
-
-                              setNewPassword("");
-
-                              setConfirmPassword("");
-
-                              setShowPasswordForm(false);
-                            }}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[
-                              styles.primaryButton,
-
-                              changingPassword && {
-                                opacity: 0.7,
-                              },
-                            ]}
-                            onPress={handleChangePassword}
-                            disabled={changingPassword}
-                            activeOpacity={0.8}
-                          >
-                            {changingPassword ? (
-                              <View
-                                style={{
-                                  flexDirection: "row",
-
-                                  alignItems: "center",
-
-                                  gap: 8,
-                                }}
-                              >
-                                <ActivityIndicator
-                                  size="small"
-                                  color="#FFFFFF"
-                                />
-
-                                <Text style={styles.primaryButtonText}>
-                                  Updating...
-                                </Text>
-                              </View>
-                            ) : (
-                              <Text style={styles.primaryButtonText}>
-                                Update Password
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      </Animated.View>
-                    )}
-                  </View>
-                </View>
-
-                {/* ==================================
-                    FINE TYPES MAINTENANCE
-                ================================== */}
-
-                <View>
-                  <View style={styles.fineTypesSectionHeader}>
-                    <View style={styles.fineTypesSectionHeading}>
-                      <Text
-                        style={[
-                          styles.sectionTitle,
-
-                          styles.fineTypesSectionTitle,
-                        ]}
-                      >
-                        Fine Types Maintenance
-                      </Text>
-
-                      <Text style={styles.fineTypesDescription}>
-                        Manage the violation types and official fine amounts
-                        used when recording new fines.
-                      </Text>
-                    </View>
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-
-                        alignItems: "center",
-
-                        flexWrap: "wrap",
-
-                        gap: 8,
-                      }}
-                    >
-                      {/* REFRESH FINE TYPES */}
-
-                      <TouchableOpacity
-                        style={[
-                          styles.secondaryButton,
-
-                          (fineTypesLoading ||
-                            fineTypesRefreshing ||
-                            savingFineType ||
-                            changingFineStatusId !== null) && {
-                            opacity: 0.6,
-                          },
-                        ]}
-                        onPress={handleRefreshFineTypes}
-                        disabled={
-                          fineTypesLoading ||
-                          fineTypesRefreshing ||
-                          savingFineType ||
-                          changingFineStatusId !== null
-                        }
-                        activeOpacity={0.8}
-                      >
-                        {fineTypesRefreshing ? (
-                          <View
-                            style={{
-                              flexDirection: "row",
-
-                              alignItems: "center",
-
-                              gap: 7,
-                            }}
-                          >
-                            <ActivityIndicator size="small" color="#173A73" />
-
-                            <Text style={styles.secondaryButtonText}>
-                              Refreshing...
-                            </Text>
-                          </View>
-                        ) : (
-                          <View
-                            style={{
-                              flexDirection: "row",
-
-                              alignItems: "center",
-
-                              gap: 7,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#173A73",
-
-                                fontSize: 15,
-
-                                fontWeight: "800",
-                              }}
-                            >
-                              ↻
-                            </Text>
-
-                            <Text style={styles.secondaryButtonText}>
-                              Refresh
-                            </Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-
-                      {/* ADD FINE TYPE */}
-
-                      <TouchableOpacity
-                        style={[
-                          styles.addFineTypeButton,
-
-                          (fineTypesLoading ||
-                            fineTypesRefreshing ||
-                            savingFineType) && {
-                            opacity: 0.6,
-                          },
-                        ]}
-                        onPress={handleAddFineType}
-                        disabled={
-                          fineTypesLoading ||
-                          fineTypesRefreshing ||
-                          savingFineType
-                        }
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.addFineTypeButtonText}>
-                          + Add Fine Type
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  <View style={styles.settingsCard}>
-                    {/* =============================
-                        INFO
-                    ============================== */}
-
-                    <View style={styles.fineTypeNotice}>
-                      <Text style={styles.systemNoticeIcon}>i</Text>
-
-                      <Text style={styles.fineTypeNoticeText}>
-                        Only Active fine types are available when recording new
-                        fines. Existing fine records keep their original saved
-                        amount even if the official amount changes later.
-                      </Text>
-                    </View>
-
-                    {/* =============================
-                        LOADING / ERROR / TABLE
-                    ============================== */}
-
-                    {fineTypesLoading ? (
-                      <SkeletonTable
-                        label="Loading fine types"
-                        rows={4}
-                        columns={4}
-                        avatar={false}
-                      />
-                    ) : fineTypesError ? (
-                      <View style={styles.fineTypesErrorBox}>
-                        <Text style={styles.fineTypesErrorText}>
-                          {fineTypesError}
-                        </Text>
-
-                        <TouchableOpacity
-                          style={styles.fineTypesRetryButton}
-                          onPress={() => loadFineTypes(true, false)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.fineTypesRetryText}>
-                            Try Again
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <>
-                        {fineTypesRefreshing && (
-                          <View
-                            style={{
-                              flexDirection: "row",
-
-                              alignItems: "center",
-
-                              justifyContent: "center",
-
-                              gap: 8,
-
-                              paddingBottom: 12,
-                            }}
-                          >
-                            <ActivityIndicator size="small" color="#173A73" />
-
-                            <Text style={styles.fineTypesLoadingText}>
-                              Refreshing fine types...
-                            </Text>
-                          </View>
-                        )}
-
-                        <ScrollView
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                        >
-                          <View style={styles.fineTypesTable}>
-                            {/* HEADER */}
-
-                            <View style={styles.fineTypesTableHeader}>
-                              <Text
-                                style={[
-                                  styles.fineTypesHeaderText,
-
-                                  styles.fineCodeColumn,
-                                ]}
-                              >
-                                Code
-                              </Text>
-
-                              <Text
-                                style={[
-                                  styles.fineTypesHeaderText,
-
-                                  styles.fineNameColumn,
-                                ]}
-                              >
-                                Fine Type
-                              </Text>
-
-                              <Text
-                                style={[
-                                  styles.fineTypesHeaderText,
-
-                                  styles.fineAmountColumn,
-                                ]}
-                              >
-                                Amount
-                              </Text>
-
-                              <Text
-                                style={[
-                                  styles.fineTypesHeaderText,
-
-                                  styles.fineStatusColumn,
-                                ]}
-                              >
-                                Status
-                              </Text>
-
-                              <Text
-                                style={[
-                                  styles.fineTypesHeaderText,
-
-                                  styles.fineActionColumn,
-                                ]}
-                              >
-                                Actions
-                              </Text>
-                            </View>
-
-                            {/* ROWS */}
-
-                            {fineTypes.length === 0 ? (
-                              <View style={styles.fineTypesEmpty}>
-                                <Text style={styles.fineTypesEmptyTitle}>
-                                  No fine types found
-                                </Text>
-
-                                <Text style={styles.fineTypesEmptyText}>
-                                  Add your first fine type to begin using it in
-                                  SmartFine.
-                                </Text>
-                              </View>
-                            ) : (
-                              fineTypes.map((fineType) => {
-                                const active = Number(fineType.is_active) === 1;
-
-                                const changingStatus =
-                                  changingFineStatusId === fineType.id;
-
-                                return (
-                                  <View
-                                    key={fineType.id}
-                                    style={[
-                                      styles.fineTypesTableRow,
-
-                                      fineTypesRefreshing && {
-                                        opacity: 0.7,
-                                      },
-                                    ]}
-                                  >
-                                    {/* CODE */}
-
-                                    <View style={styles.fineCodeColumn}>
-                                      <Text style={styles.fineCodeText}>
-                                        {fineType.violation_code}
-                                      </Text>
-                                    </View>
-
-                                    {/* NAME */}
-
-                                    <View style={styles.fineNameColumn}>
-                                      <Text style={styles.fineNameText}>
-                                        {fineType.violation_name}
-                                      </Text>
-
-                                      {fineType.description ? (
-                                        <Text
-                                          numberOfLines={2}
-                                          style={styles.fineDescriptionText}
-                                        >
-                                          {fineType.description}
-                                        </Text>
-                                      ) : null}
-                                    </View>
-
-                                    {/* AMOUNT */}
-
-                                    <View style={styles.fineAmountColumn}>
-                                      <Text style={styles.fineAmountText}>
-                                        ₱
-                                        {Number(
-                                          fineType.amount ??
-                                            Number(fineType.amount_centavos) /
-                                              100,
-                                        ).toFixed(2)}
-                                      </Text>
-                                    </View>
-
-                                    {/* STATUS */}
-
-                                    <View style={styles.fineStatusColumn}>
-                                      <View
-                                        style={[
-                                          styles.fineStatusBadge,
-
-                                          active
-                                            ? styles.fineStatusActiveBadge
-                                            : styles.fineStatusInactiveBadge,
-                                        ]}
-                                      >
-                                        <Text
-                                          style={[
-                                            styles.fineStatusText,
-
-                                            active
-                                              ? styles.fineStatusActiveText
-                                              : styles.fineStatusInactiveText,
-                                          ]}
-                                        >
-                                          {active ? "Active" : "Inactive"}
-                                        </Text>
-                                      </View>
-                                    </View>
-
-                                    {/* ACTIONS */}
-
-                                    <View style={styles.fineActionColumn}>
-                                      <View style={styles.fineActionButtons}>
-                                        <TouchableOpacity
-                                          style={[
-                                            styles.editFineTypeButton,
-
-                                            (changingStatus ||
-                                              savingFineType ||
-                                              fineTypesRefreshing) && {
-                                              opacity: 0.55,
-                                            },
-                                          ]}
-                                          onPress={() =>
-                                            handleEditFineType(fineType)
-                                          }
-                                          disabled={
-                                            changingStatus ||
-                                            savingFineType ||
-                                            fineTypesRefreshing
-                                          }
-                                          activeOpacity={0.8}
-                                        >
-                                          <Text style={styles.editFineTypeText}>
-                                            Edit
-                                          </Text>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                          style={[
-                                            styles.fineStatusActionButton,
-
-                                            active
-                                              ? styles.deactivateFineTypeButton
-                                              : styles.activateFineTypeButton,
-
-                                            (changingStatus ||
-                                              savingFineType ||
-                                              fineTypesRefreshing) && {
-                                              opacity: 0.6,
-                                            },
-                                          ]}
-                                          onPress={() =>
-                                            handleToggleFineTypeStatus(fineType)
-                                          }
-                                          disabled={
-                                            changingStatus ||
-                                            savingFineType ||
-                                            fineTypesRefreshing
-                                          }
-                                          activeOpacity={0.8}
-                                        >
-                                          {changingStatus ? (
-                                            <View
-                                              style={{
-                                                flexDirection: "row",
-
-                                                alignItems: "center",
-
-                                                gap: 5,
-                                              }}
-                                            >
-                                              <ActivityIndicator
-                                                size="small"
-                                                color={
-                                                  active ? "#D32F2F" : "#2E9D43"
-                                                }
-                                              />
-
-                                              <Text
-                                                style={[
-                                                  styles.fineStatusActionText,
-
-                                                  active
-                                                    ? styles.deactivateFineTypeText
-                                                    : styles.activateFineTypeText,
-                                                ]}
-                                              >
-                                                Updating...
-                                              </Text>
-                                            </View>
-                                          ) : (
-                                            <Text
-                                              style={[
-                                                styles.fineStatusActionText,
-
-                                                active
-                                                  ? styles.deactivateFineTypeText
-                                                  : styles.activateFineTypeText,
-                                              ]}
-                                            >
-                                              {active
-                                                ? "Deactivate"
-                                                : "Activate"}
-                                            </Text>
-                                          )}
-                                        </TouchableOpacity>
-                                      </View>
-                                    </View>
-                                  </View>
-                                );
-                              })
-                            )}
-                          </View>
-                        </ScrollView>
-                      </>
-                    )}
-                  </View>
-                </View>
-
-                {/* ==================================
-                    SYSTEM SETTINGS
-                ================================== */}
-
-                <View>
-                  <Text style={styles.sectionTitle}>System Settings</Text>
-
-                  <View style={styles.settingsCard}>
-                    <View style={styles.formRow}>
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>School Name</Text>
-
-                        <TextInput
-                          value={schoolName}
-                          onChangeText={setSchoolName}
-                          placeholder="Enter school name"
-                          placeholderTextColor="#A0A7B2"
-                          style={styles.input}
-                          editable={!savingSystemSettings}
-                        />
-                      </View>
-
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>Academic Year</Text>
-
-                        <TextInput
-                          value={academicYear}
-                          onChangeText={setAcademicYear}
-                          placeholder="Example: 2026 - 2027"
-                          placeholderTextColor="#A0A7B2"
-                          style={styles.input}
-                          editable={!savingSystemSettings}
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.formRow}>
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>System Name</Text>
-
-                        <TextInput
-                          value={systemName}
-                          onChangeText={setSystemName}
-                          placeholder="SmartFine"
-                          placeholderTextColor="#A0A7B2"
-                          style={styles.input}
-                          editable={!savingSystemSettings}
-                        />
-                      </View>
-
-                      <View style={styles.formField}>
-                        <Text style={styles.inputLabel}>Currency</Text>
-
-                        <View style={[styles.input, styles.readOnlyInput]}>
-                          <Text style={styles.readOnlyText}>
-                            Philippine Peso (₱)
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.systemNotice}>
-                      <Text style={styles.systemNoticeIcon}>i</Text>
-
-                      <Text style={styles.systemNoticeText}>
-                        These values are used as SmartFine&apos;s system-wide
-                        school information.
-                      </Text>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.cardActionRow,
-
-                        {
-                          marginTop: 18,
-                        },
-                      ]}
-                    >
-                      <TouchableOpacity
-                        style={[
-                          styles.primaryButton,
-
-                          savingSystemSettings && {
-                            opacity: 0.7,
-                          },
-                        ]}
-                        onPress={handleSaveSystemSettings}
-                        disabled={savingSystemSettings}
-                        activeOpacity={0.8}
-                      >
-                        {savingSystemSettings ? (
-                          <View
-                            style={{
-                              flexDirection: "row",
-
-                              alignItems: "center",
-
-                              gap: 8,
-                            }}
-                          >
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-
-                            <Text style={styles.primaryButtonText}>
-                              Saving...
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.primaryButtonText}>
-                            Save System Settings
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
+                  {activeTab === "system" && renderSystemTab()}
+                </Animated.View>
               </View>
             </View>
           )}
@@ -2565,284 +2438,215 @@ export default function AdminSettings() {
       </View>
 
       {/* =====================================
+          CHANGE PASSWORD
+      ====================================== */}
+
+      <ChangePasswordModal
+        visible={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onChanged={(message) => {
+          setShowPasswordModal(false);
+
+          showMessage("Success", message);
+        }}
+      />
+
+      {/* =====================================
           ADD / EDIT FINE TYPE
       ====================================== */}
 
-      <Modal
+      <FormPopup
         visible={showFineTypeForm}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!savingFineType) {
-            resetFineTypeForm();
-          }
-        }}
-      >
-        <View style={styles.fineTypeModalOverlay}>
-          <PopIn style={styles.fineTypeModalCard}>
-            <TouchableOpacity
-              style={styles.fineTypeModalClose}
-              onPress={resetFineTypeForm}
+        busy={savingFineType}
+        wide
+        title={editingFineTypeId ? "Edit Fine Type" : "Add Fine Type"}
+        subtitle="The amount configured here will be used automatically for future fines."
+        icon={require("../../../assets/icons/fines.png")}
+        onClose={resetFineTypeForm}
+        footer={
+          <>
+            <PopupButton
+              label="Cancel"
+              variant="outline"
               disabled={savingFineType}
-              accessibilityLabel="Close fine type form"
-              activeOpacity={0.8}
-            >
-              <Text style={styles.fineTypeModalCloseText}>×</Text>
-            </TouchableOpacity>
+              onPress={resetFineTypeForm}
+            />
 
-            <ScrollView
-              style={styles.fineTypeModalScroll}
-              contentContainerStyle={styles.fineTypeModalScrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+            <PopupButton
+              label={editingFineTypeId ? "Save Changes" : "Add Fine Type"}
+              busyLabel={editingFineTypeId ? "Saving..." : "Adding..."}
+              busy={savingFineType}
+              variant={editingFineTypeId ? "primary" : "green"}
+              onPress={handleSaveFineType}
+            />
+          </>
+        }
+      >
+        {fineTypeFormError !== "" && (
+          <Text style={styles.fineTypeFormError}>{fineTypeFormError}</Text>
+        )}
+
+        <View style={styles.formRow}>
+          {/* AUTOMATIC FINE CODE */}
+
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Fine Code</Text>
+
+            <TextInput
+              value={fineCode}
+              editable={false}
+              selectTextOnFocus={false}
+              placeholder="Automatically generated"
+              placeholderTextColor="#A0A7B2"
+              style={[styles.input, styles.readOnlyInput]}
+            />
+
+            <Text style={styles.fieldHint}>
+              {editingFineTypeId
+                ? "Fine codes are permanent and cannot be changed."
+                : "SmartFine automatically assigns the next fine code."}
+            </Text>
+          </View>
+
+          {/* FINE TYPE */}
+
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>
+              Fine Type <Text style={styles.requiredMark}>*</Text>
+            </Text>
+
+            <TextInput
+              value={fineName}
+              {...bindFocus("fineName")}
+              onChangeText={setFineName}
+              placeholder="Example: Unauthorized Gadget Use"
+              placeholderTextColor="#A0A7B2"
+              style={[
+                styles.input,
+                focusedField === "fineName" && styles.inputFocused,
+              ]}
+              maxLength={120}
+              editable={!savingFineType}
+            />
+          </View>
+        </View>
+
+        <View style={styles.formRow}>
+          {/* AMOUNT */}
+
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>
+              Fine Amount <Text style={styles.requiredMark}>*</Text>
+            </Text>
+
+            <View
+              style={[
+                styles.amountInputContainer,
+                focusedField === "fineAmount" && styles.inputFocused,
+              ]}
             >
-              {showFineTypeForm && (
-                <Animated.View
+              <Text style={styles.amountPeso}>₱</Text>
+
+              <TextInput
+                value={fineAmount}
+                {...bindFocus("fineAmount")}
+                onChangeText={(value) => {
+                  let cleaned = value.replace(/[^0-9.]/g, "");
+
+                  const firstDot = cleaned.indexOf(".");
+
+                  if (firstDot !== -1) {
+                    cleaned =
+                      cleaned.substring(0, firstDot + 1) +
+                      cleaned.substring(firstDot + 1).replace(/\./g, "");
+                  }
+
+                  setFineAmount(cleaned);
+                }}
+                placeholder="0.00"
+                placeholderTextColor="#A0A7B2"
+                style={styles.amountInput}
+                keyboardType="decimal-pad"
+                editable={!savingFineType}
+              />
+            </View>
+          </View>
+
+          {/* STATUS */}
+
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Status</Text>
+
+            <View style={styles.statusSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.statusSelectorButton,
+
+                  fineActive && styles.statusSelectorButtonActive,
+                ]}
+                onPress={() => setFineActive(true)}
+                disabled={savingFineType}
+                accessibilityState={{ selected: fineActive }}
+                activeOpacity={0.8}
+              >
+                <Text
                   style={[
-                    styles.fineTypeForm,
-                    styles.fineTypeModalForm,
-                    {
-                      opacity: fineTypeFormProgress,
-                      transform: [
-                        {
-                          translateY: fineTypeFormProgress.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [6, 0],
-                          }),
-                        },
-                      ],
-                    },
+                    styles.statusSelectorText,
+
+                    fineActive && styles.statusSelectorTextActive,
                   ]}
                 >
-                  <View style={styles.fineTypeFormHeader}>
-                    <View>
-                      <Text style={styles.fineTypeFormTitle}>
-                        {editingFineTypeId ? "Edit Fine Type" : "Add Fine Type"}
-                      </Text>
+                  Active
+                </Text>
+              </TouchableOpacity>
 
-                      <Text style={styles.fineTypeFormSubtitle}>
-                        The amount configured here will be used automatically
-                        for future fines.
-                      </Text>
-                    </View>
-                  </View>
+              <TouchableOpacity
+                style={[
+                  styles.statusSelectorButton,
 
-                  {fineTypeFormError !== "" && (
-                    <Text style={styles.fineTypeFormError}>
-                      {fineTypeFormError}
-                    </Text>
-                  )}
+                  !fineActive && styles.statusSelectorButtonInactive,
+                ]}
+                onPress={() => setFineActive(false)}
+                disabled={savingFineType}
+                accessibilityState={{ selected: !fineActive }}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.statusSelectorText,
 
-                  <View style={styles.formRow}>
-                    {/* AUTOMATIC FINE CODE */}
-
-                    <View style={styles.formField}>
-                      <Text style={styles.inputLabel}>Fine Code</Text>
-
-                      <TextInput
-                        value={fineCode}
-                        editable={false}
-                        selectTextOnFocus={false}
-                        placeholder="Automatically generated"
-                        placeholderTextColor="#A0A7B2"
-                        style={[styles.input, styles.readOnlyInput]}
-                      />
-
-                      <Text
-                        style={[
-                          styles.fineTypeFormSubtitle,
-
-                          {
-                            marginTop: 6,
-                          },
-                        ]}
-                      >
-                        {editingFineTypeId
-                          ? "Fine codes are permanent and cannot be changed."
-                          : "SmartFine automatically assigns the next fine code."}
-                      </Text>
-                    </View>
-
-                    {/* FINE TYPE */}
-
-                    <View style={styles.formField}>
-                      <Text style={styles.inputLabel}>Fine Type *</Text>
-
-                      <TextInput
-                        value={fineName}
-                        onChangeText={setFineName}
-                        placeholder="Example: Unauthorized Gadget Use"
-                        placeholderTextColor="#A0A7B2"
-                        style={styles.input}
-                        maxLength={120}
-                        editable={!savingFineType}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.formRow}>
-                    {/* AMOUNT */}
-
-                    <View style={styles.formField}>
-                      <Text style={styles.inputLabel}>Fine Amount *</Text>
-
-                      <View style={styles.amountInputContainer}>
-                        <Text style={styles.amountPeso}>₱</Text>
-
-                        <TextInput
-                          value={fineAmount}
-                          onChangeText={(value) => {
-                            let cleaned = value.replace(/[^0-9.]/g, "");
-
-                            const firstDot = cleaned.indexOf(".");
-
-                            if (firstDot !== -1) {
-                              cleaned =
-                                cleaned.substring(0, firstDot + 1) +
-                                cleaned
-                                  .substring(firstDot + 1)
-                                  .replace(/\./g, "");
-                            }
-
-                            setFineAmount(cleaned);
-                          }}
-                          placeholder="0.00"
-                          placeholderTextColor="#A0A7B2"
-                          style={styles.amountInput}
-                          keyboardType="decimal-pad"
-                          editable={!savingFineType}
-                        />
-                      </View>
-                    </View>
-
-                    {/* STATUS */}
-
-                    <View style={styles.formField}>
-                      <Text style={styles.inputLabel}>Status</Text>
-
-                      <View style={styles.statusSelector}>
-                        <TouchableOpacity
-                          style={[
-                            styles.statusSelectorButton,
-
-                            fineActive && styles.statusSelectorButtonActive,
-                          ]}
-                          onPress={() => setFineActive(true)}
-                          disabled={savingFineType}
-                          activeOpacity={0.8}
-                        >
-                          <Text
-                            style={[
-                              styles.statusSelectorText,
-
-                              fineActive && styles.statusSelectorTextActive,
-                            ]}
-                          >
-                            Active
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[
-                            styles.statusSelectorButton,
-
-                            !fineActive && styles.statusSelectorButtonInactive,
-                          ]}
-                          onPress={() => setFineActive(false)}
-                          disabled={savingFineType}
-                          activeOpacity={0.8}
-                        >
-                          <Text
-                            style={[
-                              styles.statusSelectorText,
-
-                              !fineActive && styles.statusSelectorTextInactive,
-                            ]}
-                          >
-                            Inactive
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* DESCRIPTION */}
-
-                  <View style={styles.fineDescriptionField}>
-                    <Text style={styles.inputLabel}>Description</Text>
-
-                    <TextInput
-                      value={fineDescription}
-                      onChangeText={setFineDescription}
-                      placeholder="Optional description of the violation"
-                      placeholderTextColor="#A0A7B2"
-                      style={styles.fineDescriptionInput}
-                      multiline
-                      maxLength={500}
-                      textAlignVertical="top"
-                      editable={!savingFineType}
-                    />
-                  </View>
-
-                  {/* FORM ACTIONS */}
-
-                  <View style={styles.fineTypeFormActions}>
-                    <TouchableOpacity
-                      style={[
-                        styles.cancelButton,
-
-                        savingFineType && {
-                          opacity: 0.6,
-                        },
-                      ]}
-                      onPress={resetFineTypeForm}
-                      disabled={savingFineType}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.primaryButton,
-
-                        savingFineType && {
-                          opacity: 0.7,
-                        },
-                      ]}
-                      onPress={handleSaveFineType}
-                      disabled={savingFineType}
-                      activeOpacity={0.8}
-                    >
-                      {savingFineType ? (
-                        <View
-                          style={{
-                            flexDirection: "row",
-
-                            alignItems: "center",
-
-                            gap: 8,
-                          }}
-                        >
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-
-                          <Text style={styles.primaryButtonText}>
-                            {editingFineTypeId ? "Saving..." : "Adding..."}
-                          </Text>
-                        </View>
-                      ) : (
-                        <Text style={styles.primaryButtonText}>
-                          {editingFineTypeId ? "Save Changes" : "Add Fine Type"}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </Animated.View>
-              )}
-            </ScrollView>
-          </PopIn>
+                    !fineActive && styles.statusSelectorTextInactive,
+                  ]}
+                >
+                  Inactive
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </Modal>
+
+        {/* DESCRIPTION */}
+
+        <View style={styles.fineDescriptionField}>
+          <Text style={styles.inputLabel}>Description</Text>
+
+          <TextInput
+            value={fineDescription}
+            {...bindFocus("fineDescription")}
+            onChangeText={setFineDescription}
+            placeholder="Optional description of the violation"
+            placeholderTextColor="#A0A7B2"
+            style={[
+              styles.fineDescriptionInput,
+              focusedField === "fineDescription" && styles.inputFocused,
+            ]}
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+            editable={!savingFineType}
+          />
+        </View>
+      </FormPopup>
 
       {/* =====================================
           REMOVE PHOTO
@@ -2853,6 +2657,7 @@ export default function AdminSettings() {
         loading={removingPhoto}
         title="Remove Profile Picture?"
         message="Are you sure you want to remove your current profile picture?"
+        confirmText="Remove"
         onCancel={handleCancelRemovePhoto}
         onConfirm={performRemovePhoto}
       />
@@ -2900,31 +2705,58 @@ export default function AdminSettings() {
 }
 
 // ==========================================
-// PROFILE PICTURE URL
+// PROFILE INFO
 // ==========================================
 
-function getProfilePictureUrl(uri: string | null | undefined) {
-  if (!uri) {
-    return null;
-  }
+function ProfileInfo({
+  label,
+  value,
+  alignStart,
+}: {
+  label: string;
+  value: string;
+  alignStart: boolean;
+}) {
+  return (
+    <View style={[styles.profileInfoBlock, alignStart && styles.infoBlockRow]}>
+      <Text style={styles.profileInfoLabel}>{label}</Text>
 
-  if (uri.startsWith("http://") || uri.startsWith("https://")) {
-    return uri;
-  }
-
-  return `${API_BASE}${uri}`;
+      <Text
+        style={[styles.profileInfoValue, alignStart && styles.textStart]}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
+    </View>
+  );
 }
 
 // ==========================================
-// INITIALS
+// SIGN-IN PROTECTION ITEM
 // ==========================================
 
-function getInitials(user: AdminUser | null) {
-  const first = user?.firstName?.trim().charAt(0).toUpperCase() || "";
+function ProtectionItem({
+  title,
+  text,
+  last = false,
+}: {
+  title: string;
+  text: string;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.protectionItem, last && styles.protectionItemLast]}>
+      <View style={styles.protectionCheck}>
+        <Text style={styles.protectionCheckText}>✓</Text>
+      </View>
 
-  const last = user?.lastName?.trim().charAt(0).toUpperCase() || "";
+      <View style={styles.protectionText}>
+        <Text style={styles.protectionTitle}>{title}</Text>
 
-  return `${first}${last}` || "AD";
+        <Text style={styles.protectionBody}>{text}</Text>
+      </View>
+    </View>
+  );
 }
 
 // ==========================================
@@ -2961,24 +2793,6 @@ function getImageExtension(uri: string) {
   }
 
   return "jpg";
-}
-
-// ==========================================
-// MIME TYPE
-// ==========================================
-
-function getMimeType(uri: string) {
-  const extension = getImageExtension(uri);
-
-  if (extension === "png") {
-    return "image/png";
-  }
-
-  if (extension === "webp") {
-    return "image/webp";
-  }
-
-  return "image/jpeg";
 }
 
 // ==========================================

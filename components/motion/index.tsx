@@ -13,6 +13,9 @@ import {
 } from "react-native";
 
 import { styles } from "./motion.styles";
+import { MOTION } from "./tokens";
+
+export { MOTION } from "./tokens";
 
 // Animations run on the native thread on phones and tablets; web has no
 // native driver, so it animates from JavaScript instead.
@@ -60,13 +63,11 @@ export function useReducedMotion() {
 // FADE IN (entrance)
 // ==========================================
 
-const STAGGER_MS = 45;
+const STAGGER_MS = MOTION.stagger.step;
 
-// Items after this share the last delay, so long lists never wait.
-const MAX_STAGGERED = 8;
+const MAX_STAGGERED = MOTION.stagger.maxStaggered;
 
-// Items after this appear without animating.
-const MAX_ANIMATED = 24;
+const MAX_ANIMATED = MOTION.stagger.maxAnimated;
 
 // Fades and slides content up when it first appears. Pass `index` for list
 // items to stagger them.
@@ -74,8 +75,8 @@ export function FadeIn({
   children,
   index,
   delay = 0,
-  distance = 12,
-  duration = 300,
+  distance = MOTION.distance.enter,
+  duration = MOTION.duration.enter,
   style,
   ...viewProps
 }: ViewProps & {
@@ -137,7 +138,10 @@ export function FadeIn({
 // Returns an animated style that fades content in whenever `key` changes,
 // e.g. a pop-up moving from a list to one record, or a filter tab. Apply it
 // to an Animated.View or Animated.ScrollView that stays mounted.
-export function useSwitchFade(key: unknown, distance = 8) {
+export function useSwitchFade(
+  key: unknown,
+  distance: number = MOTION.distance.switch,
+) {
   const reduced = useReducedMotion();
 
   const [progress] = useState(() => new Animated.Value(1));
@@ -161,7 +165,7 @@ export function useSwitchFade(key: unknown, distance = 8) {
 
     const animation = Animated.timing(progress, {
       toValue: 1,
-      duration: 220,
+      duration: MOTION.duration.switch,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: NATIVE_DRIVER,
     });
@@ -183,7 +187,7 @@ export function useSwitchFade(key: unknown, distance = 8) {
 export function PopIn({
   children,
   delay = 0,
-  from = 0.92,
+  from = MOTION.popInFrom,
   style,
   ...viewProps
 }: ViewProps & {
@@ -218,8 +222,7 @@ export function PopIn({
     const animation = Animated.spring(progress, {
       toValue: 1,
       delay,
-      friction: 8,
-      tension: 90,
+      ...MOTION.spring.popIn,
       useNativeDriver: NATIVE_DRIVER,
     });
 
@@ -251,7 +254,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function PressableScale({
   children,
   style,
-  scaleTo = 0.97,
+  scaleTo = MOTION.pressScale,
   onPressIn,
   onPressOut,
   ...pressableProps
@@ -271,8 +274,7 @@ export function PressableScale({
 
     Animated.spring(scale, {
       toValue,
-      friction: 7,
-      tension: 180,
+      ...MOTION.spring.press,
       useNativeDriver: NATIVE_DRIVER,
     }).start();
   };
@@ -331,8 +333,7 @@ export function TabIndicator({
     const animation = Animated.spring(scaleX, {
       toValue: 1,
       delay: 60,
-      friction: 7,
-      tension: 70,
+      ...MOTION.spring.indicator,
       useNativeDriver: NATIVE_DRIVER,
     });
 
@@ -455,4 +456,21 @@ export function useShake() {
     shake,
     shakeStyle: { transform: [{ translateX: offset }] },
   };
+}
+
+// ==========================================
+// RETAINED VALUE (pop-up content while closing)
+// ==========================================
+
+// Pop-ups fade out after their record is cleared. Rendering the last
+// non-null record keeps the card intact until the fade finishes, instead of
+// collapsing mid-fade. Pass the value that controls visibility.
+export function useRetainedValue<T>(value: T | null | undefined): T | null {
+  const [retained, setRetained] = useState<T | null>(value ?? null);
+
+  if (value != null && value !== retained) {
+    setRetained(value);
+  }
+
+  return value ?? retained;
 }

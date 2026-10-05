@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
+  AppState,
   Image,
   Platform,
   ScrollView,
@@ -13,8 +14,9 @@ import {
 } from "react-native";
 
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useFocusEffect } from "expo-router";
 
-import { useRouter } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -84,7 +86,7 @@ const QR_PREFIX = "SMARTFINE_STUDENT:";
 // ==========================================
 
 export default function QRScanner() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const { logout } = useAuth();
 
@@ -99,6 +101,46 @@ export default function QRScanner() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const [requestingPermission, setRequestingPermission] = useState(false);
+
+  // ==========================================
+  // CAMERA ACTIVITY
+  //
+  // The camera runs only while this screen is showing and the app is in
+  // the foreground. Admin modules stay open underneath each other, so
+  // without this the camera and scan line kept running elsewhere.
+  // ==========================================
+
+  const [screenFocused, setScreenFocused] = useState(false);
+
+  const [appActive, setAppActive] = useState(
+    AppState.currentState === "active",
+  );
+
+  // The scan line starts only once the camera is actually streaming.
+  const [cameraReady, setCameraReady] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setScreenFocused(true);
+
+      return () => {
+        setScreenFocused(false);
+        setCameraReady(false);
+      };
+    }, []),
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      setAppActive(state === "active");
+
+      if (state !== "active") {
+        setCameraReady(false);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   // ==========================================
   // LOGOUT MODAL
@@ -786,6 +828,24 @@ export default function QRScanner() {
     }
 
     // ======================================
+    // CAMERA PAUSED (screen hidden or app in background)
+    // ======================================
+
+    if (!screenFocused || !appActive) {
+      return (
+        <View style={styles.cameraState}>
+          <Image
+            source={require("../../../assets/icons/qr-code.png")}
+            style={styles.cameraPlaceholderImage}
+            resizeMode="contain"
+          />
+
+          <Text style={styles.cameraPlaceholderText}>Camera paused</Text>
+        </View>
+      );
+    }
+
+    // ======================================
     // CAMERA
     // ======================================
 
@@ -797,6 +857,7 @@ export default function QRScanner() {
           barcodeScannerSettings={{
             barcodeTypes: ["qr"],
           }}
+          onCameraReady={() => setCameraReady(true)}
           onBarcodeScanned={scanLocked ? undefined : handleBarcodeScanned}
         />
 
@@ -806,7 +867,7 @@ export default function QRScanner() {
 
         <View pointerEvents="none" style={styles.cameraOverlay}>
           <View style={styles.scanFrame}>
-            <ScanLine active={!scanLocked} />
+            <ScanLine active={cameraReady && !scanLocked} />
           </View>
 
           <Text style={styles.scanInstruction}>

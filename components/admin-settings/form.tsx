@@ -1,0 +1,365 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ReactNode, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleProp,
+  Text,
+  TextInput,
+  TextInputProps,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from "react-native";
+
+import { API_BASE } from "@/constants/api";
+import { PopIn } from "@/components/motion";
+
+import { COLORS, styles } from "./admin-settings.styles";
+
+// ==========================================
+// REQUEST
+// ==========================================
+
+// Sends an authenticated JSON request and returns the parsed body. Network
+// failures come back as { success: false } so callers show one message.
+export async function adminRequest<T extends { success: boolean; message?: string }>(
+  path: string,
+  options: { method?: string; body?: unknown } = {},
+): Promise<{ ok: boolean; data: T }> {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    if (!token) {
+      return {
+        ok: false,
+        data: {
+          success: false,
+          message: "Your login session could not be found. Please log in again.",
+        } as T,
+      };
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      method: options.method || "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(options.body !== undefined
+          ? { "Content-Type": "application/json" }
+          : {}),
+      },
+      body:
+        options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+
+    const data = (await response.json()) as T;
+
+    return { ok: response.ok && data.success, data };
+  } catch (error) {
+    console.error(`Admin request ${path} failed:`, error);
+
+    return {
+      ok: false,
+      data: {
+        success: false,
+        message: "Could not connect to the SmartFine server.",
+      } as T,
+    };
+  }
+}
+
+// ==========================================
+// PASSWORD RULES (same as the server policy)
+// ==========================================
+
+export const PASSWORD_RULES = [
+  { label: "At least 8 characters", test: (value: string) => value.length >= 8 },
+  { label: "An uppercase letter", test: (value: string) => /[A-Z]/.test(value) },
+  { label: "A lowercase letter", test: (value: string) => /[a-z]/.test(value) },
+  { label: "A number", test: (value: string) => /[0-9]/.test(value) },
+  {
+    label: "A symbol (! @ # $ % &)",
+    test: (value: string) => /[^A-Za-z0-9\s]/.test(value),
+  },
+];
+
+export function meetsPasswordPolicy(value: string) {
+  return PASSWORD_RULES.every((rule) => rule.test(value));
+}
+
+export function PasswordChecklist({
+  password,
+  confirmation,
+}: {
+  password: string;
+  confirmation: string;
+}) {
+  const items = [
+    ...PASSWORD_RULES.map((rule) => ({
+      label: rule.label,
+      met: rule.test(password),
+    })),
+    {
+      label: "Both passwords match",
+      met: confirmation.length > 0 && password === confirmation,
+    },
+  ];
+
+  return (
+    <View style={styles.checklist} accessibilityLabel="Password requirements">
+      {items.map((item) => (
+        <View key={item.label} style={styles.checkItem}>
+          <View style={[styles.checkDot, item.met && styles.checkDotMet]}>
+            {item.met && <Text style={styles.checkMark}>✓</Text>}
+          </View>
+
+          <Text style={[styles.checkText, item.met && styles.checkTextMet]}>
+            {item.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ==========================================
+// FIELDS
+// ==========================================
+
+export function FormField({
+  label,
+  required = false,
+  inRow = false,
+  hint,
+  style,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  inRow?: boolean;
+  hint?: string;
+  style?: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  return (
+    <View style={[styles.field, inRow && styles.fieldInRow, style]}>
+      <Text style={styles.label}>
+        {label}
+        {required && <Text style={styles.required}> *</Text>}
+      </Text>
+
+      {children}
+
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+    </View>
+  );
+}
+
+export function FormInput(props: TextInputProps) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TextInput
+      placeholderTextColor="#A0A7B2"
+      {...props}
+      onFocus={(event) => {
+        setFocused(true);
+        props.onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        props.onBlur?.(event);
+      }}
+      style={[styles.input, focused && styles.inputFocused, props.style]}
+    />
+  );
+}
+
+export function PasswordInput({
+  label,
+  ...props
+}: TextInputProps & { label: string }) {
+  const [visible, setVisible] = useState(false);
+
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <View style={[styles.passwordBox, focused && styles.inputFocused]}>
+      <TextInput
+        placeholderTextColor="#A0A7B2"
+        autoCapitalize="none"
+        autoCorrect={false}
+        {...props}
+        onFocus={(event) => {
+          setFocused(true);
+          props.onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          props.onBlur?.(event);
+        }}
+        secureTextEntry={!visible}
+        style={styles.passwordInput}
+      />
+
+      <TouchableOpacity
+        style={styles.passwordToggle}
+        onPress={() => setVisible((current) => !current)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={visible ? `Hide ${label}` : `Show ${label}`}
+      >
+        <Image
+          source={
+            visible
+              ? require("../../assets/icons/hide.png")
+              : require("../../assets/icons/view.png")
+          }
+          style={styles.passwordToggleIcon}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ==========================================
+// POP-UP SHELL
+// ==========================================
+
+// A pop-up card with a header, a scrolling body and a footer. The card stays
+// rendered while the pop-up fades out; forms reset their fields when they
+// open, so every opening starts fresh.
+export function FormPopup({
+  visible,
+  busy,
+  title,
+  subtitle,
+  icon,
+  wide = false,
+  onClose,
+  footer,
+  children,
+}: {
+  visible: boolean;
+  busy: boolean;
+  title: string;
+  subtitle: string;
+  icon: any;
+  wide?: boolean;
+  onClose: () => void;
+  footer: ReactNode;
+  children: ReactNode;
+}) {
+  const close = () => {
+    if (!busy) {
+      onClose();
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={close}
+    >
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <PopIn
+          style={[styles.card, wide && styles.cardWide]}
+          accessibilityViewIsModal
+        >
+          <View style={styles.header}>
+            <View style={styles.headerIcon}>
+              <Image
+                source={icon}
+                style={styles.headerIconImage}
+                resizeMode="contain"
+              />
+            </View>
+
+            <View style={styles.headerText}>
+              <Text style={styles.title}>{title}</Text>
+
+              <Text style={styles.subtitle}>{subtitle}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={close}
+              disabled={busy}
+              accessibilityLabel={`Close ${title}`}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.closeText}>×</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+
+          <View style={styles.footer}>{footer}</View>
+        </PopIn>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+export function PopupButton({
+  label,
+  busyLabel,
+  busy = false,
+  disabled = false,
+  variant = "primary",
+  onPress,
+}: {
+  label: string;
+  busyLabel?: string;
+  busy?: boolean;
+  disabled?: boolean;
+  variant?: "primary" | "green" | "outline";
+  onPress: () => void;
+}) {
+  const outline = variant === "outline";
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.button,
+        variant === "primary" && styles.buttonPrimary,
+        variant === "green" && styles.buttonGreen,
+        outline && styles.buttonOutline,
+        (disabled || busy) && styles.buttonDisabled,
+      ]}
+      onPress={onPress}
+      disabled={disabled || busy}
+      accessibilityState={{ disabled: disabled || busy, busy }}
+      activeOpacity={0.8}
+    >
+      {busy && (
+        <ActivityIndicator
+          size="small"
+          color={outline ? COLORS.navy : COLORS.white}
+        />
+      )}
+
+      <Text style={outline ? styles.buttonOutlineText : styles.buttonText}>
+        {busy && busyLabel ? busyLabel : label}
+      </Text>
+    </TouchableOpacity>
+  );
+}

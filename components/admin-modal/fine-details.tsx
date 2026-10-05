@@ -12,6 +12,7 @@ import {
 import { FadeIn } from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { useActionLock } from "@/hooks/use-action-lock";
 import {
   formatNotificationTime,
   refreshNotificationCounts,
@@ -120,6 +121,8 @@ export default function AdminFineDetails({
   const [reason, setReason] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  // Cancelling and recording cash run once per tap, even on a double tap.
+  const runLocked = useActionLock();
   const [success, setSuccess] = useState("");
 
   // Keeps loadFine tied to the fine ID, not to the parent's callback identity.
@@ -204,87 +207,89 @@ export default function AdminFineDetails({
     void refreshNotificationCounts();
   };
 
-  const performCancel = async () => {
-    const trimmed = reason.trim();
+  const performCancel = () =>
+    runLocked(async () => {
+      const trimmed = reason.trim();
 
-    if (trimmed.length < 3) {
-      haptics.warning();
-      setActionError("Please enter a cancellation reason.");
-      return;
-    }
-
-    setActionLoading(true);
-    setActionError("");
-
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) throw new Error("Please sign in again to cancel this fine.");
-
-      const response = await fetch(`${API_BASE}/api/fines/${fineId}/cancel`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify({ cancellationReason: trimmed }),
-      });
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.message || "Failed to cancel fine.");
+      if (trimmed.length < 3) {
+        haptics.warning();
+        setActionError("Please enter a cancellation reason.");
+        return;
       }
 
-      await finishAction(
-        `${fine?.fine_reference ?? "The fine"} was cancelled. Any pending cashier request was cancelled with it.`,
-      );
-    } catch (error) {
-      haptics.error();
-      setActionError(connectionMessage(error, "Failed to cancel fine."));
-    } finally {
-      setActionLoading(false);
-    }
-  };
+      setActionLoading(true);
+      setActionError("");
 
-  const performPayment = async () => {
-    setActionLoading(true);
-    setActionError("");
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) throw new Error("Please sign in again to cancel this fine.");
 
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) throw new Error("Please sign in again to record this payment.");
-
-      const response = await fetch(
-        `${API_BASE}/api/payments/cash-collections/${fineId}`,
-        {
-          method: "POST",
+        const response = await fetch(`${API_BASE}/api/fines/${fineId}/cancel`, {
+          method: "PATCH",
           headers: {
-            Accept: "application/json",
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
             "ngrok-skip-browser-warning": "true",
           },
-          body: JSON.stringify({}),
-        },
-      );
-      const data = await response.json().catch(() => null);
+          body: JSON.stringify({ cancellationReason: trimmed }),
+        });
+        const data = await response.json().catch(() => null);
 
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.message || "Could not record the cash payment.");
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.message || "Failed to cancel fine.");
+        }
+
+        await finishAction(
+          `${fine?.fine_reference ?? "The fine"} was cancelled. Any pending cashier request was cancelled with it.`,
+        );
+      } catch (error) {
+        haptics.error();
+        setActionError(connectionMessage(error, "Failed to cancel fine."));
+      } finally {
+        setActionLoading(false);
       }
+    });
 
-      await finishAction(
-        `${fine?.fine_reference ?? "The fine"} was paid in cash. The transaction is saved in Payment Reports.`,
-      );
-    } catch (error) {
-      haptics.error();
-      setActionError(
-        connectionMessage(error, "Could not record the cash payment."),
-      );
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const performPayment = () =>
+    runLocked(async () => {
+      setActionLoading(true);
+      setActionError("");
+
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) throw new Error("Please sign in again to record this payment.");
+
+        const response = await fetch(
+          `${API_BASE}/api/payments/cash-collections/${fineId}`,
+          {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+            body: JSON.stringify({}),
+          },
+        );
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.message || "Could not record the cash payment.");
+        }
+
+        await finishAction(
+          `${fine?.fine_reference ?? "The fine"} was paid in cash. The transaction is saved in Payment Reports.`,
+        );
+      } catch (error) {
+        haptics.error();
+        setActionError(
+          connectionMessage(error, "Could not record the cash payment."),
+        );
+      } finally {
+        setActionLoading(false);
+      }
+    });
 
   // Placeholder in the shape of the fine: amount, status, then fields.
   if (loading && !fine) {

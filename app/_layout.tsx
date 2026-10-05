@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from "react";
 
 import "react-native-reanimated";
 
+import { NATIVE_DRIVER, useReducedMotion } from "@/components/motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
@@ -56,13 +57,19 @@ export default function RootLayout() {
 
   const { isLoading } = useAuth();
 
+  // Reduce Motion: screens switch without sliding and the splash content
+  // appears without its entrance.
+  const reduceMotion = useReducedMotion();
+
   // ========================================
   // CUSTOM SPLASH
   // ========================================
 
   const [showAppSplash, setShowAppSplash] = useState(true);
 
-  const [progress, setProgress] = useState(0);
+  // The bar fills over the splash duration on the native thread; it is a
+  // timer, so no percentage is shown.
+  const splashProgress = useRef(new Animated.Value(0)).current;
 
   const splashStartedRef = useRef(false);
 
@@ -117,6 +124,22 @@ export default function RootLayout() {
   // ========================================
 
   const startSplashAnimation = () => {
+    if (reduceMotion) {
+      [
+        logoOpacity,
+        logoScale,
+        subtitleOpacity,
+        loadingOpacity,
+        footerOpacity,
+      ].forEach((value) => value.setValue(1));
+
+      [logoTranslateY, subtitleTranslateY, loadingTranslateY].forEach(
+        (value) => value.setValue(0),
+      );
+
+      return;
+    }
+
     Animated.sequence([
       // ====================================
       // LOGO
@@ -130,7 +153,7 @@ export default function RootLayout() {
 
           easing: Easing.out(Easing.cubic),
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
 
         Animated.spring(logoScale, {
@@ -140,7 +163,7 @@ export default function RootLayout() {
 
           tension: 55,
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
 
         Animated.timing(logoTranslateY, {
@@ -150,7 +173,7 @@ export default function RootLayout() {
 
           easing: Easing.out(Easing.cubic),
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
 
@@ -166,7 +189,7 @@ export default function RootLayout() {
 
           easing: Easing.out(Easing.cubic),
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
 
         Animated.timing(subtitleTranslateY, {
@@ -176,7 +199,7 @@ export default function RootLayout() {
 
           easing: Easing.out(Easing.cubic),
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
 
@@ -192,7 +215,7 @@ export default function RootLayout() {
 
           easing: Easing.out(Easing.cubic),
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
 
         Animated.timing(loadingTranslateY, {
@@ -202,7 +225,7 @@ export default function RootLayout() {
 
           easing: Easing.out(Easing.cubic),
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
 
         Animated.timing(footerOpacity, {
@@ -210,7 +233,7 @@ export default function RootLayout() {
 
           duration: 400,
 
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
     ]).start();
@@ -240,35 +263,28 @@ export default function RootLayout() {
     startSplashAnimation();
 
     // ======================================
-    // START PROGRESS
+    // START PROGRESS BAR
     // ======================================
 
-    const startedAt = Date.now();
+    splashProgress.setValue(0);
 
-    setProgress(0);
+    const progressAnimation = Animated.timing(splashProgress, {
+      toValue: 1,
 
-    const progressTimer = setInterval(() => {
-      const elapsed = Date.now() - startedAt;
+      duration: CUSTOM_SPLASH_DURATION,
 
-      const percentage = Math.min(
-        100,
-        Math.round((elapsed / CUSTOM_SPLASH_DURATION) * 100),
-      );
+      easing: Easing.linear,
 
-      setProgress(percentage);
+      useNativeDriver: NATIVE_DRIVER,
+    });
 
-      if (percentage >= 100) {
-        clearInterval(progressTimer);
-      }
-    }, 30);
+    progressAnimation.start();
 
     // ======================================
     // FINISH AFTER 3 SECONDS
     // ======================================
 
     const finishTimer = setTimeout(() => {
-      setProgress(100);
-
       Animated.timing(splashOpacity, {
         toValue: 0,
 
@@ -276,7 +292,7 @@ export default function RootLayout() {
 
         easing: Easing.inOut(Easing.cubic),
 
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
       }).start(() => {
         setShowAppSplash(false);
       });
@@ -287,7 +303,7 @@ export default function RootLayout() {
     // ======================================
 
     return () => {
-      clearInterval(progressTimer);
+      progressAnimation.stop();
 
       clearTimeout(finishTimer);
     };
@@ -404,11 +420,11 @@ export default function RootLayout() {
             {/* PROGRESS BAR */}
 
             <View style={styles.progressTrack}>
-              <View
+              <Animated.View
                 style={[
                   styles.progressFill,
                   {
-                    width: `${progress}%`,
+                    transform: [{ scaleX: splashProgress }],
                   },
                 ]}
               />
@@ -426,8 +442,6 @@ export default function RootLayout() {
 
                 <Text style={styles.loadingText}>Loading SmartFine...</Text>
               </View>
-
-              <Text style={styles.percentageText}>{progress}%</Text>
             </View>
           </Animated.View>
         </View>
@@ -463,7 +477,11 @@ export default function RootLayout() {
         screenOptions={({ route }) => ({
           headerShown: false,
 
-          animation: slidesIn(route.name) ? "slide_from_right" : "fade",
+          animation: reduceMotion
+            ? "none"
+            : slidesIn(route.name)
+              ? "slide_from_right"
+              : "fade",
         })}
       />
 
@@ -585,7 +603,12 @@ const styles = StyleSheet.create({
   // ======================================
 
   progressFill: {
+    width: "100%",
+
     height: "100%",
+
+    // Fills from the left edge as it scales.
+    transformOrigin: "left",
 
     backgroundColor: "#16E564",
 
@@ -632,14 +655,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
 
     opacity: 0.82,
-  },
-
-  percentageText: {
-    color: "#FFFFFF",
-
-    fontFamily: "Poppins_600SemiBold",
-
-    fontSize: 12,
   },
 
   // ======================================

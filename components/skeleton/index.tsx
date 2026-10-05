@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from "react";
 import {
   Animated,
+  AppState,
   DimensionValue,
   Easing,
   StyleProp,
@@ -32,6 +33,14 @@ function startPulse() {
   pulseUsers += 1;
 
   if (pulseUsers > 1) {
+    return;
+  }
+
+  runPulse();
+}
+
+function runPulse() {
+  if (pulseLoop || AppState.currentState !== "active") {
     return;
   }
 
@@ -68,6 +77,22 @@ function stopPulse() {
 
   pulseLoop = null;
 }
+
+// The pulse pauses while the app is in the background and resumes when it
+// returns, if placeholders are still showing.
+AppState.addEventListener("change", (state) => {
+  if (state === "active") {
+    if (pulseUsers > 0) {
+      runPulse();
+    }
+
+    return;
+  }
+
+  pulseLoop?.stop();
+
+  pulseLoop = null;
+});
 
 // ==========================================
 // BLOCK

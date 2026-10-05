@@ -15,6 +15,7 @@ type DeleteModalProps = {
   loading?: boolean;
   title?: string;
   message: string;
+  confirmText?: string;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -24,6 +25,7 @@ export default function DeleteModal({
   loading = false,
   title = "Delete Student?",
   message,
+  confirmText = "Delete",
   onCancel,
   onConfirm,
 }: DeleteModalProps) {
@@ -64,7 +66,7 @@ export default function DeleteModal({
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.deleteText}>Delete</Text>
+                <Text style={styles.deleteText}>{confirmText}</Text>
               )}
             </TouchableOpacity>
           </View>

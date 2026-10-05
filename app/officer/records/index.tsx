@@ -11,7 +11,8 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { type Href, useFocusEffect, useRouter } from "expo-router";
+import { type Href, useFocusEffect } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { StatusBar } from "expo-status-bar";
 
@@ -171,7 +172,7 @@ function statusLabel(value: string) {
 
 export default function OfficerRecordsScreen() {
   const styles = useResponsiveStyles();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const insets = useSafeAreaInsets();
 
   const [records, setRecords] = useState<Fine[]>([]);

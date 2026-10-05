@@ -14,7 +14,8 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -251,7 +252,7 @@ function validatePassword(password: string): string | null {
 // ==========================================
 
 export default function EditOfficer() {
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   const params = useLocalSearchParams();
 
