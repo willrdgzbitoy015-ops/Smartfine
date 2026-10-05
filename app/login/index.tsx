@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 
 import { FadeIn, useShake, useSwitchFade } from "@/components/motion";
+import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
 import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
@@ -663,6 +664,11 @@ export default function LoginScreen() {
       // ====================================
       // ROLE REDIRECTION
       // ====================================
+
+      // Screens from a previous sign-in must not stay open underneath.
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
 
       if (role === "ADMIN") {
         router.replace("/admin/dashboard");
@@ -1735,11 +1741,7 @@ export default function LoginScreen() {
 
   const SuccessForm = () => (
     <View style={styles.successContent}>
-      <Image
-        source={require("../../assets/icons/check.png")}
-        style={styles.successIcon}
-        resizeMode="contain"
-      />
+      <SuccessCheck style={styles.successIcon} />
 
       <Text style={styles.successTitle}>Password Reset</Text>
 
@@ -2528,8 +2530,6 @@ const styles = StyleSheet.create({
   },
 
   successIcon: {
-    width: 110,
-    height: 110,
     marginBottom: 24,
   },
 

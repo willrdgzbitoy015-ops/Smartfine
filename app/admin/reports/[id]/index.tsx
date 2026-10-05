@@ -12,7 +12,7 @@ import {
 import { useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -311,7 +311,7 @@ export default function DetailedPaymentReport() {
 
       setShowLogoutModal(false);
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
 

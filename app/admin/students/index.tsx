@@ -18,12 +18,13 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { StudentFormModal } from "@/components/admin-forms/student-form-modal";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import DeleteModal from "@/components/deletationmodal";
 import LogoutModal from "@/components/logout-modal";
@@ -344,6 +345,19 @@ function StatusChip({ status }: { status: string }) {
 
 export default function StudentsDirectory() {
   const router = useGuardedRouter();
+
+  // Add New Student is a pop-up. Links to /admin/students?add=1 (the
+  // dashboard quick action, the old /admin/students/add route) open it too.
+  const [showAddStudent, setShowAddStudent] = useState(false);
+
+  const { add: addParam } = useLocalSearchParams<{ add?: string }>();
+
+  useEffect(() => {
+    if (addParam === "1") {
+      setShowAddStudent(true);
+      router.setParams({ add: undefined });
+    }
+  }, [addParam]);
 
   const { logout } = useAuth();
 
@@ -861,7 +875,7 @@ export default function StudentsDirectory() {
   // ========================================
 
   const handleAddStudent = () => {
-    router.push("/admin/students/add" as any);
+    setShowAddStudent(true);
   };
 
   // ========================================
@@ -1951,7 +1965,7 @@ export default function StudentsDirectory() {
 
       setShowLogoutModal(false);
 
-      router.replace("/login");
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
 
@@ -3555,6 +3569,19 @@ export default function StudentsDirectory() {
         message={warningMessage}
         buttonText="OK"
         onClose={() => setShowWarningModal(false)}
+      />
+
+      {/* ADD STUDENT */}
+
+      <StudentFormModal
+        visible={showAddStudent}
+        mode="add"
+        onClose={() => setShowAddStudent(false)}
+        onSaved={() => void loadStudents(true)}
+        onOpenProfile={(id) => {
+          setShowAddStudent(false);
+          router.push(`/admin/students/${id}` as any);
+        }}
       />
 
       {/* LOGOUT */}

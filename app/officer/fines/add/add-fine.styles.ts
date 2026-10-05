@@ -283,20 +283,8 @@ export const styles = StyleSheet.create({
     gap: 12,
     marginTop: 18,
   },
-  successCircle: {
-    width: 94,
-    height: 94,
-    borderRadius: 47,
-    backgroundColor: "#00C900",
-    alignSelf: "center",
-    alignItems: "center",
-    justifyContent: "center",
+  successCheck: {
     marginVertical: 10,
-  },
-  successIcon: {
-    width: 54,
-    height: 54,
-    tintColor: "#FFFFFF",
   },
   receipt: {
     alignItems: "center",

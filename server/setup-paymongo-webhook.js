@@ -1,4 +1,5 @@
-// Registers (or updates) the PayMongo webhook that confirms GCash payments.
+// Registers (or updates) the PayMongo webhook that confirms GCash payments
+// and reports refund results.
 //
 // Usage (from the server folder, with PAYMONGO_SECRET_KEY in server/.env):
 //   node setup-paymongo-webhook.js https://your-ngrok-address
@@ -14,7 +15,20 @@ require("dotenv").config({ path: ENV_PATH });
 
 const paymongo = require("./payments/paymongo");
 
-const EVENTS = ["checkout_session.payment.paid"];
+const EVENTS = [
+  "checkout_session.payment.paid",
+  "payment.refunded",
+  "payment.refund.updated",
+];
+
+// True when the webhook already listens for every event SmartFine needs.
+function hasAllEvents(webhook) {
+  const events = Array.isArray(webhook?.attributes?.events)
+    ? webhook.attributes.events
+    : [];
+
+  return EVENTS.every((event) => events.includes(event));
+}
 
 function saveEnvValue(name, value) {
   const current = fs.existsSync(ENV_PATH) ? fs.readFileSync(ENV_PATH, "utf8") : "";
@@ -52,9 +66,10 @@ async function main() {
     webhooks.find((webhook) => webhook.attributes?.url === url);
 
   if (existing) {
-    if (existing.attributes?.url !== url) {
+    if (existing.attributes?.url !== url || !hasAllEvents(existing)) {
       await paymongo.updateWebhook(existing.id, url, EVENTS);
       console.log(`Updated webhook ${existing.id} to ${url}`);
+      console.log(`Events: ${EVENTS.join(", ")}`);
     } else {
       console.log(`Webhook ${existing.id} already points to ${url}`);
     }

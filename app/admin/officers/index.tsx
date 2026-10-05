@@ -12,9 +12,11 @@ import {
   View,
 } from "react-native";
 
+import { useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { OfficerFormModal } from "@/components/admin-forms/officer-form-modal";
 
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { FadeIn } from "@/components/motion";
@@ -76,6 +78,18 @@ type NavItem = {
 
 export default function OfficersDirectory() {
   const router = useGuardedRouter();
+
+  // Add New Officer is a pop-up; ?add=1 (the old add route) opens it too.
+  const [showAddOfficer, setShowAddOfficer] = useState(false);
+
+  const { add: addParam } = useLocalSearchParams<{ add?: string }>();
+
+  useEffect(() => {
+    if (addParam === "1") {
+      setShowAddOfficer(true);
+      router.setParams({ add: undefined });
+    }
+  }, [addParam]);
 
   const { logout } = useAuth();
 
@@ -336,7 +350,7 @@ export default function OfficersDirectory() {
       return;
     }
 
-    router.push("/admin/officers/add" as any);
+    setShowAddOfficer(true);
   };
 
   // ==========================================
@@ -401,7 +415,7 @@ export default function OfficersDirectory() {
 
       setShowLogoutModal(false);
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
 
@@ -1009,6 +1023,21 @@ export default function OfficersDirectory() {
           </View>
         </ScrollView>
       </View>
+
+      {/* ======================================
+          ADD OFFICER
+      ====================================== */}
+
+      <OfficerFormModal
+        visible={showAddOfficer}
+        mode="add"
+        onClose={() => setShowAddOfficer(false)}
+        onSaved={() => void loadOfficers(false)}
+        onOpenProfile={(id) => {
+          setShowAddOfficer(false);
+          router.push(`/admin/officers/${id}` as any);
+        }}
+      />
 
       {/* ======================================
           LOGOUT MODAL

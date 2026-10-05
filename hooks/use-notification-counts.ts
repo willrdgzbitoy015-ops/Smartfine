@@ -29,6 +29,7 @@ const POLL_INTERVAL_MS = 15000;
 let latestCounts = EMPTY_COUNTS;
 let countsToken: string | null = null;
 let inFlight: Promise<void> | null = null;
+let refreshQueued = false;
 let focusedScreens = 0;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<(counts: NotificationCounts) => void>();
@@ -43,57 +44,72 @@ function toCount(value: unknown) {
   return Number.isSafeInteger(count) && count > 0 ? count : 0;
 }
 
-// Refresh every mounted badge; concurrent calls share one request.
+async function fetchCounts() {
+  try {
+    const token = await AsyncStorage.getItem("token");
+
+    // A different sign-in never shows the previous account's counts.
+    if (token !== countsToken) {
+      countsToken = token;
+      publish(EMPTY_COUNTS);
+    }
+
+    if (!token) {
+      return;
+    }
+
+    const response = await fetch(
+      `${API_BASE}/api/notifications/unread-count`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+      },
+    );
+
+    if (response.status === 401 || response.status === 403) {
+      publish(EMPTY_COUNTS);
+      return;
+    }
+
+    const body = await response.json();
+
+    if (!response.ok || !body?.success || !body.counts) {
+      throw new Error(body?.message || `HTTP ${response.status}`);
+    }
+
+    publish({
+      total: toCount(body.counts.total),
+      FINE: toCount(body.counts.FINE),
+      PAYMENT: toCount(body.counts.PAYMENT),
+      SYSTEM: toCount(body.counts.SYSTEM),
+      ACCOUNT: toCount(body.counts.ACCOUNT),
+      reports: toCount(body.counts.reports),
+    });
+  } catch (error) {
+    // Keep the last known counts while the server is unreachable.
+    console.warn("Notification count refresh failed:", error);
+  }
+}
+
+// Refresh every mounted badge; concurrent calls share one request. A call
+// made while a request is running gets one more request after it, so a
+// change just made (read, delete) is never answered by a count taken before
+// that change.
 export function refreshNotificationCounts(): Promise<void> {
-  if (inFlight) return inFlight;
+  if (inFlight) {
+    refreshQueued = true;
+    return inFlight;
+  }
 
   inFlight = (async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-
-      // A different sign-in never shows the previous account's counts.
-      if (token !== countsToken) {
-        countsToken = token;
-        publish(EMPTY_COUNTS);
-      }
-
-      if (!token) {
-        return;
-      }
-
-      const response = await fetch(
-        `${API_BASE}/api/notifications/unread-count`,
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true",
-          },
-        },
-      );
-
-      if (response.status === 401 || response.status === 403) {
-        publish(EMPTY_COUNTS);
-        return;
-      }
-
-      const body = await response.json();
-
-      if (!response.ok || !body?.success || !body.counts) {
-        throw new Error(body?.message || `HTTP ${response.status}`);
-      }
-
-      publish({
-        total: toCount(body.counts.total),
-        FINE: toCount(body.counts.FINE),
-        PAYMENT: toCount(body.counts.PAYMENT),
-        SYSTEM: toCount(body.counts.SYSTEM),
-        ACCOUNT: toCount(body.counts.ACCOUNT),
-        reports: toCount(body.counts.reports),
-      });
-    } catch (error) {
-      // Keep the last known counts while the server is unreachable.
-      console.warn("Notification count refresh failed:", error);
+      do {
+        refreshQueued = false;
+        await fetchCounts();
+      } while (refreshQueued);
     } finally {
       inFlight = null;
     }
@@ -192,4 +208,42 @@ export function useNotificationCounts() {
   );
 
   return counts;
+}
+
+// Delete one of the signed-in user's notifications, then refresh the badges.
+// Only the notice is removed; the fine or payment it mentions is unchanged.
+export async function deleteNotification(notificationId: number) {
+  const token = await AsyncStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Please sign in again.");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/api/notifications/${notificationId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
+      },
+    },
+  );
+
+  const body = await response.json().catch(() => null);
+
+  // Already gone (deleted on another device): treat as done. A backend
+  // without this route (not restarted yet) or ngrok also answer 404, but
+  // not with SmartFine's JSON reply, so those show an error instead.
+  if (response.status === 404 && body?.success === false) {
+    void refreshNotificationCounts();
+    return;
+  }
+
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.message || "Could not delete the notification.");
+  }
+
+  void refreshNotificationCounts();
 }

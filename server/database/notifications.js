@@ -202,7 +202,7 @@ function notifyOnlinePaymentReceived(fineId, paymentId) {
 
 // Money arrived that SmartFine could not apply automatically (the fine was
 // already cancelled or paid, or the amount differs). An Admin must review it,
-// usually by refunding it in the PayMongo dashboard.
+// usually by refunding it from the fine pop-up.
 function notifyOnlinePaymentNeedsReview(fineId, paymentId, reason) {
   const context = fineContext(fineId);
   if (!context) return;
@@ -216,9 +216,131 @@ function notifyOnlinePaymentNeedsReview(fineId, paymentId, reason) {
      FROM users
      WHERE role = 'ADMIN' AND account_status = 'ACTIVE'`,
   ).run(
-    `A GCash payment for ${context.reference} (${context.studentName}) was received but not applied: ${reason} Review it in the PayMongo dashboard.`,
+    `A GCash payment for ${context.reference} (${context.studentName}) was received but not applied: ${reason} Open the fine to refund it.`,
     context.id,
     paymentId,
+  );
+}
+
+// ==========================================
+// REFUNDS
+// ==========================================
+
+function methodLabel(method) {
+  return method === "GCASH" ? "GCash" : "cash";
+}
+
+function notifyAdmins(type, title, message, fineId, paymentId) {
+  db.prepare(
+    `INSERT INTO notifications (
+       user_id, notification_type, title, message,
+       related_fine_id, related_payment_id
+     )
+     SELECT id, ?, ?, ?, ?, ?
+     FROM users
+     WHERE role = 'ADMIN' AND account_status = 'ACTIVE'`,
+  ).run(type, title, message, fineId, paymentId ?? null);
+}
+
+// Refund notices that needed an Admin's attention are settled once the
+// refund is decided.
+function settleRefundNotices(paymentId) {
+  db.prepare(
+    `UPDATE notifications
+     SET is_read = 1
+     WHERE related_payment_id = ?
+       AND is_read = 0
+       AND title IN (
+         'Refund Requested',
+         'Refund Failed',
+         'GCash Payment Needs Review'
+       )
+       AND user_id IN (SELECT id FROM users WHERE role = 'ADMIN')`,
+  ).run(paymentId);
+}
+
+// A student asked for their money back; an Admin decides.
+function notifyRefundRequested(refund) {
+  const context = fineContext(refund.fine_id);
+  if (!context) return;
+
+  notifyAdmins(
+    "PAYMENT",
+    "Refund Requested",
+    `${context.studentName} asked for a refund of ${peso(refund.amount_centavos)} for ${context.reference} (paid in ${methodLabel(refund.payment_method)}). Reason: ${refund.reason}`,
+    context.id,
+    refund.payment_id,
+  );
+}
+
+function notifyRefundRejected(refund, note) {
+  const context = fineContext(refund.fine_id);
+  if (!context) return;
+
+  notifyStudent(
+    context,
+    "PAYMENT",
+    "Refund Request Declined",
+    `Your refund request for ${context.reference} was declined.` +
+      (note ? ` Note from the administrator: ${note}` : ""),
+    refund.payment_id,
+  );
+}
+
+// GCash refunds are processed by PayMongo after an Admin approves them.
+function notifyRefundProcessing(refund) {
+  const context = fineContext(refund.fine_id);
+  if (!context) return;
+
+  notifyStudent(
+    context,
+    "PAYMENT",
+    "Refund Approved",
+    `Your refund of ${peso(refund.amount_centavos)} for ${context.reference} was approved. PayMongo is sending it back to the GCash account you paid with; it usually arrives within a day.`,
+    refund.payment_id,
+  );
+}
+
+function notifyRefundCompleted(refund, fineCancelled) {
+  const context = fineContext(refund.fine_id);
+  if (!context) return;
+
+  settleRefundNotices(refund.payment_id);
+
+  notifyStudent(
+    context,
+    "PAYMENT",
+    "Refund Completed",
+    refund.payment_method === "GCASH"
+      ? `Your refund of ${peso(refund.amount_centavos)} for ${context.reference} was sent to your GCash account.` +
+          (fineCancelled ? " The fine has been cancelled." : "")
+      : `Your cash refund of ${peso(refund.amount_centavos)} for ${context.reference} was recorded.` +
+          (fineCancelled ? " The fine has been cancelled." : ""),
+    refund.payment_id,
+  );
+
+  if (fineCancelled) {
+    notifyRecordingOfficer(
+      context,
+      refund.reviewed_by,
+      "FINE",
+      "Fine Refunded",
+      `${context.reference} (${context.violation}) issued to ${context.studentName} was refunded and cancelled by ${actorLabel(refund.reviewed_by)}.`,
+      refund.payment_id,
+    );
+  }
+}
+
+function notifyRefundFailed(refund, reason) {
+  const context = fineContext(refund.fine_id);
+  if (!context) return;
+
+  notifyAdmins(
+    "PAYMENT",
+    "Refund Failed",
+    `The ${methodLabel(refund.payment_method)} refund of ${peso(refund.amount_centavos)} for ${context.reference} (${context.studentName}) did not go through: ${reason} The fine is still Paid.`,
+    context.id,
+    refund.payment_id,
   );
 }
 
@@ -227,4 +349,10 @@ module.exports = {
   notifyFineCancelled,
   notifyOnlinePaymentNeedsReview,
   notifyOnlinePaymentReceived,
+  notifyRefundCompleted,
+  notifyRefundFailed,
+  notifyRefundProcessing,
+  notifyRefundRejected,
+  notifyRefundRequested,
+  settleRefundNotices,
 };

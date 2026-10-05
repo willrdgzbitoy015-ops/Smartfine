@@ -6,7 +6,7 @@ import { AdminNavBadge } from "@/components/notification-badge";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 import { FadeIn } from "@/components/motion";
 import { SkeletonDetails, SkeletonTable } from "@/components/skeleton";
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
@@ -41,6 +41,9 @@ type PaymentSummary = {
   totalCollectedCount: number;
   pendingPaymentCount: number;
   todayPaymentCount: number;
+  // Refunded payments are not part of the collected totals.
+  totalRefundedCentavos?: number;
+  totalRefundedCount?: number;
 };
 type PaymentTransaction = {
   id: number;
@@ -64,6 +67,10 @@ type PaymentTransaction = {
   confirmed_at: string | null;
   paid_at: string | null;
   transaction_date: string | null;
+  refund_status?: string | null;
+  refund_reference?: string | null;
+  refunded_at?: string | null;
+  is_refunded?: boolean;
 };
 type PaymentReportResponse = {
   success: boolean;
@@ -93,15 +100,17 @@ const ACTIVITY_FILTERS = [
   { key: "UNREAD", label: "Unread", test: (n: ReportNotice) => !n.isRead },
   { key: "READ", label: "Read", test: (n: ReportNotice) => n.isRead },
 ];
-type StatusFilter = "ALL" | "PAID" | "PENDING" | "CANCELLED";
+type StatusFilter = "ALL" | "PAID" | "PENDING" | "CANCELLED" | "REFUNDED";
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "ALL", label: "All" },
   { key: "PAID", label: "Paid" },
   { key: "PENDING", label: "Pending" },
   { key: "CANCELLED", label: "Cancelled" },
+  { key: "REFUNDED", label: "Refunded" },
 ];
 function transactionStatus(payment: PaymentTransaction): StatusFilter | null {
   const status = String(payment.payment_status || "").toUpperCase();
+  if (payment.is_refunded) return "REFUNDED";
   if (payment.paid_at || status === "SUCCESS" || status === "PAID") return "PAID";
   if (status === "PENDING") return "PENDING";
   if (status === "CANCELLED") return "CANCELLED";
@@ -425,7 +434,7 @@ export default function PaymentReports() {
       setLogoutLoading(true);
       await logout();
       setShowLogoutModal(false);
-      router.replace("/login" as any);
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
       setShowLogoutModal(false);
@@ -579,7 +588,11 @@ export default function PaymentReports() {
                 label="Total Collected"
                 loading={loading}
                 value={formatMoney(summary.totalCollected)}
-                hint={`${summary.totalCollectedCount} ${summary.totalCollectedCount === 1 ? "payment" : "payments"} · Show paid`}
+                hint={`${summary.totalCollectedCount} ${summary.totalCollectedCount === 1 ? "payment" : "payments"}${
+                  summary.totalRefundedCentavos
+                    ? ` · ${formatMoney(summary.totalRefundedCentavos / 100)} refunded`
+                    : ""
+                } · Show paid`}
                 tone="success"
                 onPress={() => setStatusFilter("PAID")}
               />
@@ -764,9 +777,11 @@ export default function PaymentReports() {
                         // ==================================
                         // DISPLAY STATUS
                         // ==================================
-                        const displayStatus = payment.paid_at
-                          ? "PAID"
-                          : payment.payment_status;
+                        const displayStatus = payment.is_refunded
+                          ? "REFUNDED"
+                          : payment.paid_at
+                            ? "PAID"
+                            : payment.payment_status;
                         const reportNotice = notices.find(
                           (item) =>
                             Number(item.paymentId) === Number(payment.id),
@@ -954,6 +969,16 @@ export default function PaymentReports() {
                 error={noticeError}
                 onRetry={() => void loadReports(true)}
                 onOpen={(notice) => void openPaymentDetail(notice.paymentId, true)}
+                onDelete={(noticeId) => {
+                  // A deleted unread notice no longer counts as new.
+                  if (notices.some((notice) => notice.id === noticeId && !notice.isRead)) {
+                    setNoticeCount((count) => Math.max(0, count - 1));
+                  }
+
+                  setNotices((current) =>
+                    current.filter((notice) => notice.id !== noticeId),
+                  );
+                }}
                 emptyText="No payment activity here yet."
                 action={
                   noticeCount > 0
@@ -1002,7 +1027,9 @@ export default function PaymentReports() {
                   <Text
                     style={[
                       styles.detailStatus,
-                      detailPayment.paid_at
+                      detailPayment.is_refunded
+                        ? styles.detailCancelled
+                        : detailPayment.paid_at
                         ? styles.detailPaid
                         : ["CANCELLED", "FAILED"].includes(
                               String(detailPayment.payment_status).toUpperCase(),
@@ -1187,6 +1214,9 @@ function formatPaymentStatus(status: string | null | undefined) {
   if (normalized === "FAILED") {
     return "Failed";
   }
+  if (normalized === "REFUNDED") {
+    return "Refunded";
+  }
   return "Pending";
 }
 // ==========================================
@@ -1206,6 +1236,11 @@ function getPaymentStatusBadgeStyle(status: string | null | undefined) {
   if (normalized === "CANCELLED") {
     return {
       backgroundColor: "#ECEFF4",
+    };
+  }
+  if (normalized === "REFUNDED") {
+    return {
+      backgroundColor: "#FFF1CF",
     };
   }
   if (normalized === "FAILED") {
@@ -1234,6 +1269,11 @@ function getPaymentStatusTextStyle(status: string | null | undefined) {
   if (normalized === "CANCELLED") {
     return {
       color: "#606775",
+    };
+  }
+  if (normalized === "REFUNDED") {
+    return {
+      color: "#A46C00",
     };
   }
   if (normalized === "FAILED") {

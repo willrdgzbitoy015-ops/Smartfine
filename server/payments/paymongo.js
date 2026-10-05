@@ -167,6 +167,52 @@ async function expireCheckoutSession(sessionId) {
   );
 }
 
+// ==========================================
+// REFUNDS
+// ==========================================
+
+// PayMongo refund reasons: duplicate, fraudulent, requested_by_customer,
+// others. Statuses: pending, processing, succeeded, failed.
+function summarizeRefund(json) {
+  const data = json?.data || {};
+  const attributes = data.attributes || {};
+
+  return {
+    id: data.id || null,
+    status: attributes.status || null,
+    amountCentavos: Number(attributes.amount),
+    paymentId: attributes.payment_id || null,
+    reason: attributes.reason || null,
+    notes: attributes.notes || null,
+    metadata: attributes.metadata || {},
+    livemode: Boolean(attributes.livemode),
+  };
+}
+
+// POST /v1/refunds. Only a payment with status "paid" can be refunded; GCash
+// payments within 180 days.
+async function createRefund({ amountCentavos, paymentId, reason, notes, metadata }) {
+  return summarizeRefund(
+    await request("POST", "/v1/refunds", {
+      data: {
+        attributes: {
+          amount: amountCentavos,
+          payment_id: paymentId,
+          reason,
+          notes: notes ? String(notes).slice(0, 255) : undefined,
+          metadata,
+        },
+      },
+    }),
+  );
+}
+
+async function retrieveRefund(refundId) {
+  return summarizeRefund(
+    await request("GET", `/v1/refunds/${encodeURIComponent(refundId)}`),
+  );
+}
+
 // Webhook endpoints (used by setup-paymongo-webhook.js).
 async function listWebhooks() {
   const json = await request("GET", "/v1/webhooks");
@@ -231,12 +277,14 @@ function verifyWebhookSignature(rawBody, header, options = {}) {
 module.exports = {
   PayMongoError,
   createCheckoutSession,
+  createRefund,
   createWebhook,
   expireCheckoutSession,
   isConfigured,
   isTestMode,
   listWebhooks,
   retrieveCheckoutSession,
+  retrieveRefund,
   updateWebhook,
   verifyWebhookSignature,
 };

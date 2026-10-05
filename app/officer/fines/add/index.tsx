@@ -28,6 +28,7 @@ import {
   useSwitchFade,
 } from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
+import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
 import { useResponsiveStyles } from "./add-fine.styles";
@@ -596,13 +597,7 @@ export default function OfficerAddFine() {
 
               {shownModal === "success" && (
                 <>
-                  <PopIn style={styles.successCircle} delay={80} from={0.4}>
-                    <Image
-                      source={require("../../../../assets/icons/check.png")}
-                      style={styles.successIcon}
-                      resizeMode="contain"
-                    />
-                  </PopIn>
+                  <SuccessCheck delay={80} style={styles.successCheck} />
 
                   <Text style={styles.modalTitle}>
                     Fine Recorded Successfully!

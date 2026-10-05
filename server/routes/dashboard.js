@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 
 const db = require("../database/database");
+// Creates the refunds table that the totals and the activity feed read.
+require("../payments/refunds");
 const { authenticateToken } = require("./auth");
 
 console.log("dashboard.js loaded");
@@ -116,7 +118,11 @@ router.get("/stats", (req, res) => {
          WHERE payment_status = 'SUCCESS'
            AND paid_at IS NOT NULL
            AND DATE(DATETIME(paid_at, '+8 hours')) =
-               DATE(DATETIME('now', '+8 hours'))`,
+               DATE(DATETIME('now', '+8 hours'))
+           AND NOT EXISTS (
+             SELECT 1 FROM refunds r
+             WHERE r.payment_id = payments.id AND r.status = 'SUCCEEDED'
+           )`,
       )
       .get();
 
@@ -127,7 +133,11 @@ router.get("/stats", (req, res) => {
            COALESCE(SUM(amount_centavos), 0) AS centavos
          FROM payments
          WHERE payment_status = 'SUCCESS'
-           AND paid_at IS NOT NULL`,
+           AND paid_at IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM refunds r
+             WHERE r.payment_id = payments.id AND r.status = 'SUCCEEDED'
+           )`,
       )
       .get();
 
@@ -287,6 +297,29 @@ const ACTIVITY_FEED = `
   LEFT JOIN violation_types vt ON vt.id = f.violation_type_id
   LEFT JOIN users actor ON actor.id = f.cancelled_by
   WHERE f.cancelled_at IS NOT NULL
+
+  UNION ALL
+
+  SELECT
+    'PAYMENT_REFUNDED',
+    'PAYMENTS',
+    'refund-' || r.id,
+    r.completed_at,
+    r.fine_id,
+    f.fine_reference,
+    r.payment_id,
+    NULL,
+    ${fullName("student")},
+    'was refunded for ' || f.fine_reference ||
+      CASE r.payment_method WHEN 'GCASH' THEN ' via GCash' ELSE ' in cash' END,
+    ${fullName("actor")},
+    actor.role,
+    r.amount_centavos
+  FROM refunds r
+  JOIN fines f ON f.id = r.fine_id
+  JOIN users student ON student.id = r.student_user_id
+  LEFT JOIN users actor ON actor.id = r.reviewed_by
+  WHERE r.status = 'SUCCEEDED'
 
   UNION ALL
 

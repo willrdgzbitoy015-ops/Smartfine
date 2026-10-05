@@ -20,7 +20,8 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { FadeIn, PopIn, ScanLine } from "@/components/motion";
+import { FadeIn, ScanLine } from "@/components/motion";
+import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
 import { useResponsiveStyles } from "./qr-scanner.styles";
@@ -353,13 +354,7 @@ export default function OfficerQRScanner() {
           contentContainerStyle={styles.resultContent}
           showsVerticalScrollIndicator={false}
         >
-          <PopIn style={styles.successCircle} from={0.4}>
-            <Image
-              source={require("../../../assets/icons/check.png")}
-              style={styles.successIcon}
-              resizeMode="contain"
-            />
-          </PopIn>
+          <SuccessCheck style={styles.successCheck} />
 
           <Text style={styles.identifiedTitle}>Student Identified</Text>
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import {
@@ -14,17 +14,19 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { API_BASE } from "@/constants/api";
-import { FadeIn } from "@/components/motion";
+import { FadeIn, useRetainedValue } from "@/components/motion";
 import { SkeletonTable } from "@/components/skeleton";
 import { AdminModal, AdminNoticeList } from "@/components/admin-modal";
 import AdminFineDetails from "@/components/admin-modal/fine-details";
+import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import LogoutModal from "@/components/logout-modal";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 import WarningModal from "@/components/warningmodal";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
+import { usePopupSwap } from "@/hooks/use-popup-swap";
 import { styles } from "./fines.styles";
 // ==========================================
 // TYPES
@@ -77,6 +79,10 @@ type FineModal =
   | { view: "fine"; fineId: number; fromNotices: boolean }
   | { view: "missing" }
   | null;
+type FineForm =
+  | { mode: "add"; studentId: number | null }
+  | { mode: "edit"; fineId: number }
+  | null;
 // Empty-table wording for each status filter.
 const STATUS_EMPTY_LABELS: Record<string, string> = {
   ALL: "fines",
@@ -89,7 +95,16 @@ const NOTICE_FILTERS = [
   { key: "ALL", label: "All", test: () => true },
   { key: "UNREAD", label: "Unread", test: (n: AdminNotice) => !n.isRead },
   { key: "FINE", label: "New fines", test: (n: AdminNotice) => n.type === "FINE" },
-  { key: "PAYMENT", label: "Cash requests", test: (n: AdminNotice) => n.type === "PAYMENT" },
+  {
+    key: "PAYMENT",
+    label: "Cash requests",
+    test: (n: AdminNotice) => n.type === "PAYMENT" && !/refund/i.test(n.title),
+  },
+  {
+    key: "REFUND",
+    label: "Refunds",
+    test: (n: AdminNotice) => /refund/i.test(n.title),
+  },
 ];
 // ==========================================
 // FINES DIRECTORY SCREEN
@@ -137,30 +152,56 @@ export default function FinesDirectory() {
   const [pendingFineIds, setPendingFineIds] = useState<Set<number>>(new Set());
   const [notices, setNotices] = useState<AdminNotice[]>([]);
   const [modal, setModal] = useState<FineModal>(null);
-  // Reopens a fine's pop-up after returning from Edit Fine.
-  const reopenFineIdRef = useRef<number | null>(null);
+  // The Add / Edit Fine pop-up. It keeps its mode while it fades out.
+  const [fineForm, setFineForm] = useState<FineForm>(null);
+  const shownFineForm = useRetainedValue(fineForm);
+  const swapPopup = usePopupSwap();
   const [focusVersion, setFocusVersion] = useState(0);
+  // Notifications are checked only while this screen is showing.
+  const [screenFocused, setScreenFocused] = useState(true);
   useFocusEffect(useCallback(() => {
     setFocusVersion((current) => current + 1);
-    const reopenId = reopenFineIdRef.current;
-    if (reopenId) {
-      reopenFineIdRef.current = null;
-      setModal({ view: "fine", fineId: reopenId, fromNotices: false });
-    }
+    setScreenFocused(true);
+    return () => setScreenFocused(false);
   }, []));
-  // Links to /admin/fines/:id arrive here as ?fineId= and open the pop-up;
-  // dashboard cards pass ?status= to start on a filter.
-  const { fineId: fineIdParam, status: statusParam } = useLocalSearchParams<{
+  // Links to /admin/fines/:id arrive here as ?fineId= and open the pop-up
+  // (with &edit=1, the Edit Fine pop-up); ?add=1 opens Add New Fine, with
+  // &studentId= when the QR Scanner picked the student. Dashboard cards pass
+  // ?status= to start on a filter.
+  const {
+    fineId: fineIdParam,
+    status: statusParam,
+    add: addParam,
+    edit: editParam,
+    studentId: studentIdParam,
+  } = useLocalSearchParams<{
     fineId?: string;
     status?: string;
+    add?: string;
+    edit?: string;
+    studentId?: string;
   }>();
   useEffect(() => {
     const linkedId = Number(fineIdParam);
     if (Number.isSafeInteger(linkedId) && linkedId > 0) {
-      setModal({ view: "fine", fineId: linkedId, fromNotices: false });
-      router.setParams({ fineId: undefined });
+      if (editParam === "1") {
+        setFineForm({ mode: "edit", fineId: linkedId });
+      } else {
+        setModal({ view: "fine", fineId: linkedId, fromNotices: false });
+      }
+      router.setParams({ fineId: undefined, edit: undefined });
     }
-  }, [fineIdParam]);
+  }, [fineIdParam, editParam]);
+  useEffect(() => {
+    if (addParam === "1") {
+      const picked = Number(studentIdParam);
+      setFineForm({
+        mode: "add",
+        studentId: Number.isSafeInteger(picked) && picked > 0 ? picked : null,
+      });
+      router.setParams({ add: undefined, studentId: undefined });
+    }
+  }, [addParam, studentIdParam]);
   useEffect(() => {
     if (
       statusParam &&
@@ -217,6 +258,7 @@ export default function FinesDirectory() {
     loadPageData(true);
   }, []);
   useEffect(() => {
+    if (!screenFocused) return;
     let mounted = true;
     let fetching = false;
     const loadNotifications = async () => {
@@ -308,7 +350,7 @@ export default function FinesDirectory() {
       mounted = false;
       clearInterval(interval);
     };
-  }, [focusVersion]);
+  }, [focusVersion, screenFocused]);
   const loadPageData = async (showFullLoader = false) => {
     if (loading && !showFullLoader) {
       return;
@@ -443,7 +485,7 @@ export default function FinesDirectory() {
     if (loading || refreshing) {
       return;
     }
-    router.push("/admin/fines/add" as any);
+    setFineForm({ mode: "add", studentId: null });
   };
   // ==========================================
   // OPEN FINE DETAILS
@@ -476,10 +518,24 @@ export default function FinesDirectory() {
     setStatusMenuOpen(false);
     setViolationMenuOpen(false);
   };
+  // The fine's pop-up closes, Edit Fine opens, and closing Edit Fine brings
+  // the fine's pop-up back with the saved values.
   const handleEditFine = (fineId: number) => {
-    reopenFineIdRef.current = fineId;
     setModal(null);
-    router.push(`/admin/fines/${fineId}/edit` as any);
+    swapPopup(() => setFineForm({ mode: "edit", fineId }));
+  };
+  const closeFineForm = () => {
+    const closing = fineForm;
+    setFineForm(null);
+    if (closing?.mode === "edit") {
+      swapPopup(() =>
+        setModal({ view: "fine", fineId: closing.fineId, fromNotices: false }),
+      );
+    }
+  };
+  const viewSavedFine = (fineId: number) => {
+    setFineForm(null);
+    swapPopup(() => setModal({ view: "fine", fineId, fromNotices: false }));
   };
   // ==========================================
   // OPEN LOGOUT MODAL
@@ -504,7 +560,7 @@ export default function FinesDirectory() {
       setLogoutLoading(true);
       await logout();
       setShowLogoutModal(false);
-      router.replace("/login");
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
       setShowLogoutModal(false);
@@ -1077,6 +1133,16 @@ export default function FinesDirectory() {
             notices={notices}
             filters={NOTICE_FILTERS}
             onOpen={handleOpenNotice}
+            onDelete={(noticeId) => {
+              // A deleted unread notice no longer counts as new.
+              if (notices.some((notice) => notice.id === noticeId && !notice.isRead)) {
+                setUnreadCount((count) => Math.max(0, count - 1));
+              }
+
+              setNotices((current) =>
+                current.filter((notice) => notice.id !== noticeId),
+              );
+            }}
             emptyText="No notifications here yet."
           />
         ) : modal?.view === "fine" ? (
@@ -1095,6 +1161,18 @@ export default function FinesDirectory() {
           </View>
         ) : null}
       </AdminModal>
+      {/* ======================================
+          ADD / EDIT FINE
+      ====================================== */}
+      <FineFormModal
+        visible={fineForm !== null}
+        mode={shownFineForm?.mode ?? "add"}
+        fineId={shownFineForm?.mode === "edit" ? shownFineForm.fineId : null}
+        studentId={shownFineForm?.mode === "add" ? shownFineForm.studentId : null}
+        onClose={closeFineForm}
+        onSaved={() => handleFineChanged()}
+        onViewFine={viewSavedFine}
+      />
       {/* ======================================
           LOGOUT CONFIRMATION MODAL
       ====================================== */}

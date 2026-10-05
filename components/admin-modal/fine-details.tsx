@@ -46,7 +46,68 @@ type Fine = {
 
 type NoticeState = { wasUnread: boolean } | null;
 
-type Step = "details" | "cancel" | "pay";
+type Step =
+  | "details"
+  | "cancel"
+  | "pay"
+  | "refund"
+  | "approveRefund"
+  | "rejectRefund";
+
+type RefundCode = "WRONG_FINE" | "DUPLICATE" | "OTHER";
+
+type RefundRow = {
+  id: number;
+  refundReference: string;
+  paymentId: number;
+  amountCentavos: number;
+  paymentMethod: "CASH" | "GCASH";
+  reasonCode: RefundCode;
+  reasonLabel: string;
+  reason: string;
+  status:
+    | "REQUESTED"
+    | "WITHDRAWN"
+    | "REJECTED"
+    | "PROCESSING"
+    | "SUCCEEDED"
+    | "FAILED";
+  requestedByName: string | null;
+  requestedByRole: string | null;
+  requestedAt: string;
+  reviewedByName: string | null;
+  reviewNote: string | null;
+  gatewayRefundId: string | null;
+  failureReason: string | null;
+  completedAt: string | null;
+};
+
+type RefundPayment = {
+  paymentId: number;
+  paymentReference: string;
+  paymentMethod: "CASH" | "GCASH";
+  amountCentavos: number;
+  paidAt: string | null;
+  refundable: boolean;
+  notRefundableReason: string | null;
+  refundableUntil: string | null;
+};
+
+type RefundInfo = {
+  payment: RefundPayment | null;
+  refunds: RefundRow[];
+  gatewayConfigured: boolean;
+};
+
+const REFUND_REASONS: { code: RefundCode; label: string }[] = [
+  { code: "WRONG_FINE", label: "Fine issued by mistake" },
+  { code: "DUPLICATE", label: "Paid more than once" },
+  { code: "OTHER", label: "Other reason" },
+];
+
+function pesos(centavos: number) {
+  return money(Number(centavos) / 100);
+}
 
 function money(amount: number) {
   return `₱${Number(amount || 0).toLocaleString("en-PH", {
@@ -125,6 +186,13 @@ export default function AdminFineDetails({
   const runLocked = useActionLock();
   const [success, setSuccess] = useState("");
 
+  // Refunds of this fine's payment.
+  const [refundInfo, setRefundInfo] = useState<RefundInfo | null>(null);
+  const [refundCode, setRefundCode] = useState<RefundCode | null>(null);
+  const [cashReturned, setCashReturned] = useState(false);
+  // A refund that was sent but did not go through.
+  const [refundProblem, setRefundProblem] = useState("");
+
   // Keeps loadFine tied to the fine ID, not to the parent's callback identity.
   const onNoticesReadRef = useRef(onNoticesRead);
   useEffect(() => {
@@ -185,16 +253,45 @@ export default function AdminFineDetails({
     [fineId],
   );
 
+  const loadRefunds = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(`${API_BASE}/api/refunds/fine/${fineId}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.success) {
+        setRefundInfo({
+          payment: data.payment ?? null,
+          refunds: Array.isArray(data.refunds) ? data.refunds : [],
+          gatewayConfigured: Boolean(data.gatewayConfigured),
+        });
+      }
+    } catch {
+      // Refund details are optional; the fine itself still shows.
+    }
+  }, [fineId]);
+
   // A different fine starts from its details with fresh state.
   useEffect(() => {
     setFine(null);
     setNotices(null);
+    setRefundInfo(null);
+    setRefundProblem("");
     setStep("details");
     setReason("");
     setActionError("");
     setSuccess("");
     void loadFine(true);
-  }, [loadFine]);
+    void loadRefunds();
+  }, [loadFine, loadRefunds]);
 
   const finishAction = async (message: string) => {
     haptics.success();
@@ -202,7 +299,7 @@ export default function AdminFineDetails({
     setReason("");
     setActionError("");
     setSuccess(message);
-    await loadFine(false);
+    await Promise.all([loadFine(false), loadRefunds()]);
     onChanged();
     void refreshNotificationCounts();
   };
@@ -291,6 +388,175 @@ export default function AdminFineDetails({
       }
     });
 
+  // ========================================
+  // REFUNDS
+  // ========================================
+
+  const refundRequest = async (path: string, body: object) => {
+    const token = await AsyncStorage.getItem("token");
+    if (!token) throw new Error("Please sign in again.");
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => null);
+
+    // A refund PayMongo did not accept comes back saved as FAILED.
+    if (data?.refund?.status === "FAILED") {
+      return { failed: data.message || "The refund did not go through." };
+    }
+
+    if (!response.ok || !data?.success) {
+      throw new Error(data?.message || "Could not process the refund.");
+    }
+
+    return { message: String(data.message || "Refund updated.") };
+  };
+
+  const openRefundStep = (next: Step) => {
+    setStep(next);
+    setRefundCode(null);
+    setReason("");
+    setCashReturned(false);
+    setActionError("");
+  };
+
+  // Shows the result: success above the details, a failure as a warning.
+  const finishRefund = async (result: { message?: string; failed?: string }) => {
+    if (result.failed) {
+      // The saved FAILED refund explains itself in the details banner.
+      haptics.error();
+      setStep("details");
+      setReason("");
+      setActionError("");
+      setSuccess("");
+      setRefundProblem("");
+      await Promise.all([loadFine(false), loadRefunds()]);
+      onChanged();
+      void refreshNotificationCounts();
+      return;
+    }
+
+    setRefundProblem("");
+    await finishAction(result.message || "Refund updated.");
+  };
+
+  const performRefund = () =>
+    runLocked(async () => {
+      const payment = refundInfo?.payment;
+      if (!payment) return;
+
+      if (!refundCode) {
+        haptics.warning();
+        setActionError("Choose why the payment is being refunded.");
+        return;
+      }
+
+      if (reason.trim().length < 10) {
+        haptics.warning();
+        setActionError("Explain the refund in at least 10 characters.");
+        return;
+      }
+
+      if (payment.paymentMethod === "CASH" && !cashReturned) {
+        haptics.warning();
+        setActionError("Confirm that you returned the cash to the student.");
+        return;
+      }
+
+      setActionLoading(true);
+      setActionError("");
+
+      try {
+        await finishRefund(
+          await refundRequest("/api/refunds", {
+            paymentId: payment.paymentId,
+            reasonCode: refundCode,
+            reason: reason.trim(),
+            cashReturned,
+          }),
+        );
+      } catch (error) {
+        haptics.error();
+        setActionError(connectionMessage(error, "Could not process the refund."));
+      } finally {
+        setActionLoading(false);
+      }
+    });
+
+  const approveRefund = (refund: RefundRow) =>
+    runLocked(async () => {
+      if (refund.paymentMethod === "CASH" && !cashReturned) {
+        haptics.warning();
+        setActionError("Confirm that you returned the cash to the student.");
+        return;
+      }
+
+      setActionLoading(true);
+      setActionError("");
+
+      try {
+        await finishRefund(
+          await refundRequest(`/api/refunds/${refund.id}/approve`, {
+            cashReturned,
+            note: reason.trim(),
+          }),
+        );
+      } catch (error) {
+        haptics.error();
+        setActionError(connectionMessage(error, "Could not approve the refund."));
+      } finally {
+        setActionLoading(false);
+      }
+    });
+
+  const rejectRefund = (refund: RefundRow) =>
+    runLocked(async () => {
+      if (reason.trim().length < 5) {
+        haptics.warning();
+        setActionError("Tell the student why the refund is declined (at least 5 characters).");
+        return;
+      }
+
+      setActionLoading(true);
+      setActionError("");
+
+      try {
+        await finishRefund(
+          await refundRequest(`/api/refunds/${refund.id}/reject`, {
+            note: reason.trim(),
+          }),
+        );
+      } catch (error) {
+        haptics.error();
+        setActionError(connectionMessage(error, "Could not decline the refund."));
+      } finally {
+        setActionLoading(false);
+      }
+    });
+
+  const checkRefund = (refund: RefundRow) =>
+    runLocked(async () => {
+      setActionLoading(true);
+
+      try {
+        await refundRequest(`/api/refunds/${refund.id}/refresh`, {});
+        await Promise.all([loadFine(false), loadRefunds()]);
+        onChanged();
+      } catch (error) {
+        setRefundProblem(connectionMessage(error, "Could not check the refund."));
+      } finally {
+        setActionLoading(false);
+      }
+    });
+
   // Placeholder in the shape of the fine: amount, status, then fields.
   if (loading && !fine) {
     return (
@@ -341,6 +607,16 @@ export default function AdminFineDetails({
   const gcashPending = isUnpaid && onlineStatus === "PENDING";
   const paidByGcash = isPaid && onlineStatus === "SUCCESS";
   const gcashReview = String(fine.online_payment_notes || "").startsWith("Needs review");
+
+  const refundPayment = refundInfo?.payment ?? null;
+  const latestRefund = refundInfo?.refunds[0] ?? null;
+  const completedRefund =
+    refundInfo?.refunds.find((refund) => refund.status === "SUCCEEDED") ?? null;
+  const pendingRefund = latestRefund?.status === "REQUESTED" ? latestRefund : null;
+  const processingRefund = latestRefund?.status === "PROCESSING" ? latestRefund : null;
+  const canRefund =
+    Boolean(refundPayment?.refundable) &&
+    !(refundPayment?.paymentMethod === "GCASH" && !refundInfo?.gatewayConfigured);
 
   // Each step (details, cancel, pay) fades in when it opens.
   if (step === "cancel") {
@@ -405,6 +681,190 @@ export default function AdminFineDetails({
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>Cancel Fine</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </FadeIn>
+    );
+  }
+
+  if (step === "refund" || step === "approveRefund" || step === "rejectRefund") {
+    const request = step === "refund" ? null : pendingRefund;
+    const payment = refundPayment;
+
+    if (!payment || (step !== "refund" && !request)) {
+      setStep("details");
+      return null;
+    }
+
+    const amount = request ? request.amountCentavos : payment.amountCentavos;
+    const method = request ? request.paymentMethod : payment.paymentMethod;
+    const rejecting = step === "rejectRefund";
+
+    return (
+      <FadeIn key={step} style={styles.viewContent} distance={8} duration={220}>
+        <ScrollView
+          style={styles.body}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.stepTitle}>
+            {rejecting
+              ? "Decline this refund request?"
+              : request
+                ? "Approve this refund?"
+                : `Refund ${method === "GCASH" ? "the GCash" : "the cash"} payment?`}
+          </Text>
+
+          <View style={styles.payAmountBox}>
+            <Text style={styles.payAmountLabel}>REFUND AMOUNT</Text>
+            <Text style={[styles.payAmount, styles.refundAmount]}>{pesos(amount)}</Text>
+          </View>
+
+          {request && (
+            <View style={[styles.banner, styles.bannerRefund]}>
+              <Text style={[styles.bannerTitle, styles.bannerRefundTitle]}>
+                {request.reasonLabel} · requested by {request.requestedByName || "the student"}
+              </Text>
+              <Text style={styles.bannerText}>{request.reason}</Text>
+            </View>
+          )}
+
+          {!rejecting && (
+            <Text style={styles.stepText}>
+              {method === "GCASH"
+                ? "PayMongo sends the money back to the student's GCash account. The fine is cancelled once PayMongo confirms the refund; if it fails, the fine stays Paid."
+                : "Hand the cash back to the student first. Recording the refund cancels the fine."}
+            </Text>
+          )}
+
+          {step === "refund" && (
+            <>
+              <Text style={styles.inputLabel}>Reason *</Text>
+              <View style={styles.refundReasons}>
+                {REFUND_REASONS.map((item) => {
+                  const selected = refundCode === item.code;
+                  return (
+                    <TouchableOpacity
+                      key={item.code}
+                      style={[styles.filterChip, selected && styles.filterChipActive]}
+                      onPress={() => {
+                        haptics.selection();
+                        setRefundCode(item.code);
+                        if (actionError) setActionError("");
+                      }}
+                      disabled={actionLoading}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          selected && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          <Text style={styles.inputLabel}>
+            {rejecting
+              ? "Reason for declining (sent to the student) *"
+              : step === "refund"
+                ? "Explanation *"
+                : "Note (optional)"}
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={reason}
+            onChangeText={(text) => {
+              setReason(text);
+              if (actionError) setActionError("");
+            }}
+            placeholder={
+              rejecting
+                ? "For example: the officer's photo shows you at the gate."
+                : step === "refund"
+                  ? "Why is this payment being refunded?"
+                  : "Anything to note about this refund"
+            }
+            placeholderTextColor="#8C939F"
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+            editable={!actionLoading}
+          />
+          <Text style={styles.counter}>{reason.length}/500</Text>
+
+          {!rejecting && method === "CASH" && (
+            <TouchableOpacity
+              style={styles.checkRow}
+              onPress={() => {
+                haptics.selection();
+                setCashReturned((current) => !current);
+                if (actionError) setActionError("");
+              }}
+              disabled={actionLoading}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: cashReturned }}
+            >
+              <View style={[styles.checkBox, cashReturned && styles.checkBoxOn]}>
+                {cashReturned && <Text style={styles.checkMark}>✓</Text>}
+              </View>
+              <Text style={styles.checkLabel}>
+                I returned {pesos(amount)} in cash to the student.
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {!!actionError && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{actionError}</Text>
+            </View>
+          )}
+        </ScrollView>
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.button, styles.buttonSecondary]}
+            onPress={() => {
+              setStep("details");
+              setActionError("");
+            }}
+            disabled={actionLoading}
+          >
+            <Text style={styles.buttonSecondaryText}>Go Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              rejecting ? styles.buttonCancel : styles.buttonEdit,
+              actionLoading && styles.buttonDisabled,
+            ]}
+            onPress={() =>
+              void (rejecting
+                ? rejectRefund(request!)
+                : request
+                  ? approveRefund(request)
+                  : performRefund())
+            }
+            disabled={actionLoading}
+            accessibilityState={{ busy: actionLoading, disabled: actionLoading }}
+          >
+            {actionLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>
+                {rejecting
+                  ? "Decline Request"
+                  : request
+                    ? `Approve ${pesos(amount)} Refund`
+                    : `Refund ${pesos(amount)}`}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -510,6 +970,15 @@ export default function AdminFineDetails({
               GCash in progress
             </Text>
           )}
+          {pendingRefund && (
+            <Text style={[styles.badge, styles.badgePending]}>Refund requested</Text>
+          )}
+          {processingRefund && (
+            <Text style={[styles.badge, styles.badgeGcash]}>Refund processing</Text>
+          )}
+          {completedRefund && (
+            <Text style={[styles.badge, styles.badgeRefunded]}>Refunded</Text>
+          )}
         </View>
         <Text style={styles.hint}>{statusMessage}</Text>
 
@@ -535,8 +1004,8 @@ export default function AdminFineDetails({
                 }
               >
                 {notices.PAYMENT.wasUnread
-                  ? "NEW CASH REQUEST"
-                  : "CASH REQUEST READ"}
+                  ? "NEW PAYMENT NOTICE"
+                  : "PAYMENT NOTICE READ"}
               </Text>
             )}
           </View>
@@ -566,12 +1035,75 @@ export default function AdminFineDetails({
           </View>
         )}
 
-        {gcashReview && (
+        {gcashReview && !completedRefund && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorText}>
-              {fine.online_payment_notes} Check this payment in the PayMongo
-              dashboard and refund it if needed.
+              {fine.online_payment_notes}{" "}
+              {canRefund
+                ? "Use Refund Payment below to send the money back."
+                : "Check this payment in the PayMongo dashboard and refund it if needed."}
             </Text>
+          </View>
+        )}
+
+        {pendingRefund && (
+          <View style={[styles.banner, styles.bannerRefund]}>
+            <Text style={[styles.bannerTitle, styles.bannerRefundTitle]}>
+              Refund requested · {pesos(pendingRefund.amountCentavos)}
+            </Text>
+            <Text style={styles.bannerText}>
+              {pendingRefund.requestedByName || "The student"} asked for a refund
+              ({pendingRefund.reasonLabel}) on {formatDay(pendingRefund.requestedAt)}:{" "}
+              {pendingRefund.reason}
+            </Text>
+          </View>
+        )}
+
+        {processingRefund && (
+          <View style={[styles.banner, styles.bannerGcash]}>
+            <Text style={[styles.bannerTitle, styles.bannerGcashTitle]}>
+              Refund processing with PayMongo
+            </Text>
+            <Text style={[styles.bannerText, styles.bannerGcashText]}>
+              {pesos(processingRefund.amountCentavos)} is being sent back to the
+              student's GCash account. The fine is cancelled once PayMongo
+              confirms the refund.
+            </Text>
+          </View>
+        )}
+
+        {completedRefund && (
+          <View style={styles.successBanner}>
+            <Text style={styles.successText}>
+              Refunded {pesos(completedRefund.amountCentavos)}
+              {completedRefund.paymentMethod === "GCASH" ? " to GCash" : " in cash"}
+              {completedRefund.completedAt ? ` on ${formatDay(completedRefund.completedAt)}` : ""}
+              {completedRefund.reviewedByName ? ` by ${completedRefund.reviewedByName}` : ""}.
+            </Text>
+          </View>
+        )}
+
+        {!completedRefund && latestRefund?.status === "FAILED" && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>
+              The last refund did not go through: {latestRefund.failureReason ||
+                "PayMongo could not process it."} The fine is still Paid.
+            </Text>
+          </View>
+        )}
+
+        {!completedRefund && latestRefund?.status === "REJECTED" && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerTitle}>Refund request declined</Text>
+            <Text style={styles.bannerText}>
+              {latestRefund.reviewNote || "No note was given."}
+            </Text>
+          </View>
+        )}
+
+        {!!refundProblem && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{refundProblem}</Text>
           </View>
         )}
 
@@ -680,11 +1212,72 @@ export default function AdminFineDetails({
               </Text>
             )}
           </>
+        ) : pendingRefund ? (
+          <>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonCancel]}
+              onPress={() => openRefundStep("rejectRefund")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.buttonText}>Decline Refund</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.button,
+                styles.buttonEdit,
+                !canRefund && styles.buttonDisabled,
+              ]}
+              onPress={() => openRefundStep("approveRefund")}
+              disabled={!canRefund}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canRefund }}
+            >
+              <Text style={styles.buttonText}>Review & Approve</Text>
+            </TouchableOpacity>
+            {!canRefund && (
+              <Text style={styles.footerHint}>
+                {refundPayment?.notRefundableReason ||
+                  "GCash refunds need online payment to be set up."}
+              </Text>
+            )}
+          </>
+        ) : processingRefund ? (
+          <TouchableOpacity
+            style={[styles.button, styles.buttonSecondary, actionLoading && styles.buttonDisabled]}
+            onPress={() => void checkRefund(processingRefund)}
+            disabled={actionLoading}
+            accessibilityRole="button"
+          >
+            {actionLoading ? (
+              <ActivityIndicator size="small" color="#173A73" />
+            ) : (
+              <Text style={styles.buttonSecondaryText}>Check Refund Status</Text>
+            )}
+          </TouchableOpacity>
+        ) : canRefund && !completedRefund ? (
+          <>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonEdit]}
+              onPress={() => openRefundStep("refund")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.buttonText}>Refund Payment</Text>
+            </TouchableOpacity>
+            <Text style={styles.footerHint}>
+              {isPaid
+                ? "This fine has been paid. Refunding cancels the fine."
+                : "This payment was not applied to the fine and can be refunded."}
+            </Text>
+          </>
         ) : (
           <Text style={styles.footerHint}>
-            {isPaid
-              ? "This fine has already been paid."
-              : "This fine has been cancelled."}
+            {completedRefund
+              ? "This payment was refunded and the fine is cancelled."
+              : isPaid
+                ? refundPayment && refundPayment.notRefundableReason
+                  ? `This fine has already been paid. ${refundPayment.notRefundableReason}`
+                  : "This fine has already been paid."
+                : "This fine has been cancelled."}
           </Text>
         )}
       </View>

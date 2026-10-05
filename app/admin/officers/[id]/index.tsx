@@ -13,8 +13,9 @@ import {
 
 import { useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { OfficerFormModal } from "@/components/admin-forms/officer-form-modal";
 
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -130,6 +131,18 @@ export default function OfficerProfile() {
   const rawId = params.id;
 
   const officerId = Array.isArray(rawId) ? rawId[0] : rawId;
+
+  // Edit Information is a pop-up; ?edit=1 (the old edit route) opens it.
+  const [showEdit, setShowEdit] = useState(false);
+
+  const editParam = Array.isArray(params.edit) ? params.edit[0] : params.edit;
+
+  useEffect(() => {
+    if (editParam === "1") {
+      setShowEdit(true);
+      router.setParams({ edit: undefined });
+    }
+  }, [editParam]);
 
   // ==========================================
   // PROFILE STATE
@@ -343,7 +356,7 @@ export default function OfficerProfile() {
       return;
     }
 
-    router.push(`/admin/officers/${officerId}/edit` as any);
+    setShowEdit(true);
   };
 
   // ==========================================
@@ -519,7 +532,7 @@ export default function OfficerProfile() {
 
       setShowLogoutModal(false);
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
 
@@ -1268,6 +1281,18 @@ export default function OfficerProfile() {
         onClose={() => {
           setShowWarningModal(false);
         }}
+      />
+
+      {/* ======================================
+          EDIT INFORMATION
+      ====================================== */}
+
+      <OfficerFormModal
+        visible={showEdit}
+        mode="edit"
+        officerId={officerId}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => void loadOfficer()}
       />
 
       {/* ======================================

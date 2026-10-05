@@ -15,10 +15,11 @@ import {
 
 import { useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { StudentFormModal } from "@/components/admin-forms/student-form-modal";
 
 import QRCode from "react-native-qrcode-svg";
 
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -96,6 +97,18 @@ export default function StudentProfile() {
   const rawId = params.id;
 
   const studentId = Array.isArray(rawId) ? rawId[0] : rawId;
+
+  // Edit Student Information is a pop-up; ?edit=1 (the old edit route) opens it.
+  const [showEdit, setShowEdit] = useState(false);
+
+  const editParam = Array.isArray(params.edit) ? params.edit[0] : params.edit;
+
+  useEffect(() => {
+    if (editParam === "1") {
+      setShowEdit(true);
+      router.setParams({ edit: undefined });
+    }
+  }, [editParam]);
 
   // ==========================================
   // STATE
@@ -240,7 +253,7 @@ export default function StudentProfile() {
       return;
     }
 
-    router.push(`/admin/students/${studentId}/edit` as any);
+    setShowEdit(true);
   };
 
   // ==========================================
@@ -297,7 +310,7 @@ export default function StudentProfile() {
     try {
       await logout();
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -1063,6 +1076,14 @@ export default function StudentProfile() {
           </FadeIn>
         </ScrollView>
       </View>
+
+      <StudentFormModal
+        visible={showEdit}
+        mode="edit"
+        studentId={studentId}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => void loadStudent()}
+      />
     </View>
   );
 }

@@ -21,7 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import * as ImagePicker from "expo-image-picker";
 
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
@@ -37,6 +37,7 @@ import {
 import { ChangePasswordModal } from "@/components/admin-settings/change-password-modal";
 import { FormPopup, PopupButton } from "@/components/admin-settings/form";
 import { SectionCard } from "@/components/admin-settings/section-card";
+import { SystemResetModal } from "@/components/admin-settings/system-reset-modal";
 import type { AdminAccount } from "@/components/admin-settings/types";
 import DeleteModal from "@/components/deletationmodal";
 import LogoutModal from "@/components/logout-modal";
@@ -269,6 +270,8 @@ export default function AdminSettings() {
   // ========================================
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  const [showResetModal, setShowResetModal] = useState(false);
 
   // ========================================
   // SYSTEM SETTINGS
@@ -1367,7 +1370,7 @@ export default function AdminSettings() {
 
       setShowLogoutModal(false);
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
 
@@ -2152,117 +2155,138 @@ export default function AdminSettings() {
   // ========================================
 
   const renderSystemTab = () => (
-    <SectionCard
-      title="School & System"
-      description="SmartFine's system-wide school information."
-      icon={require("../../../assets/icons/settings.png")}
-      footer={
-        <>
-          {systemDirty && (
-            <Text style={styles.unsavedText}>● Unsaved changes</Text>
-          )}
+    <View style={styles.tabStack}>
+      <SectionCard
+        title="School & System"
+        description="SmartFine's system-wide school information."
+        icon={require("../../../assets/icons/settings.png")}
+        footer={
+          <>
+            {systemDirty && (
+              <Text style={styles.unsavedText}>● Unsaved changes</Text>
+            )}
 
-          <PopupButton
-            label="Discard"
-            variant="outline"
-            disabled={!systemDirty || savingSystemSettings}
-            onPress={() => {
-              setSchoolName(savedSystem.schoolName);
+            <PopupButton
+              label="Discard"
+              variant="outline"
+              disabled={!systemDirty || savingSystemSettings}
+              onPress={() => {
+                setSchoolName(savedSystem.schoolName);
 
-              setAcademicYear(savedSystem.academicYear);
+                setAcademicYear(savedSystem.academicYear);
 
-              setSystemName(savedSystem.systemName);
-            }}
-          />
+                setSystemName(savedSystem.systemName);
+              }}
+            />
 
-          <PopupButton
-            label="Save System Settings"
-            busyLabel="Saving..."
-            busy={savingSystemSettings}
-            disabled={!systemDirty}
-            onPress={handleSaveSystemSettings}
-          />
-        </>
-      }
-    >
-      <View style={styles.formRow}>
-        <View style={styles.formField}>
-          <Text style={styles.inputLabel}>
-            School Name <Text style={styles.requiredMark}>*</Text>
-          </Text>
+            <PopupButton
+              label="Save System Settings"
+              busyLabel="Saving..."
+              busy={savingSystemSettings}
+              disabled={!systemDirty}
+              onPress={handleSaveSystemSettings}
+            />
+          </>
+        }
+      >
+        <View style={styles.formRow}>
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>
+              School Name <Text style={styles.requiredMark}>*</Text>
+            </Text>
 
-          <TextInput
-            value={schoolName}
-            {...bindFocus("schoolName")}
-            onChangeText={setSchoolName}
-            placeholder="Enter school name"
-            placeholderTextColor="#A0A7B2"
-            style={[
-              styles.input,
-              focusedField === "schoolName" && styles.inputFocused,
-            ]}
-            editable={!savingSystemSettings}
-          />
-        </View>
+            <TextInput
+              value={schoolName}
+              {...bindFocus("schoolName")}
+              onChangeText={setSchoolName}
+              placeholder="Enter school name"
+              placeholderTextColor="#A0A7B2"
+              style={[
+                styles.input,
+                focusedField === "schoolName" && styles.inputFocused,
+              ]}
+              editable={!savingSystemSettings}
+            />
+          </View>
 
-        <View style={styles.formField}>
-          <Text style={styles.inputLabel}>
-            Academic Year <Text style={styles.requiredMark}>*</Text>
-          </Text>
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>
+              Academic Year <Text style={styles.requiredMark}>*</Text>
+            </Text>
 
-          <TextInput
-            value={academicYear}
-            {...bindFocus("academicYear")}
-            onChangeText={setAcademicYear}
-            placeholder="Example: 2026 - 2027"
-            placeholderTextColor="#A0A7B2"
-            style={[
-              styles.input,
-              focusedField === "academicYear" && styles.inputFocused,
-            ]}
-            editable={!savingSystemSettings}
-          />
-        </View>
-      </View>
-
-      <View style={styles.formRow}>
-        <View style={styles.formField}>
-          <Text style={styles.inputLabel}>
-            System Name <Text style={styles.requiredMark}>*</Text>
-          </Text>
-
-          <TextInput
-            value={systemName}
-            {...bindFocus("systemName")}
-            onChangeText={setSystemName}
-            placeholder="SmartFine"
-            placeholderTextColor="#A0A7B2"
-            style={[
-              styles.input,
-              focusedField === "systemName" && styles.inputFocused,
-            ]}
-            editable={!savingSystemSettings}
-          />
-        </View>
-
-        <View style={styles.formField}>
-          <Text style={styles.inputLabel}>Currency</Text>
-
-          <View style={[styles.input, styles.readOnlyInput]}>
-            <Text style={styles.readOnlyText}>Philippine Peso (₱)</Text>
+            <TextInput
+              value={academicYear}
+              {...bindFocus("academicYear")}
+              onChangeText={setAcademicYear}
+              placeholder="Example: 2026 - 2027"
+              placeholderTextColor="#A0A7B2"
+              style={[
+                styles.input,
+                focusedField === "academicYear" && styles.inputFocused,
+              ]}
+              editable={!savingSystemSettings}
+            />
           </View>
         </View>
-      </View>
 
-      <View style={styles.infoNotice}>
-        <Text style={styles.infoNoticeIcon}>i</Text>
+        <View style={styles.formRow}>
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>
+              System Name <Text style={styles.requiredMark}>*</Text>
+            </Text>
 
-        <Text style={styles.infoNoticeText}>
-          These values are used as SmartFine&apos;s system-wide school
-          information.
+            <TextInput
+              value={systemName}
+              {...bindFocus("systemName")}
+              onChangeText={setSystemName}
+              placeholder="SmartFine"
+              placeholderTextColor="#A0A7B2"
+              style={[
+                styles.input,
+                focusedField === "systemName" && styles.inputFocused,
+              ]}
+              editable={!savingSystemSettings}
+            />
+          </View>
+
+          <View style={styles.formField}>
+            <Text style={styles.inputLabel}>Currency</Text>
+
+            <View style={[styles.input, styles.readOnlyInput]}>
+              <Text style={styles.readOnlyText}>Philippine Peso (₱)</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.infoNotice}>
+          <Text style={styles.infoNoticeIcon}>i</Text>
+
+          <Text style={styles.infoNoticeText}>
+            These values are used as SmartFine&apos;s system-wide school
+            information.
+          </Text>
+        </View>
+      </SectionCard>
+
+      <SectionCard
+        title="Reset System"
+        description="Start fresh for another school or a new school year."
+        icon={require("../../../assets/icons/settings.png")}
+        footer={
+          <PopupButton
+            label="Reset System..."
+            variant="danger"
+            onPress={() => setShowResetModal(true)}
+          />
+        }
+      >
+        <Text style={styles.resetText}>
+          Deletes every student, officer, other administrator, fine, payment,
+          refund and notification. Your account stays, you can keep the fine
+          types and school name, and a full backup is saved on the server first.
         </Text>
-      </View>
-    </SectionCard>
+      </SectionCard>
+    </View>
   );
 
   // ========================================
@@ -2440,6 +2464,17 @@ export default function AdminSettings() {
       {/* =====================================
           CHANGE PASSWORD
       ====================================== */}
+
+      <SystemResetModal
+        visible={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onReset={() => {
+          setShowResetModal(false);
+
+          // Every list and count changed; start again from the dashboard.
+          router.replace("/admin/dashboard" as any);
+        }}
+      />
 
       <ChangePasswordModal
         visible={showPasswordModal}

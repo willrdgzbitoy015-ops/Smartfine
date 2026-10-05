@@ -1,5 +1,7 @@
 const express = require("express");
 const db = require("../database/database");
+// Creates the refunds table that the totals and transactions read.
+require("../payments/refunds");
 const { authenticateToken } = require("./auth");
 const router = express.Router();
 function activeAdmin(req, res, next) {
@@ -151,6 +153,11 @@ function formatPaymentRow(payment) {
     confirmed_at: payment.confirmed_at,
     paid_at: payment.paid_at,
     transaction_date: payment.transaction_date,
+    // REQUESTED, PROCESSING, SUCCEEDED, ... or null when never refunded.
+    refund_status: payment.refund_status || null,
+    refund_reference: payment.refund_reference || null,
+    refunded_at: payment.refunded_at || null,
+    is_refunded: payment.refund_status === "SUCCEEDED",
   };
 }
 const paymentJoins = `
@@ -165,6 +172,13 @@ const paymentJoins = `
     ON student.id = student_record.user_id
   LEFT JOIN users confirmer
     ON confirmer.id = p.confirmed_by
+  LEFT JOIN refunds refund
+    ON refund.id = (
+      SELECT r.id FROM refunds r
+      WHERE r.payment_id = p.id
+      ORDER BY r.id DESC
+      LIMIT 1
+    )
 `;
 const studentName = `
   TRIM(
@@ -193,8 +207,8 @@ router.get("/payments", (req, res) => {
            COALESCE(
              SUM(
                CASE
-                 WHEN paid_at IS NOT NULL
-                 THEN amount_centavos
+                 WHEN paid_at IS NOT NULL AND refunded.payment_id IS NULL
+                 THEN payments.amount_centavos
                  ELSE 0
                END
              ),
@@ -204,7 +218,7 @@ router.get("/payments", (req, res) => {
              SUM(
                CASE
                  WHEN payment_status = 'PENDING'
-                 THEN amount_centavos
+                 THEN payments.amount_centavos
                  ELSE 0
                END
              ),
@@ -214,16 +228,17 @@ router.get("/payments", (req, res) => {
              SUM(
                CASE
                  WHEN paid_at IS NOT NULL
+                  AND refunded.payment_id IS NULL
                   AND DATE(paid_at, 'localtime') =
                       DATE('now', 'localtime')
-                 THEN amount_centavos
+                 THEN payments.amount_centavos
                  ELSE 0
                END
              ),
              0
            ) AS today_payment_centavos,
            COUNT(
-             CASE WHEN paid_at IS NOT NULL THEN 1 END
+             CASE WHEN paid_at IS NOT NULL AND refunded.payment_id IS NULL THEN 1 END
            ) AS total_collected_count,
            COUNT(
              CASE WHEN payment_status = 'PENDING' THEN 1 END
@@ -231,12 +246,24 @@ router.get("/payments", (req, res) => {
            COUNT(
              CASE
                WHEN paid_at IS NOT NULL
+                AND refunded.payment_id IS NULL
                 AND DATE(paid_at, 'localtime') =
                     DATE('now', 'localtime')
                THEN 1
              END
-           ) AS today_payment_count
-         FROM payments`,
+           ) AS today_payment_count,
+           COALESCE(
+             SUM(CASE WHEN refunded.payment_id IS NOT NULL THEN refunded.amount_centavos ELSE 0 END),
+             0
+           ) AS total_refunded_centavos,
+           COUNT(refunded.payment_id) AS total_refunded_count
+         FROM payments
+         -- A refunded payment no longer counts as collected.
+         LEFT JOIN (
+           SELECT payment_id, amount_centavos
+           FROM refunds
+           WHERE status = 'SUCCEEDED'
+         ) refunded ON refunded.payment_id = payments.id`,
       )
       .get();
     const transactions = db
@@ -269,7 +296,10 @@ router.get("/payments", (req, res) => {
              student.username
            ) AS student_number,
            ${studentName} AS student_name,
-           ${confirmerName} AS confirmed_by_name
+           ${confirmerName} AS confirmed_by_name,
+           refund.status AS refund_status,
+           refund.refund_reference,
+           refund.completed_at AS refunded_at
          ${paymentJoins}
          ORDER BY
            COALESCE(
@@ -299,6 +329,8 @@ router.get("/payments", (req, res) => {
         totalCollectedCount: Number(summary.total_collected_count || 0),
         pendingPaymentCount: Number(summary.pending_payment_count || 0),
         todayPaymentCount: Number(summary.today_payment_count || 0),
+        totalRefundedCentavos: Number(summary.total_refunded_centavos || 0),
+        totalRefundedCount: Number(summary.total_refunded_count || 0),
       },
       transactions: transactions.map(formatPaymentRow),
       totalTransactions: transactions.length,
@@ -362,7 +394,12 @@ router.get("/payments/:id", (req, res) => {
            ${studentName} AS student_name,
            ${confirmerName} AS confirmed_by_name,
            confirmer.username AS confirmed_by_username,
-           confirmer.role AS confirmed_by_role
+           confirmer.role AS confirmed_by_role,
+           refund.status AS refund_status,
+           refund.refund_reference,
+           refund.completed_at AS refunded_at,
+           refund.reason AS refund_reason,
+           refund.failure_reason AS refund_failure_reason
          ${paymentJoins}
          WHERE p.id = ?
          LIMIT 1`,
@@ -389,8 +426,10 @@ router.get("/payments/:id", (req, res) => {
       : method === "GCASH"
         ? "GCash"
         : payment.payment_method || "Not specified";
-    const paymentStatusLabel =
-      payment.paid_at || status === "PAID" || status === "SUCCESS"
+    const refunded = payment.refund_status === "SUCCEEDED";
+    const paymentStatusLabel = refunded
+      ? "Refunded"
+      : payment.paid_at || status === "PAID" || status === "SUCCESS"
         ? "Paid"
         : status === "CANCELLED"
           ? "Cancelled"
@@ -417,6 +456,13 @@ router.get("/payments/:id", (req, res) => {
         "This payment transaction was not completed successfully.";
     } else {
       statusMessage = "This payment transaction is awaiting completion.";
+    }
+    if (refunded) {
+      statusMessage = "This payment was refunded to the student.";
+    } else if (payment.refund_status === "PROCESSING") {
+      statusMessage = "A refund of this payment is being processed by PayMongo.";
+    } else if (payment.refund_status === "REQUESTED") {
+      statusMessage = "The student asked for a refund of this payment. Review it in the fine.";
     }
     const amountCentavos = Number(payment.amount_centavos || 0);
     return res.json({
@@ -462,6 +508,12 @@ router.get("/payments/:id", (req, res) => {
         paid_at: payment.paid_at,
         transaction_date: payment.transaction_date,
         status_message: statusMessage,
+        refund_status: payment.refund_status || null,
+        refund_reference: payment.refund_reference || null,
+        refunded_at: payment.refunded_at || null,
+        refund_reason: payment.refund_reason || null,
+        refund_failure_reason: payment.refund_failure_reason || null,
+        is_refunded: refunded,
       },
     });
   } catch (error) {

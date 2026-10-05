@@ -243,4 +243,49 @@ router.patch("/:id/read", (req, res) => {
   }
 });
 
+// Deletes one of the signed-in user's own notices. Only the notice goes:
+// the fine, payment or cashier request it mentions is not changed, and the
+// fine's NEW/READ state in My Fines stays as it was.
+router.delete("/:id", (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid notification ID.",
+    });
+  }
+
+  try {
+    const userId = req.notificationUserId;
+
+    const result = db
+      .prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?")
+      .run(id, userId);
+
+    if (Number(result.changes) !== 1) {
+      return res.status(404).json({
+        success: false,
+        message: "Notification not found.",
+      });
+    }
+
+    const counts = unreadCounts(userId);
+
+    return res.json({
+      success: true,
+      message: "Notification deleted.",
+      unreadCount: counts.total,
+      counts,
+    });
+  } catch (error) {
+    console.error("Delete notification error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to delete the notification.",
+    });
+  }
+});
+
 module.exports = router;

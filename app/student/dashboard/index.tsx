@@ -23,6 +23,7 @@ import {
   useRetainedValue,
   useSwitchFade,
 } from "@/components/motion";
+import { DeletableNotice, DeleteHint } from "@/components/deletable-notice";
 import {
   Skeleton,
   SkeletonDetails,
@@ -42,6 +43,7 @@ import {
   refreshNotificationCounts,
   useNotificationCounts,
 } from "@/hooks/use-notification-counts";
+import { returnToLogin } from "@/hooks/use-auth";
 
 type StudentUser = {
   id: number;
@@ -748,7 +750,7 @@ export default function StudentDashboard() {
       ]);
 
       closeModal();
-      router.replace("/login");
+      returnToLogin();
     } catch {
       setError("Unable to clear your session. Please try again.");
     }
@@ -1348,16 +1350,23 @@ export default function StudentDashboard() {
                     </Text>
                   </View>
                 ) : (
-                  visibleNotifications.map((notice, index) => (
+                  <>
+                  <DeleteHint />
+                  {visibleNotifications.map((notice, index) => (
                     <FadeIn key={notice.id} index={index}>
-                      <TouchableOpacity
-                        onPress={() => void openNotice(notice)}
+                      <DeletableNotice
+                        noticeId={notice.id}
+                        onOpen={() => void openNotice(notice)}
+                        onDeleted={(noticeId) =>
+                          setNotices((current) =>
+                            current.filter((item) => item.id !== noticeId),
+                          )
+                        }
                         style={[
                           styles.activityCard,
                           !notice.isRead &&
                             notificationStyles.unreadActivityCard,
                         ]}
-                        accessibilityRole="button"
                         accessibilityLabel={`${notice.title}. ${notice.isRead ? "Read" : "New"}`}
                       >
                         <View style={notificationStyles.activityTitleRow}>
@@ -1397,9 +1406,10 @@ export default function StudentDashboard() {
                             {formatNotificationTime(notice.createdAt)}
                           </Text>
                         </View>
-                      </TouchableOpacity>
+                      </DeletableNotice>
                     </FadeIn>
-                  ))
+                  ))}
+                  </>
                 )
               ) : !data ? (
                 loading ? (

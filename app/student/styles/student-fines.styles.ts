@@ -537,6 +537,11 @@ export const styles = StyleSheet.create({
     marginTop: 6,
   },
 
+  // Success results are centred under the success check.
+  centered: {
+    textAlign: "center",
+  },
+
   errorPanel: {
     padding: 14,
     borderWidth: 1,

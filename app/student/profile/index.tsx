@@ -31,7 +31,7 @@ import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { styles } from "../styles/student-profile.styles";
 import { HomeTabBadge } from "@/components/notification-badge";
 
@@ -188,7 +188,7 @@ export default function StudentProfileScreen() {
       const token = await AsyncStorage.getItem("token");
 
       if (!token) {
-        router.replace("/login");
+        returnToLogin();
         return;
       }
 
@@ -540,7 +540,7 @@ export default function StudentProfileScreen() {
     try {
       await logout();
       setLogoutVisible(false);
-      router.replace("/login");
+      returnToLogin();
     } catch {
       setLogoutVisible(false);
       setNotice("Unable to log out. Please try again.");

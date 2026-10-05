@@ -205,20 +205,8 @@ export const styles = StyleSheet.create({
     paddingBottom: 36,
   },
 
-  successCircle: {
-    width: 136,
-    height: 136,
-    borderRadius: 68,
-    backgroundColor: "#00C900",
-    alignItems: "center",
-    justifyContent: "center",
+  successCheck: {
     marginBottom: 18,
-  },
-
-  successIcon: {
-    width: 75,
-    height: 75,
-    tintColor: "#E8E8E8",
   },
 
   identifiedTitle: {

@@ -18,7 +18,7 @@ import { useFocusEffect } from "expo-router";
 
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { PopIn, ScanLine } from "@/components/motion";
@@ -26,6 +26,7 @@ import { AdminNavBadge } from "@/components/notification-badge";
 import { SkeletonList } from "@/components/skeleton";
 import { haptics } from "@/utils/haptics";
 
+import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
 
@@ -175,6 +176,9 @@ export default function QRScanner() {
   const [manualStudentId, setManualStudentId] = useState("");
 
   const [foundStudent, setFoundStudent] = useState<Student | null>(null);
+
+  // Add New Fine for the scanned student, opened over the scanner.
+  const [showFineForm, setShowFineForm] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -514,7 +518,14 @@ export default function QRScanner() {
       return;
     }
 
-    router.push(`/admin/fines/add?studentId=${foundStudent.id}` as any);
+    setShowFineForm(true);
+  };
+
+  // "View Fine" on the saved fine opens it in the Fines Directory.
+  const handleViewSavedFine = (fineId: number) => {
+    setShowFineForm(false);
+
+    router.push(`/admin/fines?fineId=${fineId}` as any);
   };
 
   // ==========================================
@@ -557,7 +568,7 @@ export default function QRScanner() {
 
       setShowLogoutModal(false);
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
 
@@ -1157,6 +1168,15 @@ export default function QRScanner() {
       {/* ======================================
           WARNING MODAL
       ====================================== */}
+
+      <FineFormModal
+        visible={showFineForm}
+        mode="add"
+        studentId={foundStudent?.id ?? null}
+        onClose={() => setShowFineForm(false)}
+        onSaved={() => {}}
+        onViewFine={handleViewSavedFine}
+      />
 
       <WarningModal
         visible={showWarningModal}

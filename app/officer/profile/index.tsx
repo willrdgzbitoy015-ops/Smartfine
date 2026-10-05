@@ -30,7 +30,7 @@ import SuccessModal from "@/components/success-modal";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { useFieldFocus } from "@/hooks/use-field-focus";
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { haptics } from "@/utils/haptics";
 
 import { useResponsiveStyles } from "./profile.styles";
@@ -306,6 +306,7 @@ export default function OfficerProfile() {
   // ==========================================
 
   const [passwordSuccessVisible, setPasswordSuccessVisible] = useState(false);
+  const [profileSuccessVisible, setProfileSuccessVisible] = useState(false);
 
   // ==========================================
   // LOGOUT
@@ -550,9 +551,8 @@ export default function OfficerProfile() {
 
         await AsyncStorage.setItem("userEmail", body.user.email);
 
-        haptics.success();
-
-        Alert.alert("Success", "Your profile has been updated.");
+        // The success pop-up gives the "done" vibration.
+        setProfileSuccessVisible(true);
       } catch (caught) {
         haptics.error();
 
@@ -865,7 +865,7 @@ export default function OfficerProfile() {
 
       setLogoutVisible(false);
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch {
       Alert.alert("Logout failed", "Unable to log out. Please try again.");
     } finally {
@@ -1514,6 +1514,14 @@ export default function OfficerProfile() {
       {/* ======================================
           PASSWORD SUCCESS MODAL
       ====================================== */}
+
+      <SuccessModal
+        visible={profileSuccessVisible}
+        title="Profile Updated"
+        message="Your profile has been updated."
+        buttonText="OK"
+        onClose={() => setProfileSuccessVisible(false)}
+      />
 
       <SuccessModal
         visible={passwordSuccessVisible}

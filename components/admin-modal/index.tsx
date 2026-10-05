@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 
+import { DeletableNotice, DeleteHint } from "@/components/deletable-notice";
 import { FadeIn, PopIn } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
 import { formatNotificationTime } from "@/hooks/use-notification-counts";
@@ -113,6 +114,7 @@ export function AdminNoticeList<T extends AdminNotice>({
   error = "",
   onRetry,
   onOpen,
+  onDelete,
   emptyText,
   action,
 }: {
@@ -122,6 +124,8 @@ export function AdminNoticeList<T extends AdminNotice>({
   error?: string;
   onRetry?: () => void;
   onOpen: (notice: T) => void;
+  // Called after a long-press delete succeeded; remove the notice from the list.
+  onDelete?: (noticeId: number) => void;
   emptyText: string;
   action?: { label: string; onPress: () => void; disabled?: boolean };
 }) {
@@ -200,13 +204,17 @@ export function AdminNoticeList<T extends AdminNotice>({
         </View>
       ) : (
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+          {onDelete && (
+            <View style={styles.deleteHint}>
+              <DeleteHint />
+            </View>
+          )}
           {visibleNotices.map((notice, index) => (
             <FadeIn key={notice.id} index={index}>
-              <TouchableOpacity
-                style={[styles.noticeRow, !notice.isRead && styles.noticeUnread]}
-                onPress={() => onOpen(notice)}
-                accessibilityRole="button"
-                accessibilityLabel={`${notice.title}. ${notice.isRead ? "Read" : "New"}`}
+              <NoticeRowShell
+                notice={notice}
+                onOpen={() => onOpen(notice)}
+                onDelete={onDelete}
               >
                 <View
                   style={[
@@ -229,7 +237,7 @@ export function AdminNoticeList<T extends AdminNotice>({
                   {notice.isRead ? "READ" : "NEW"}
                 </Text>
                 <Text style={styles.noticeChevron}>›</Text>
-              </TouchableOpacity>
+              </NoticeRowShell>
             </FadeIn>
           ))}
           <Text style={styles.listFooter}>
@@ -238,5 +246,47 @@ export function AdminNoticeList<T extends AdminNotice>({
         </ScrollView>
       )}
     </>
+  );
+}
+
+// A notice row: long press offers Delete when the list allows deleting.
+function NoticeRowShell({
+  notice,
+  onOpen,
+  onDelete,
+  children,
+}: {
+  notice: AdminNotice;
+  onOpen: () => void;
+  onDelete?: (noticeId: number) => void;
+  children: ReactNode;
+}) {
+  const style = [styles.noticeRow, !notice.isRead && styles.noticeUnread];
+  const label = `${notice.title}. ${notice.isRead ? "Read" : "New"}`;
+
+  if (onDelete) {
+    return (
+      <DeletableNotice
+        noticeId={notice.id}
+        style={style}
+        confirmStyle={styles.deleteConfirm}
+        accessibilityLabel={label}
+        onOpen={onOpen}
+        onDeleted={onDelete}
+      >
+        {children}
+      </DeletableNotice>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      {children}
+    </TouchableOpacity>
   );
 }

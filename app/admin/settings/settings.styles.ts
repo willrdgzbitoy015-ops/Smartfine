@@ -187,6 +187,12 @@ export const styles = StyleSheet.create({
     gap: 16,
   },
 
+  resetText: {
+    color: "#4A5668",
+    fontSize: 13,
+    lineHeight: 20,
+  },
+
   inlineRow: {
     flexDirection: "row",
     alignItems: "center",

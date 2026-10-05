@@ -5,6 +5,7 @@ const express = require("express");
 const db = require("../database/database");
 const paymongo = require("../payments/paymongo");
 const online = require("../payments/online-payments");
+const refunds = require("../payments/refunds");
 const { authenticateToken } = require("./auth");
 
 const router = express.Router();
@@ -466,7 +467,7 @@ router.post(
 // PAYMONGO WEBHOOK
 // ==========================================
 
-router.post("/paymongo/webhook", (req, res) => {
+router.post("/paymongo/webhook", async (req, res) => {
   const rawBody = req.rawBody ? req.rawBody.toString("utf8") : "";
 
   if (!paymongo.verifyWebhookSignature(rawBody, req.get("Paymongo-Signature"))) {
@@ -477,6 +478,13 @@ router.post("/paymongo/webhook", (req, res) => {
   try {
     const event = req.body?.data;
     const type = event?.attributes?.type;
+
+    // Refund results: the status is read back from PayMongo, never taken
+    // from the webhook body.
+    if (type === "payment.refunded" || type === "payment.refund.updated") {
+      const outcomes = await refunds.handleRefundWebhook(event);
+      return res.json({ success: true, refunds: outcomes });
+    }
 
     if (type !== "checkout_session.payment.paid") {
       return res.json({ success: true, ignored: true });
@@ -553,7 +561,7 @@ router.get("/paymongo/return", (req, res) => {
   section { background: #fff; border-radius: 16px; padding: 28px 24px; max-width: 360px; width: 100%; text-align: center; }
   h1 { font-size: 20px; margin: 12px 0 8px; }
   p { color: #5E6776; font-size: 14px; line-height: 1.5; margin: 0 0 20px; }
-  .mark { width: 56px; height: 56px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; background: ${success ? "#45B94F" : "#8C939F"}; }
+  .mark { width: 64px; height: 64px; box-sizing: border-box; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; ${success ? "color: #238A35; background: #E7F8EA; border: 2px solid #45B94F;" : "color: #fff; background: #8C939F;"} }
   a { display: block; padding: 14px; border-radius: 10px; background: #173A73; color: #fff; text-decoration: none; font-weight: 700; }
 </style>
 </head>

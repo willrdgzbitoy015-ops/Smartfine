@@ -40,6 +40,13 @@ export const styles = StyleSheet.create({
     elevation: 12,
   },
   cardWide: { maxWidth: 680 },
+  cardExtraWide: { maxWidth: 1000 },
+  notice: {
+    paddingHorizontal: 22,
+    paddingTop: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF1F5",
+  },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -227,6 +234,7 @@ export const styles = StyleSheet.create({
   },
   buttonPrimary: { backgroundColor: COLORS.navy },
   buttonGreen: { backgroundColor: COLORS.green },
+  buttonDanger: { backgroundColor: COLORS.red },
   buttonOutline: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
@@ -438,4 +446,18 @@ export const sectionStyles = StyleSheet.create({
     borderTopColor: "#EEF1F5",
     backgroundColor: "#FAFBFD",
   },
+});
+
+// ==========================================
+// RESET SYSTEM POP-UP
+// ==========================================
+export const resetStyles = StyleSheet.create({
+  gap: { marginTop: 10 },
+  section: { marginTop: 14 },
+  listRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
+  bullet: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
+  listText: { flex: 1, color: COLORS.body, fontSize: 13, lineHeight: 19 },
+  note: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginTop: 4, marginBottom: 10 },
+  options: { marginTop: 8 },
+  danger: { color: COLORS.red, fontSize: 13, lineHeight: 20 },
 });

@@ -25,14 +25,22 @@ import {
   TabIndicator,
   useRetainedValue,
 } from "@/components/motion";
+import { SuccessCheck } from "@/components/success-check";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
+import {
+  RefundedNote,
+  RefundRequestModal,
+  StudentRefundSection,
+  useStudentRefunds,
+} from "@/components/refunds/student-refunds";
 import { haptics } from "@/utils/haptics";
 import { styles } from "../styles/student-fines.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
 import { HomeTabBadge } from "@/components/notification-badge";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
+import { returnToLogin } from "@/hooks/use-auth";
 
 type FineStatus = "UNPAID" | "PAID" | "PENDING";
 
@@ -220,6 +228,8 @@ export default function StudentFinesScreen() {
   const [cashFeedback, setCashFeedback] = useState<{
     title: string;
     message: string;
+    // Shows the success check above the title.
+    success?: boolean;
   } | null>(null);
 
   // GCash through PayMongo
@@ -227,6 +237,11 @@ export default function StudentFinesScreen() {
   const [onlineEnabled, setOnlineEnabled] = useState(false);
   const [onlineTestMode, setOnlineTestMode] = useState(false);
   const [gcashFine, setGcashFine] = useState<Fine | null>(null);
+
+  // Refund requests for paid fines.
+  const studentRefunds = useStudentRefunds();
+  const loadRefunds = studentRefunds.load;
+  const [refundFine, setRefundFine] = useState<Fine | null>(null);
   const [startingGcashFineId, setStartingGcashFineId] = useState<number | null>(
     null,
   );
@@ -419,7 +434,8 @@ export default function StudentFinesScreen() {
     void loadFines();
     void loadCashRequests();
     void loadOnlinePayments();
-  }, [loadFines, loadCashRequests, loadOnlinePayments]);
+    void loadRefunds();
+  }, [loadFines, loadCashRequests, loadOnlinePayments, loadRefunds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -477,6 +493,7 @@ export default function StudentFinesScreen() {
       if (payment?.status === "SUCCESS" && !payment.needsReview) {
         haptics.success();
         setCashFeedback({
+          success: true,
           title: "Payment Confirmed",
           message:
             "PayMongo confirmed your GCash payment. Your fine is now paid.",
@@ -755,6 +772,7 @@ export default function StudentFinesScreen() {
         haptics.success();
         setCashFine(null);
         setCashFeedback({
+          success: true,
           title: "Cash Request Saved",
           message:
             `Bring ${money(fine.amountCentavos)} to the cashier or student treasurer. ` +
@@ -853,7 +871,7 @@ export default function StudentFinesScreen() {
         "userEmail",
       ]);
 
-      router.replace("/login");
+      returnToLogin();
     } catch {
       setError("Unable to clear your session. Please try again.");
     }
@@ -1148,6 +1166,18 @@ export default function StudentFinesScreen() {
 
                   {renderGcashActions(fine)}
 
+                  {fine.status === "PAID" && (
+                    <StudentRefundSection
+                      refund={studentRefunds.latestRefund(fine.id)}
+                      payment={studentRefunds.paymentFor(fine.id)}
+                      onRequest={() => setRefundFine(fine)}
+                      onChanged={() => {
+                        void loadRefunds();
+                        void loadFines();
+                      }}
+                    />
+                  )}
+
                   {fine.status === "UNPAID" && !pendingCashRequest(fine.id) && (
                     <TouchableOpacity
                       style={notificationStyles.detailsCloseButton}
@@ -1211,9 +1241,13 @@ export default function StudentFinesScreen() {
                     </View>
                   </View>
 
-                  <Text style={styles.helper}>
-                    This fine was cancelled. No payment is needed.
-                  </Text>
+                  {studentRefunds.completedRefund(fine.id) ? (
+                    <RefundedNote refund={studentRefunds.completedRefund(fine.id)!} />
+                  ) : (
+                    <Text style={styles.helper}>
+                      This fine was cancelled. No payment is needed.
+                    </Text>
+                  )}
                 </FadeIn>
               ))}
 
@@ -1449,6 +1483,17 @@ export default function StudentFinesScreen() {
         </View>
       </Modal>
 
+      {/* REFUND REQUEST */}
+      <RefundRequestModal
+        fine={refundFine}
+        payment={refundFine ? studentRefunds.paymentFor(refundFine.id) : null}
+        onClose={() => setRefundFine(null)}
+        onSubmitted={() => {
+          void loadRefunds();
+          void refreshNotificationCounts();
+        }}
+      />
+
       {/* GCASH: CONFIRM BEFORE LEAVING THE APP */}
       <Modal
         visible={gcashFine !== null}
@@ -1547,11 +1592,25 @@ export default function StudentFinesScreen() {
               </View>
             ) : (
               <>
-                <Text style={notificationStyles.detailsTitle}>
+                {shownCashFeedback?.success ? <SuccessCheck delay={80} /> : null}
+
+                <Text
+                  style={[
+                    notificationStyles.detailsTitle,
+                    shownCashFeedback?.success && styles.centered,
+                  ]}
+                >
                   {shownCashFeedback?.title}
                 </Text>
 
-                <Text style={styles.helper}>{shownCashFeedback?.message}</Text>
+                <Text
+                  style={[
+                    styles.helper,
+                    shownCashFeedback?.success && styles.centered,
+                  ]}
+                >
+                  {shownCashFeedback?.message}
+                </Text>
 
                 <TouchableOpacity
                   style={notificationStyles.detailsCloseButton}

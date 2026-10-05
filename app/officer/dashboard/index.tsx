@@ -26,6 +26,7 @@ import {
   TabIndicator,
   useSwitchFade,
 } from "@/components/motion";
+import { DeletableNotice, DeleteHint } from "@/components/deletable-notice";
 import {
   Skeleton,
   SkeletonDetails,
@@ -43,6 +44,7 @@ import {
   markNotificationRead,
   useNotificationCounts,
 } from "@/hooks/use-notification-counts";
+import { returnToLogin } from "@/hooks/use-auth";
 
 // ==========================================
 // TYPES
@@ -670,7 +672,7 @@ export default function OfficerDashboard() {
         "userRole",
       ]);
 
-      router.replace("/login" as any);
+      returnToLogin();
     } catch {
       setError("Unable to clear your session. Please try again.");
     }
@@ -1211,15 +1213,22 @@ export default function OfficerDashboard() {
                   </Text>
                 </View>
               ) : (
-                notices.map((notice, index) => (
+                <>
+                <DeleteHint />
+                {notices.map((notice, index) => (
                   <FadeIn key={notice.id} index={index}>
-                    <TouchableOpacity
+                    <DeletableNotice
+                      noticeId={notice.id}
                       style={[
                         styles.noticeCard,
                         !notice.isRead && styles.noticeUnread,
                       ]}
-                      onPress={() => void openNotice(notice)}
-                      accessibilityRole="button"
+                      onOpen={() => void openNotice(notice)}
+                      onDeleted={(noticeId) =>
+                        setNotices((current) =>
+                          current.filter((item) => item.id !== noticeId),
+                        )
+                      }
                       accessibilityLabel={`${notice.title}. ${notice.isRead ? "Read" : "New"}`}
                     >
                       <View style={styles.noticeTitleRow}>
@@ -1241,9 +1250,10 @@ export default function OfficerDashboard() {
                       <Text style={styles.timestamp}>
                         {formatNotificationTime(notice.createdAt)}
                       </Text>
-                    </TouchableOpacity>
+                    </DeletableNotice>
                   </FadeIn>
-                ))
+                ))}
+                </>
               )}
             </Animated.ScrollView>
           </PopIn>

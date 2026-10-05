@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { Image, Modal, Text, TouchableOpacity, View } from "react-native";
+import { Modal, Text, TouchableOpacity, View } from "react-native";
 
 import { PopIn } from "@/components/motion";
+import { SuccessCheck } from "@/components/success-check";
 import { haptics } from "@/utils/haptics";
 
 import { styles } from "./success-modal.styles";
@@ -42,13 +43,7 @@ export default function SuccessModal({
               SUCCESS ICON (pops in after the card)
           ====================================== */}
 
-          <PopIn style={styles.iconContainer} delay={120} from={0.4}>
-            <Image
-              source={require("../../assets/icons/check.png")}
-              style={styles.checkIcon}
-              resizeMode="contain"
-            />
-          </PopIn>
+          <SuccessCheck delay={120} style={styles.icon} />
 
           {/* ======================================
               TITLE

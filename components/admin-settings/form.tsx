@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ReactNode, useState } from "react";
+import { ReactNode, RefObject, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -241,6 +241,9 @@ export function FormPopup({
   subtitle,
   icon,
   wide = false,
+  size,
+  notice,
+  bodyRef,
   onClose,
   footer,
   children,
@@ -251,10 +254,18 @@ export function FormPopup({
   subtitle: string;
   icon: any;
   wide?: boolean;
+  // md 560 px, lg 680 px (same as wide), xl 1000 px for two-column forms.
+  size?: "md" | "lg" | "xl";
+  // Shown between the header and the scrolling body, so a message stays in
+  // view however far the form is scrolled.
+  notice?: ReactNode;
+  bodyRef?: RefObject<ScrollView | null>;
   onClose: () => void;
   footer: ReactNode;
   children: ReactNode;
 }) {
+  const cardSize = size ?? (wide ? "lg" : "md");
+
   const close = () => {
     if (!busy) {
       onClose();
@@ -274,7 +285,11 @@ export function FormPopup({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <PopIn
-          style={[styles.card, wide && styles.cardWide]}
+          style={[
+            styles.card,
+            cardSize === "lg" && styles.cardWide,
+            cardSize === "xl" && styles.cardExtraWide,
+          ]}
           accessibilityViewIsModal
         >
           <View style={styles.header}>
@@ -303,7 +318,10 @@ export function FormPopup({
             </TouchableOpacity>
           </View>
 
+          {notice ? <View style={styles.notice}>{notice}</View> : null}
+
           <ScrollView
+            ref={bodyRef}
             style={styles.body}
             contentContainerStyle={styles.bodyContent}
             keyboardShouldPersistTaps="handled"
@@ -331,7 +349,7 @@ export function PopupButton({
   busyLabel?: string;
   busy?: boolean;
   disabled?: boolean;
-  variant?: "primary" | "green" | "outline";
+  variant?: "primary" | "green" | "outline" | "danger";
   onPress: () => void;
 }) {
   const outline = variant === "outline";
@@ -342,6 +360,7 @@ export function PopupButton({
         styles.button,
         variant === "primary" && styles.buttonPrimary,
         variant === "green" && styles.buttonGreen,
+        variant === "danger" && styles.buttonDanger,
         outline && styles.buttonOutline,
         (disabled || busy) && styles.buttonDisabled,
       ]}

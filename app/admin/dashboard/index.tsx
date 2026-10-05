@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/use-auth";
+import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -25,15 +25,18 @@ import { API_BASE } from "@/constants/api";
 
 import { AdminModal } from "@/components/admin-modal";
 import AdminFineDetails from "@/components/admin-modal/fine-details";
+import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import LogoutModal from "@/components/logout-modal";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
-import { FadeIn } from "@/components/motion";
+import { FadeIn, useRetainedValue } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
 import {
   formatNotificationTime,
   refreshNotificationCounts,
 } from "@/hooks/use-notification-counts";
+
+import { usePopupSwap } from "@/hooks/use-popup-swap";
 
 import { styles } from "./dashboard.styles";
 
@@ -65,6 +68,7 @@ type ActivityType =
   | "PAYMENT_RECEIVED"
   | "FINE_MARKED_PAID"
   | "FINE_CANCELLED"
+  | "PAYMENT_REFUNDED"
   | "STUDENT_ADDED"
   | "OFFICER_ADDED";
 
@@ -156,6 +160,7 @@ const ACTIVITY_LABELS: Record<
   PAYMENT_RECEIVED: { label: "Payment", tone: "green" },
   FINE_MARKED_PAID: { label: "Marked paid", tone: "green" },
   FINE_CANCELLED: { label: "Cancelled", tone: "grey" },
+  PAYMENT_REFUNDED: { label: "Refund", tone: "amber" },
   STUDENT_ADDED: { label: "New student", tone: "blue" },
   OFFICER_ADDED: { label: "New officer", tone: "blue" },
 };
@@ -337,6 +342,14 @@ export default function AdminDashboard() {
   // ==========================================
 
   const [modal, setModal] = useState<DashboardModal>(null);
+
+  // Edit Fine opened from a fine's pop-up; the fine's pop-up comes back when
+  // it closes.
+  const [editFine, setEditFine] = useState<{ fineId: number; fromAll: boolean } | null>(null);
+
+  const swapPopup = usePopupSwap();
+
+  const shownEditFine = useRetainedValue(editFine);
 
   const [allCategory, setAllCategory] = useState<ActivityCategory>("ALL");
 
@@ -690,9 +703,23 @@ export default function AdminDashboard() {
   };
 
   const handleEditFine = (fineId: number) => {
+    const fromAll = modal?.view === "fine" ? modal.fromAll : false;
+
     setModal(null);
 
-    router.push(`/admin/fines/${fineId}/edit` as any);
+    swapPopup(() => setEditFine({ fineId, fromAll }));
+  };
+
+  const closeEditFine = () => {
+    const closing = editFine;
+
+    setEditFine(null);
+
+    if (closing) {
+      swapPopup(() =>
+        setModal({ view: "fine", fineId: closing.fineId, fromAll: closing.fromAll }),
+      );
+    }
   };
 
   // ==========================================
@@ -807,7 +834,7 @@ export default function AdminDashboard() {
   const quickActions = [
     {
       label: "Record Fine",
-      route: "/admin/fines/add",
+      route: "/admin/fines?add=1",
       icon: require("../../../assets/icons/fines.png"),
       primary: true,
     },
@@ -818,7 +845,7 @@ export default function AdminDashboard() {
     },
     {
       label: "Add Student",
-      route: "/admin/students/add",
+      route: "/admin/students?add=1",
       icon: require("../../../assets/icons/students.png"),
     },
     {
@@ -866,7 +893,7 @@ export default function AdminDashboard() {
 
       setShowLogoutModal(false);
 
-      router.replace("/login");
+      returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
 
@@ -1307,6 +1334,18 @@ export default function AdminDashboard() {
           />
         ) : null}
       </AdminModal>
+
+      {/* ======================================
+          EDIT FINE
+      ====================================== */}
+
+      <FineFormModal
+        visible={editFine !== null}
+        mode="edit"
+        fineId={shownEditFine?.fineId ?? null}
+        onClose={closeEditFine}
+        onSaved={handleFineChanged}
+      />
 
       {/* ======================================
           LOGOUT CONFIRMATION MODAL

@@ -69,22 +69,8 @@ export const styles = StyleSheet.create({
   // SUCCESS ICON
   // ==========================================
 
-  iconContainer: {
-    width: 72,
-
-    height: 72,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
+  icon: {
     marginBottom: 18,
-  },
-
-  checkIcon: {
-    width: 72,
-
-    height: 72,
   },
 
   // ==========================================

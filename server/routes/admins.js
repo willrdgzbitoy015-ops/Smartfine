@@ -2,6 +2,8 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 
 const db = require("../database/database");
+// Creates the refunds table, which the history count below reads.
+require("../payments/refunds");
 
 const {
   authenticateToken,
@@ -51,6 +53,7 @@ const HISTORY_COUNT_SQL = `
   + (SELECT COUNT(*) FROM payment_events e WHERE e.actor_user_id = u.id)
   + (SELECT COUNT(*) FROM violation_types v WHERE v.created_by = u.id)
   + (SELECT COUNT(*) FROM audit_logs a WHERE a.user_id = u.id)
+  + (SELECT COUNT(*) FROM refunds r WHERE r.reviewed_by = u.id OR r.requested_by = u.id)
 `;
 
 function getAdmin(adminId) {
