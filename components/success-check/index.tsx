@@ -1,4 +1,4 @@
-import { StyleProp, Text, ViewStyle } from "react-native";
+import { Image, StyleProp, ViewStyle } from "react-native";
 
 import { PopIn } from "@/components/motion";
 
@@ -8,8 +8,9 @@ import { styles } from "./success-check.styles";
 // SUCCESS CHECK
 // ==========================================
 
-// The one success mark used by every success pop-up in SmartFine: a green
-// check in a light-green ring. It pops in after the pop-up card.
+// The one success mark used by every success pop-up in SmartFine: the
+// official check icon (assets/icons/check.png). It pops in after the pop-up
+// card.
 export function SuccessCheck({
   delay = 0,
   style,
@@ -19,13 +20,17 @@ export function SuccessCheck({
 }) {
   return (
     <PopIn
-      style={[styles.ring, style]}
+      style={[styles.icon, style]}
       delay={delay}
       from={0.5}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text style={styles.mark}>✓</Text>
+      <Image
+        source={require("../../assets/icons/check.png")}
+        style={styles.image}
+        resizeMode="contain"
+      />
     </PopIn>
   );
 }
