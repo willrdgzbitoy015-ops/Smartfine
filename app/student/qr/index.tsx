@@ -7,7 +7,6 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Image,
     Platform,
     ScrollView,
     Text,
@@ -18,6 +17,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { FadeIn, PopIn, TabIndicator } from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
@@ -40,22 +40,22 @@ type QRExportRef = {
   toDataURL: (callback: (value: string) => void) => void;
 };
 
-const navigation = [
+const navigation: { label: string; icon: IconName }[] = [
   {
     label: "Home",
-    icon: require("../../../assets/icons/dashboard.png"),
+    icon: "dashboard",
   },
   {
     label: "Fines",
-    icon: require("../../../assets/icons/fines.png"),
+    icon: "fines",
   },
   {
     label: "My QR",
-    icon: require("../../../assets/icons/qr-codeWhite.png"),
+    icon: "qr",
   },
   {
     label: "Profile",
-    icon: require("../../../assets/icons/user.png"),
+    icon: "profile",
   },
 ];
 
@@ -356,11 +356,7 @@ export default function StudentQRScreen() {
             accessibilityRole="button"
             accessibilityLabel="Return to Home"
           >
-            <Image
-              source={require("../../../assets/icons/back_icon.png")}
-              style={[styles.backIcon, { transform: [{ rotate: "180deg" }] }]}
-              resizeMode="contain"
-            />
+            <AppIcon name="back" size={23} color="#123266" />
           </TouchableOpacity>
 
           <Text style={styles.title}>My QR Code</Text>
@@ -527,10 +523,11 @@ export default function StudentQRScreen() {
                     }
                   }}
                 >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
+                  <AppIcon
+                    name={item.icon}
+                    focused={active}
+                    size={28}
+                    color="#FFFFFF"
                   />
                   <Text style={styles.navLabel}>{item.label}</Text>
                   <HomeTabBadge label={item.label} />

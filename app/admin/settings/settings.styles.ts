@@ -358,6 +358,15 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     backgroundColor: "#E7F8EA",
+  },
+
+  chipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  activeChipText: {
     color: "#2E9D43",
     fontSize: 10,
     fontWeight: "800",
@@ -611,11 +620,18 @@ export const styles = StyleSheet.create({
     marginTop: 5,
   },
 
+  // Pushes the footer buttons to the right.
+  unsavedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginRight: "auto",
+  },
+
   unsavedText: {
     color: "#B26B00",
     fontSize: 11,
     fontWeight: "700",
-    marginRight: "auto",
   },
 
   infoNotice: {

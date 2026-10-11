@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 
 import { FadeIn, useShake, useSwitchFade } from "@/components/motion";
 import { SuccessCheck } from "@/components/success-check";
+import AppIcon from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
@@ -1287,11 +1288,7 @@ export default function LoginScreen() {
         ]}
       >
         <View style={styles.iconContainer}>
-          <Image
-            source={require("../../assets/icons/user.png")}
-            style={styles.userIcon}
-            resizeMode="contain"
-          />
+          <AppIcon name="user" size={26} color="#222222" />
         </View>
 
         <TextInput
@@ -1338,11 +1335,7 @@ export default function LoginScreen() {
         ]}
       >
         <View style={styles.iconContainer}>
-          <Image
-            source={require("../../assets/icons/padlock.png")}
-            style={styles.lockIcon}
-            resizeMode="contain"
-          />
+          <AppIcon name="lock" size={22} color="#222222" />
         </View>
 
         <TextInput
@@ -1378,14 +1371,10 @@ export default function LoginScreen() {
           disabled={loading || isCurrentAccountLocked}
           activeOpacity={0.7}
         >
-          <Image
-            source={
-              showPassword
-                ? require("../../assets/icons/hide.png")
-                : require("../../assets/icons/view.png")
-            }
-            style={styles.eyeIcon}
-            resizeMode="contain"
+          <AppIcon
+            name={showPassword ? "eyeOff" : "eye"}
+            size={22}
+            color="#222222"
           />
         </TouchableOpacity>
       </View>
@@ -1402,7 +1391,7 @@ export default function LoginScreen() {
           activeOpacity={0.8}
         >
           <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-            {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+            {rememberMe && <AppIcon name="check" size={11} color="#FFFFFF" />}
           </View>
 
           <Text style={styles.rememberText}>Remember me</Text>
@@ -1458,11 +1447,9 @@ export default function LoginScreen() {
         <Text style={styles.fieldLabel}>ID or Username</Text>
 
         <View style={styles.recoveryInputContainer}>
-          <Image
-            source={require("../../assets/icons/user.png")}
-            style={styles.recoveryInputIcon}
-            resizeMode="contain"
-          />
+          <View style={styles.recoveryInputIcon}>
+            <AppIcon name="user" size={20} color="#222222" />
+          </View>
 
           <TextInput
             ref={resetIdentifierRef}
@@ -1651,14 +1638,10 @@ export default function LoginScreen() {
             onPress={() => setShowNewPassword(!showNewPassword)}
             activeOpacity={0.7}
           >
-            <Image
-              source={
-                showNewPassword
-                  ? require("../../assets/icons/hide.png")
-                  : require("../../assets/icons/view.png")
-              }
-              style={styles.recoveryEyeIcon}
-              resizeMode="contain"
+            <AppIcon
+              name={showNewPassword ? "eyeOff" : "eye"}
+              size={18}
+              color="#222222"
             />
           </TouchableOpacity>
         </View>
@@ -1693,14 +1676,10 @@ export default function LoginScreen() {
             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             activeOpacity={0.7}
           >
-            <Image
-              source={
-                showConfirmPassword
-                  ? require("../../assets/icons/hide.png")
-                  : require("../../assets/icons/view.png")
-              }
-              style={styles.recoveryEyeIcon}
-              resizeMode="contain"
+            <AppIcon
+              name={showConfirmPassword ? "eyeOff" : "eye"}
+              size={18}
+              color="#222222"
             />
           </TouchableOpacity>
         </View>

@@ -20,6 +20,7 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { PopIn, ScanLine } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -73,7 +74,7 @@ type NavItem = {
 
   route: string;
 
-  icon?: any;
+  icon: IconName;
 };
 
 // ==========================================
@@ -194,7 +195,7 @@ export default function QRScanner() {
 
       route: "/admin/dashboard",
 
-      icon: require("../../../assets/icons/dashboard.png"),
+      icon: "dashboard",
     },
 
     {
@@ -202,7 +203,7 @@ export default function QRScanner() {
 
       route: "/admin/students",
 
-      icon: require("../../../assets/icons/students.png"),
+      icon: "students",
     },
 
     {
@@ -210,7 +211,7 @@ export default function QRScanner() {
 
       route: "/admin/fines",
 
-      icon: require("../../../assets/icons/fines.png"),
+      icon: "fines",
     },
 
     {
@@ -218,7 +219,7 @@ export default function QRScanner() {
 
       route: "/admin/qr-scanner",
 
-      icon: require("../../../assets/icons/qr-codeWhite.png"),
+      icon: "qr",
     },
 
     {
@@ -226,7 +227,7 @@ export default function QRScanner() {
 
       route: "/admin/reports",
 
-      icon: require("../../../assets/icons/reports.png"),
+      icon: "reports",
     },
 
     {
@@ -234,7 +235,7 @@ export default function QRScanner() {
 
       route: "/admin/settings",
 
-      icon: require("../../../assets/icons/settings.png"),
+      icon: "settings",
     },
 
     {
@@ -242,7 +243,7 @@ export default function QRScanner() {
 
       route: "/admin/officers",
 
-      icon: require("../../../assets/icons/officers.png"),
+      icon: "officers",
     },
   ];
 
@@ -764,11 +765,9 @@ export default function QRScanner() {
     if (Platform.OS === "web") {
       return (
         <View style={styles.webCameraPlaceholder}>
-          <Image
-            source={require("../../../assets/icons/qr-code.png")}
-            style={styles.cameraPlaceholderImage}
-            resizeMode="contain"
-          />
+          <View style={styles.cameraPlaceholderImage}>
+            <AppIcon name="qr" size={72} color="#173A73" />
+          </View>
 
           <Text style={styles.cameraPlaceholderTitle}>Camera Scanner</Text>
 
@@ -802,11 +801,9 @@ export default function QRScanner() {
     if (!permission.granted) {
       return (
         <View style={styles.cameraState}>
-          <Image
-            source={require("../../../assets/icons/qr-code.png")}
-            style={styles.cameraPlaceholderImage}
-            resizeMode="contain"
-          />
+          <View style={styles.cameraPlaceholderImage}>
+            <AppIcon name="qr" size={72} color="#173A73" />
+          </View>
 
           <Text style={styles.cameraPlaceholderTitle}>
             Camera Permission Required
@@ -845,11 +842,9 @@ export default function QRScanner() {
     if (!screenFocused || !appActive) {
       return (
         <View style={styles.cameraState}>
-          <Image
-            source={require("../../../assets/icons/qr-code.png")}
-            style={styles.cameraPlaceholderImage}
-            resizeMode="contain"
-          />
+          <View style={styles.cameraPlaceholderImage}>
+            <AppIcon name="qr" size={72} color="#173A73" />
+          </View>
 
           <Text style={styles.cameraPlaceholderText}>Camera paused</Text>
         </View>
@@ -944,10 +939,11 @@ export default function QRScanner() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <Image
-                      source={item.icon}
-                      style={styles.navImageIcon}
-                      resizeMode="contain"
+                    <AppIcon
+                      name={item.icon}
+                      focused={active}
+                      size={20}
+                      color="#FFFFFF"
                     />
                   </View>
 

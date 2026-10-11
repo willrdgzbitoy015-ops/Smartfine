@@ -8,7 +8,6 @@ import * as WebBrowser from "expo-web-browser";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Modal,
   Platform,
   RefreshControl,
@@ -25,6 +24,8 @@ import {
   TabIndicator,
   useRetainedValue,
 } from "@/components/motion";
+import AppIcon, { IconName } from "@/components/AppIcon";
+import { FailedMark } from "@/components/result-mark";
 import { SuccessCheck } from "@/components/success-check";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
@@ -144,22 +145,22 @@ const filters: { label: string; value: FineFilter }[] = [
   { label: "Cancelled", value: "CANCELLED" },
 ];
 
-const navigation = [
+const navigation: { label: string; icon: IconName }[] = [
   {
     label: "Home",
-    icon: require("../../../assets/icons/dashboard.png"),
+    icon: "dashboard",
   },
   {
     label: "Fines",
-    icon: require("../../../assets/icons/fines.png"),
+    icon: "fines",
   },
   {
     label: "My QR",
-    icon: require("../../../assets/icons/qr-codeWhite.png"),
+    icon: "qr",
   },
   {
     label: "Profile",
-    icon: require("../../../assets/icons/user.png"),
+    icon: "profile",
   },
 ];
 
@@ -230,6 +231,8 @@ export default function StudentFinesScreen() {
     message: string;
     // Shows the success check above the title.
     success?: boolean;
+    // Shows the failed mark above the title.
+    failed?: boolean;
   } | null>(null);
 
   // GCash through PayMongo
@@ -512,6 +515,7 @@ export default function StudentFinesScreen() {
         });
       } else {
         setCashFeedback({
+          failed: true,
           title: "Payment Not Completed",
           message:
             "No GCash payment was made. You can try again or pay at the cashier.",
@@ -520,6 +524,7 @@ export default function StudentFinesScreen() {
     } catch (caught) {
       haptics.error();
       setCashFeedback({
+        failed: true,
         title: "Could Not Check Payment",
         message:
           caught instanceof Error
@@ -576,6 +581,7 @@ export default function StudentFinesScreen() {
       } catch (caught) {
         haptics.error();
         setCashFeedback({
+          failed: true,
           title: "GCash Unavailable",
           message:
             caught instanceof Error
@@ -606,6 +612,7 @@ export default function StudentFinesScreen() {
     } catch (caught) {
       haptics.error();
       setCashFeedback({
+        failed: true,
         title: "Could Not Cancel",
         message:
           caught instanceof Error ? caught.message : "Please try again.",
@@ -783,6 +790,7 @@ export default function StudentFinesScreen() {
         haptics.error();
         setCashFine(null);
         setCashFeedback({
+          failed: true,
           title: "Request Not Confirmed",
           message:
             caught instanceof Error
@@ -889,11 +897,7 @@ export default function StudentFinesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Back to dashboard"
           >
-            <Image
-              source={require("../../../assets/icons/back_icon.png")}
-              style={styles.backIcon}
-              resizeMode="contain"
-            />
+            <AppIcon name="back" size={23} color="#111111" />
           </TouchableOpacity>
 
           <Text style={styles.title}>My Fines</Text>
@@ -1295,10 +1299,11 @@ export default function StudentFinesScreen() {
                     }
                   }}
                 >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
+                  <AppIcon
+                    name={item.icon}
+                    focused={active}
+                    size={28}
+                    color="#FFFFFF"
                   />
 
                   <Text style={styles.navLabel}>{item.label}</Text>
@@ -1593,11 +1598,13 @@ export default function StudentFinesScreen() {
             ) : (
               <>
                 {shownCashFeedback?.success ? <SuccessCheck delay={80} /> : null}
+                {shownCashFeedback?.failed ? <FailedMark delay={80} /> : null}
 
                 <Text
                   style={[
                     notificationStyles.detailsTitle,
-                    shownCashFeedback?.success && styles.centered,
+                    (shownCashFeedback?.success || shownCashFeedback?.failed) &&
+                      styles.centered,
                   ]}
                 >
                   {shownCashFeedback?.title}
@@ -1606,7 +1613,8 @@ export default function StudentFinesScreen() {
                 <Text
                   style={[
                     styles.helper,
-                    shownCashFeedback?.success && styles.centered,
+                    (shownCashFeedback?.success || shownCashFeedback?.failed) &&
+                      styles.centered,
                   ]}
                 >
                   {shownCashFeedback?.message}

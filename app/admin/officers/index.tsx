@@ -18,6 +18,7 @@ import { OfficerFormModal } from "@/components/admin-forms/officer-form-modal";
 
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { FadeIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -69,7 +70,7 @@ type NavItem = {
 
   route: string;
 
-  icon?: any;
+  icon: IconName;
 };
 
 // ==========================================
@@ -155,7 +156,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/dashboard",
 
-      icon: require("../../../assets/icons/dashboard.png"),
+      icon: "dashboard",
     },
 
     {
@@ -163,7 +164,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/students",
 
-      icon: require("../../../assets/icons/students.png"),
+      icon: "students",
     },
 
     {
@@ -171,7 +172,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/fines",
 
-      icon: require("../../../assets/icons/fines.png"),
+      icon: "fines",
     },
 
     {
@@ -179,7 +180,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/qr-scanner",
 
-      icon: require("../../../assets/icons/qr-codeWhite.png"),
+      icon: "qr",
     },
 
     {
@@ -187,7 +188,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/reports",
 
-      icon: require("../../../assets/icons/reports.png"),
+      icon: "reports",
     },
 
     {
@@ -195,7 +196,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/settings",
 
-      icon: require("../../../assets/icons/settings.png"),
+      icon: "settings",
     },
 
     {
@@ -203,7 +204,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/officers",
 
-      icon: require("../../../assets/icons/officers.png"),
+      icon: "officers",
     },
   ];
 
@@ -467,10 +468,11 @@ export default function OfficersDirectory() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <Image
-                      source={item.icon}
-                      style={styles.navImageIcon}
-                      resizeMode="contain"
+                    <AppIcon
+                      name={item.icon}
+                      focused={isActive}
+                      size={20}
+                      color="#FFFFFF"
                     />
                   </View>
 
@@ -572,7 +574,9 @@ export default function OfficersDirectory() {
             {/* SEARCH */}
 
             <View style={styles.searchContainer}>
-              <Text style={styles.searchIcon}>⌕</Text>
+              <View style={styles.searchIcon}>
+                <AppIcon name="search" size={20} color="#8C939F" />
+              </View>
 
               <TextInput
                 style={styles.searchInput}
@@ -615,7 +619,7 @@ export default function OfficersDirectory() {
                     : getStatusLabel(selectedStatus)}
                 </Text>
 
-                <Text style={styles.filterArrow}>▼</Text>
+                <AppIcon name="chevronDown" size={14} color="#111111" />
               </TouchableOpacity>
 
               {showStatusMenu && (
@@ -688,7 +692,7 @@ export default function OfficersDirectory() {
                   {selectedArea === "ALL" ? "Assigned Area" : selectedArea}
                 </Text>
 
-                <Text style={styles.filterArrow}>▼</Text>
+                <AppIcon name="chevronDown" size={14} color="#111111" />
               </TouchableOpacity>
 
               {showAreaMenu && (
@@ -763,17 +767,7 @@ export default function OfficersDirectory() {
                 <>
                   <Text style={styles.filterText}>Refresh</Text>
 
-                  <Text
-                    style={{
-                      color: "#173A73",
-
-                      fontSize: 16,
-
-                      fontWeight: "800",
-                    }}
-                  >
-                    ↻
-                  </Text>
+                  <AppIcon name="refresh" size={18} color="#173A73" />
                 </>
               )}
             </TouchableOpacity>

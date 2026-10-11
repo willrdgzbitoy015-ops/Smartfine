@@ -32,6 +32,7 @@ import {
   SkeletonDetails,
   SkeletonList,
 } from "@/components/skeleton";
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 
 import { useResponsiveStyles } from "./dashboard-styles";
@@ -106,29 +107,9 @@ type NoticeFine = {
 
 type NavigationItem = {
   label: string;
-  icon: any;
+  icon: IconName;
   route: string | null;
   enabled: boolean;
-};
-
-// ==========================================
-// NAVIGATION ICONS
-// ==========================================
-
-const icons = {
-  home: require("../../../assets/icons/dashboard.png"),
-
-  students: require("../../../assets/icons/students.png"),
-
-  scan: require("../../../assets/icons/qr-codeWhite.png"),
-
-  profile: require("../../../assets/icons/user.png"),
-
-  records: require("../../../assets/icons/reports.png"),
-
-  back: require("../../../assets/icons/back_icon.png"),
-
-  notification: require("../../../assets/icons/notification.png"),
 };
 
 // ==========================================
@@ -138,35 +119,35 @@ const icons = {
 const navigationItems: NavigationItem[] = [
   {
     label: "Home",
-    icon: icons.home,
+    icon: "dashboard",
     route: "/officer/dashboard",
     enabled: true,
   },
 
   {
     label: "Students",
-    icon: icons.students,
+    icon: "students",
     route: "/officer/student",
     enabled: true,
   },
 
   {
     label: "Scan",
-    icon: icons.scan,
+    icon: "qr",
     route: "/officer/qr-scanner",
     enabled: true,
   },
 
   {
     label: "Profile",
-    icon: icons.profile,
+    icon: "profile",
     route: "/officer/profile",
     enabled: true,
   },
 
   {
     label: "Records",
-    icon: icons.records,
+    icon: "reports",
     route: "/officer/records",
     enabled: true,
   },
@@ -745,11 +726,7 @@ export default function OfficerDashboard() {
               accessibilityRole="button"
               accessibilityLabel="View notifications"
             >
-              <Image
-                source={icons.notification}
-                style={styles.notificationIcon}
-                resizeMode="contain"
-              />
+              <AppIcon name="notifications" size={26} color="#173A73" />
 
               <NotificationBadge count={counts.total} variant="bell" />
             </TouchableOpacity>
@@ -915,16 +892,11 @@ export default function OfficerDashboard() {
                     disabled: disabled,
                   }}
                 >
-                  <Image
-                    source={item.icon}
-                    style={[
-                      styles.navIcon,
-
-                      disabled && {
-                        opacity: 0.45,
-                      },
-                    ]}
-                    resizeMode="contain"
+                  <AppIcon
+                    name={item.icon}
+                    focused={active}
+                    size={27}
+                    color={disabled ? "rgba(255,255,255,0.45)" : "#FFFFFF"}
                   />
 
                   <Text
@@ -974,11 +946,7 @@ export default function OfficerDashboard() {
                 accessibilityRole="button"
                 accessibilityLabel="Close all activities"
               >
-                <Image
-                  source={icons.back}
-                  style={styles.modalBackIcon}
-                  resizeMode="contain"
-                />
+                <AppIcon name="back" size={23} color="#111111" />
               </TouchableOpacity>
 
               <View style={styles.modalTitleArea}>
@@ -1044,11 +1012,7 @@ export default function OfficerDashboard() {
                   selectedNotice ? "Back to notifications" : "Close notifications"
                 }
               >
-                <Image
-                  source={icons.back}
-                  style={styles.modalBackIcon}
-                  resizeMode="contain"
-                />
+                <AppIcon name="back" size={23} color="#111111" />
               </TouchableOpacity>
 
               <View style={styles.modalTitleArea}>

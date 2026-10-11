@@ -17,6 +17,7 @@ import { OfficerFormModal } from "@/components/admin-forms/officer-form-modal";
 
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn, PopIn, useRetainedValue } from "@/components/motion";
@@ -104,7 +105,7 @@ type NavItem = {
 
   route: string;
 
-  icon: any;
+  icon: IconName;
 };
 
 // ==========================================
@@ -208,7 +209,7 @@ export default function OfficerProfile() {
 
       route: "/admin/dashboard",
 
-      icon: require("../../../../assets/icons/dashboard.png"),
+      icon: "dashboard",
     },
 
     {
@@ -216,7 +217,7 @@ export default function OfficerProfile() {
 
       route: "/admin/students",
 
-      icon: require("../../../../assets/icons/students.png"),
+      icon: "students",
     },
 
     {
@@ -224,7 +225,7 @@ export default function OfficerProfile() {
 
       route: "/admin/fines",
 
-      icon: require("../../../../assets/icons/fines.png"),
+      icon: "fines",
     },
 
     {
@@ -232,7 +233,7 @@ export default function OfficerProfile() {
 
       route: "/admin/qr-scanner",
 
-      icon: require("../../../../assets/icons/qr-codeWhite.png"),
+      icon: "qr",
     },
 
     {
@@ -240,7 +241,7 @@ export default function OfficerProfile() {
 
       route: "/admin/reports",
 
-      icon: require("../../../../assets/icons/reports.png"),
+      icon: "reports",
     },
 
     {
@@ -248,7 +249,7 @@ export default function OfficerProfile() {
 
       route: "/admin/settings",
 
-      icon: require("../../../../assets/icons/settings.png"),
+      icon: "settings",
     },
 
     {
@@ -256,7 +257,7 @@ export default function OfficerProfile() {
 
       route: "/admin/officers",
 
-      icon: require("../../../../assets/icons/officers.png"),
+      icon: "officers",
     },
   ];
 
@@ -686,11 +687,9 @@ export default function OfficerProfile() {
                 disabled={deleting}
                 activeOpacity={0.75}
               >
-                <Image
-                  source={require("../../../../assets/icons/edit-image.png")}
-                  style={styles.editButtonIcon}
-                  resizeMode="contain"
-                />
+                <View style={styles.editButtonIcon}>
+                  <AppIcon name="edit" size={19} color="#123266" />
+                </View>
 
                 <Text style={styles.editButtonText}>Edit Information</Text>
               </TouchableOpacity>
@@ -999,10 +998,11 @@ export default function OfficerProfile() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <Image
-                      source={item.icon}
-                      style={styles.navImageIcon}
-                      resizeMode="contain"
+                    <AppIcon
+                      name={item.icon}
+                      focused={active}
+                      size={20}
+                      color="#FFFFFF"
                     />
                   </View>
 
@@ -1046,11 +1046,9 @@ export default function OfficerProfile() {
               accessibilityRole="button"
               accessibilityLabel="Back to Officers"
             >
-              <Image
-                source={require("../../../../assets/icons/back_icon.png")}
-                style={styles.backIconImage}
-                resizeMode="contain"
-              />
+              <View style={styles.backIconImage}>
+                <AppIcon name="back" size={22} color="#111111" />
+              </View>
 
               <Text
                 style={[styles.backText, isCompact && styles.backTextCompact]}
@@ -1145,7 +1143,7 @@ export default function OfficerProfile() {
                 accessibilityRole="button"
                 accessibilityLabel="Close fine information"
               >
-                <Text style={styles.fineModalCloseIcon}>×</Text>
+                <AppIcon name="close" size={22} color="#123266" />
               </TouchableOpacity>
             </View>
 

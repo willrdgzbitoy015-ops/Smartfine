@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
 
 import { PopIn } from "@/components/motion";
+import { FailedMark } from "@/components/result-mark";
 import { haptics } from "@/utils/haptics";
 
 import { styles } from "./warningmodal.styles";
@@ -42,9 +43,7 @@ export default function WarningModal({
               WARNING ICON (pops in after the card)
           ====================================== */}
 
-          <PopIn style={styles.warningIconContainer} delay={120} from={0.4}>
-            <Text style={styles.warningIcon}>!</Text>
-          </PopIn>
+          <FailedMark delay={120} size={58} style={styles.warningMark} />
 
           {/* ======================================
               TITLE

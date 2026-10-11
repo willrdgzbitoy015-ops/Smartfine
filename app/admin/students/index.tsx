@@ -31,6 +31,7 @@ import LogoutModal from "@/components/logout-modal";
 import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
 
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { FadeIn, PopIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -70,7 +71,7 @@ type NavItem = {
 
   route: string;
 
-  icon?: any;
+  icon: IconName;
 };
 
 type ImportStatus = "VALID" | "DUPLICATE" | "INVALID";
@@ -556,7 +557,7 @@ export default function StudentsDirectory() {
 
       route: "/admin/dashboard",
 
-      icon: require("../../../assets/icons/dashboard.png"),
+      icon: "dashboard",
     },
 
     {
@@ -564,7 +565,7 @@ export default function StudentsDirectory() {
 
       route: "/admin/students",
 
-      icon: require("../../../assets/icons/students.png"),
+      icon: "students",
     },
 
     {
@@ -572,7 +573,7 @@ export default function StudentsDirectory() {
 
       route: "/admin/fines",
 
-      icon: require("../../../assets/icons/fines.png"),
+      icon: "fines",
     },
 
     {
@@ -580,7 +581,7 @@ export default function StudentsDirectory() {
 
       route: "/admin/qr-scanner",
 
-      icon: require("../../../assets/icons/qr-codeWhite.png"),
+      icon: "qr",
     },
 
     {
@@ -588,7 +589,7 @@ export default function StudentsDirectory() {
 
       route: "/admin/reports",
 
-      icon: require("../../../assets/icons/reports.png"),
+      icon: "reports",
     },
 
     {
@@ -596,7 +597,7 @@ export default function StudentsDirectory() {
 
       route: "/admin/settings",
 
-      icon: require("../../../assets/icons/settings.png"),
+      icon: "settings",
     },
 
     {
@@ -604,7 +605,7 @@ export default function StudentsDirectory() {
 
       route: "/admin/officers",
 
-      icon: require("../../../assets/icons/officers.png"),
+      icon: "officers",
     },
   ];
 
@@ -2008,10 +2009,11 @@ export default function StudentsDirectory() {
                   onPress={() => handleNavigation(item)}
                 >
                   <View style={styles.navIconContainer}>
-                    <Image
-                      source={item.icon}
-                      style={styles.navImageIcon}
-                      resizeMode="contain"
+                    <AppIcon
+                      name={item.icon}
+                      focused={isActive}
+                      size={20}
+                      color="#FFFFFF"
                     />
                   </View>
 
@@ -2141,7 +2143,9 @@ export default function StudentsDirectory() {
 
           <View style={styles.toolbar}>
             <View style={styles.searchContainer}>
-              <Text style={styles.searchIcon}>⌕</Text>
+              <View style={styles.searchIcon}>
+                <AppIcon name="search" size={22} color="#222222" />
+              </View>
 
               <TextInput
                 style={styles.searchInput}
@@ -2158,7 +2162,9 @@ export default function StudentsDirectory() {
                   accessibilityRole="button"
                   accessibilityLabel="Clear search"
                 >
-                  <Text style={styles.searchClear}>✕</Text>
+                  <View style={styles.searchClear}>
+                    <AppIcon name="close" size={16} color="#8C939F" />
+                  </View>
                 </TouchableOpacity>
               )}
             </View>
@@ -2183,7 +2189,7 @@ export default function StudentsDirectory() {
                     {selectedGrade === "ALL" ? "All Grades" : selectedGrade}
                   </Text>
 
-                  <Text style={styles.filterArrow}>▼</Text>
+                  <AppIcon name="chevronDown" size={14} color="#111111" />
                 </TouchableOpacity>
 
                 {showGradeMenu && (
@@ -2238,7 +2244,7 @@ export default function StudentsDirectory() {
                       : selectedSection}
                   </Text>
 
-                  <Text style={styles.filterArrow}>▼</Text>
+                  <AppIcon name="chevronDown" size={14} color="#111111" />
                 </TouchableOpacity>
 
                 {showSectionMenu && (
@@ -2537,7 +2543,11 @@ export default function StudentsDirectory() {
                               </Text>
                             </View>
 
-                            <Text style={styles.rowChevron}>›</Text>
+                            <AppIcon
+                              name="chevronForward"
+                              size={20}
+                              color="#A0AAB8"
+                            />
                           </TouchableOpacity>
                         </FadeIn>
                       );
@@ -2682,11 +2692,13 @@ export default function StudentsDirectory() {
                                 <StatusChip status={student.account_status} />
                               </View>
 
-                              <Text
-                                style={[styles.rowChevron, styles.chevronColumn]}
-                              >
-                                ›
-                              </Text>
+                              <View style={styles.chevronColumn}>
+                                <AppIcon
+                                  name="chevronForward"
+                                  size={20}
+                                  color="#A0AAB8"
+                                />
+                              </View>
                             </TouchableOpacity>
                           </FadeIn>
                         );
@@ -2796,7 +2808,7 @@ export default function StudentsDirectory() {
                     importReading || templateLoading || importSubmitting
                   }
                 >
-                  <Text style={styles.importCloseText}>×</Text>
+                  <AppIcon name="close" size={25} color="#173A73" />
                 </TouchableOpacity>
               </View>
 
@@ -2831,7 +2843,7 @@ export default function StudentsDirectory() {
                         {importGrade || "Select Grade"}
                       </Text>
 
-                      <Text style={styles.importSelectArrow}>▼</Text>
+                      <AppIcon name="chevronDown" size={12} color="#173A73" />
                     </TouchableOpacity>
 
                     {showImportGradeMenu && (
@@ -2887,7 +2899,7 @@ export default function StudentsDirectory() {
                           {importStrand || "Select Strand"}
                         </Text>
 
-                        <Text style={styles.importSelectArrow}>▼</Text>
+                        <AppIcon name="chevronDown" size={12} color="#173A73" />
                       </TouchableOpacity>
 
                       {showImportStrandMenu && (
@@ -2992,11 +3004,7 @@ export default function StudentsDirectory() {
                       <ActivityIndicator size="small" color="#173A73" />
                     ) : (
                       <View style={styles.importButtonLoadingContent}>
-                        <Image
-                          source={require("../../../assets/icons/download.png")}
-                          style={styles.navImageIcon}
-                          resizeMode="contain"
-                        />
+                        <AppIcon name="download" size={20} color="#173A73" />
 
                         <Text style={styles.downloadTemplateText}>
                           Download Excel Template
@@ -3450,11 +3458,7 @@ export default function StudentsDirectory() {
             {/* IMPORT ICON */}
 
             <View style={styles.confirmIcon}>
-              <Image
-                source={require("../../../assets/icons/import-icon.png")}
-                style={styles.confirmIconImage}
-                resizeMode="contain"
-              />
+              <AppIcon name="import" size={38} color="#45B94F" />
             </View>
 
             <Text style={styles.confirmTitle}>Import Students?</Text>

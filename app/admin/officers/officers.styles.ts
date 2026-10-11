@@ -205,8 +205,6 @@ export const styles = StyleSheet.create({
   },
 
   searchIcon: {
-    color: COLORS.muted,
-    fontSize: 20,
     marginRight: 8,
   },
 

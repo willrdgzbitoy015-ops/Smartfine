@@ -27,6 +27,7 @@ import { TabIndicator, useSwitchFade } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
 import SuccessModal from "@/components/success-modal";
 
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { useFieldFocus } from "@/hooks/use-field-focus";
@@ -62,60 +63,38 @@ type ResponseBody = {
   user?: Officer;
 };
 
-type MenuIcon = "user" | "padlock" | "policy";
-
-// ==========================================
-// ICONS
-// ==========================================
-
-const icons = {
-  user: require("../../../assets/icons/user.png"),
-
-  padlock: require("../../../assets/icons/padlock.png"),
-
-  policy: require("../../../assets/icons/policy-icon.png"),
-
-  back: require("../../../assets/icons/back_icon.png"),
-
-  arrow: require("../../../assets/icons/arrow.png"),
-
-  view: require("../../../assets/icons/view.png"),
-
-  hide: require("../../../assets/icons/hide.png"),
-};
-
 // ==========================================
 // BOTTOM NAVIGATION
 // ==========================================
 
-const navigation = [
+const navigation: { label: string; icon: IconName; route: string }[] = [
   {
     label: "Home",
-    icon: require("../../../assets/icons/dashboard.png"),
+    icon: "dashboard",
     route: "/officer/dashboard",
   },
 
   {
     label: "Students",
-    icon: require("../../../assets/icons/students.png"),
+    icon: "students",
     route: "/officer/student",
   },
 
   {
     label: "Scan",
-    icon: require("../../../assets/icons/qr-codeWhite.png"),
+    icon: "qr",
     route: "/officer/qr-scanner",
   },
 
   {
     label: "Profile",
-    icon: icons.user,
+    icon: "profile",
     route: "/officer/profile",
   },
 
   {
     label: "Records",
-    icon: require("../../../assets/icons/reports.png"),
+    icon: "reports",
     route: "/officer/records",
   },
 ];
@@ -912,26 +891,18 @@ export default function OfficerProfile() {
   // MENU BUTTON
   // ==========================================
 
-  const menuButton = (label: string, icon: MenuIcon, onPress: () => void) => (
+  const menuButton = (label: string, icon: IconName, onPress: () => void) => (
     <TouchableOpacity
       style={styles.menuButton}
       onPress={onPress}
       disabled={busy}
       activeOpacity={0.7}
     >
-      <Image
-        source={icons[icon]}
-        style={styles.menuIcon}
-        resizeMode="contain"
-      />
+      <AppIcon name={icon} size={29} color="#111111" />
 
       <Text style={styles.menuText}>{label}</Text>
 
-      <Image
-        source={icons.arrow}
-        style={styles.menuArrow}
-        resizeMode="contain"
-      />
+      <AppIcon name="chevronForward" size={23} color="#111111" />
     </TouchableOpacity>
   );
 
@@ -983,10 +954,10 @@ export default function OfficerProfile() {
           onPress={toggleVisible}
           disabled={busy}
         >
-          <Image
-            source={visible ? icons.hide : icons.view}
-            style={styles.passwordIcon}
-            resizeMode="contain"
+          <AppIcon
+            name={visible ? "eyeOff" : "eye"}
+            size={21}
+            color="#123266"
           />
         </TouchableOpacity>
       </View>
@@ -1028,7 +999,7 @@ export default function OfficerProfile() {
             onPress={goBack}
             disabled={busy}
           >
-            <Image source={icons.back} style={styles.backIcon} />
+            <AppIcon name="back" size={24} color="#111111" />
           </TouchableOpacity>
 
           <Text style={styles.title}>{title}</Text>
@@ -1119,9 +1090,9 @@ export default function OfficerProfile() {
                         setPage("edit");
                       })}
 
-                      {menuButton("Change Password", "padlock", openPassword)}
+                      {menuButton("Change Password", "lock", openPassword)}
 
-                      {menuButton("About SmartFine", "user", () => {
+                      {menuButton("About SmartFine", "info", () => {
                         setError("");
 
                         setPage("about");
@@ -1186,15 +1157,7 @@ export default function OfficerProfile() {
                           {uploadingPhoto ? (
                             <ActivityIndicator size="small" color="#123266" />
                           ) : (
-                            <Image
-                              source={require("../../../assets/icons/edit-image.png")}
-                              style={{
-                                width: 20,
-
-                                height: 20,
-                              }}
-                              resizeMode="contain"
-                            />
+                            <AppIcon name="edit" size={20} color="#123266" />
                           )}
                         </TouchableOpacity>
                       </View>
@@ -1495,7 +1458,12 @@ export default function OfficerProfile() {
                   }
                 }}
               >
-                <Image source={item.icon} style={styles.navIcon} />
+                <AppIcon
+                  name={item.icon}
+                  focused={item.label === "Profile"}
+                  size={26}
+                  color="#FFFFFF"
+                />
 
                 <Text style={styles.navLabel}>{item.label}</Text>
                 <HomeTabBadge label={item.label} />

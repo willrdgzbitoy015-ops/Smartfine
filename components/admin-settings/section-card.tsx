@@ -1,5 +1,7 @@
 import { ReactNode } from "react";
-import { Image, StyleProp, Text, View, ViewStyle } from "react-native";
+import { StyleProp, Text, View, ViewStyle } from "react-native";
+
+import AppIcon, { IconName } from "@/components/AppIcon";
 
 import { sectionStyles as styles } from "./admin-settings.styles";
 
@@ -20,7 +22,7 @@ export function SectionCard({
 }: {
   title: string;
   description?: string;
-  icon?: any;
+  icon?: IconName;
   actions?: ReactNode;
   footer?: ReactNode;
   bodyStyle?: StyleProp<ViewStyle>;
@@ -32,11 +34,7 @@ export function SectionCard({
         <View style={styles.heading}>
           {icon && (
             <View style={styles.icon}>
-              <Image
-                source={icon}
-                style={styles.iconImage}
-                resizeMode="contain"
-              />
+              <AppIcon name={icon} size={19} color="#173A73" />
             </View>
           )}
 

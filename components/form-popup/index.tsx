@@ -10,7 +10,9 @@ import {
   ViewStyle,
 } from "react-native";
 
-import { FadeIn, PopIn } from "@/components/motion";
+import AppIcon from "@/components/AppIcon";
+import { FadeIn } from "@/components/motion";
+import { WarningMark } from "@/components/result-mark";
 import { SuccessCheck } from "@/components/success-check";
 import { haptics } from "@/utils/haptics";
 
@@ -132,7 +134,11 @@ export function SelectButton({
         {value || placeholder}
       </Text>
 
-      <Text style={styles.selectArrow}>{open ? "▲" : "▼"}</Text>
+      <AppIcon
+        name={open ? "chevronUp" : "chevronDown"}
+        size={14}
+        color="#173A73"
+      />
     </TouchableOpacity>
   );
 }
@@ -224,7 +230,7 @@ export function CheckOption({
       accessibilityState={{ checked, disabled }}
     >
       <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
-        {checked ? <Text style={styles.checkBoxMark}>✓</Text> : null}
+        {checked ? <AppIcon name="check" size={15} color="#FFFFFF" /> : null}
       </View>
 
       <View style={styles.checkText}>
@@ -501,9 +507,7 @@ export function SuccessPanel({
   return (
     <View style={styles.success} accessibilityLiveRegion="polite">
       {warning ? (
-        <PopIn style={[styles.successIcon, styles.successIconWarning]} from={0.5}>
-          <Text style={[styles.successMark, styles.successMarkWarning]}>!</Text>
-        </PopIn>
+        <WarningMark style={styles.successCheck} />
       ) : (
         <SuccessCheck style={styles.successCheck} />
       )}

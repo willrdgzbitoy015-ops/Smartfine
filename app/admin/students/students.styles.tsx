@@ -274,13 +274,7 @@ export const styles = StyleSheet.create({
   },
 
   searchIcon: {
-    color: "#222222",
-
-    fontSize: 27,
-
     marginRight: 10,
-
-    marginTop: -4,
   },
 
   searchInput: {
@@ -296,12 +290,6 @@ export const styles = StyleSheet.create({
   } as any,
 
   searchClear: {
-    color: COLORS.muted,
-
-    fontSize: 14,
-
-    fontWeight: "700",
-
     paddingLeft: 8,
   },
 
@@ -742,6 +730,7 @@ export const styles = StyleSheet.create({
 
   chevronColumn: {
     width: 26,
+    alignItems: "center",
   },
 
   studentRow: {

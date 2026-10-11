@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
 import {
-    Image,
     RefreshControl,
     ScrollView,
     Text,
@@ -23,6 +22,7 @@ import {
 
 import { FadeIn, TabIndicator } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
 
@@ -64,31 +64,31 @@ const FILTERS: { label: string; value: Filter }[] = [
   { label: "Paid", value: "PAID" },
 ];
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { label: string; route: string; icon: IconName }[] = [
   {
     label: "Home",
     route: "/officer/dashboard",
-    icon: require("../../../assets/icons/dashboard.png"),
+    icon: "dashboard",
   },
   {
     label: "Students",
     route: "/officer/student",
-    icon: require("../../../assets/icons/students.png"),
+    icon: "students",
   },
   {
     label: "Scan",
     route: "/officer/qr-scanner",
-    icon: require("../../../assets/icons/qr-codeWhite.png"),
+    icon: "qr",
   },
   {
     label: "Profile",
     route: "/officer/profile",
-    icon: require("../../../assets/icons/user.png"),
+    icon: "profile",
   },
   {
     label: "Records",
     route: "/officer/records",
-    icon: require("../../../assets/icons/reports.png"),
+    icon: "reports",
   },
 ];
 
@@ -501,10 +501,11 @@ export default function OfficerRecordsScreen() {
                     }
                   }}
                 >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
+                  <AppIcon
+                    name={item.icon}
+                    focused={active}
+                    size={28}
+                    color="#FFFFFF"
                   />
 
                   <Text style={styles.navLabel}>{item.label}</Text>

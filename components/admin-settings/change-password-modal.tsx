@@ -105,7 +105,7 @@ export function ChangePasswordModal({
       busy={saving}
       title="Change Password"
       subtitle="Enter your current password, then choose a new one for signing in to SmartFine."
-      icon={require("../../assets/icons/padlock.png")}
+      icon="lock"
       onClose={onClose}
       footer={
         <>

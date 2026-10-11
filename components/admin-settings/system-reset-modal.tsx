@@ -222,7 +222,7 @@ export function SystemResetModal({
       size="lg"
       title="Reset System"
       subtitle="Delete all records so SmartFine can start fresh"
-      icon={require("../../assets/icons/settings.png")}
+      icon="settings"
       onClose={onClose}
       notice={!result && error ? <Banner tone="error" title="Not Reset" message={error} /> : null}
       footer={footer}

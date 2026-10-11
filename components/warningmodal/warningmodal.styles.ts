@@ -62,30 +62,8 @@ export const styles = StyleSheet.create({
   // WARNING ICON
   // ==========================================
 
-  warningIconContainer: {
-    width: 58,
-    height: 58,
-
-    borderRadius: 29,
-
-    backgroundColor: COLORS.warningBackground,
-
-    borderWidth: 2,
-    borderColor: COLORS.red,
-
-    alignItems: "center",
-    justifyContent: "center",
-
+  warningMark: {
     marginBottom: 17,
-  },
-
-  warningIcon: {
-    color: COLORS.red,
-
-    fontSize: 31,
-    fontWeight: "800",
-
-    lineHeight: 35,
   },
 
   // ==========================================

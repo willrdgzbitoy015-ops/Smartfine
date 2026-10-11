@@ -21,6 +21,7 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 
 import { AdminModal } from "@/components/admin-modal";
@@ -59,7 +60,7 @@ type DashboardStats = {
 type NavItem = {
   label: string;
   route?: string;
-  icon?: any;
+  icon: IconName;
 };
 
 type ActivityType =
@@ -730,43 +731,43 @@ export default function AdminDashboard() {
     {
       label: "Dashboard",
       route: "/admin/dashboard",
-      icon: require("../../../assets/icons/dashboard.png"),
+      icon: "dashboard",
     },
 
     {
       label: "Students",
       route: "/admin/students",
-      icon: require("../../../assets/icons/students.png"),
+      icon: "students",
     },
 
     {
       label: "Fines",
       route: "/admin/fines",
-      icon: require("../../../assets/icons/fines.png"),
+      icon: "fines",
     },
 
     {
       label: "QR Scanner",
       route: "/admin/qr-scanner",
-      icon: require("../../../assets/icons/qr-codeWhite.png"),
+      icon: "qr",
     },
 
     {
       label: "Reports",
       route: "/admin/reports",
-      icon: require("../../../assets/icons/reports.png"),
+      icon: "reports",
     },
 
     {
       label: "Settings",
       route: "/admin/settings",
-      icon: require("../../../assets/icons/settings.png"),
+      icon: "settings",
     },
 
     {
       label: "Officers",
       route: "/admin/officers",
-      icon: require("../../../assets/icons/officers.png"),
+      icon: "officers",
     },
   ];
 
@@ -831,27 +832,32 @@ export default function AdminDashboard() {
     },
   ];
 
-  const quickActions = [
+  const quickActions: {
+    label: string;
+    route: string;
+    icon: IconName;
+    primary?: boolean;
+  }[] = [
     {
       label: "Record Fine",
       route: "/admin/fines?add=1",
-      icon: require("../../../assets/icons/fines.png"),
+      icon: "fines",
       primary: true,
     },
     {
       label: "Scan Student QR",
       route: "/admin/qr-scanner",
-      icon: require("../../../assets/icons/qr-code.png"),
+      icon: "qr",
     },
     {
       label: "Add Student",
       route: "/admin/students?add=1",
-      icon: require("../../../assets/icons/students.png"),
+      icon: "students",
     },
     {
       label: "Payment Reports",
       route: "/admin/reports",
-      icon: require("../../../assets/icons/wallet.png"),
+      icon: "wallet",
     },
   ];
 
@@ -947,10 +953,11 @@ export default function AdminDashboard() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <Image
-                      source={item.icon}
-                      style={styles.navImageIcon}
-                      resizeMode="contain"
+                    <AppIcon
+                      name={item.icon}
+                      focused={isActive}
+                      size={20}
+                      color="#FFFFFF"
                     />
                   </View>
 
@@ -1129,13 +1136,10 @@ export default function AdminDashboard() {
                 activeOpacity={0.8}
                 accessibilityRole="button"
               >
-                <Image
-                  source={action.icon}
-                  style={[
-                    styles.quickActionIcon,
-                    action.primary && styles.quickActionIconPrimary,
-                  ]}
-                  resizeMode="contain"
+                <AppIcon
+                  name={action.icon}
+                  size={20}
+                  color={action.primary ? "#FFFFFF" : "#173A73"}
                 />
                 <Text
                   style={[

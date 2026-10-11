@@ -467,7 +467,7 @@ export function FineFormModal({
             : "Update an unpaid fine"
           : "Record a new fine for a student"
       }
-      icon={require("../../assets/icons/fines.png")}
+      icon="fines"
       bodyRef={bodyRef}
       onClose={onClose}
       notice={message}

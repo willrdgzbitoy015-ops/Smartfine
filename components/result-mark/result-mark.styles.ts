@@ -1,0 +1,18 @@
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  box: {
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  ripple: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 3,
+  },
+});

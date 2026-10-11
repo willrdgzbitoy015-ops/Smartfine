@@ -27,6 +27,7 @@ import {
   useSwitchFade,
 } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
+import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { useFieldFocus } from "@/hooks/use-field-focus";
@@ -85,22 +86,11 @@ type PasswordDraft = {
 
 const baseUrl = API_BASE.replace(/\/+$/, "");
 
-const icons = {
-  home: require("../../../assets/icons/dashboard.png"),
-  fines: require("../../../assets/icons/fines.png"),
-  qr: require("../../../assets/icons/qr-codeWhite.png"),
-  user: require("../../../assets/icons/user.png"),
-  lock: require("../../../assets/icons/padlock.png"),
-  policy: require("../../../assets/icons/policy-icon.png"),
-  back: require("../../../assets/icons/back_icon.png"),
-  arrow: require("../../../assets/icons/arrow.png"),
-};
-
 const navigation = [
-  { label: "Home", icon: icons.home, route: "/student/dashboard" },
-  { label: "Fines", icon: icons.fines, route: "/student/fines" },
-  { label: "My QR", icon: icons.qr, route: "/student/qr" },
-  { label: "Profile", icon: icons.user, route: "/student/profile" },
+  { label: "Home", icon: "dashboard", route: "/student/dashboard" },
+  { label: "Fines", icon: "fines", route: "/student/fines" },
+  { label: "My QR", icon: "qr", route: "/student/qr" },
+  { label: "Profile", icon: "profile", route: "/student/profile" },
 ] as const;
 
 function money(centavos: number) {
@@ -552,16 +542,16 @@ export default function StudentProfileScreen() {
 
   const avatar = photoUrl(profile?.profilePictureUri || null);
 
-  const menuButton = (label: string, icon: number, onPress: () => void) => (
+  const menuButton = (label: string, icon: IconName, onPress: () => void) => (
     <TouchableOpacity
       key={label}
       style={styles.menuButton}
       onPress={onPress}
       accessibilityRole="button"
     >
-      <Image source={icon} style={styles.menuIcon} />
+      <AppIcon name={icon} size={30} color="#111111" />
       <Text style={styles.menuText}>{label}</Text>
-      <Image source={icons.arrow} style={styles.arrowIcon} />
+      <AppIcon name="chevronForward" size={25} color="#111111" />
     </TouchableOpacity>
   );
 
@@ -627,7 +617,7 @@ export default function StudentProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Image source={icons.back} style={styles.backIcon} />
+            <AppIcon name="back" size={23} color="#111111" />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>{title}</Text>
@@ -740,17 +730,13 @@ export default function StudentProfileScreen() {
                   </View>
 
                   <View style={styles.menu}>
-                    {menuButton(
-                      "Edit Personal Information",
-                      icons.user,
-                      openEdit,
-                    )}
-                    {menuButton("Change Password", icons.lock, openPassword)}
-                    {menuButton("About SmartFine", icons.user, () => {
+                    {menuButton("Edit Personal Information", "user", openEdit)}
+                    {menuButton("Change Password", "lock", openPassword)}
+                    {menuButton("About SmartFine", "info", () => {
                       setError("");
                       setPage("about");
                     })}
-                    {menuButton("Privacy Policy", icons.policy, () => {
+                    {menuButton("Privacy Policy", "policy", () => {
                       setError("");
                       setPage("privacy");
                     })}
@@ -1042,7 +1028,12 @@ export default function StudentProfileScreen() {
                     router.push(item.route);
                   }}
                 >
-                  <Image source={item.icon} style={styles.navIcon} />
+                  <AppIcon
+                    name={item.icon}
+                    focused={active}
+                    size={28}
+                    color="#FFFFFF"
+                  />
                   <Text style={styles.navLabel}>{item.label}</Text>
                   <HomeTabBadge label={item.label} />
                   <TabIndicator

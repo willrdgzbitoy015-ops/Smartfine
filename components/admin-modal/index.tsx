@@ -1,6 +1,5 @@
 import { ReactNode, useState } from "react";
 import {
-  Image,
   Modal,
   ScrollView,
   Text,
@@ -8,6 +7,7 @@ import {
   View,
 } from "react-native";
 
+import AppIcon from "@/components/AppIcon";
 import { DeletableNotice, DeleteHint } from "@/components/deletable-notice";
 import { FadeIn, PopIn } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
@@ -50,12 +50,7 @@ export function AdminModal({
                 accessibilityRole="button"
                 accessibilityLabel="Back"
               >
-                {/* Same back arrow as the Admin profile screens. */}
-                <Image
-                  source={require("../../assets/icons/back_icon.png")}
-                  style={styles.backIcon}
-                  resizeMode="contain"
-                />
+                <AppIcon name="back" size={22} color="#111111" />
               </TouchableOpacity>
             )}
             <View style={styles.headerText}>
@@ -68,7 +63,7 @@ export function AdminModal({
               accessibilityRole="button"
               accessibilityLabel={`Close ${title}`}
             >
-              <Text style={styles.iconButtonText}>✕</Text>
+              <AppIcon name="close" size={18} color="#173A73" />
             </TouchableOpacity>
           </View>
           {/* Each view has its own title, so a new view (list → record)
@@ -236,7 +231,7 @@ export function AdminNoticeList<T extends AdminNotice>({
                 >
                   {notice.isRead ? "READ" : "NEW"}
                 </Text>
-                <Text style={styles.noticeChevron}>›</Text>
+                <AppIcon name="chevronForward" size={18} color="#A0AAB8" />
               </NoticeRowShell>
             </FadeIn>
           ))}
