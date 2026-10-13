@@ -728,7 +728,7 @@ export function OfficerFormModal({
           ? "Update the officer's details, profile picture and account"
           : "Create a new SmartFine fines officer account"
       }
-      icon="officers"
+      icon={require("../../assets/icons/officers.png")}
       onClose={onClose}
       notice={
         !done && (errorMessage || notice) ? (

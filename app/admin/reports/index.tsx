@@ -1,7 +1,6 @@
 import { AdminModal, AdminNoticeList } from "@/components/admin-modal";
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
@@ -30,7 +29,7 @@ import { styles } from "./reports.styles";
 type NavItem = {
   label: string;
   route: string;
-  icon: IconName;
+  icon?: any;
 };
 type PaymentSummary = {
   totalCollectedCentavos: number;
@@ -205,37 +204,37 @@ export default function PaymentReports() {
     {
       label: "Dashboard",
       route: "/admin/dashboard",
-      icon: "dashboard",
+      icon: require("../../../assets/icons/dashboard.png"),
     },
     {
       label: "Students",
       route: "/admin/students",
-      icon: "students",
+      icon: require("../../../assets/icons/students.png"),
     },
     {
       label: "Fines",
       route: "/admin/fines",
-      icon: "fines",
+      icon: require("../../../assets/icons/fines.png"),
     },
     {
       label: "QR Scanner",
       route: "/admin/qr-scanner",
-      icon: "qr",
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
     {
       label: "Reports",
       route: "/admin/reports",
-      icon: "reports",
+      icon: require("../../../assets/icons/reports.png"),
     },
     {
       label: "Settings",
       route: "/admin/settings",
-      icon: "settings",
+      icon: require("../../../assets/icons/settings.png"),
     },
     {
       label: "Officers",
       route: "/admin/officers",
-      icon: "officers",
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
   // ==========================================
@@ -476,11 +475,10 @@ export default function PaymentReports() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <AppIcon
-                      name={item.icon}
-                      focused={active}
-                      size={20}
-                      color="#FFFFFF"
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
                     />
                   </View>
                   <Text style={styles.navText}>{item.label}</Text>
@@ -760,7 +758,7 @@ export default function PaymentReports() {
                     {visibleTransactions.length === 0 ? (
                       <View style={styles.emptyState}>
                         <View style={styles.emptyIcon}>
-                          <AppIcon name="cash" size={26} color="#173A73" />
+                          <Text style={styles.emptyIconText}>₱</Text>
                         </View>
                         <Text style={styles.emptyTitle}>
                           No payment transactions found

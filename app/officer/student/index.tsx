@@ -27,7 +27,6 @@ import QRCode from "react-native-qrcode-svg";
 
 import { FadeIn, PopIn, TabIndicator, useSwitchFade } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 
 import { useResponsiveStyles } from "./student.styles";
@@ -50,31 +49,31 @@ type Student = {
   profile_picture_uri: string | null;
 };
 
-const NAV_ITEMS: { label: string; route: string; icon: IconName }[] = [
+const NAV_ITEMS = [
   {
     label: "Home",
     route: "/officer/dashboard",
-    icon: "dashboard",
+    icon: require("../../../assets/icons/dashboard.png"),
   },
   {
     label: "Students",
     route: "/officer/student",
-    icon: "students",
+    icon: require("../../../assets/icons/students.png"),
   },
   {
     label: "Scan",
     route: "/officer/qr-scanner",
-    icon: "qr",
+    icon: require("../../../assets/icons/qr-codeWhite.png"),
   },
   {
     label: "Profile",
     route: "/officer/profile",
-    icon: "profile",
+    icon: require("../../../assets/icons/user.png"),
   },
   {
     label: "Records",
     route: "/officer/records",
-    icon: "reports",
+    icon: require("../../../assets/icons/reports.png"),
   },
 ];
 
@@ -396,7 +395,7 @@ export default function OfficerStudentsScreen() {
               style={styles.backButton}
               onPress={returnToList}
             >
-              <AppIcon name="back" size={32} color="#111111" />
+              <Text style={styles.backArrow}>←</Text>
             </TouchableOpacity>
 
             <View style={styles.profileCard}>
@@ -437,7 +436,11 @@ export default function OfficerStudentsScreen() {
                 disabled={!selectedStudent.student_id}
                 onPress={() => setShowQr(true)}
               >
-                <AppIcon name="qr" size={29} color="#111111" />
+                <Image
+                  source={require("../../../assets/icons/qr-code.png")}
+                  style={styles.qrIcon}
+                  resizeMode="contain"
+                />
 
                 <Text style={styles.qrButtonText}>View QR Code</Text>
               </TouchableOpacity>
@@ -469,7 +472,8 @@ export default function OfficerStudentsScreen() {
             <View style={styles.searchArea}>
               <View style={styles.searchBox}>
                 <View style={styles.searchIcon}>
-                  <AppIcon name="search" size={24} color="#222222" />
+                  <View style={styles.searchCircle} />
+                  <View style={styles.searchHandle} />
                 </View>
 
                 <TextInput
@@ -491,7 +495,7 @@ export default function OfficerStudentsScreen() {
                     style={styles.clearButton}
                     onPress={() => setSearch("")}
                   >
-                    <AppIcon name="close" size={22} color="#666666" />
+                    <Text style={styles.clearText}>×</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -529,9 +533,7 @@ export default function OfficerStudentsScreen() {
                       </Text>
                     </View>
 
-                    <View style={styles.chevron}>
-                      <AppIcon name="chevronForward" size={22} color="#111111" />
-                    </View>
+                    <View style={styles.chevron} />
                   </TouchableOpacity>
                 </FadeIn>
               )}
@@ -593,11 +595,10 @@ export default function OfficerStudentsScreen() {
                     }
                   }}
                 >
-                  <AppIcon
-                    name={item.icon}
-                    focused={active}
-                    size={28}
-                    color={disabled ? "rgba(255,255,255,0.5)" : "#FFFFFF"}
+                  <Image
+                    source={item.icon}
+                    resizeMode="contain"
+                    style={[styles.navIcon, disabled && styles.disabled]}
                   />
 
                   <Text style={[styles.navLabel, disabled && styles.disabled]}>

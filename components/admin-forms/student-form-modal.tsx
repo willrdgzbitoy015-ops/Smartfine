@@ -666,7 +666,7 @@ export function StudentFormModal({
           ? "Update student, profile picture, and account information"
           : "Create a new student account in the system"
       }
-      icon="students"
+      icon={require("../../assets/icons/students.png")}
       bodyRef={bodyRef}
       onClose={onClose}
       notice={

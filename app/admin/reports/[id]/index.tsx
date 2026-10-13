@@ -15,9 +15,7 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { AdminNavBadge } from "@/components/notification-badge";
-import { FailedMark } from "@/components/result-mark";
 import { FadeIn } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
 
@@ -114,8 +112,6 @@ type NavItem = {
   label: string;
 
   route: string;
-
-  icon: IconName;
 };
 
 // ==========================================
@@ -178,56 +174,42 @@ export default function DetailedPaymentReport() {
       label: "Dashboard",
 
       route: "/admin/dashboard",
-
-      icon: "dashboard",
     },
 
     {
       label: "Students",
 
       route: "/admin/students",
-
-      icon: "students",
     },
 
     {
       label: "Fines",
 
       route: "/admin/fines",
-
-      icon: "fines",
     },
 
     {
       label: "QR Scanner",
 
       route: "/admin/qr-scanner",
-
-      icon: "qr",
     },
 
     {
       label: "Reports",
 
       route: "/admin/reports",
-
-      icon: "reports",
     },
 
     {
       label: "Settings",
 
       route: "/admin/settings",
-
-      icon: "settings",
     },
 
     {
       label: "Officers",
 
       route: "/admin/officers",
-
-      icon: "officers",
     },
   ];
 
@@ -371,7 +353,9 @@ export default function DetailedPaymentReport() {
     if (error || !payment) {
       return (
         <View style={styles.centerState}>
-          <FailedMark size={54} style={styles.errorMark} />
+          <View style={styles.errorIcon}>
+            <Text style={styles.errorIconText}>!</Text>
+          </View>
 
           <Text style={styles.errorTitle}>Unable to Load Transaction</Text>
 
@@ -625,21 +609,21 @@ export default function DetailedPaymentReport() {
                 isFailed && styles.statusMessageIconFailed,
               ]}
             >
-              <AppIcon
-                name={
-                  isPaid
-                    ? "paid"
-                    : isPending
-                      ? "pending"
-                      : isCancelled
-                        ? "cancelled"
-                        : "failed"
-                }
-                size={17}
-                color={
-                  isPaid ? "#31A94A" : isPending ? "#A16A00" : "#D32F2F"
-                }
-              />
+              <Text
+                style={[
+                  styles.statusMessageIconText,
+
+                  isPaid && styles.statusMessageIconTextPaid,
+
+                  isPending && styles.statusMessageIconTextPending,
+
+                  isCancelled && styles.statusMessageIconTextCancelled,
+
+                  isFailed && styles.statusMessageIconTextFailed,
+                ]}
+              >
+                {isPaid ? "✓" : isPending ? "○" : "×"}
+              </Text>
             </View>
 
             <Text style={styles.statusMessageText}>{statusMessage}</Text>
@@ -693,14 +677,9 @@ export default function DetailedPaymentReport() {
                   onPress={() => handleNavigation(item)}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.navIconContainer}>
-                    <AppIcon
-                      name={item.icon}
-                      focused={active}
-                      size={20}
-                      color="#FFFFFF"
-                    />
-                  </View>
+                  <Text style={styles.navIcon}>
+                    {getMenuSymbol(item.label)}
+                  </Text>
 
                   <Text style={styles.navText}>{item.label}</Text>
                   <AdminNavBadge label={item.label} />
@@ -780,9 +759,11 @@ export default function DetailedPaymentReport() {
               style={styles.headerBackButton}
               onPress={handleBackToReports}
             >
-              <View style={styles.headerBackIcon}>
-                <AppIcon name="back" size={22} color="#111111" />
-              </View>
+              <Image
+                source={require("../../../../assets/icons/back_icon.png")}
+                style={styles.headerBackIcon}
+                resizeMode="contain"
+              />
 
               <Text style={styles.headerBackText}>Reports</Text>
             </TouchableOpacity>
@@ -980,4 +961,36 @@ function formatDateTime(value: string | null | undefined) {
 
     hour12: true,
   });
+}
+
+// ==========================================
+// SIDEBAR SYMBOLS
+// ==========================================
+
+function getMenuSymbol(label: string) {
+  switch (label) {
+    case "Dashboard":
+      return "⌂";
+
+    case "Students":
+      return "◎";
+
+    case "Fines":
+      return "▤";
+
+    case "QR Scanner":
+      return "▦";
+
+    case "Reports":
+      return "▧";
+
+    case "Settings":
+      return "⚙";
+
+    case "Officers":
+      return "●";
+
+    default:
+      return "•";
+  }
 }

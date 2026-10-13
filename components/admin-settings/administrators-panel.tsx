@@ -189,12 +189,11 @@ export function AdministratorsPanel({
       <SectionCard
         title="Administrators"
         description="People who can sign in to the SmartFine admin panel. You can't deactivate or delete your own account."
-        icon="officers"
+        icon={require("../../assets/icons/officers.png")}
         actions={
           <>
             <PopupButton
-              label="Refresh"
-              icon="refresh"
+              label="↻ Refresh"
               busyLabel="Refreshing..."
               variant="outline"
               busy={refreshing}

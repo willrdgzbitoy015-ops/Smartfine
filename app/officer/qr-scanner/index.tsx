@@ -20,7 +20,6 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AppIcon from "@/components/AppIcon";
 import { FadeIn, ScanLine } from "@/components/motion";
 import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
@@ -455,7 +454,11 @@ export default function OfficerQRScanner() {
                 {processing ? (
                   <ActivityIndicator size="large" color="#45B94F" />
                 ) : (
-                  <AppIcon name="qr" size={55} color="rgba(255,255,255,0.65)" />
+                  <Image
+                    source={require("../../../assets/icons/qr-codeWhite.png")}
+                    style={styles.qrIcon}
+                    resizeMode="contain"
+                  />
                 )}
               </View>
             )}

@@ -160,6 +160,12 @@ export const styles = StyleSheet.create({
   },
 
   chevron: {
+    width: 11,
+    height: 11,
+    borderTopWidth: 2.5,
+    borderRightWidth: 2.5,
+    borderColor: "#111111",
+    transform: [{ rotate: "45deg" }],
     marginLeft: 5,
     marginRight: 6,
   },

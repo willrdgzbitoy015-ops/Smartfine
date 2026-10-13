@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     Platform,
     ScrollView,
     Text,
@@ -17,7 +18,6 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { FadeIn, PopIn, TabIndicator } from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
@@ -40,22 +40,22 @@ type QRExportRef = {
   toDataURL: (callback: (value: string) => void) => void;
 };
 
-const navigation: { label: string; icon: IconName }[] = [
+const navigation = [
   {
     label: "Home",
-    icon: "dashboard",
+    icon: require("../../../assets/icons/dashboard.png"),
   },
   {
     label: "Fines",
-    icon: "fines",
+    icon: require("../../../assets/icons/fines.png"),
   },
   {
     label: "My QR",
-    icon: "qr",
+    icon: require("../../../assets/icons/qr-codeWhite.png"),
   },
   {
     label: "Profile",
-    icon: "profile",
+    icon: require("../../../assets/icons/user.png"),
   },
 ];
 
@@ -356,7 +356,11 @@ export default function StudentQRScreen() {
             accessibilityRole="button"
             accessibilityLabel="Return to Home"
           >
-            <AppIcon name="back" size={23} color="#123266" />
+            <Image
+              source={require("../../../assets/icons/back_icon.png")}
+              style={[styles.backIcon, { transform: [{ rotate: "180deg" }] }]}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
 
           <Text style={styles.title}>My QR Code</Text>
@@ -523,11 +527,10 @@ export default function StudentQRScreen() {
                     }
                   }}
                 >
-                  <AppIcon
-                    name={item.icon}
-                    focused={active}
-                    size={28}
-                    color="#FFFFFF"
+                  <Image
+                    source={item.icon}
+                    style={styles.navIcon}
+                    resizeMode="contain"
                   />
                   <Text style={styles.navLabel}>{item.label}</Text>
                   <HomeTabBadge label={item.label} />

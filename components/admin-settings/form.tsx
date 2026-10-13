@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ReactNode, RefObject, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,7 +17,6 @@ import {
 } from "react-native";
 
 import { API_BASE } from "@/constants/api";
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { PopIn } from "@/components/motion";
 
 import { COLORS, styles } from "./admin-settings.styles";
@@ -114,7 +114,7 @@ export function PasswordChecklist({
       {items.map((item) => (
         <View key={item.label} style={styles.checkItem}>
           <View style={[styles.checkDot, item.met && styles.checkDotMet]}>
-            {item.met && <AppIcon name="check" size={11} color={COLORS.white} />}
+            {item.met && <Text style={styles.checkMark}>✓</Text>}
           </View>
 
           <Text style={[styles.checkText, item.met && styles.checkTextMet]}>
@@ -213,7 +213,15 @@ export function PasswordInput({
         accessibilityRole="button"
         accessibilityLabel={visible ? `Hide ${label}` : `Show ${label}`}
       >
-        <AppIcon name={visible ? "eyeOff" : "eye"} size={20} color="#56657A" />
+        <Image
+          source={
+            visible
+              ? require("../../assets/icons/hide.png")
+              : require("../../assets/icons/view.png")
+          }
+          style={styles.passwordToggleIcon}
+          resizeMode="contain"
+        />
       </TouchableOpacity>
     </View>
   );
@@ -244,7 +252,7 @@ export function FormPopup({
   busy: boolean;
   title: string;
   subtitle: string;
-  icon: IconName;
+  icon: any;
   wide?: boolean;
   // md 560 px, lg 680 px (same as wide), xl 1000 px for two-column forms.
   size?: "md" | "lg" | "xl";
@@ -286,7 +294,11 @@ export function FormPopup({
         >
           <View style={styles.header}>
             <View style={styles.headerIcon}>
-              <AppIcon name={icon} size={20} color={COLORS.navy} />
+              <Image
+                source={icon}
+                style={styles.headerIconImage}
+                resizeMode="contain"
+              />
             </View>
 
             <View style={styles.headerText}>
@@ -302,7 +314,7 @@ export function FormPopup({
               accessibilityLabel={`Close ${title}`}
               activeOpacity={0.8}
             >
-              <AppIcon name="close" size={20} color={COLORS.navy} />
+              <Text style={styles.closeText}>×</Text>
             </TouchableOpacity>
           </View>
 
@@ -331,7 +343,6 @@ export function PopupButton({
   busy = false,
   disabled = false,
   variant = "primary",
-  icon,
   onPress,
 }: {
   label: string;
@@ -339,8 +350,6 @@ export function PopupButton({
   busy?: boolean;
   disabled?: boolean;
   variant?: "primary" | "green" | "outline" | "danger";
-  // Shown before the label; replaced by the spinner while busy.
-  icon?: IconName;
   onPress: () => void;
 }) {
   const outline = variant === "outline";
@@ -366,14 +375,6 @@ export function PopupButton({
           color={outline ? COLORS.navy : COLORS.white}
         />
       )}
-
-      {icon && !busy ? (
-        <AppIcon
-          name={icon}
-          size={16}
-          color={outline ? "#4D5560" : COLORS.white}
-        />
-      ) : null}
 
       <Text style={outline ? styles.buttonOutlineText : styles.buttonText}>
         {busy && busyLabel ? busyLabel : label}

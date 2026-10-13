@@ -1,7 +1,6 @@
 import { Children, createContext, ReactNode, useContext, useState } from "react";
 import { Animated, StyleProp, Text, View, ViewStyle } from "react-native";
 
-import AppIcon from "@/components/AppIcon";
 import { FadeIn, PressableScale } from "@/components/motion";
 import { Skeleton } from "@/components/skeleton";
 
@@ -104,9 +103,7 @@ export function SummaryCard({
             {hint}
           </Text>
         )}
-        {onPress && (
-          <AppIcon name="chevronForward" size={18} color="#A0AAB8" />
-        )}
+        {onPress && <Text style={styles.chevron}>›</Text>}
       </View>
     </View>
   );

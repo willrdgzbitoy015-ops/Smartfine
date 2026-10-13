@@ -202,12 +202,19 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  // Same back arrow image as the Student Profile screen.
   headerBackIcon: {
     width: 22,
 
     height: 22,
 
     marginRight: 8,
+
+    transform: [
+      {
+        rotate: "180deg",
+      },
+    ],
   },
 
   headerBackText: {
@@ -623,10 +630,6 @@ export const styles = StyleSheet.create({
     fontSize: 12,
 
     marginTop: 14,
-  },
-
-  errorMark: {
-    marginBottom: 15,
   },
 
   errorIcon: {

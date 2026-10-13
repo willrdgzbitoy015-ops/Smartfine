@@ -15,7 +15,6 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { FadeIn, useRetainedValue } from "@/components/motion";
 import { SkeletonTable } from "@/components/skeleton";
@@ -63,7 +62,7 @@ type ViolationType = {
 type NavItem = {
   label: string;
   route: string;
-  icon: IconName;
+  icon?: any;
 };
 type AdminNotice = {
   id: number;
@@ -219,37 +218,37 @@ export default function FinesDirectory() {
     {
       label: "Dashboard",
       route: "/admin/dashboard",
-      icon: "dashboard",
+      icon: require("../../../assets/icons/dashboard.png"),
     },
     {
       label: "Students",
       route: "/admin/students",
-      icon: "students",
+      icon: require("../../../assets/icons/students.png"),
     },
     {
       label: "Fines",
       route: "/admin/fines",
-      icon: "fines",
+      icon: require("../../../assets/icons/fines.png"),
     },
     {
       label: "QR Scanner",
       route: "/admin/qr-scanner",
-      icon: "qr",
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
     {
       label: "Reports",
       route: "/admin/reports",
-      icon: "reports",
+      icon: require("../../../assets/icons/reports.png"),
     },
     {
       label: "Settings",
       route: "/admin/settings",
-      icon: "settings",
+      icon: require("../../../assets/icons/settings.png"),
     },
     {
       label: "Officers",
       route: "/admin/officers",
-      icon: "officers",
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
   // ==========================================
@@ -629,11 +628,10 @@ export default function FinesDirectory() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <AppIcon
-                      name={item.icon}
-                      focused={active}
-                      size={20}
-                      color="#FFFFFF"
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
                     />
                   </View>
                   <Text style={styles.navText}>{item.label}</Text>
@@ -750,9 +748,7 @@ export default function FinesDirectory() {
           <View style={styles.toolbar}>
             {/* SEARCH */}
             <View style={styles.searchBox}>
-              <View style={styles.searchIcon}>
-                <AppIcon name="search" size={22} color="#222222" />
-              </View>
+              <Text style={styles.searchIcon}>⌕</Text>
               <TextInput
                 style={styles.searchInput}
                 value={searchText}
@@ -784,7 +780,7 @@ export default function FinesDirectory() {
                 <Text style={styles.filterButtonText}>
                   {selectedStatus === "ALL" ? "All Status" : selectedStatus === "PENDING_CASH" ? "Pending Cash" : formatStatus(selectedStatus)}
                 </Text>
-                <AppIcon name="chevronDown" size={14} color="#111111" />
+                <Text style={styles.filterArrow}>▼</Text>
               </TouchableOpacity>
               {statusMenuOpen && (
                 <View style={styles.dropdownMenu}>
@@ -828,7 +824,7 @@ export default function FinesDirectory() {
                 <Text style={styles.filterButtonText} numberOfLines={1}>
                   {selectedViolationName}
                 </Text>
-                <AppIcon name="chevronDown" size={14} color="#111111" />
+                <Text style={styles.filterArrow}>▼</Text>
               </TouchableOpacity>
               {violationMenuOpen && (
                 <View style={[styles.dropdownMenu, styles.violationDropdown]}>
@@ -889,7 +885,15 @@ export default function FinesDirectory() {
               ) : (
                 <>
                   <Text style={styles.filterButtonText}>Refresh</Text>
-                  <AppIcon name="refresh" size={18} color="#173A73" />
+                  <Text
+                    style={{
+                      color: "#173A73",
+                      fontSize: 16,
+                      fontWeight: "700",
+                    }}
+                  >
+                    ↻
+                  </Text>
                 </>
               )}
             </TouchableOpacity>

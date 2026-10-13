@@ -21,7 +21,6 @@ import QRCode from "react-native-qrcode-svg";
 
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn, PopIn } from "@/components/motion";
@@ -135,47 +134,47 @@ export default function StudentProfile() {
   // NAVIGATION
   // ==========================================
 
-  const navItems: { label: string; route: string; icon: IconName }[] = [
+  const navItems = [
     {
       label: "Dashboard",
       route: "/admin/dashboard",
-      icon: "dashboard",
+      icon: require("../../../../assets/icons/dashboard.png"),
     },
 
     {
       label: "Students",
       route: "/admin/students",
-      icon: "students",
+      icon: require("../../../../assets/icons/students.png"),
     },
 
     {
       label: "Fines",
       route: "/admin/fines",
-      icon: "fines",
+      icon: require("../../../../assets/icons/fines.png"),
     },
 
     {
       label: "QR Scanner",
       route: "/admin/qr-scanner",
-      icon: "qr",
+      icon: require("../../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
       label: "Reports",
       route: "/admin/reports",
-      icon: "reports",
+      icon: require("../../../../assets/icons/reports.png"),
     },
 
     {
       label: "Settings",
       route: "/admin/settings",
-      icon: "settings",
+      icon: require("../../../../assets/icons/settings.png"),
     },
 
     {
       label: "Officers",
       route: "/admin/officers",
-      icon: "officers",
+      icon: require("../../../../assets/icons/officers.png"),
     },
   ];
 
@@ -516,9 +515,11 @@ export default function StudentProfile() {
               onPress={handleQRCode}
               activeOpacity={0.75}
             >
-              <View style={styles.actionButtonIcon}>
-                <AppIcon name="qr" size={20} color="#173A73" />
-              </View>
+              <Image
+                source={require("../../../../assets/icons/qr-code.png")}
+                style={styles.actionButtonIcon}
+                resizeMode="contain"
+              />
 
               <Text style={styles.outlineButtonText}>View QR Code</Text>
             </TouchableOpacity>
@@ -534,9 +535,11 @@ export default function StudentProfile() {
               onPress={handleEdit}
               activeOpacity={0.75}
             >
-              <View style={styles.actionButtonIcon}>
-                <AppIcon name="edit" size={20} color="#173A73" />
-              </View>
+              <Image
+                source={require("../../../../assets/icons/edit-image.png")}
+                style={styles.actionButtonIcon}
+                resizeMode="contain"
+              />
 
               <Text style={styles.outlineButtonText}>Edit Information</Text>
             </TouchableOpacity>
@@ -890,7 +893,7 @@ export default function StudentProfile() {
                   style={styles.closeIconButton}
                   onPress={handleCloseQRCode}
                 >
-                  <AppIcon name="close" size={22} color="#444444" />
+                  <Text style={styles.closeIconText}>×</Text>
                 </TouchableOpacity>
               </View>
 
@@ -974,11 +977,10 @@ export default function StudentProfile() {
                   onPress={() => router.push(item.route as any)}
                 >
                   <View style={styles.navIconContainer}>
-                    <AppIcon
-                      name={item.icon}
-                      focused={active}
-                      size={20}
-                      color="#FFFFFF"
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
                     />
                   </View>
 
@@ -1019,9 +1021,11 @@ export default function StudentProfile() {
             accessibilityRole="button"
             accessibilityLabel="Back to Students Directory"
           >
-            <View style={styles.backIconImage}>
-              <AppIcon name="back" size={22} color="#111111" />
-            </View>
+            <Image
+              source={require("../../../../assets/icons/back_icon.png")}
+              style={styles.backIconImage}
+              resizeMode="contain"
+            />
 
             <Text
               style={[styles.backText, isCompact && styles.backTextCompact]}

@@ -179,7 +179,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   searchIcon: {
+    color: "#222222",
+    fontSize: 27,
     marginRight: 10,
+    marginTop: -4,
   },
   searchInput: {
     flex: 1,

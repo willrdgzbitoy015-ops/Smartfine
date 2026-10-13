@@ -116,7 +116,14 @@ export const styles = StyleSheet.create({
     textAlign: "center",
   },
   chevron: {
+    width: 11,
+    height: 11,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: "#111111",
+    transform: [{ rotate: "45deg" }],
     marginLeft: 10,
+    marginTop: -5,
   },
   amount: {
     color: "#7A89A8",

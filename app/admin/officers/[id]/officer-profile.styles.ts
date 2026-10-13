@@ -231,6 +231,12 @@ export const styles = StyleSheet.create({
     marginRight: 10,
 
     flexShrink: 0,
+
+    transform: [
+      {
+        rotate: "180deg",
+      },
+    ],
   },
 
   backText: {

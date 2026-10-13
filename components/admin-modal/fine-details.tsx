@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 
-import AppIcon from "@/components/AppIcon";
 import { FadeIn } from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
@@ -815,7 +814,7 @@ export default function AdminFineDetails({
               accessibilityState={{ checked: cashReturned }}
             >
               <View style={[styles.checkBox, cashReturned && styles.checkBoxOn]}>
-                {cashReturned && <AppIcon name="check" size={15} color="#FFFFFF" />}
+                {cashReturned && <Text style={styles.checkMark}>✓</Text>}
               </View>
               <Text style={styles.checkLabel}>
                 I returned {pesos(amount)} in cash to the student.
@@ -878,7 +877,7 @@ export default function AdminFineDetails({
       <FadeIn key="pay" style={styles.viewContent} distance={8} duration={220}>
         <ScrollView style={styles.body} contentContainerStyle={styles.content}>
           <View style={styles.payIcon}>
-            <AppIcon name="cash" size={28} color="#45B94F" />
+            <Text style={styles.payIconText}>₱</Text>
           </View>
           <Text style={[styles.stepTitle, { textAlign: "center" }]}>
             Confirm Cash Received?

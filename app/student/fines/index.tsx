@@ -8,6 +8,7 @@ import * as WebBrowser from "expo-web-browser";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   RefreshControl,
@@ -24,7 +25,6 @@ import {
   TabIndicator,
   useRetainedValue,
 } from "@/components/motion";
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { FailedMark } from "@/components/result-mark";
 import { SuccessCheck } from "@/components/success-check";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
@@ -145,22 +145,22 @@ const filters: { label: string; value: FineFilter }[] = [
   { label: "Cancelled", value: "CANCELLED" },
 ];
 
-const navigation: { label: string; icon: IconName }[] = [
+const navigation = [
   {
     label: "Home",
-    icon: "dashboard",
+    icon: require("../../../assets/icons/dashboard.png"),
   },
   {
     label: "Fines",
-    icon: "fines",
+    icon: require("../../../assets/icons/fines.png"),
   },
   {
     label: "My QR",
-    icon: "qr",
+    icon: require("../../../assets/icons/qr-codeWhite.png"),
   },
   {
     label: "Profile",
-    icon: "profile",
+    icon: require("../../../assets/icons/user.png"),
   },
 ];
 
@@ -897,7 +897,11 @@ export default function StudentFinesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Back to dashboard"
           >
-            <AppIcon name="back" size={23} color="#111111" />
+            <Image
+              source={require("../../../assets/icons/back_icon.png")}
+              style={styles.backIcon}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
 
           <Text style={styles.title}>My Fines</Text>
@@ -1299,11 +1303,10 @@ export default function StudentFinesScreen() {
                     }
                   }}
                 >
-                  <AppIcon
-                    name={item.icon}
-                    focused={active}
-                    size={28}
-                    color="#FFFFFF"
+                  <Image
+                    source={item.icon}
+                    style={styles.navIcon}
+                    resizeMode="contain"
                   />
 
                   <Text style={styles.navLabel}>{item.label}</Text>

@@ -23,7 +23,6 @@ import * as ImagePicker from "expo-image-picker";
 
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { useFieldFocus } from "@/hooks/use-field-focus";
@@ -57,7 +56,7 @@ import { styles } from "./settings.styles";
 type NavItem = {
   label: string;
   route: string;
-  icon: IconName;
+  icon?: any;
 };
 
 type SystemSettings = {
@@ -132,31 +131,31 @@ const FINE_TABLE_MIN_WIDTH = 570;
 
 type SettingsTab = "account" | "security" | "admins" | "fineTypes" | "system";
 
-const TABS: { key: SettingsTab; label: string; icon: IconName }[] = [
+const TABS: { key: SettingsTab; label: string; icon: any }[] = [
   {
     key: "account",
     label: "Account",
-    icon: "profile",
+    icon: require("../../../assets/icons/user.png"),
   },
   {
     key: "security",
     label: "Security",
-    icon: "lock",
+    icon: require("../../../assets/icons/padlock.png"),
   },
   {
     key: "admins",
     label: "Administrators",
-    icon: "officers",
+    icon: require("../../../assets/icons/officers.png"),
   },
   {
     key: "fineTypes",
     label: "Fine Types",
-    icon: "fines",
+    icon: require("../../../assets/icons/fines.png"),
   },
   {
     key: "system",
     label: "System",
-    icon: "settings",
+    icon: require("../../../assets/icons/settings.png"),
   },
 ];
 
@@ -383,7 +382,7 @@ export default function AdminSettings() {
 
       route: "/admin/dashboard",
 
-      icon: "dashboard",
+      icon: require("../../../assets/icons/dashboard.png"),
     },
 
     {
@@ -391,7 +390,7 @@ export default function AdminSettings() {
 
       route: "/admin/students",
 
-      icon: "students",
+      icon: require("../../../assets/icons/students.png"),
     },
 
     {
@@ -399,7 +398,7 @@ export default function AdminSettings() {
 
       route: "/admin/fines",
 
-      icon: "fines",
+      icon: require("../../../assets/icons/fines.png"),
     },
 
     {
@@ -407,7 +406,7 @@ export default function AdminSettings() {
 
       route: "/admin/qr-scanner",
 
-      icon: "qr",
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
@@ -415,7 +414,7 @@ export default function AdminSettings() {
 
       route: "/admin/reports",
 
-      icon: "reports",
+      icon: require("../../../assets/icons/reports.png"),
     },
 
     {
@@ -423,7 +422,7 @@ export default function AdminSettings() {
 
       route: "/admin/settings",
 
-      icon: "settings",
+      icon: require("../../../assets/icons/settings.png"),
     },
 
     {
@@ -431,7 +430,7 @@ export default function AdminSettings() {
 
       route: "/admin/officers",
 
-      icon: "officers",
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
 
@@ -1470,7 +1469,15 @@ export default function AdminSettings() {
           {uploadingPhoto ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <AppIcon name="edit" size={18} color="#173A73" />
+            <Image
+              source={require("../../../assets/icons/edit-image.png")}
+              style={{
+                width: 18,
+
+                height: 18,
+              }}
+              resizeMode="contain"
+            />
           )}
         </TouchableOpacity>
       </View>
@@ -1492,11 +1499,7 @@ export default function AdminSettings() {
         <View style={[styles.profileChips, profileInRow && styles.rowStart]}>
           <Text style={styles.roleChip}>Administrator</Text>
 
-          <View style={[styles.activeChip, styles.chipRow]}>
-            <AppIcon name="paid" size={12} color="#2E9D43" />
-
-            <Text style={styles.activeChipText}>Active</Text>
-          </View>
+          <Text style={styles.activeChip}>● Active</Text>
         </View>
 
         <Text style={[styles.profileUsername, profileInRow && styles.textStart]}>
@@ -1618,11 +1621,10 @@ export default function AdminSettings() {
             activeOpacity={0.8}
           >
             {showTabIcons && (
-              <AppIcon
-                name={tab.icon}
-                focused={active}
-                size={15}
-                color={active ? "#FFFFFF" : "#6C7A90"}
+              <Image
+                source={tab.icon}
+                style={[styles.tabIcon, active && styles.tabIconActive]}
+                resizeMode="contain"
               />
             )}
 
@@ -1645,15 +1647,11 @@ export default function AdminSettings() {
     <SectionCard
       title="Profile Details"
       description="Your name, sign-in username and contact details. Your name appears on your profile and in the administrators list."
-      icon="profile"
+      icon={require("../../../assets/icons/user.png")}
       footer={
         <>
           {accountDirty && (
-            <View style={styles.unsavedRow}>
-              <AppIcon name="warning" size={13} color="#B26B00" />
-
-              <Text style={styles.unsavedText}>Unsaved changes</Text>
-            </View>
+            <Text style={styles.unsavedText}>● Unsaved changes</Text>
           )}
 
           <PopupButton
@@ -1827,7 +1825,7 @@ export default function AdminSettings() {
       <SectionCard
         title="Password"
         description="Change the password you use to sign in to SmartFine."
-        icon="lock"
+        icon={require("../../../assets/icons/padlock.png")}
       >
         <View style={styles.securityRow}>
           <View style={styles.securityText}>
@@ -1850,7 +1848,7 @@ export default function AdminSettings() {
       <SectionCard
         title="Sign-in Protection"
         description="How SmartFine protects administrator accounts."
-        icon="policy"
+        icon={require("../../../assets/icons/policy-icon.png")}
       >
         <ProtectionItem
           title="Lockout after wrong passwords"
@@ -1879,12 +1877,11 @@ export default function AdminSettings() {
     <SectionCard
       title="Fine Types"
       description="Violation types and the official fine amounts used when recording new fines."
-      icon="fines"
+      icon={require("../../../assets/icons/fines.png")}
       actions={
         <>
           <PopupButton
-            label="Refresh"
-            icon="refresh"
+            label="↻ Refresh"
             busyLabel="Refreshing..."
             variant="outline"
             busy={fineTypesRefreshing}
@@ -1902,7 +1899,7 @@ export default function AdminSettings() {
       }
     >
       <View style={styles.infoNotice}>
-        <AppIcon name="info" size={20} color="#173A73" />
+        <Text style={styles.infoNoticeIcon}>i</Text>
 
         <Text style={styles.infoNoticeText}>
           Only Active fine types are available when recording new fines.
@@ -2162,15 +2159,11 @@ export default function AdminSettings() {
       <SectionCard
         title="School & System"
         description="SmartFine's system-wide school information."
-        icon="settings"
+        icon={require("../../../assets/icons/settings.png")}
         footer={
           <>
             {systemDirty && (
-              <View style={styles.unsavedRow}>
-                <AppIcon name="warning" size={13} color="#B26B00" />
-
-                <Text style={styles.unsavedText}>Unsaved changes</Text>
-              </View>
+              <Text style={styles.unsavedText}>● Unsaved changes</Text>
             )}
 
             <PopupButton
@@ -2266,7 +2259,7 @@ export default function AdminSettings() {
         </View>
 
         <View style={styles.infoNotice}>
-          <AppIcon name="info" size={20} color="#173A73" />
+          <Text style={styles.infoNoticeIcon}>i</Text>
 
           <Text style={styles.infoNoticeText}>
             These values are used as SmartFine&apos;s system-wide school
@@ -2278,7 +2271,7 @@ export default function AdminSettings() {
       <SectionCard
         title="Reset System"
         description="Start fresh for another school or a new school year."
-        icon="settings"
+        icon={require("../../../assets/icons/settings.png")}
         footer={
           <PopupButton
             label="Reset System..."
@@ -2328,11 +2321,10 @@ export default function AdminSettings() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <AppIcon
-                      name={item.icon}
-                      focused={active}
-                      size={20}
-                      color="#FFFFFF"
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
                     />
                   </View>
 
@@ -2504,7 +2496,7 @@ export default function AdminSettings() {
         wide
         title={editingFineTypeId ? "Edit Fine Type" : "Add Fine Type"}
         subtitle="The amount configured here will be used automatically for future fines."
-        icon="fines"
+        icon={require("../../../assets/icons/fines.png")}
         onClose={resetFineTypeForm}
         footer={
           <>
@@ -2790,7 +2782,7 @@ function ProtectionItem({
   return (
     <View style={[styles.protectionItem, last && styles.protectionItemLast]}>
       <View style={styles.protectionCheck}>
-        <AppIcon name="check" size={13} color="#2E9D43" />
+        <Text style={styles.protectionCheckText}>✓</Text>
       </View>
 
       <View style={styles.protectionText}>

@@ -18,7 +18,6 @@ import { OfficerFormModal } from "@/components/admin-forms/officer-form-modal";
 
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { FadeIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -70,7 +69,7 @@ type NavItem = {
 
   route: string;
 
-  icon: IconName;
+  icon?: any;
 };
 
 // ==========================================
@@ -156,7 +155,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/dashboard",
 
-      icon: "dashboard",
+      icon: require("../../../assets/icons/dashboard.png"),
     },
 
     {
@@ -164,7 +163,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/students",
 
-      icon: "students",
+      icon: require("../../../assets/icons/students.png"),
     },
 
     {
@@ -172,7 +171,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/fines",
 
-      icon: "fines",
+      icon: require("../../../assets/icons/fines.png"),
     },
 
     {
@@ -180,7 +179,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/qr-scanner",
 
-      icon: "qr",
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
@@ -188,7 +187,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/reports",
 
-      icon: "reports",
+      icon: require("../../../assets/icons/reports.png"),
     },
 
     {
@@ -196,7 +195,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/settings",
 
-      icon: "settings",
+      icon: require("../../../assets/icons/settings.png"),
     },
 
     {
@@ -204,7 +203,7 @@ export default function OfficersDirectory() {
 
       route: "/admin/officers",
 
-      icon: "officers",
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
 
@@ -468,11 +467,10 @@ export default function OfficersDirectory() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <AppIcon
-                      name={item.icon}
-                      focused={isActive}
-                      size={20}
-                      color="#FFFFFF"
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
                     />
                   </View>
 
@@ -574,9 +572,7 @@ export default function OfficersDirectory() {
             {/* SEARCH */}
 
             <View style={styles.searchContainer}>
-              <View style={styles.searchIcon}>
-                <AppIcon name="search" size={20} color="#8C939F" />
-              </View>
+              <Text style={styles.searchIcon}>⌕</Text>
 
               <TextInput
                 style={styles.searchInput}
@@ -619,7 +615,7 @@ export default function OfficersDirectory() {
                     : getStatusLabel(selectedStatus)}
                 </Text>
 
-                <AppIcon name="chevronDown" size={14} color="#111111" />
+                <Text style={styles.filterArrow}>▼</Text>
               </TouchableOpacity>
 
               {showStatusMenu && (
@@ -692,7 +688,7 @@ export default function OfficersDirectory() {
                   {selectedArea === "ALL" ? "Assigned Area" : selectedArea}
                 </Text>
 
-                <AppIcon name="chevronDown" size={14} color="#111111" />
+                <Text style={styles.filterArrow}>▼</Text>
               </TouchableOpacity>
 
               {showAreaMenu && (
@@ -767,7 +763,17 @@ export default function OfficersDirectory() {
                 <>
                   <Text style={styles.filterText}>Refresh</Text>
 
-                  <AppIcon name="refresh" size={18} color="#173A73" />
+                  <Text
+                    style={{
+                      color: "#173A73",
+
+                      fontSize: 16,
+
+                      fontWeight: "800",
+                    }}
+                  >
+                    ↻
+                  </Text>
                 </>
               )}
             </TouchableOpacity>

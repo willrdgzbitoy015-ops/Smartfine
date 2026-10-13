@@ -30,7 +30,6 @@ import {
   SkeletonGroup,
   SkeletonList,
 } from "@/components/skeleton";
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { styles } from "../styles/student-dashboard.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
@@ -116,11 +115,20 @@ type ModalMode = "notifications" | "notice" | "activities" | "details" | null;
 
 type NotificationFilter = "ALL" | "UNREAD" | "READ";
 
-const navigation: { label: string; icon: IconName }[] = [
-  { label: "Home", icon: "dashboard" },
-  { label: "Fines", icon: "fines" },
-  { label: "My QR", icon: "qr" },
-  { label: "Profile", icon: "profile" },
+const icons = {
+  home: require("../../../assets/icons/dashboard.png"),
+  fines: require("../../../assets/icons/fines.png"),
+  qr: require("../../../assets/icons/qr-codeWhite.png"),
+  profile: require("../../../assets/icons/user.png"),
+  notification: require("../../../assets/icons/notification.png"),
+  wallet: require("../../../assets/icons/wallet.png"),
+};
+
+const navigation = [
+  { label: "Home", icon: icons.home },
+  { label: "Fines", icon: icons.fines },
+  { label: "My QR", icon: icons.qr },
+  { label: "Profile", icon: icons.profile },
 ];
 
 function money(centavos: number) {
@@ -792,7 +800,11 @@ export default function StudentDashboard() {
               accessibilityRole="button"
               accessibilityLabel="View notifications"
             >
-              <AppIcon name="notifications" size={26} color="#123266" />
+              <Image
+                source={icons.notification}
+                style={styles.notificationIcon}
+                resizeMode="contain"
+              />
 
               <NotificationBadge count={counts.total} variant="bell" />
             </TouchableOpacity>
@@ -888,7 +900,11 @@ export default function StudentDashboard() {
               onPress={() => router.push("/student/fines")}
               accessibilityRole="button"
             >
-              <AppIcon name="fines" size={35} color="#123266" />
+              <Image
+                source={icons.fines}
+                style={styles.quickIcon}
+                resizeMode="contain"
+              />
               <Text style={styles.quickLabel}>My Fines</Text>
             </PressableScale>
 
@@ -897,7 +913,11 @@ export default function StudentDashboard() {
               onPress={() => router.push("/student/fines")}
               accessibilityRole="button"
             >
-              <AppIcon name="wallet" size={35} color="#123266" />
+              <Image
+                source={icons.wallet}
+                style={styles.quickIcon}
+                resizeMode="contain"
+              />
               <Text style={styles.quickLabel}>Payment</Text>
             </PressableScale>
           </FadeIn>
@@ -972,11 +992,10 @@ export default function StudentDashboard() {
                     }
                   }}
                 >
-                  <AppIcon
-                    name={item.icon}
-                    focused={active}
-                    size={28}
-                    color="#FFFFFF"
+                  <Image
+                    source={item.icon}
+                    style={styles.navIcon}
+                    resizeMode="contain"
                   />
                   <Text style={styles.navLabel}>{item.label}</Text>
                   <HomeTabBadge label={item.label} />

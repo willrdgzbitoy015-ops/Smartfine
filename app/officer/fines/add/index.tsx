@@ -27,7 +27,6 @@ import {
   useRetainedValue,
   useSwitchFade,
 } from "@/components/motion";
-import AppIcon from "@/components/AppIcon";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
@@ -369,7 +368,11 @@ export default function OfficerAddFine() {
               disabled={saving}
               accessibilityLabel="Back to previous screen"
             >
-              <AppIcon name="back" size={23} color="#111111" />
+              <Image
+                source={require("../../../../assets/icons/back_icon.png")}
+                style={styles.backIcon}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
 
             <Text style={styles.title}>Add Fine</Text>
@@ -425,9 +428,7 @@ export default function OfficerAddFine() {
                     {selected?.violation_name || "Select violation"}
                   </Text>
 
-                  <View style={styles.chevron}>
-                    <AppIcon name="chevronDown" size={18} color="#111111" />
-                  </View>
+                  <View style={styles.chevron} />
                 </TouchableOpacity>
 
                 <Text style={styles.label}>Fine Amount</Text>

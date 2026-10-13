@@ -20,7 +20,6 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
-import AppIcon, { IconName } from "@/components/AppIcon";
 import { API_BASE } from "@/constants/api";
 import { PopIn, ScanLine } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -74,7 +73,7 @@ type NavItem = {
 
   route: string;
 
-  icon: IconName;
+  icon?: any;
 };
 
 // ==========================================
@@ -195,7 +194,7 @@ export default function QRScanner() {
 
       route: "/admin/dashboard",
 
-      icon: "dashboard",
+      icon: require("../../../assets/icons/dashboard.png"),
     },
 
     {
@@ -203,7 +202,7 @@ export default function QRScanner() {
 
       route: "/admin/students",
 
-      icon: "students",
+      icon: require("../../../assets/icons/students.png"),
     },
 
     {
@@ -211,7 +210,7 @@ export default function QRScanner() {
 
       route: "/admin/fines",
 
-      icon: "fines",
+      icon: require("../../../assets/icons/fines.png"),
     },
 
     {
@@ -219,7 +218,7 @@ export default function QRScanner() {
 
       route: "/admin/qr-scanner",
 
-      icon: "qr",
+      icon: require("../../../assets/icons/qr-codeWhite.png"),
     },
 
     {
@@ -227,7 +226,7 @@ export default function QRScanner() {
 
       route: "/admin/reports",
 
-      icon: "reports",
+      icon: require("../../../assets/icons/reports.png"),
     },
 
     {
@@ -235,7 +234,7 @@ export default function QRScanner() {
 
       route: "/admin/settings",
 
-      icon: "settings",
+      icon: require("../../../assets/icons/settings.png"),
     },
 
     {
@@ -243,7 +242,7 @@ export default function QRScanner() {
 
       route: "/admin/officers",
 
-      icon: "officers",
+      icon: require("../../../assets/icons/officers.png"),
     },
   ];
 
@@ -765,9 +764,11 @@ export default function QRScanner() {
     if (Platform.OS === "web") {
       return (
         <View style={styles.webCameraPlaceholder}>
-          <View style={styles.cameraPlaceholderImage}>
-            <AppIcon name="qr" size={72} color="#173A73" />
-          </View>
+          <Image
+            source={require("../../../assets/icons/qr-code.png")}
+            style={styles.cameraPlaceholderImage}
+            resizeMode="contain"
+          />
 
           <Text style={styles.cameraPlaceholderTitle}>Camera Scanner</Text>
 
@@ -801,9 +802,11 @@ export default function QRScanner() {
     if (!permission.granted) {
       return (
         <View style={styles.cameraState}>
-          <View style={styles.cameraPlaceholderImage}>
-            <AppIcon name="qr" size={72} color="#173A73" />
-          </View>
+          <Image
+            source={require("../../../assets/icons/qr-code.png")}
+            style={styles.cameraPlaceholderImage}
+            resizeMode="contain"
+          />
 
           <Text style={styles.cameraPlaceholderTitle}>
             Camera Permission Required
@@ -842,9 +845,11 @@ export default function QRScanner() {
     if (!screenFocused || !appActive) {
       return (
         <View style={styles.cameraState}>
-          <View style={styles.cameraPlaceholderImage}>
-            <AppIcon name="qr" size={72} color="#173A73" />
-          </View>
+          <Image
+            source={require("../../../assets/icons/qr-code.png")}
+            style={styles.cameraPlaceholderImage}
+            resizeMode="contain"
+          />
 
           <Text style={styles.cameraPlaceholderText}>Camera paused</Text>
         </View>
@@ -939,11 +944,10 @@ export default function QRScanner() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.navIconContainer}>
-                    <AppIcon
-                      name={item.icon}
-                      focused={active}
-                      size={20}
-                      color="#FFFFFF"
+                    <Image
+                      source={item.icon}
+                      style={styles.navImageIcon}
+                      resizeMode="contain"
                     />
                   </View>
 

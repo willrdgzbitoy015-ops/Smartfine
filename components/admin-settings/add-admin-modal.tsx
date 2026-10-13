@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Animated, Text, View } from "react-native";
 
-import AppIcon from "@/components/AppIcon";
 import { useShake } from "@/components/motion";
 import { haptics } from "@/utils/haptics";
 import { useActionLock } from "@/hooks/use-action-lock";
@@ -172,7 +171,7 @@ export function AddAdminModal({
       wide
       title="Add Administrator"
       subtitle="The new administrator gets full access to SmartFine's admin tools."
-      icon="user"
+      icon={require("../../assets/icons/user.png")}
       onClose={onClose}
       footer={
         <>
@@ -313,7 +312,7 @@ export function AddAdminModal({
       <PasswordChecklist password={password} confirmation={confirmPassword} />
 
       <View style={styles.note}>
-        <AppIcon name="info" size={18} color="#173A73" />
+        <Text style={styles.noteIcon}>i</Text>
 
         <Text style={styles.noteText}>
           Share the username and password with the new administrator privately.
