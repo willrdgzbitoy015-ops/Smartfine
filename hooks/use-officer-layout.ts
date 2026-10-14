@@ -6,6 +6,8 @@ import {
   ViewStyle,
 } from "react-native";
 
+import { OFFICER_COLUMN } from "@/constants/officer-theme";
+
 type Style = ViewStyle | TextStyle | ImageStyle;
 
 // Scale layout values within a bounded phone column, never physical pixels.
@@ -29,7 +31,10 @@ export function buildOfficerStyles<T extends Record<string, Style>>(
         style[key] = Math.round(Math.max(12, value) * Math.max(1, scale));
       else if (key === "lineHeight")
         style[key] = Math.round(value * Math.max(1, scale));
-      else if (dimensions.test(key) && !(key === "maxWidth" && value === 480)) {
+      else if (
+        dimensions.test(key) &&
+        !(key === "maxWidth" && (value === 480 || value === OFFICER_COLUMN))
+      ) {
         const verticalGap = /^(padding|margin)(Top|Bottom|Vertical)$/.test(key);
         style[key] = Math.round(
           value * (verticalGap && short ? Math.min(scale, 0.85) : scale),

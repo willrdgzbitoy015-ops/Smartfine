@@ -22,6 +22,7 @@ import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
 import { PopIn, ScanLine } from "@/components/motion";
+import { ScanFrame } from "@/components/scan-frame";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SkeletonList } from "@/components/skeleton";
 import { haptics } from "@/utils/haptics";
@@ -877,9 +878,9 @@ export default function QRScanner() {
           ================================== */}
 
         <View pointerEvents="none" style={styles.cameraOverlay}>
-          <View style={styles.scanFrame}>
+          <ScanFrame style={styles.scanFrame}>
             <ScanLine active={cameraReady && !scanLocked} />
-          </View>
+          </ScanFrame>
 
           <Text style={styles.scanInstruction}>
             Position the SmartFine Student QR Code inside the frame

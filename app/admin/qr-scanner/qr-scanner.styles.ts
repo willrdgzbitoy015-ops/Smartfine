@@ -370,18 +370,12 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  // Size only: the corner brackets and the dimmed surround come from
+  // the shared ScanFrame.
   scanFrame: {
     width: 260,
 
     height: 260,
-
-    borderWidth: 3,
-
-    borderColor: "#FFFFFF",
-
-    borderRadius: 18,
-
-    backgroundColor: "transparent",
   },
 
   scanInstruction: {

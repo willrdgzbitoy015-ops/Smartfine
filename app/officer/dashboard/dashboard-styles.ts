@@ -1,3 +1,9 @@
+import {
+  card,
+  navBar,
+  OFFICER,
+  OFFICER_COLUMN,
+} from "@/constants/officer-theme";
 import { useOfficerLayout } from "@/hooks/use-officer-layout";
 
 import { StyleSheet } from "react-native";
@@ -9,15 +15,15 @@ export const styles = StyleSheet.create({
 
   safeArea: {
     flex: 1,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: OFFICER.background,
   },
 
   phone: {
     flex: 1,
     width: "100%",
-    maxWidth: 480,
+    maxWidth: OFFICER_COLUMN,
     alignSelf: "center",
-    backgroundColor: "#E8E8E8",
+    backgroundColor: OFFICER.background,
   },
 
   scroll: {
@@ -25,8 +31,8 @@ export const styles = StyleSheet.create({
   },
 
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 34,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     paddingBottom: 28,
   },
 
@@ -38,7 +44,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    marginBottom: 30,
+    marginBottom: 22,
   },
 
   greeting: {
@@ -46,16 +52,16 @@ export const styles = StyleSheet.create({
   },
 
   hello: {
-    fontFamily: "Poppins_500Medium",
-    fontSize: 17,
-    color: "#161616",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    color: OFFICER.muted,
   },
 
   officerName: {
     fontFamily: "Poppins_700Bold",
     fontSize: 19,
-    lineHeight: 27,
-    color: "#161616",
+    lineHeight: 26,
+    color: OFFICER.navyDeep,
   },
 
   // ==========================================
@@ -63,13 +69,13 @@ export const styles = StyleSheet.create({
   // ==========================================
 
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#173A73",
+    backgroundColor: OFFICER.navy,
     flexShrink: 0,
   },
 
@@ -77,6 +83,8 @@ export const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
+    borderWidth: 2,
+    borderColor: OFFICER.surface,
   },
 
   avatarImage: {
@@ -99,31 +107,30 @@ export const styles = StyleSheet.create({
   // ==========================================
 
   totalCard: {
-    minHeight: 108,
-    padding: 15,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#173A73",
-    borderRadius: 9,
+    ...card,
+    minHeight: 104,
+    padding: 16,
+    borderTopWidth: 3,
+    borderTopColor: OFFICER.navy,
   },
 
   cardLabel: {
     fontFamily: "Poppins_500Medium",
     fontSize: 12,
-    color: "#123266",
+    color: OFFICER.muted,
   },
 
   totalValue: {
     fontFamily: "Poppins_700Bold",
-    fontSize: 34,
-    color: "#45B94F",
-    textAlign: "center",
-    marginTop: 7,
+    fontSize: 36,
+    color: OFFICER.green,
+    textAlign: "left",
+    marginTop: 6,
   },
 
   // Takes the total's place while the dashboard loads.
   valueSkeleton: {
-    alignSelf: "center",
+    alignSelf: "flex-start",
     marginTop: 12,
   },
 
@@ -133,45 +140,42 @@ export const styles = StyleSheet.create({
 
   summaryRow: {
     flexDirection: "row",
-    gap: 20,
-    marginTop: 24,
-    marginHorizontal: 12,
-    marginBottom: 23,
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 24,
   },
 
   smallCard: {
+    ...card,
     flex: 1,
-    minHeight: 94,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    alignItems: "center",
+    minHeight: 96,
+    padding: 14,
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#173A73",
-    borderRadius: 8,
+    borderTopWidth: 3,
+    borderTopColor: OFFICER.navy,
   },
 
   smallLabel: {
     fontFamily: "Poppins_500Medium",
-    fontSize: 11,
-    color: "#123266",
-    textAlign: "center",
+    fontSize: 12,
+    color: OFFICER.muted,
+    textAlign: "left",
   },
 
   countValue: {
     fontFamily: "Poppins_700Bold",
-    fontSize: 29,
-    color: "#45B94F",
-    textAlign: "center",
+    fontSize: 28,
+    color: OFFICER.green,
+    textAlign: "left",
   },
 
   moneyValue: {
     fontFamily: "Poppins_700Bold",
-    fontSize: 17,
-    color: "#D32F2F",
-    textAlign: "center",
-    marginVertical: 8,
+    fontSize: 22,
+    color: OFFICER.red,
+    textAlign: "left",
+    marginVertical: 4,
   },
 
   // ==========================================
@@ -180,21 +184,18 @@ export const styles = StyleSheet.create({
 
   sectionTitle: {
     fontFamily: "Poppins_600SemiBold",
-    fontSize: 17,
-    color: "#333333",
+    fontSize: 16,
+    color: OFFICER.text,
     marginBottom: 12,
   },
 
   activityCard: {
+    ...card,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 9,
-    padding: 12,
-    marginBottom: 14,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#777777",
-    borderRadius: 9,
+    gap: 12,
+    padding: 14,
+    marginBottom: 12,
   },
 
   activityInfo: {
@@ -203,29 +204,29 @@ export const styles = StyleSheet.create({
   },
 
   studentName: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 12,
-    color: "#123266",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 13,
+    color: OFFICER.navyDeep,
   },
 
   activityDescription: {
     fontFamily: "Poppins_400Regular",
-    fontSize: 10,
-    color: "#6B7280",
+    fontSize: 11,
+    color: OFFICER.muted,
     marginTop: 2,
   },
 
   violation: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 10,
-    color: "#123266",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    color: OFFICER.text,
     marginTop: 2,
   },
 
   timestamp: {
-    fontFamily: "Poppins_300Light",
-    fontSize: 10,
-    color: "#626975",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    color: OFFICER.faint,
     marginTop: 4,
   },
 
@@ -235,9 +236,9 @@ export const styles = StyleSheet.create({
   },
 
   activityAmount: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 12,
-    color: "#123266",
+    fontFamily: "Poppins_700Bold",
+    fontSize: 14,
+    color: OFFICER.navyDeep,
     textAlign: "right",
   },
 
@@ -246,23 +247,23 @@ export const styles = StyleSheet.create({
   // ==========================================
 
   viewAllButton: {
-    minHeight: 42,
+    minHeight: 46,
     alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 22,
-    marginTop: 2,
+    paddingHorizontal: 26,
+    marginTop: 4,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#173A73",
-    borderRadius: 7,
-    backgroundColor: "#FFFFFF",
+    borderColor: OFFICER.lineStrong,
+    borderRadius: 12,
+    backgroundColor: OFFICER.surface,
   },
 
   viewAllText: {
-    fontFamily: "Poppins_500Medium",
-    fontSize: 11,
-    color: "#173A73",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 12,
+    color: OFFICER.navy,
   },
 
   // ==========================================
@@ -270,12 +271,12 @@ export const styles = StyleSheet.create({
   // ==========================================
 
   bottomArea: {
-    backgroundColor: "#123266",
+    ...navBar,
   },
 
   bottomNavigation: {
     flexDirection: "row",
-    paddingTop: 9,
+    paddingTop: 10,
     paddingBottom: 5,
     paddingHorizontal: 7,
   },
@@ -319,7 +320,7 @@ export const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    backgroundColor: "rgba(11, 22, 44, 0.55)",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
@@ -330,8 +331,8 @@ export const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 440,
     maxHeight: "88%",
-    backgroundColor: "#E8E8E8",
-    borderRadius: 14,
+    backgroundColor: OFFICER.background,
+    borderRadius: 20,
     overflow: "hidden",
   },
 
@@ -341,9 +342,9 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 18,
     paddingVertical: 12,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: OFFICER.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#C9CDD3",
+    borderBottomColor: OFFICER.line,
   },
 
   modalBackButton: {
@@ -373,14 +374,14 @@ export const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: "Poppins_700Bold",
     fontSize: 18,
-    color: "#111111",
+    color: OFFICER.navyDeep,
     textAlign: "center",
   },
 
   modalSubtitle: {
-    fontFamily: "Poppins_300Light",
-    fontSize: 10,
-    color: "#626975",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    color: OFFICER.muted,
     marginTop: 2,
     textAlign: "center",
   },
@@ -400,11 +401,8 @@ export const styles = StyleSheet.create({
   },
 
   modalEmptyPanel: {
+    ...card,
     padding: 24,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#BFC5CE",
-    borderRadius: 9,
   },
 
   // ==========================================
@@ -423,17 +421,17 @@ export const styles = StyleSheet.create({
 
   errorPanel: {
     borderWidth: 1,
-    borderColor: "#D32F2F",
-    borderRadius: 8,
+    borderColor: OFFICER.redLine,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 18,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: OFFICER.redSoft,
   },
 
   errorText: {
     fontFamily: "Poppins_400Regular",
     fontSize: 12,
-    color: "#D32F2F",
+    color: OFFICER.red,
   },
 
   retryButton: {
@@ -444,9 +442,9 @@ export const styles = StyleSheet.create({
   },
 
   retryText: {
-    fontFamily: "Poppins_500Medium",
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 13,
-    color: "#173A73",
+    color: OFFICER.navy,
   },
 
   // ==========================================
@@ -454,23 +452,20 @@ export const styles = StyleSheet.create({
   // ==========================================
 
   emptyPanel: {
+    ...card,
     padding: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: "#BFC5CE",
   },
 
   emptyTitle: {
     fontFamily: "Poppins_600SemiBold",
     fontSize: 13,
-    color: "#123266",
+    color: OFFICER.navyDeep,
   },
 
   helper: {
-    fontFamily: "Poppins_300Light",
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
-    color: "#626975",
+    color: OFFICER.muted,
     marginTop: 5,
   },
 
@@ -483,27 +478,29 @@ export const styles = StyleSheet.create({
     height: 46,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: OFFICER.surface,
     borderWidth: 1,
-    borderColor: "#777777",
+    borderColor: OFFICER.line,
     borderRadius: 23,
+    shadowColor: "#173A73",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   notificationIcon: {
     width: 26,
     height: 26,
-    tintColor: "#173A73",
+    tintColor: OFFICER.navy,
   },
   noticeCard: {
-    padding: 12,
+    ...card,
+    padding: 14,
     marginBottom: 12,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#777777",
-    borderRadius: 9,
   },
   noticeUnread: {
     backgroundColor: "#F1F7FF",
-    borderColor: "#173A73",
+    borderColor: "#BFD3F2",
   },
   noticeTitleRow: {
     flexDirection: "row",
@@ -515,7 +512,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "Poppins_600SemiBold",
     fontSize: 12,
-    color: "#123266",
+    color: OFFICER.navyDeep,
   },
   noticeNewLabel: {
     fontFamily: "Poppins_600SemiBold",
@@ -545,14 +542,14 @@ export const styles = StyleSheet.create({
   detailLabel: {
     fontFamily: "Poppins_400Regular",
     fontSize: 11,
-    color: "#626975",
+    color: OFFICER.muted,
   },
   detailValue: {
     flex: 1,
     textAlign: "right",
     fontFamily: "Poppins_500Medium",
     fontSize: 11,
-    color: "#123266",
+    color: OFFICER.navyDeep,
   },
   noticeError: {
     fontFamily: "Poppins_400Regular",
@@ -563,7 +560,7 @@ export const styles = StyleSheet.create({
   noticeLink: {
     fontFamily: "Poppins_500Medium",
     fontSize: 11,
-    color: "#173A73",
+    color: OFFICER.navy,
     marginTop: 14,
   },
 });

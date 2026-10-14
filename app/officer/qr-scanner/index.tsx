@@ -5,6 +5,7 @@ import {
   AppState,
   Image,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   Text,
@@ -18,9 +19,15 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-import { FadeIn, ScanLine } from "@/components/motion";
+import { FlowSteps } from "@/components/flow-steps";
+import { FadeIn, PopIn, ScanLine, TabIndicator } from "@/components/motion";
+import { HomeTabBadge } from "@/components/notification-badge";
+import { ScanFrame } from "@/components/scan-frame";
 import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
@@ -48,6 +55,35 @@ type StudentsResponse = {
 
 const QR_PREFIX = "SMARTFINE_STUDENT:";
 
+// The Officer's bottom navigation; Scan is the tab this screen belongs to.
+const NAV_ITEMS = [
+  {
+    label: "Home",
+    route: "/officer/dashboard",
+    icon: require("../../../assets/icons/dashboard.png"),
+  },
+  {
+    label: "Students",
+    route: "/officer/student",
+    icon: require("../../../assets/icons/students.png"),
+  },
+  {
+    label: "Scan",
+    route: "/officer/qr-scanner",
+    icon: require("../../../assets/icons/qr-codeWhite.png"),
+  },
+  {
+    label: "Profile",
+    route: "/officer/profile",
+    icon: require("../../../assets/icons/user.png"),
+  },
+  {
+    label: "Records",
+    route: "/officer/records",
+    icon: require("../../../assets/icons/reports.png"),
+  },
+];
+
 function profileUrl(uri: string | null): string | null {
   if (!uri) return null;
   if (/^https?:\/\//i.test(uri)) return uri;
@@ -58,7 +94,10 @@ function profileUrl(uri: string | null): string | null {
 export default function OfficerQRScanner() {
   const styles = useResponsiveStyles();
   const router = useGuardedRouter();
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
+  // The "how to scan" tips opened by the i button.
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const [focused, setFocused] = useState(false);
   const [foreground, setForeground] = useState(
@@ -121,21 +160,6 @@ export default function OfficerQRScanner() {
     setImageFailed(false);
     setCameraError("");
     setError("");
-  };
-
-  // Cancel from the camera screen and return to the officer dashboard.
-  const handleCancelScanner = () => {
-    if (navigatingRef.current) return;
-
-    requestRef.current?.abort();
-    requestRef.current = null;
-
-    scanLockRef.current = false;
-    navigatingRef.current = true;
-
-    setProcessing(false);
-
-    router.replace("/officer/dashboard" as any);
   };
 
   const handleBarcodeScanned = ({ data }: { data: string }) => {
@@ -354,6 +378,29 @@ export default function OfficerQRScanner() {
           contentContainerStyle={styles.resultContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.screenHeader}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={resetScan}
+              accessibilityRole="button"
+              accessibilityLabel="Back to the camera"
+            >
+              <Image
+                source={require("../../../assets/icons/back_icon.png")}
+                style={[styles.backIcon, styles.backIconDark]}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            <Text style={[styles.screenTitle, styles.screenTitleDark]}>
+              Check Student
+            </Text>
+
+            <View style={styles.backSpacer} />
+          </View>
+
+          <FlowSteps current={2} style={styles.steps} />
+
           <SuccessCheck style={styles.successCheck} />
 
           <Text style={styles.identifiedTitle}>Student Identified</Text>
@@ -393,6 +440,12 @@ export default function OfficerQRScanner() {
             </Text>
           ) : null}
 
+          {activeStudent && (
+            <Text style={styles.nextHint}>
+              Is this the right student? Next, record the fine.
+            </Text>
+          )}
+
           <View style={styles.resultActions}>
             <TouchableOpacity
               style={[
@@ -404,16 +457,16 @@ export default function OfficerQRScanner() {
               disabled={!activeStudent}
               accessibilityRole="button"
             >
-              <Text style={styles.buttonText}>Add Fine</Text>
+              <Text style={styles.buttonText}>Add Fine for This Student</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.button, styles.resultCancelButton]}
               onPress={resetScan}
               accessibilityRole="button"
-              accessibilityLabel="Cancel student selection and return to camera"
+              accessibilityLabel="Not this student. Go back to the camera to scan another student"
             >
-              <Text style={styles.resultCancelText}>Cancel</Text>
+              <Text style={styles.resultCancelText}>Scan Another Student</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -425,32 +478,69 @@ export default function OfficerQRScanner() {
   // QR SCANNER
   // ========================================
 
+  const hasCandidate = Boolean(candidateId);
+
   return (
-    <SafeAreaView style={styles.scanScreen}>
+    <View style={styles.scanScreen}>
       <StatusBar style="light" />
 
-      <ScrollView
-        contentContainerStyle={styles.scanContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.scanArea}>
-          <View style={styles.cameraFrame}>
-            {showCamera ? (
-              <CameraView
-                style={styles.camera}
-                facing="back"
-                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                onBarcodeScanned={handleBarcodeScanned}
-                onCameraReady={() => setCameraReady(true)}
-                onMountError={() =>
-                  setCameraError(
-                    "The camera could not start. Try again or use Student ID.",
-                  )
-                }
-              />
-            ) : (
-              <View style={styles.cameraPlaceholder}>
+      {/* ==================================
+          TITLE BAR
+      ================================== */}
+
+      <SafeAreaView edges={["top"]} style={styles.scanHeader}>
+        <View style={styles.scanHeaderInner}>
+          <View style={styles.scanHeaderRow}>
+            <View style={styles.headerSide} />
+
+            <Text style={styles.scanTitle} accessibilityRole="header">
+              Scan Student QR
+            </Text>
+
+            <TouchableOpacity
+              style={styles.headerSide}
+              onPress={() => setInfoOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="How to scan a student"
+            >
+              <View style={styles.infoBadge}>
+                <Text style={styles.infoBadgeText}>i</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <FlowSteps current={1} tone="dark" style={styles.headerSteps} />
+        </View>
+      </SafeAreaView>
+
+      {/* ==================================
+          CAMERA, FRAME AND OPTIONS
+      ================================== */}
+
+      <View style={styles.cameraArea}>
+        {showCamera && (
+          <CameraView
+            style={styles.camera}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={handleBarcodeScanned}
+            onCameraReady={() => setCameraReady(true)}
+            onMountError={() =>
+              setCameraError(
+                "The camera could not start. Try again or use Student ID.",
+              )
+            }
+          />
+        )}
+
+        <ScrollView
+          contentContainerStyle={styles.scanBody}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ScanFrame style={styles.frame}>
+            {!showCamera && (
+              <View style={styles.framePlaceholder}>
                 {processing ? (
                   <ActivityIndicator size="large" color="#45B94F" />
                 ) : (
@@ -464,14 +554,12 @@ export default function OfficerQRScanner() {
             )}
 
             <ScanLine active={Boolean(showCamera) && cameraReady} />
-
-            <View pointerEvents="none" style={styles.frameBorder} />
-          </View>
+          </ScanFrame>
 
           <Text style={styles.scanInstruction}>
-            {candidateId
-              ? `QR captured for Student ID ${candidateId}. Tap Confirm to identify the student.`
-              : "Point the camera at the student QR code to identify the student."}
+            {hasCandidate
+              ? `QR code read for Student ID ${candidateId}.`
+              : "Place the student's QR code inside the frame."}
           </Text>
 
           {Platform.OS === "web" && (
@@ -505,59 +593,55 @@ export default function OfficerQRScanner() {
             </Text>
           ) : null}
 
-          {scanLocked && !processing && (
+          {scanLocked && !processing && !hasCandidate && (
             <TouchableOpacity
-              style={styles.textButton}
+              style={styles.scanAgainButton}
               onPress={resetScan}
               accessibilityRole="button"
             >
-              <Text style={styles.linkText}>Scan Again</Text>
+              <Text style={styles.scanAgainText}>Scan Again</Text>
             </TouchableOpacity>
           )}
-        </View>
 
-        <View style={styles.scanActions}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.confirmButton,
-              (!candidateId || processing) && styles.disabled,
-            ]}
-            disabled={!candidateId || processing}
-            onPress={() => void identifyStudent(candidateId)}
-            accessibilityRole="button"
-          >
-            {processing ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Confirm</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.spacer} />
 
-          <TouchableOpacity
-            style={[styles.button, styles.cancelButton]}
-            onPress={handleCancelScanner}
-            accessibilityRole="button"
-            accessibilityLabel="Cancel scanning and return to dashboard"
-          >
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
+          {hasCandidate ? (
+            // A code was read: check the ID, then confirm.
+            <View style={styles.sheet}>
+              <Text style={styles.sheetLabel}>QR code read</Text>
 
-          <TouchableOpacity
-            style={styles.textButton}
-            disabled={processing}
-            onPress={() => setManualOpen((current) => !current)}
-          >
-            <Text style={styles.linkText}>
-              {manualOpen
-                ? "Close Student ID Search"
-                : "Use Student ID Instead"}
-            </Text>
-          </TouchableOpacity>
+              <Text style={styles.sheetValue}>Student ID {candidateId}</Text>
 
-          {manualOpen && (
-            <View style={styles.manualPanel}>
-              <Text style={styles.manualLabel}>Student ID</Text>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.confirmButton,
+                  processing && styles.disabled,
+                ]}
+                disabled={processing}
+                onPress={() => void identifyStudent(candidateId)}
+                accessibilityRole="button"
+              >
+                {processing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Confirm Student</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.textButton}
+                disabled={processing}
+                onPress={resetScan}
+                accessibilityRole="button"
+              >
+                <Text style={styles.sheetLink}>Scan Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : manualOpen ? (
+            // Typing a Student ID instead of scanning.
+            <View style={styles.sheet}>
+              <Text style={styles.sheetLabel}>Enter the Student ID</Text>
 
               <TextInput
                 style={styles.manualInput}
@@ -566,8 +650,8 @@ export default function OfficerQRScanner() {
                   setManualId(text);
                   setError("");
                 }}
-                placeholder="Enter Student ID"
-                placeholderTextColor="#8C939F"
+                placeholder="Example: 2026-0004"
+                placeholderTextColor="#94A3B8"
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!processing}
@@ -583,15 +667,164 @@ export default function OfficerQRScanner() {
                 ]}
                 onPress={() => void identifyStudent(manualId)}
                 disabled={processing}
+                accessibilityRole="button"
               >
                 <Text style={styles.buttonText}>
                   {processing ? "Searching…" : "Search Student"}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.textButton}
+                disabled={processing}
+                onPress={() => {
+                  setManualOpen(false);
+                  setManualId("");
+                  setError("");
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.sheetLink}>Back to Scanner</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // Two other ways to find the student.
+            <View style={styles.options}>
+              <TouchableOpacity
+                style={styles.option}
+                disabled={processing}
+                onPress={() => setManualOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Type a Student ID instead"
+              >
+                <ScanFrame
+                  dim={false}
+                  size="small"
+                  color="#FFFFFF"
+                  style={styles.optionIcon}
+                >
+                  <Image
+                    source={require("../../../assets/icons/user.png")}
+                    style={styles.optionGlyph}
+                    resizeMode="contain"
+                  />
+                </ScanFrame>
+
+                <Text style={styles.optionLabel}>Student ID</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.option}
+                disabled={processing}
+                onPress={() => router.replace("/officer/student" as any)}
+                accessibilityRole="button"
+                accessibilityLabel="Choose a student from the Student List"
+              >
+                <ScanFrame
+                  dim={false}
+                  size="small"
+                  color="#FFFFFF"
+                  style={styles.optionIcon}
+                >
+                  <Image
+                    source={require("../../../assets/icons/students.png")}
+                    style={styles.optionGlyph}
+                    resizeMode="contain"
+                  />
+                </ScanFrame>
+
+                <Text style={styles.optionLabel}>Student List</Text>
+              </TouchableOpacity>
             </View>
           )}
+        </ScrollView>
+      </View>
+
+      {/* ==================================
+          BOTTOM NAVIGATION
+          (hidden while typing, to leave room for the keyboard)
+      ================================== */}
+
+      {!manualOpen && (
+        <View style={[styles.bottomArea, { paddingBottom: insets.bottom }]}>
+          <View style={styles.bottomNavigation}>
+            {NAV_ITEMS.map((item) => {
+              const active = item.label === "Scan";
+
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: active }}
+                  activeOpacity={0.75}
+                  style={styles.navItem}
+                  onPress={() => {
+                    if (!active) {
+                      router.replace(item.route as any);
+                    }
+                  }}
+                >
+                  <Image
+                    source={item.icon}
+                    style={styles.navIcon}
+                    resizeMode="contain"
+                  />
+
+                  <Text style={styles.navLabel}>{item.label}</Text>
+                  <HomeTabBadge label={item.label} />
+
+                  <TabIndicator
+                    active={active}
+                    style={styles.activeIndicator}
+                    hiddenStyle={styles.hiddenIndicator}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+
+      {/* ==================================
+          HOW TO SCAN
+      ================================== */}
+
+      <Modal
+        visible={infoOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setInfoOpen(false)}
+      >
+        <View style={styles.infoOverlay}>
+          <PopIn style={styles.infoCard} accessibilityViewIsModal>
+            <Text style={styles.infoTitle}>How to scan a student</Text>
+
+            <Text style={styles.infoItem}>
+              1. Ask the student to open My QR in their SmartFine app.
+            </Text>
+
+            <Text style={styles.infoItem}>
+              2. Hold the camera steady until the code is read, then tap
+              Confirm Student.
+            </Text>
+
+            <Text style={styles.infoItem}>
+              3. No QR code? Choose Student ID to type it, or Student List to
+              pick the student.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.button, styles.confirmButton, styles.infoButton]}
+              onPress={() => setInfoOpen(false)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.buttonText}>Got it</Text>
+            </TouchableOpacity>
+          </PopIn>
+        </View>
+      </Modal>
+    </View>
   );
 }

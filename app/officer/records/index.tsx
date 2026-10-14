@@ -315,7 +315,9 @@ export default function OfficerRecordsScreen() {
 
       <View style={styles.phone}>
         <View style={styles.header}>
-          <Text style={styles.title}>My Recorded{"\n"}Fines</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            My Recorded Fines
+          </Text>
 
           <View style={styles.filters}>
             {FILTERS.map((item) => {

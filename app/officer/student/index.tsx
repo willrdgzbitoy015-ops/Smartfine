@@ -469,6 +469,16 @@ export default function OfficerStudentsScreen() {
           // STUDENT LIST
           // ==================================
           <Animated.View style={[styles.listScreen, viewFade]}>
+            <View style={styles.pageHeader}>
+              <Text style={styles.pageTitle} accessibilityRole="header">
+                Students
+              </Text>
+
+              <Text style={styles.pageSubtitle}>
+                Select a student to view their profile or add a fine.
+              </Text>
+            </View>
+
             <View style={styles.searchArea}>
               <View style={styles.searchBox}>
                 <View style={styles.searchIcon}>

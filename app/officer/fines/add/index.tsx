@@ -27,6 +27,7 @@ import {
   useRetainedValue,
   useSwitchFade,
 } from "@/components/motion";
+import { FlowSteps } from "@/components/flow-steps";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
@@ -380,6 +381,8 @@ export default function OfficerAddFine() {
             <View style={styles.headerSpacer} />
           </View>
 
+          <FlowSteps current={3} style={styles.steps} />
+
           {loading ? (
             // Placeholders in the shape of the student and the form.
             <SkeletonGroup label="Loading student information">
@@ -424,7 +427,9 @@ export default function OfficerAddFine() {
                   accessibilityRole="button"
                   accessibilityLabel="Select violation"
                 >
-                  <Text style={styles.fieldText}>
+                  <Text
+                    style={[styles.fieldText, !selected && styles.placeholder]}
+                  >
                     {selected?.violation_name || "Select violation"}
                   </Text>
 
@@ -434,19 +439,23 @@ export default function OfficerAddFine() {
                 <Text style={styles.label}>Fine Amount</Text>
 
                 <View style={styles.field}>
-                  <Text style={styles.amount}>
+                  <Text style={[styles.amount, !selected && styles.placeholder]}>
                     {selected ? pesos(amount) : "₱ —"}
                   </Text>
                 </View>
 
-                <Text style={styles.label}>Description</Text>
+                <Text style={styles.fieldHint}>
+                  The amount is set automatically from the violation you choose.
+                </Text>
+
+                <Text style={styles.label}>Description (optional)</Text>
 
                 <TextInput
                   style={styles.description}
                   value={description}
                   onChangeText={setDescription}
                   placeholder="Enter a description"
-                  placeholderTextColor="#7A89A8"
+                  placeholderTextColor="#94A3B8"
                   multiline
                   maxLength={500}
                   editable={active && !saving}
@@ -472,8 +481,12 @@ export default function OfficerAddFine() {
                   onPress={openConfirmation}
                   disabled={!active || saving}
                 >
-                  <Text style={styles.buttonText}>Add Fine</Text>
+                  <Text style={styles.buttonText}>Review Fine</Text>
                 </TouchableOpacity>
+
+                <Text style={styles.helper}>
+                  You can check everything once more before it is recorded.
+                </Text>
               </View>
             </FadeIn>
           )}
@@ -547,7 +560,11 @@ export default function OfficerAddFine() {
 
               {shownModal === "confirm" && (
                 <>
-                  <Text style={styles.modalTitle}>Fine Details</Text>
+                  <Text style={styles.modalTitle}>Review Fine</Text>
+
+                  <Text style={styles.helper}>
+                    Check the details, then record the fine.
+                  </Text>
 
                   {studentHeader()}
 
@@ -573,7 +590,7 @@ export default function OfficerAddFine() {
                       onPress={() => setModal(null)}
                       disabled={saving}
                     >
-                      <Text style={styles.cancelText}>Cancel</Text>
+                      <Text style={styles.cancelText}>Go Back</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -588,7 +605,7 @@ export default function OfficerAddFine() {
                       {saving ? (
                         <ActivityIndicator color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.buttonText}>Confirm</Text>
+                        <Text style={styles.buttonText}>Record Fine</Text>
                       )}
                     </TouchableOpacity>
                   </View>
