@@ -2294,3 +2294,6 @@ module.exports.validatePersonName = validatePersonName;
 module.exports.formatUser = formatUser;
 
 module.exports.removeAdminProfileFile = removeAdminProfileFile;
+
+// Lets the live-update socket check a sign-in token the same way as the API.
+module.exports.verifyAuthToken = (token) => jwt.verify(token, JWT_SECRET);

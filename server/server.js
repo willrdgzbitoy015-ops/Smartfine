@@ -25,11 +25,14 @@ const systemResetRoutes = require("./routes/system-reset");
 const adminNotificationRoutes = require("./routes/admin-notifications");
 const notificationRoutes = require("./routes/notifications");
 const onlinePaymentRoutes = require("./routes/online-payments");
+const realtime = require("./realtime");
 
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
+// Announces every successful change to the signed-in apps (live updates).
+app.use("/api", realtime.announceChanges);
 // The raw body is kept so PayMongo webhook signatures can be verified.
 app.use(
   express.json({
@@ -71,6 +74,8 @@ app.get("/", (req, res) => {
   });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`SmartFine server running on port ${PORT}`);
 });
+
+realtime.attach(server);

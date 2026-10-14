@@ -30,6 +30,7 @@ import { SuccessCheck } from "@/components/success-check";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
+import { useLiveReload } from "@/hooks/use-live-updates";
 import {
   RefundedNote,
   RefundRequestModal,
@@ -266,15 +267,18 @@ export default function StudentFinesScreen() {
   const requestRef = useRef<AbortController | null>(null);
   const cashRequestRef = useRef<AbortController | null>(null);
 
-  const loadFines = useCallback(async () => {
+  // `silent` is a live update: no spinner and no error message on failure.
+  const loadFines = useCallback(async (silent = false) => {
     requestRef.current?.abort();
 
     const controller = new AbortController();
     requestRef.current = controller;
 
-    setLoading(true);
-    setError("");
-    setAccessDenied(false);
+    if (!silent) {
+      setLoading(true);
+      setError("");
+      setAccessDenied(false);
+    }
 
     let timedOut = false;
 
@@ -341,6 +345,7 @@ export default function StudentFinesScreen() {
     } catch (caught) {
       if (requestRef.current !== controller) return;
       if (controller.signal.aborted && !timedOut) return;
+      if (silent) return;
 
       setError(
         timedOut
@@ -355,19 +360,22 @@ export default function StudentFinesScreen() {
       if (requestRef.current === controller) {
         setLoading(false);
 
-        if (timedOut) {
+        if (timedOut && !silent) {
           setError("The request timed out. Please try again.");
         }
       }
     }
   }, []);
 
-  const loadCashRequests = useCallback(async () => {
+  const loadCashRequests = useCallback(async (silent = false) => {
     cashRequestRef.current?.abort();
 
     const controller = new AbortController();
     cashRequestRef.current = controller;
-    setCashError("");
+
+    if (!silent) {
+      setCashError("");
+    }
 
     try {
       const token = await AsyncStorage.getItem("token");
@@ -407,7 +415,11 @@ export default function StudentFinesScreen() {
 
       setCashRequests(body.payments);
     } catch (caught) {
-      if (controller.signal.aborted || cashRequestRef.current !== controller) {
+      if (
+        controller.signal.aborted ||
+        cashRequestRef.current !== controller ||
+        silent
+      ) {
         return;
       }
 
@@ -420,7 +432,7 @@ export default function StudentFinesScreen() {
   }, []);
 
   // GCash payments and whether online payment is switched on.
-  const loadOnlinePayments = useCallback(async () => {
+  const loadOnlinePayments = useCallback(async (silent = false) => {
     try {
       const body = await apiRequest("/api/payments/online/me");
 
@@ -428,8 +440,11 @@ export default function StudentFinesScreen() {
       setOnlineTestMode(Boolean(body.testMode));
       setOnlinePayments(Array.isArray(body.payments) ? body.payments : []);
     } catch {
-      // Cashier payments still work without online payment.
-      setOnlineEnabled(false);
+      // Cashier payments still work without online payment. A failed live
+      // update keeps what is on screen.
+      if (!silent) {
+        setOnlineEnabled(false);
+      }
     }
   }, []);
 
@@ -439,6 +454,17 @@ export default function StudentFinesScreen() {
     void loadOnlinePayments();
     void loadRefunds();
   }, [loadFines, loadCashRequests, loadOnlinePayments, loadRefunds]);
+
+  // A fine recorded, paid, cancelled or refunded elsewhere appears here at
+  // once, without pulling down to refresh.
+  useLiveReload(["fines", "payments", "refunds"], () =>
+    Promise.all([
+      loadFines(true),
+      loadCashRequests(true),
+      loadOnlinePayments(true),
+      loadRefunds(),
+    ]),
+  );
 
   useFocusEffect(
     useCallback(() => {

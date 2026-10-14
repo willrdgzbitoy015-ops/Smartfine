@@ -13,6 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { type Href, useFocusEffect } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { useLiveReload } from "@/hooks/use-live-updates";
 
 import { StatusBar } from "expo-status-bar";
 
@@ -184,19 +185,22 @@ export default function OfficerRecordsScreen() {
 
   const requestRef = useRef<AbortController | null>(null);
 
-  const loadRecords = useCallback(async (refresh = false) => {
+  // `silent` is a live update: no spinner and no error message on failure.
+  const loadRecords = useCallback(async (refresh = false, silent = false) => {
     requestRef.current?.abort();
 
     const controller = new AbortController();
     requestRef.current = controller;
 
-    if (refresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+    if (!silent) {
+      if (refresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-    setError("");
+      setError("");
+    }
 
     let timedOut = false;
 
@@ -277,6 +281,8 @@ export default function OfficerRecordsScreen() {
 
       if (controller.signal.aborted && !timedOut) return;
 
+      if (silent) return;
+
       setError(
         timedOut
           ? "The request timed out. Check your connection and try again."
@@ -303,6 +309,12 @@ export default function OfficerRecordsScreen() {
         requestRef.current = null;
       };
     }, [loadRecords]),
+  );
+
+  // A fine whose status changes (paid, cancelled, refunded) updates here at
+  // once, without pulling down to refresh.
+  useLiveReload(["fines", "payments", "refunds"], () =>
+    loadRecords(false, true),
   );
 
   const visibleRecords = records.filter((fine) => {

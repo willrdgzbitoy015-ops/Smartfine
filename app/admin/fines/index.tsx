@@ -25,6 +25,7 @@ import LogoutModal from "@/components/logout-modal";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 import WarningModal from "@/components/warningmodal";
+import { useLiveReload } from "@/hooks/use-live-updates";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 import { usePopupSwap } from "@/hooks/use-popup-swap";
 import { styles } from "./fines.styles";
@@ -351,15 +352,21 @@ export default function FinesDirectory() {
       clearInterval(interval);
     };
   }, [focusVersion, screenFocused]);
-  const loadPageData = async (showFullLoader = false) => {
-    if (loading && !showFullLoader) {
-      return;
-    }
-    if (refreshing) {
-      return;
+  // `silent` is a live update: it skips the spinner, the busy checks and the
+  // "Refresh Failed" pop-up, and keeps the list already on screen if it fails.
+  const loadPageData = async (showFullLoader = false, silent = false) => {
+    if (!silent) {
+      if (loading && !showFullLoader) {
+        return;
+      }
+      if (refreshing) {
+        return;
+      }
     }
     try {
-      if (showFullLoader) {
+      if (silent) {
+        // No spinner.
+      } else if (showFullLoader) {
         setLoading(true);
       } else {
         setRefreshing(true);
@@ -392,6 +399,9 @@ export default function FinesDirectory() {
       setViolationTypes(violationsData.violations || []);
     } catch (error: any) {
       console.error("Load fines directory error:", error);
+      if (silent) {
+        return;
+      }
       if (showFullLoader || fines.length === 0) {
         setErrorMessage(
           error?.message || "Could not connect to the SmartFine server.",
@@ -404,10 +414,18 @@ export default function FinesDirectory() {
         setShowWarningModal(true);
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!silent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
+  // A fine recorded, paid, cancelled or refunded by someone else appears in
+  // the directory, and the notice badges update, without a manual refresh.
+  useLiveReload(["fines", "payments", "refunds", "people"], async () => {
+    await loadPageData(false, true);
+    setFocusVersion((current) => current + 1);
+  });
   // ==========================================
   // REFRESH DIRECTORY
   // ==========================================

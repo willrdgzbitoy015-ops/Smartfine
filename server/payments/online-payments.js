@@ -16,6 +16,7 @@ const {
   notifyOnlinePaymentReceived,
 } = require("../database/notifications");
 const paymongo = require("./paymongo");
+const { publish } = require("../realtime");
 
 // A reserved payment that never got a checkout page is closed after this.
 const STALE_RESERVATION_SECONDS = 120;
@@ -101,6 +102,26 @@ function savedCheckoutUrl(paymentId) {
 // Returns { outcome: "paid" | "already_paid" | "duplicate_event" |
 // "needs_review" | "unknown" }.
 function recordOnlinePaid(
+  paymentId,
+  { gatewayPaymentId, amountCentavos, gatewayEventId = null, source },
+) {
+  const result = recordOnlinePaidNow(paymentId, {
+    gatewayPaymentId,
+    amountCentavos,
+    gatewayEventId,
+    source,
+  });
+
+  // A payment can be found paid while answering a plain GET (the status
+  // check after returning from GCash), which the request announcer skips.
+  if (result.outcome === "paid" || result.outcome === "needs_review") {
+    publish(["fines", "payments"]);
+  }
+
+  return result;
+}
+
+function recordOnlinePaidNow(
   paymentId,
   { gatewayPaymentId, amountCentavos, gatewayEventId = null, source },
 ) {
@@ -252,7 +273,7 @@ function recordOnlinePaid(
 
 // Closes an open GCash payment that was not paid.
 function closeOnlinePayment(paymentId, actorUserId, reason) {
-  return runTransaction(() => {
+  const closed = runTransaction(() => {
     const result = db
       .prepare(
         `UPDATE payments
@@ -268,6 +289,12 @@ function closeOnlinePayment(paymentId, actorUserId, reason) {
 
     return Number(result.changes) === 1;
   });
+
+  if (closed) {
+    publish(["fines", "payments"]);
+  }
+
+  return closed;
 }
 
 // A reserved payment whose checkout could not be created.

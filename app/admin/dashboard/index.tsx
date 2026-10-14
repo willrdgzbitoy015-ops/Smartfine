@@ -18,6 +18,7 @@ import {
 
 import { useFocusEffect } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { useLiveReload } from "@/hooks/use-live-updates";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -492,8 +493,11 @@ export default function AdminDashboard() {
   // LOAD DASHBOARD DATA (on every visit)
   // ==========================================
 
-  const loadDashboardStats = useCallback(async () => {
-    setStatsError("");
+  // `silent` is a live update: a failed refresh keeps the numbers on screen.
+  const loadDashboardStats = useCallback(async (silent = false) => {
+    if (!silent) {
+      setStatsError("");
+    }
 
     try {
       const response = await fetch(`${API_BASE}/api/dashboard/stats`, {
@@ -509,14 +513,18 @@ export default function AdminDashboard() {
 
       setStats({ ...EMPTY_STATS, ...data.stats });
     } catch (error) {
-      setStatsError(errorText(error, "Failed to load dashboard statistics."));
+      if (!silent) {
+        setStatsError(errorText(error, "Failed to load dashboard statistics."));
+      }
     } finally {
       setStatsLoading(false);
     }
   }, []);
 
-  const loadRecentActivities = useCallback(async () => {
-    setActivitiesError("");
+  const loadRecentActivities = useCallback(async (silent = false) => {
+    if (!silent) {
+      setActivitiesError("");
+    }
 
     try {
       const page = await fetchActivities("ALL", RECENT_COUNT, 0);
@@ -525,7 +533,9 @@ export default function AdminDashboard() {
 
       setActivityCounts({ ...EMPTY_COUNTS, ...page.counts });
     } catch (error) {
-      setActivitiesError(errorText(error, "Could not load activities."));
+      if (!silent) {
+        setActivitiesError(errorText(error, "Could not load activities."));
+      }
     } finally {
       setActivitiesLoading(false);
     }
@@ -537,6 +547,12 @@ export default function AdminDashboard() {
 
       void loadRecentActivities();
     }, [loadDashboardStats, loadRecentActivities]),
+  );
+
+  // The cards and the activity feed update as soon as a fine is recorded,
+  // paid, cancelled or refunded.
+  useLiveReload(["fines", "payments", "refunds", "people"], () =>
+    Promise.all([loadDashboardStats(true), loadRecentActivities(true)]),
   );
 
   // Pull down to reload the cards and the activity feed.

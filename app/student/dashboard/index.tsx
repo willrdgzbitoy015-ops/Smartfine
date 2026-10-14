@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { useLiveReload } from "@/hooks/use-live-updates";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -296,15 +297,18 @@ export default function StudentDashboard() {
   const markingReadRef = useRef(new Set<number>());
   const requestRef = useRef<AbortController | null>(null);
 
-  const loadDashboard = useCallback(async () => {
+  // `silent` is a live update: no spinner and no error message on failure.
+  const loadDashboard = useCallback(async (silent = false) => {
     requestRef.current?.abort();
 
     const controller = new AbortController();
     requestRef.current = controller;
 
-    setLoading(true);
-    setError("");
-    setAccessDenied(false);
+    if (!silent) {
+      setLoading(true);
+      setError("");
+      setAccessDenied(false);
+    }
 
     let timedOut = false;
 
@@ -403,6 +407,7 @@ export default function StudentDashboard() {
     } catch (caught) {
       if (requestRef.current !== controller) return;
       if (controller.signal.aborted && !timedOut) return;
+      if (silent) return;
 
       setError(
         timedOut
@@ -417,7 +422,7 @@ export default function StudentDashboard() {
       if (requestRef.current === controller) {
         setLoading(false);
 
-        if (timedOut) {
+        if (timedOut && !silent) {
           setError("The request timed out. Please try again.");
         }
       }
@@ -434,6 +439,9 @@ export default function StudentDashboard() {
       };
     }, [loadDashboard]),
   );
+
+  // New fines, payments and refunds show up here without pulling to refresh.
+  useLiveReload(["fines", "payments", "refunds"], () => loadDashboard(true));
 
   const closeModal = () => {
     setModalMode(null);

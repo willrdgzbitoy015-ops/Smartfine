@@ -3,6 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { API_BASE } from "@/constants/api";
+import { ensureLiveUpdates, subscribeLive } from "@/hooks/use-live-updates";
 
 // Unread notification counts for the signed-in user, shared by every badge.
 export type NotificationCounts = {
@@ -35,6 +36,7 @@ let inFlight: Promise<void> | null = null;
 let refreshQueued = false;
 let focusedScreens = 0;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let stopListeningLive: (() => void) | null = null;
 const listeners = new Set<(counts: NotificationCounts) => void>();
 
 function publish(counts: NotificationCounts) {
@@ -200,12 +202,27 @@ export function useNotificationCounts() {
         }, POLL_INTERVAL_MS);
       }
 
+      // A change announced by the server updates the badges at once; the
+      // 15-second check above stays as the fallback.
+      void ensureLiveUpdates();
+
+      if (!stopListeningLive) {
+        stopListeningLive = subscribeLive(() => {
+          void refreshNotificationCounts();
+        });
+      }
+
       return () => {
         focusedScreens = Math.max(0, focusedScreens - 1);
 
-        if (focusedScreens === 0 && pollTimer) {
-          clearInterval(pollTimer);
-          pollTimer = null;
+        if (focusedScreens === 0) {
+          if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
+
+          stopListeningLive?.();
+          stopListeningLive = null;
         }
       };
     }, []),

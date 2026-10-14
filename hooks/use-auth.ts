@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
+import { stopLiveUpdates } from '@/hooks/use-live-updates';
+
 // Leaves the signed-in screens for Login. Every open screen is closed
 // first: a screen left underneath would keep running (and asking the
 // server for its data) with the next person's sign-in, and Back would
 // reopen it.
 export function returnToLogin() {
+  stopLiveUpdates();
+
   if (router.canDismiss()) {
     router.dismissAll();
   }
@@ -52,6 +56,8 @@ export function useAuth() {
         'userRole',
         'token',
       ]);
+
+      stopLiveUpdates();
 
       setIsLoggedIn(false);
 

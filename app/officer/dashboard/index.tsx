@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useFocusEffect } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { useLiveReload } from "@/hooks/use-live-updates";
 
 import { StatusBar } from "expo-status-bar";
 
@@ -523,7 +524,8 @@ export default function OfficerDashboard() {
   // LOAD DASHBOARD
   // ========================================
 
-  const loadDashboard = useCallback(async () => {
+  // `silent` is a live update: no spinner and no error message on failure.
+  const loadDashboard = useCallback(async (silent = false) => {
     requestRef.current?.abort();
 
     const controller = new AbortController();
@@ -538,11 +540,13 @@ export default function OfficerDashboard() {
       controller.abort();
     }, 15000);
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
 
-    setError("");
+      setError("");
 
-    setAccessDenied(false);
+      setAccessDenied(false);
+    }
 
     try {
       const token = await AsyncStorage.getItem("token");
@@ -605,6 +609,10 @@ export default function OfficerDashboard() {
         return;
       }
 
+      if (silent) {
+        return;
+      }
+
       setError(
         timedOut
           ? "The server took too long to respond. Please try again."
@@ -638,6 +646,9 @@ export default function OfficerDashboard() {
       };
     }, [loadDashboard]),
   );
+
+  // Fines recorded, paid or cancelled show up here without pulling to refresh.
+  useLiveReload(["fines", "payments", "refunds"], () => loadDashboard(true));
 
   // ========================================
   // DISPLAY DATA
