@@ -1,7 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
-import { Platform, ScrollView, View } from "react-native";
+import {
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import {
   Banner,
@@ -101,6 +107,9 @@ export function StudentFormModal({
 
   // ----- account information -----
   const [username, setUsername] = useState("");
+  // True once the Admin types their own username, so the name fields stop
+  // overwriting it.
+  const [usernameEdited, setUsernameEdited] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accountActive, setAccountActive] = useState(true);
@@ -143,6 +152,7 @@ export function StudentFormModal({
     setContactNumber("");
     setEmail("");
     setUsername("");
+    setUsernameEdited(false);
     setPassword("");
     setConfirmPassword("");
     setAccountActive(true);
@@ -235,7 +245,8 @@ export function StudentFormModal({
   // ========================================
 
   // The server names new students "firstnamelastname" (students.js), adding
-  // a number when that name is taken; this preview follows the same rule.
+  // a number when that name is taken; this suggestion follows the same rule
+  // until the Admin types a username of their own.
   const usernamePart = (value: string) =>
     value
       .normalize("NFD")
@@ -258,7 +269,7 @@ export function StudentFormModal({
 
   const changeFirstName = (value: string) => {
     setFirstName(value);
-    if (!editing) {
+    if (!editing && !usernameEdited) {
       setUsername(suggestUsername(value, lastName));
     }
     clearMessages();
@@ -266,7 +277,7 @@ export function StudentFormModal({
 
   const changeLastName = (value: string) => {
     setLastName(value);
-    if (!editing) {
+    if (!editing && !usernameEdited) {
       setUsername(suggestUsername(firstName, value));
     }
     clearMessages();
@@ -274,6 +285,14 @@ export function StudentFormModal({
 
   const changeUsername = (value: string) => {
     setUsername(value.toLowerCase().replace(/[^a-z0-9]/g, ""));
+    setUsernameEdited(true);
+    clearMessages();
+  };
+
+  // Goes back to the name-based suggestion after a manual change.
+  const useSuggestedUsername = () => {
+    setUsername(suggestUsername(firstName, lastName));
+    setUsernameEdited(false);
     clearMessages();
   };
 
@@ -432,14 +451,16 @@ export function StudentFormModal({
       return "Last Name must contain at least 2 characters.";
     }
 
-    // New students get their username from the server.
+    // A new student with no typed username gets one from the server.
     const normalizedUsername = username.trim().toLowerCase();
 
-    if (editing && !/^[a-z0-9]+$/.test(normalizedUsername)) {
+    const checkUsername = editing || (usernameEdited && normalizedUsername);
+
+    if (checkUsername && !/^[a-z0-9]+$/.test(normalizedUsername)) {
       return "Username may contain letters and numbers only.";
     }
 
-    if (editing && normalizedUsername.length < 3) {
+    if (checkUsername && normalizedUsername.length < 3) {
       return "Username must contain at least 3 characters.";
     }
 
@@ -490,8 +511,13 @@ export function StudentFormModal({
         return;
       }
 
+      // Unless the Admin typed one, a new student's username is left to the
+      // server so a taken name still gets a number added.
+      const typedUsername = username.trim().toLowerCase();
+
       const body = {
-        username: username.trim().toLowerCase(),
+        username:
+          editing || (usernameEdited && typedUsername) ? typedUsername : undefined,
         firstName: firstName.trim(),
         middleName: middleName.trim(),
         lastName: lastName.trim(),
@@ -824,29 +850,55 @@ export function StudentFormModal({
               <FormSection title="Account Information">
                 <FormField
                   label="Username"
-                  required={editing}
+                  required
                   hint={
                     editing
-                      ? "Username is editable and is used by the student when logging in."
-                      : "Created from the student's first and last name. If it is already taken, SmartFine adds a number. You can change it later in Edit Information."
+                      ? "The student signs in with this. Letters and numbers only, at least 3."
+                      : usernameEdited
+                        ? "Letters and numbers only, at least 3. If it is already taken, you will be asked to choose another."
+                        : "Filled in from the first and last name. You can type your own. If the name is taken, SmartFine adds a number."
                   }
                 >
-                  {editing ? (
-                    <FormInput
-                      value={username}
-                      onChangeText={changeUsername}
-                      placeholder="Username"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      editable={!busy}
-                    />
-                  ) : (
-                    <ReadOnlyValue
-                      value={username}
-                      placeholder="Enter the first and last name"
-                    />
-                  )}
+                  <FormInput
+                    value={username}
+                    onChangeText={changeUsername}
+                    placeholder={
+                      editing ? "Username" : "Fills in from the student's name"
+                    }
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    maxLength={30}
+                    editable={!busy}
+                  />
                 </FormField>
+
+                {!editing &&
+                usernameEdited &&
+                suggestUsername(firstName, lastName) &&
+                username !== suggestUsername(firstName, lastName) ? (
+                  <TouchableOpacity
+                    onPress={useSuggestedUsername}
+                    disabled={busy}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="Use the name-based username"
+                    style={{
+                      alignSelf: "flex-start",
+                      marginTop: -8,
+                      marginBottom: 14,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#173A73",
+                        fontSize: 11,
+                        fontWeight: "700",
+                      }}
+                    >
+                      Use {suggestUsername(firstName, lastName)} instead
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
 
                 <View style={{ marginBottom: 14 }}>
                   <StatusSwitch

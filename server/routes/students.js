@@ -2540,6 +2540,8 @@ router.get(
 router.post("/", async (req, res) => {
   try {
     const {
+      username,
+
       firstName,
       middleName,
       lastName,
@@ -2593,10 +2595,51 @@ router.post("/", async (req, res) => {
 
     const passwordValue = String(password);
 
-    const normalizedUsername = generateUniqueStudentUsername(
-      normalizedFirstName,
-      normalizedLastName,
-    );
+    // The Admin may type the username. Without one, SmartFine builds it from
+    // the name and adds a number when that name is taken.
+    const requestedUsername =
+      typeof username === "string" ? username.trim().toLowerCase() : "";
+
+    let normalizedUsername;
+
+    if (requestedUsername) {
+      if (!/^[a-z0-9]+$/.test(requestedUsername)) {
+        return res.status(400).json({
+          success: false,
+
+          code: "INVALID_USERNAME",
+
+          message: "Username may contain letters and numbers only.",
+        });
+      }
+
+      if (requestedUsername.length < 3) {
+        return res.status(400).json({
+          success: false,
+
+          code: "INVALID_USERNAME",
+
+          message: "Username must contain at least 3 characters.",
+        });
+      }
+
+      if (usernameExists(requestedUsername)) {
+        return res.status(409).json({
+          success: false,
+
+          code: "USERNAME_EXISTS",
+
+          message: "This username is already being used by another account.",
+        });
+      }
+
+      normalizedUsername = requestedUsername;
+    } else {
+      normalizedUsername = generateUniqueStudentUsername(
+        normalizedFirstName,
+        normalizedLastName,
+      );
+    }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -2819,6 +2862,17 @@ router.post("/", async (req, res) => {
       },
     });
   } catch (error) {
+    // Someone else took the username between the check and the save.
+    if (String(error.message).includes("UNIQUE constraint failed: users.username")) {
+      return res.status(409).json({
+        success: false,
+
+        code: "USERNAME_EXISTS",
+
+        message: "This username is already being used by another account.",
+      });
+    }
+
     console.error("Create student error:", error);
 
     return res.status(500).json({
