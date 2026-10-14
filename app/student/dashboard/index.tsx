@@ -35,6 +35,7 @@ import { styles } from "../styles/student-dashboard.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
 import {
   HomeTabBadge,
+  NewFinesBadge,
   NotificationBadge,
 } from "@/components/notification-badge";
 import {
@@ -906,6 +907,8 @@ export default function StudentDashboard() {
                 resizeMode="contain"
               />
               <Text style={styles.quickLabel}>My Fines</Text>
+
+              <NewFinesBadge variant="bell" />
             </PressableScale>
 
             <PressableScale

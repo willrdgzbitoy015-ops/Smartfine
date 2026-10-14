@@ -13,6 +13,8 @@ export type NotificationCounts = {
   ACCOUNT: number;
   // Admin Reports "Payment Collected" activity.
   reports: number;
+  // Student: unpaid fines not opened yet (the NEW tag on My Fines).
+  newFines: number;
 };
 
 const EMPTY_COUNTS: NotificationCounts = {
@@ -22,6 +24,7 @@ const EMPTY_COUNTS: NotificationCounts = {
   SYSTEM: 0,
   ACCOUNT: 0,
   reports: 0,
+  newFines: 0,
 };
 
 const POLL_INTERVAL_MS = 15000;
@@ -87,6 +90,7 @@ async function fetchCounts() {
       SYSTEM: toCount(body.counts.SYSTEM),
       ACCOUNT: toCount(body.counts.ACCOUNT),
       reports: toCount(body.counts.reports),
+      newFines: toCount(body.counts.newFines),
     });
   } catch (error) {
     // Keep the last known counts while the server is unreachable.

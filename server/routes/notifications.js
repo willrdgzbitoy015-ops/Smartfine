@@ -54,6 +54,7 @@ function unreadCounts(userId) {
     SYSTEM: 0,
     ACCOUNT: 0,
     reports: 0,
+    newFines: 0,
   };
 
   const rows = db
@@ -80,6 +81,28 @@ function unreadCounts(userId) {
            AND notification_type = 'SYSTEM'
            AND title = 'Payment Collected'
            AND related_payment_id IS NOT NULL`,
+      )
+      .get(userId).count,
+  );
+
+  // A student's new fines: unpaid fines they have not opened yet, the same
+  // fines the NEW tag marks on My Fines. Opening a fine clears it. This is
+  // not part of `total`, which counts notices.
+  counts.newFines = Number(
+    db
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM fines f
+         WHERE f.student_id = ?
+           AND f.fine_status = 'UNPAID'
+           AND f.paid_at IS NULL
+           AND f.cancelled_at IS NULL
+           AND NOT EXISTS (
+             SELECT 1
+             FROM student_fine_reads r
+             WHERE r.student_id = f.student_id
+               AND r.fine_id = f.id
+           )`,
       )
       .get(userId).count,
   );

@@ -17,9 +17,12 @@ type Variant = "sidebar" | "menu" | "tab" | "bell";
 export function NotificationBadge({
   count,
   variant,
+  describe,
 }: {
   count: number;
   variant: Variant;
+  // What a screen reader says for a count, when it is not "unread notices".
+  describe?: (count: number) => string;
 }) {
   const reduced = useReducedMotion();
 
@@ -127,7 +130,9 @@ export function NotificationBadge({
       ]}
       accessibilityLabel={
         unread > 0
-          ? `${unread} unread ${unread === 1 ? "notification" : "notifications"}`
+          ? describe
+            ? describe(unread)
+            : `${unread} unread ${unread === 1 ? "notification" : "notifications"}`
           : undefined
       }
       accessibilityElementsHidden={unread === 0}
@@ -177,8 +182,25 @@ function LiveTabBadge() {
   return <NotificationBadge count={counts.total} variant="tab" />;
 }
 
-// Student and Officer bottom tabs: the notification bell lives on Home.
+export const describeNewFines = (count: number) =>
+  `${count} new ${count === 1 ? "fine" : "fines"} you have not opened yet`;
+
+// A student's new fines: shown on the Fines tab and the My Fines shortcut.
+export function NewFinesBadge({ variant }: { variant: Variant }) {
+  const counts = useNotificationCounts();
+  return (
+    <NotificationBadge
+      count={counts.newFines}
+      variant={variant}
+      describe={describeNewFines}
+    />
+  );
+}
+
+// Student and Officer bottom tabs: the notification bell lives on Home, and a
+// student's Fines tab shows how many new fines they have not opened yet.
 export function HomeTabBadge({ label }: { label: string }) {
-  if (label !== "Home") return null;
-  return <LiveTabBadge />;
+  if (label === "Home") return <LiveTabBadge />;
+  if (label === "Fines") return <NewFinesBadge variant="tab" />;
+  return null;
 }
