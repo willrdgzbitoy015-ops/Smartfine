@@ -26,6 +26,8 @@ import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn, PopIn } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
+import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
+import { formatPeso } from "@/utils/format-peso";
 
 import { styles } from "./student-profile.styles";
 
@@ -414,6 +416,17 @@ export default function StudentProfile() {
 
     const { student, totals, fines } = data;
 
+    // How many fines are in each state, for the summary cards.
+    const countByStatus = (status: string) =>
+      fines.filter((fine) => String(fine.status || "").toUpperCase() === status)
+        .length;
+
+    const unpaidCount = countByStatus("UNPAID");
+
+    const paidCount = countByStatus("PAID");
+
+    const cancelledCount = countByStatus("CANCELLED");
+
     // ======================================
     // INITIALS
     // ======================================
@@ -614,26 +627,40 @@ export default function StudentProfile() {
             SUMMARY
         ================================== */}
 
-        <View style={styles.summaryRow}>
-          <View
-            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
-          >
-            <Text style={styles.summaryLabel}>Outstanding Balance</Text>
+        <View style={styles.summaryWrap}>
+          <SummaryCardRow>
+            <SummaryCard
+              label="Outstanding Balance"
+              value={formatPeso(totals.outstandingBalance)}
+              hint={unpaidCount > 0 ? "Still to be paid" : "Nothing left to pay"}
+              tone={unpaidCount > 0 ? "danger" : "success"}
+            />
 
-            <Text style={styles.outstandingValue}>
-              ₱{Number(totals.outstandingBalance || 0).toFixed(2)}
-            </Text>
-          </View>
+            <SummaryCard
+              label="Total Paid"
+              value={formatPeso(totals.totalPaid)}
+              hint={`${paidCount} paid ${paidCount === 1 ? "fine" : "fines"}`}
+              tone="success"
+            />
 
-          <View
-            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
-          >
-            <Text style={styles.summaryLabel}>Total Paid</Text>
+            <SummaryCard
+              label="Unpaid Fines"
+              value={String(unpaidCount)}
+              hint={unpaidCount > 0 ? "Waiting for payment" : "None"}
+              tone="attention"
+            />
 
-            <Text style={styles.paidValue}>
-              ₱{Number(totals.totalPaid || 0).toFixed(2)}
-            </Text>
-          </View>
+            <SummaryCard
+              label="Fines Recorded"
+              value={String(fines.length)}
+              hint={
+                cancelledCount > 0
+                  ? `Including ${cancelledCount} cancelled`
+                  : "On this account"
+              }
+              tone="info"
+            />
+          </SummaryCardRow>
         </View>
 
         {/* ==================================
@@ -645,12 +672,26 @@ export default function StudentProfile() {
             <Text style={styles.historyTitle}>
               Recent Violations & Fines History
             </Text>
+
+            <Text style={styles.historySubtitle}>
+              Tap a fine to see its details.
+            </Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.historyTable}>
-              {/* HEADER */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.historyScroll,
+              isCompact && styles.historyScrollCompact,
+            ]}
+          >
+            <View
+              style={[styles.historyTable, isCompact && styles.historyTableCompact]}
+            >
+              {/* HEADER (a phone shows each fine as a card instead) */}
 
+              {!isCompact && (
               <View style={styles.historyHeader}>
                 <Text
                   style={[styles.historyHeaderText, styles.violationColumn]}
@@ -676,6 +717,7 @@ export default function StudentProfile() {
                   Officer
                 </Text>
               </View>
+              )}
 
               {/* NO FINES */}
 
@@ -692,6 +734,66 @@ export default function StudentProfile() {
                   const isPaid = status === "PAID";
 
                   const isCancelled = status === "CANCELLED";
+
+                  // Phone: violation and amount on top, date, officer and
+                  // status underneath.
+                  if (isCompact) {
+                    return (
+                      <TouchableOpacity
+                        key={fine.id}
+                        style={styles.compactRow}
+                        activeOpacity={0.65}
+                        onPress={() => handleFinePress(fine)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${fine.violation_name} fine information`}
+                      >
+                        <View style={styles.compactTop}>
+                          <Text
+                            style={[styles.violationText, styles.compactViolation]}
+                            numberOfLines={1}
+                          >
+                            {fine.violation_name}
+                          </Text>
+
+                          <Text style={styles.amountText}>
+                            {formatPeso(fine.amount)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.compactBottom}>
+                          <Text style={styles.compactMeta} numberOfLines={2}>
+                            {formatRecordedDate(fine.created_at || fine.issued_at)}
+                            {" · "}
+                            {fine.officer_name || "Unknown"}
+                          </Text>
+
+                          <View
+                            style={[
+                              styles.statusBadge,
+
+                              isPaid ? styles.paidBadge : styles.unpaidBadge,
+
+                              isCancelled && styles.cancelledBadge,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.statusBadgeText,
+
+                                isPaid
+                                  ? styles.paidBadgeText
+                                  : styles.unpaidBadgeText,
+
+                                isCancelled && styles.cancelledBadgeText,
+                              ]}
+                            >
+                              {formatFineStatus(status)}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
 
                   return (
                     <TouchableOpacity
@@ -723,7 +825,7 @@ export default function StudentProfile() {
                           styles.amountText,
                         ]}
                       >
-                        ₱{Number(fine.amount || 0).toFixed(2)}
+                        {formatPeso(fine.amount)}
                       </Text>
 
                       <View style={styles.fineStatusColumn}>
@@ -865,7 +967,7 @@ export default function StudentProfile() {
                       <Text style={styles.fineDetailLabel}>Amount</Text>
 
                       <Text style={styles.fineDetailAmount}>
-                        ₱{Number(selectedFine.amount || 0).toFixed(2)}
+                        {formatPeso(selectedFine.amount)}
                       </Text>
                     </View>
 

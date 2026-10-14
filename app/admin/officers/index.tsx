@@ -22,6 +22,7 @@ import { API_BASE } from "@/constants/api";
 import { FadeIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SkeletonTable } from "@/components/skeleton";
+import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
@@ -71,6 +72,24 @@ type NavItem = {
 
   icon?: any;
 };
+
+// "Maria Santos Reyes" → "MR" (first and last name).
+function getInitials(fullName: string) {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "FO";
+  }
+
+  const first = parts[0][0] ?? "";
+
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
+
+  return `${first}${last}`.toUpperCase();
+}
 
 // ==========================================
 // OFFICERS DIRECTORY
@@ -333,6 +352,28 @@ export default function OfficersDirectory() {
     });
   }, [officers, search, selectedStatus, selectedArea]);
 
+  // Numbers for the summary cards.
+  const officerCounts = useMemo(() => {
+    let active = 0;
+
+    let finesTotal = 0;
+
+    for (const officer of officers) {
+      if (String(officer.account_status || "").toUpperCase() === "ACTIVE") {
+        active += 1;
+      }
+
+      finesTotal += Number(officer.total_fines_recorded || 0);
+    }
+
+    return {
+      total: officers.length,
+      active,
+      inactive: officers.length - active,
+      finesTotal,
+    };
+  }, [officers]);
+
   // ==========================================
   // NAVIGATION
   // ==========================================
@@ -518,6 +559,7 @@ export default function OfficersDirectory() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={styles.mobileNavScroll}
               contentContainerStyle={styles.mobileNav}
             >
               {navItems.map((item) => {
@@ -562,6 +604,49 @@ export default function OfficersDirectory() {
                 Manage SmartFine fines officer accounts
               </Text>
             </View>
+          </View>
+
+          {/* ==================================
+              SUMMARY CARDS
+          ================================== */}
+
+          <View style={styles.summaryWrap}>
+            <SummaryCardRow>
+              <SummaryCard
+                label="Total Officers"
+                value={String(officerCounts.total)}
+                hint={`${officerCounts.active} active · ${officerCounts.inactive} inactive`}
+                tone="info"
+                loading={loading}
+                onPress={() => setSelectedStatus("ALL")}
+              />
+
+              <SummaryCard
+                label="Active Officers"
+                value={String(officerCounts.active)}
+                hint="Can record fines"
+                tone="success"
+                loading={loading}
+                onPress={() => setSelectedStatus("ACTIVE")}
+              />
+
+              <SummaryCard
+                label="Inactive Officers"
+                value={String(officerCounts.inactive)}
+                hint={officerCounts.inactive > 0 ? "Not currently active" : "None"}
+                tone="neutral"
+                loading={loading}
+                onPress={() => setSelectedStatus("INACTIVE")}
+              />
+
+              <SummaryCard
+                label="Fines Recorded"
+                value={String(officerCounts.finesTotal)}
+                hint="By all officers"
+                tone="attention"
+                loading={loading}
+              />
+            </SummaryCardRow>
           </View>
 
           {/* ==================================
@@ -833,7 +918,12 @@ export default function OfficersDirectory() {
               </View>
             ) : (
               <>
-                <ScrollView horizontal showsHorizontalScrollIndicator>
+                {isTablet ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.tableScroll}
+                >
                   <View style={styles.table}>
                     {/* ==================================
                         TABLE HEADER
@@ -919,17 +1009,25 @@ export default function OfficersDirectory() {
 
                               {/* NAME */}
 
-                              <View style={styles.nameColumn}>
-                                <Text
-                                  style={styles.officerName}
-                                  numberOfLines={1}
-                                >
-                                  {officer.full_name}
-                                </Text>
+                              <View style={[styles.nameColumn, styles.nameCell]}>
+                                <View style={styles.avatar}>
+                                  <Text style={styles.avatarText}>
+                                    {getInitials(officer.full_name)}
+                                  </Text>
+                                </View>
 
-                                <Text style={styles.usernameText}>
-                                  Username: {officer.username}
-                                </Text>
+                                <View style={styles.nameText}>
+                                  <Text
+                                    style={styles.officerName}
+                                    numberOfLines={1}
+                                  >
+                                    {officer.full_name}
+                                  </Text>
+
+                                  <Text style={styles.usernameText}>
+                                    Username: {officer.username}
+                                  </Text>
+                                </View>
                               </View>
 
                               {/* AREA */}
@@ -1004,6 +1102,119 @@ export default function OfficersDirectory() {
                     )}
                   </View>
                 </ScrollView>
+                ) : (
+                  // ==================================
+                  // PHONE: ONE CARD PER OFFICER
+                  // ==================================
+
+                  <View style={styles.cardList}>
+                    {filteredOfficers.length === 0 ? (
+                      <View style={styles.emptyRow}>
+                        <Text style={styles.emptyText}>No officers found.</Text>
+                      </View>
+                    ) : (
+                      filteredOfficers.map((officer, index) => {
+                        const isActive =
+                          String(officer.account_status || "").toUpperCase() ===
+                          "ACTIVE";
+
+                        return (
+                          <FadeIn key={officer.id} index={index}>
+                            <TouchableOpacity
+                              style={[
+                                styles.officerCard,
+
+                                refreshing && { opacity: 0.65 },
+                              ]}
+                              activeOpacity={0.7}
+                              disabled={refreshing}
+                              onPress={() => handleOfficerPress(officer)}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${officer.full_name}, ${getStatusLabel(officer.account_status)}. Open profile`}
+                            >
+                              <View style={styles.cardTop}>
+                                <View style={styles.avatar}>
+                                  <Text style={styles.avatarText}>
+                                    {getInitials(officer.full_name)}
+                                  </Text>
+                                </View>
+
+                                <View style={styles.cardIdentity}>
+                                  <Text
+                                    style={styles.cardName}
+                                    numberOfLines={1}
+                                  >
+                                    {officer.full_name}
+                                  </Text>
+
+                                  <Text style={styles.cardSub} numberOfLines={1}>
+                                    {officer.employee_number} · {officer.username}
+                                  </Text>
+                                </View>
+
+                                <View
+                                  style={[
+                                    styles.statusBadge,
+
+                                    isActive
+                                      ? styles.activeBadge
+                                      : styles.inactiveBadge,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.statusText,
+
+                                      isActive
+                                        ? styles.activeStatusText
+                                        : styles.inactiveStatusText,
+                                    ]}
+                                  >
+                                    {getStatusLabel(officer.account_status)}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <View style={styles.cardDetails}>
+                                <View style={styles.cardLine}>
+                                  <Text style={styles.cardLabel}>Area</Text>
+
+                                  <Text style={styles.cardValue}>
+                                    {officer.assigned_area || "Not Assigned"}
+                                  </Text>
+                                </View>
+
+                                <View style={styles.cardLine}>
+                                  <Text style={styles.cardLabel}>Email</Text>
+
+                                  <Text style={styles.cardValue} numberOfLines={1}>
+                                    {officer.email || "Not provided"}
+                                  </Text>
+                                </View>
+
+                                <View style={styles.cardLine}>
+                                  <Text style={styles.cardLabel}>Contact</Text>
+
+                                  <Text style={styles.cardValue}>
+                                    {officer.contact_number || "—"}
+                                  </Text>
+                                </View>
+
+                                <View style={styles.cardLine}>
+                                  <Text style={styles.cardLabel}>Fines</Text>
+
+                                  <Text style={styles.cardValueStrong}>
+                                    {Number(officer.total_fines_recorded || 0)} recorded
+                                  </Text>
+                                </View>
+                              </View>
+                            </TouchableOpacity>
+                          </FadeIn>
+                        );
+                      })
+                    )}
+                  </View>
+                )}
 
                 {/* ==================================
                     FOOTER

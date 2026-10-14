@@ -635,92 +635,15 @@ export const styles = StyleSheet.create({
   // SUMMARY
   // ==========================================
 
-  summaryRow: {
+  // Holds the shared summary cards at the same width as the cards around it.
+  summaryWrap: {
     width: "100%",
 
     maxWidth: 1050,
 
     alignSelf: "center",
 
-    flexDirection: "row",
-
-    flexWrap: "wrap",
-
-    gap: 20,
-
     marginTop: 24,
-  },
-
-  summaryCard: {
-    flexGrow: 1,
-
-    flexShrink: 1,
-
-    flexBasis: 320,
-
-    minWidth: 230,
-
-    minHeight: 115,
-
-    backgroundColor: COLORS.white,
-
-    borderRadius: 14,
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    padding: 20,
-
-    shadowColor: "#000000",
-
-    shadowOpacity: 0.04,
-
-    shadowRadius: 5,
-
-    shadowOffset: {
-      width: 0,
-
-      height: 2,
-    },
-
-    elevation: 2,
-  },
-
-  summaryCardCompact: {
-    flexBasis: "100%",
-
-    minWidth: 0,
-
-    minHeight: 100,
-  },
-
-  summaryLabel: {
-    color: "#6E7682",
-
-    fontSize: 11,
-
-    fontFamily: "Poppins_500Medium",
-
-    marginBottom: 8,
-
-    textAlign: "center",
-  },
-
-  summaryValue: {
-    color: COLORS.navy,
-
-    fontSize: 27,
-
-    fontFamily: "Poppins_700Bold",
-  },
-
-  summaryValueGreen: {
-    color: COLORS.green,
-
-    fontSize: 27,
-
-    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -785,8 +708,34 @@ export const styles = StyleSheet.create({
   // HISTORY TABLE
   // ==========================================
 
+  // Lets the table stretch to the card on wide screens and scroll sideways
+  // when it is narrower than its columns need.
+  historyScroll: {
+    flexGrow: 1,
+  },
+
+  // On a phone the content is exactly as wide as the card, so long lines
+  // wrap instead of pushing the amount and status off the edge.
+  historyScrollCompact: {
+    width: "100%",
+  },
+
   historyTable: {
-    minWidth: 1000,
+    flexGrow: 1,
+
+    minWidth: 760,
+  },
+
+  // Two info tiles per row on a phone instead of one long column.
+  detailItemCompact: {
+    flexBasis: "46%",
+  },
+
+  // A phone lists each fine as a card, so it never scrolls sideways.
+  historyTableCompact: {
+    minWidth: 0,
+
+    width: "100%",
   },
 
   tableHeader: {
@@ -841,32 +790,104 @@ export const styles = StyleSheet.create({
   // TABLE COLUMNS
   // ==========================================
 
+  // Columns share the width in proportion, with a minimum so nothing is
+  // squeezed too small.
   referenceColumn: {
-    width: 150,
+    flex: 1.5,
+
+    minWidth: 120,
   },
 
   studentColumn: {
-    width: 190,
+    flex: 1.9,
+
+    minWidth: 150,
   },
 
   violationColumn: {
-    width: 210,
+    flex: 2.1,
+
+    minWidth: 150,
   },
 
   dateColumn: {
-    width: 145,
+    flex: 1.5,
+
+    minWidth: 120,
   },
 
   amountColumn: {
-    width: 130,
+    flex: 1.2,
+
+    minWidth: 100,
   },
 
   statusColumn: {
-    width: 130,
+    flex: 1.2,
+
+    minWidth: 100,
 
     alignItems: "center",
 
     justifyContent: "center",
+  },
+
+  // ----- phone card rows -----
+
+  compactRow: {
+    paddingHorizontal: 18,
+
+    paddingVertical: 14,
+
+    backgroundColor: COLORS.white,
+
+    borderTopWidth: 1,
+
+    borderTopColor: "#ECEEF1",
+  },
+
+  compactTop: {
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent: "space-between",
+
+    gap: 12,
+  },
+
+  compactViolation: {
+    flex: 1,
+
+    color: "#222222",
+
+    fontSize: 13,
+
+    fontFamily: "Poppins_500Medium",
+  },
+
+  compactBottom: {
+    flexDirection: "row",
+
+    alignItems: "center",
+
+    justifyContent: "space-between",
+
+    gap: 12,
+
+    marginTop: 8,
+  },
+
+  compactMeta: {
+    flex: 1,
+
+    color: "#7A8290",
+
+    fontSize: 11,
+
+    fontFamily: "Poppins_400Regular",
+
+    lineHeight: 16,
   },
 
   // ==========================================

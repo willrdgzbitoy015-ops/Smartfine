@@ -379,56 +379,12 @@ export const styles = StyleSheet.create({
   // SUMMARY
   // ==========================================
 
-  summaryRow: {
+  // Holds the shared summary cards at the same width as the cards around it.
+  summaryWrap: {
     width: "100%",
-    maxWidth: 1000,
+    maxWidth: 1080,
     alignSelf: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 25,
-    marginTop: 30,
-  },
-
-  summaryCard: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 320,
-    minWidth: 260,
-    minHeight: 130,
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: "#333333",
-    borderRadius: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 22,
-    justifyContent: "center",
-  },
-
-  summaryCardCompact: {
-    flexBasis: "100%",
-    minWidth: 0,
-    minHeight: 105,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-  },
-
-  summaryLabel: {
-    color: "#111111",
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 13,
-    marginBottom: 15,
-  },
-
-  outstandingValue: {
-    color: "#E52323",
-    fontFamily: "Poppins_700Bold",
-    fontSize: 26,
-  },
-
-  paidValue: {
-    color: "#00A21B",
-    fontFamily: "Poppins_700Bold",
-    fontSize: 26,
+    marginTop: 24,
   },
 
   // ==========================================
@@ -437,43 +393,75 @@ export const styles = StyleSheet.create({
 
   historyCard: {
     width: "100%",
-    maxWidth: 1100,
+    maxWidth: 1080,
     alignSelf: "center",
     backgroundColor: COLORS.white,
-    borderRadius: 12,
-    marginTop: 30,
+    borderRadius: 14,
+    marginTop: 24,
     overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
 
   historyTitleBar: {
-    minHeight: 58,
-    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: COLORS.white,
+  },
+
+  historyTitle: {
+    color: COLORS.navy,
+    fontFamily: "Poppins_700Bold",
+    fontSize: 17,
+  },
+
+  historySubtitle: {
+    marginTop: 3,
+    color: "#8C939F",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+  },
+
+  // Lets the table stretch to the card on wide screens and scroll sideways
+  // when it is narrower than its columns need.
+  historyScroll: {
+    flexGrow: 1,
+  },
+
+  // On a phone the content is exactly as wide as the card, so long lines wrap
+  // instead of pushing the amount and status off the edge.
+  historyScrollCompact: {
+    width: "100%",
+  },
+
+  historyTable: {
+    flexGrow: 1,
+    minWidth: 700,
+  },
+
+  // A phone lists each fine as a card, so it never scrolls sideways.
+  historyTableCompact: {
+    minWidth: 0,
+    width: "100%",
+  },
+
+  historyHeader: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.navy,
     paddingHorizontal: 24,
   },
 
-  historyTitle: {
-    color: COLORS.white,
-    fontFamily: "Poppins_700Bold",
-    fontSize: 15,
-  },
-
-  historyTable: {
-    minWidth: 1000,
-  },
-
-  historyHeader: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F1F2F4",
-    paddingHorizontal: 24,
-  },
-
   historyHeaderText: {
-    color: "#333333",
+    color: COLORS.white,
     fontFamily: "Poppins_600SemiBold",
     fontSize: 11,
+    textTransform: "uppercase",
   },
 
   historyRow: {
@@ -483,7 +471,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: "#ECEEF1",
   },
 
   historyCell: {
@@ -492,26 +480,71 @@ export const styles = StyleSheet.create({
     fontSize: 11,
   },
 
+  // Columns share the width in proportion, with a minimum so nothing is
+  // squeezed too small.
   violationColumn: {
-    width: 240,
+    flex: 2.2,
+    minWidth: 150,
   },
 
   dateColumn: {
-    width: 230,
+    flex: 2,
+    minWidth: 150,
   },
 
   amountColumn: {
-    width: 140,
+    flex: 1.2,
+    minWidth: 100,
   },
 
   fineStatusColumn: {
-    width: 140,
+    flex: 1.2,
+    minWidth: 100,
     alignItems: "center",
     justifyContent: "center",
   },
 
   officerColumn: {
-    width: 190,
+    flex: 1.8,
+    minWidth: 130,
+  },
+
+  // ----- phone card rows -----
+
+  compactRow: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: "#ECEEF1",
+  },
+
+  compactTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  compactViolation: {
+    flex: 1,
+    fontSize: 13,
+  },
+
+  compactBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 8,
+  },
+
+  compactMeta: {
+    flex: 1,
+    color: "#7A8290",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    lineHeight: 16,
   },
 
   violationText: {

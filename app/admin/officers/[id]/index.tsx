@@ -21,6 +21,7 @@ import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn, PopIn, useRetainedValue } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
+import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 
 import DeleteModal from "@/components/deletationmodal";
 import LogoutModal from "@/components/logout-modal";
@@ -725,7 +726,7 @@ export default function OfficerProfile() {
           ================================== */}
 
           <View style={styles.detailsGrid}>
-            <View style={styles.detailItem}>
+            <View style={[styles.detailItem, isCompact && styles.detailItemCompact]}>
               <Text style={styles.detailLabel}>Employee Number</Text>
 
               <Text style={styles.detailValueStrong}>
@@ -733,13 +734,13 @@ export default function OfficerProfile() {
               </Text>
             </View>
 
-            <View style={styles.detailItem}>
+            <View style={[styles.detailItem, isCompact && styles.detailItemCompact]}>
               <Text style={styles.detailLabel}>Username</Text>
 
               <Text style={styles.detailValue}>{officer.username}</Text>
             </View>
 
-            <View style={styles.detailItem}>
+            <View style={[styles.detailItem, isCompact && styles.detailItemCompact]}>
               <Text style={styles.detailLabel}>Assigned Area</Text>
 
               <Text style={styles.detailValue}>
@@ -747,7 +748,7 @@ export default function OfficerProfile() {
               </Text>
             </View>
 
-            <View style={styles.detailItem}>
+            <View style={[styles.detailItem, isCompact && styles.detailItemCompact]}>
               <Text style={styles.detailLabel}>Email Address</Text>
 
               <Text style={styles.detailValue}>
@@ -755,7 +756,7 @@ export default function OfficerProfile() {
               </Text>
             </View>
 
-            <View style={styles.detailItem}>
+            <View style={[styles.detailItem, isCompact && styles.detailItemCompact]}>
               <Text style={styles.detailLabel}>Contact Number</Text>
 
               <Text style={styles.detailValue}>
@@ -763,7 +764,7 @@ export default function OfficerProfile() {
               </Text>
             </View>
 
-            <View style={styles.detailItem}>
+            <View style={[styles.detailItem, isCompact && styles.detailItemCompact]}>
               <Text style={styles.detailLabel}>Account Created</Text>
 
               <Text style={styles.detailValue}>
@@ -777,22 +778,22 @@ export default function OfficerProfile() {
             SUMMARY
         ================================== */}
 
-        <View style={styles.summaryRow}>
-          <View
-            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
-          >
-            <Text style={styles.summaryLabel}>Total Fines Recorded</Text>
+        <View style={styles.summaryWrap}>
+          <SummaryCardRow>
+            <SummaryCard
+              label="Total Fines Recorded"
+              value={String(stats.totalFines)}
+              hint="All fines this officer recorded"
+              tone="info"
+            />
 
-            <Text style={styles.summaryValue}>{stats.totalFines}</Text>
-          </View>
-
-          <View
-            style={[styles.summaryCard, isCompact && styles.summaryCardCompact]}
-          >
-            <Text style={styles.summaryLabel}>Active Fine Records</Text>
-
-            <Text style={styles.summaryValueGreen}>{stats.activeFines}</Text>
-          </View>
+            <SummaryCard
+              label="Active Fine Records"
+              value={String(stats.activeFines)}
+              hint={stats.activeFines > 0 ? "Still unpaid" : "None unpaid"}
+              tone={stats.activeFines > 0 ? "attention" : "success"}
+            />
+          </SummaryCardRow>
         </View>
 
         {/* ==================================
@@ -809,10 +810,20 @@ export default function OfficerProfile() {
             </Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator>
-            <View style={styles.historyTable}>
-              {/* TABLE HEADER */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.historyScroll,
+              isCompact && styles.historyScrollCompact,
+            ]}
+          >
+            <View
+              style={[styles.historyTable, isCompact && styles.historyTableCompact]}
+            >
+              {/* TABLE HEADER (a phone shows each fine as a card instead) */}
 
+              {!isCompact && (
               <View style={styles.tableHeader}>
                 <Text style={[styles.headerCell, styles.referenceColumn]}>
                   Fine Reference
@@ -836,6 +847,7 @@ export default function OfficerProfile() {
                   Status
                 </Text>
               </View>
+              )}
 
               {/* EMPTY */}
 
@@ -848,6 +860,62 @@ export default function OfficerProfile() {
               ) : (
                 recentFines.map((fine) => {
                   const fineStatus = normalizeFineStatus(fine.fine_status);
+
+                  // Phone: violation and amount on top, then the reference,
+                  // student and status underneath.
+                  if (isCompact) {
+                    return (
+                      <TouchableOpacity
+                        key={fine.id}
+                        style={styles.compactRow}
+                        activeOpacity={0.7}
+                        onPress={() => handleFinePress(fine)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View fine ${fine.fine_reference}`}
+                      >
+                        <View style={styles.compactTop}>
+                          <Text
+                            style={styles.compactViolation}
+                            numberOfLines={1}
+                          >
+                            {fine.violation_name}
+                          </Text>
+
+                          <Text style={styles.amountText}>
+                            {formatMoney(fine.amount)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.compactBottom}>
+                          <Text style={styles.compactMeta} numberOfLines={2}>
+                            {fine.fine_reference}
+                            {" · "}
+                            {fine.student_name}
+                            {" · "}
+                            {formatDate(fine.issued_at)}
+                          </Text>
+
+                          <View
+                            style={[
+                              styles.fineStatusBadge,
+
+                              getFineStatusBadgeStyle(fineStatus),
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.fineStatusText,
+
+                                getFineStatusTextStyle(fineStatus),
+                              ]}
+                            >
+                              {getFineStatusLabel(fineStatus)}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
 
                   return (
                     <TouchableOpacity

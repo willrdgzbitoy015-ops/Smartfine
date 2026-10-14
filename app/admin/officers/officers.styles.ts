@@ -79,8 +79,8 @@ export const styles = StyleSheet.create({
 
   navText: {
     color: COLORS.white,
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 14,
-    fontWeight: "600",
   },
 
   logoutButton: {
@@ -117,6 +117,12 @@ export const styles = StyleSheet.create({
   // MOBILE NAVIGATION
   // ==========================================
 
+  // A ScrollView grows to fill spare height by default; without this the
+  // menu pills stretch tall when the page is shorter than the screen.
+  mobileNavScroll: {
+    flexGrow: 0,
+  },
+
   mobileNav: {
     gap: 8,
     paddingBottom: 25,
@@ -137,8 +143,8 @@ export const styles = StyleSheet.create({
 
   mobileNavText: {
     color: COLORS.navy,
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 12,
-    fontWeight: "600",
   },
 
   mobileNavTextActive: {
@@ -158,12 +164,13 @@ export const styles = StyleSheet.create({
 
   pageTitle: {
     color: COLORS.text,
+    fontFamily: "Poppins_700Bold",
     fontSize: 27,
-    fontWeight: "800",
   },
 
   pageSubtitle: {
     color: "#6F7682",
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     marginTop: 5,
   },
@@ -206,6 +213,7 @@ export const styles = StyleSheet.create({
 
   searchIcon: {
     color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
     fontSize: 20,
     marginRight: 8,
   },
@@ -214,6 +222,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#222222",
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     outlineStyle: "none",
   } as any,
@@ -250,14 +259,14 @@ export const styles = StyleSheet.create({
   filterText: {
     flex: 1,
     color: "#333333",
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 11,
-    fontWeight: "600",
   },
 
   filterArrow: {
     color: "#555555",
+    fontFamily: "Poppins_700Bold",
     fontSize: 9,
-    fontWeight: "800",
   },
 
   filterMenu: {
@@ -292,8 +301,8 @@ export const styles = StyleSheet.create({
 
   filterOptionText: {
     color: COLORS.text,
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 11,
-    fontWeight: "600",
   },
 
   // ==========================================
@@ -311,8 +320,8 @@ export const styles = StyleSheet.create({
 
   addButtonText: {
     color: COLORS.white,
+    fontFamily: "Poppins_700Bold",
     fontSize: 12,
-    fontWeight: "800",
   },
 
   // ==========================================
@@ -322,7 +331,7 @@ export const styles = StyleSheet.create({
   tableCard: {
     width: "100%",
     maxWidth: 1100,
-    minHeight: 480,
+    minHeight: 260,
     alignSelf: "center",
     backgroundColor: COLORS.white,
     borderRadius: 14,
@@ -350,12 +359,14 @@ export const styles = StyleSheet.create({
 
   stateText: {
     color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     marginTop: 12,
   },
 
   errorText: {
     color: COLORS.red,
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     textAlign: "center",
     marginBottom: 18,
@@ -370,17 +381,23 @@ export const styles = StyleSheet.create({
 
   retryText: {
     color: COLORS.white,
+    fontFamily: "Poppins_700Bold",
     fontSize: 12,
-    fontWeight: "700",
   },
 
   // ==========================================
   // TABLE
   // ==========================================
 
+  // Lets the table stretch to the card on wide screens and scroll sideways
+  // when the card is narrower than the columns need.
+  tableScroll: {
+    flexGrow: 1,
+  },
+
   table: {
-    width: 1120,
-    minWidth: 1120,
+    flexGrow: 1,
+    minWidth: 920,
   },
 
   // ==========================================
@@ -398,8 +415,8 @@ export const styles = StyleSheet.create({
 
   headerCell: {
     color: COLORS.white,
+    fontFamily: "Poppins_700Bold",
     fontSize: 11,
-    fontWeight: "800",
     textTransform: "uppercase",
   },
 
@@ -407,35 +424,46 @@ export const styles = StyleSheet.create({
   // COLUMNS
   // ==========================================
 
+  // Columns share the width in proportion, with a minimum so nothing is
+  // squeezed too small.
   employeeColumn: {
-    width: 125,
+    flex: 1,
+    minWidth: 100,
   },
 
   nameColumn: {
-    width: 190,
+    flex: 2,
+    minWidth: 170,
   },
 
   areaColumn: {
-    width: 160,
+    flex: 1.5,
+    minWidth: 130,
   },
 
   emailColumn: {
-    width: 210,
+    flex: 2,
+    minWidth: 180,
   },
 
   contactColumn: {
-    width: 150,
+    flex: 1.3,
+    minWidth: 110,
   },
 
   finesColumn: {
-    width: 125,
+    flex: 1,
+    minWidth: 90,
     textAlign: "center",
   },
 
   statusColumn: {
-    width: 120,
+    flex: 1,
+    minWidth: 96,
     alignItems: "center",
     justifyContent: "center",
+    // For the "Status" heading, which is text rather than a badge.
+    textAlign: "center",
   },
 
   // ==========================================
@@ -455,31 +483,147 @@ export const styles = StyleSheet.create({
 
   bodyCell: {
     color: "#333333",
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
     paddingRight: 12,
   },
 
   employeeNumber: {
     color: COLORS.navy,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   officerName: {
     color: "#222222",
+    fontFamily: "Poppins_700Bold",
     fontSize: 12,
-    fontWeight: "700",
     paddingRight: 12,
   },
 
   usernameText: {
     color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
     fontSize: 9,
     marginTop: 4,
   },
 
   finesRecorded: {
     color: COLORS.navy,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
+  },
+
+  // ==========================================
+  // SUMMARY CARDS
+  // ==========================================
+
+  summaryWrap: {
+    width: "100%",
+    maxWidth: 1100,
+    alignSelf: "center",
+    marginBottom: 24,
+  },
+
+  // ==========================================
+  // NAME CELL: initials beside the name
+  // ==========================================
+
+  nameCell: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  nameText: {
+    flex: 1,
+  },
+
+  avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E8EEF8",
+  },
+
+  avatarText: {
+    color: COLORS.navy,
+    fontFamily: "Poppins_700Bold",
+    fontSize: 11,
+  },
+
+  // ==========================================
+  // PHONE: each officer as a card
+  // ==========================================
+
+  cardList: {
+    padding: 14,
+    gap: 12,
+  },
+
+  officerCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E6E8EB",
+    padding: 14,
+  },
+
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  cardIdentity: {
+    flex: 1,
+  },
+
+  cardName: {
+    color: "#222222",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
+  },
+
+  cardSub: {
+    color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    marginTop: 1,
+  },
+
+  cardDetails: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#EEF0F3",
+    gap: 6,
+  },
+
+  cardLine: {
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  cardLabel: {
+    width: 62,
+    color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+  },
+
+  cardValue: {
+    flex: 1,
+    color: "#333333",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+  },
+
+  cardValueStrong: {
+    flex: 1,
+    color: COLORS.navy,
+    fontFamily: "Poppins_700Bold",
+    fontSize: 12,
   },
 
   // ==========================================
@@ -504,8 +648,8 @@ export const styles = StyleSheet.create({
   },
 
   statusText: {
+    fontFamily: "Poppins_700Bold",
     fontSize: 10,
-    fontWeight: "800",
   },
 
   activeStatusText: {
@@ -529,6 +673,7 @@ export const styles = StyleSheet.create({
 
   emptyText: {
     color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
   },
 
@@ -549,14 +694,14 @@ export const styles = StyleSheet.create({
 
   totalOfficersText: {
     color: COLORS.text,
+    fontFamily: "Poppins_700Bold",
     fontSize: 11,
-    fontWeight: "800",
   },
 
   visibleOfficersText: {
     color: COLORS.muted,
+    fontFamily: "Poppins_600SemiBold",
     fontSize: 10,
-    fontWeight: "600",
   },
 });
 
