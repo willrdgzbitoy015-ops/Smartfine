@@ -348,6 +348,9 @@ export default function AdminDashboard() {
   // it closes.
   const [editFine, setEditFine] = useState<{ fineId: number; fromAll: boolean } | null>(null);
 
+  // Add New Fine, opened by Record Fine without leaving the dashboard.
+  const [addFine, setAddFine] = useState(false);
+
   const swapPopup = usePopupSwap();
 
   const shownEditFine = useRetainedValue(editFine);
@@ -726,6 +729,13 @@ export default function AdminDashboard() {
     swapPopup(() => setEditFine({ fineId, fromAll }));
   };
 
+  // "View Fine" on the saved step: swap to the new fine's details.
+  const handleViewSavedFine = (fineId: number) => {
+    setAddFine(false);
+
+    swapPopup(() => setModal({ view: "fine", fineId, fromAll: false }));
+  };
+
   const closeEditFine = () => {
     const closing = editFine;
 
@@ -847,10 +857,17 @@ export default function AdminDashboard() {
     },
   ];
 
-  const quickActions = [
+  // Record Fine opens its pop-up here; the others open their own screens.
+  const quickActions: {
+    label: string;
+    route?: string;
+    onPress?: () => void;
+    icon: number;
+    primary?: boolean;
+  }[] = [
     {
       label: "Record Fine",
-      route: "/admin/fines?add=1",
+      onPress: () => setAddFine(true),
       icon: require("../../../assets/icons/fines.png"),
       primary: true,
     },
@@ -1141,7 +1158,11 @@ export default function AdminDashboard() {
                   styles.quickAction,
                   action.primary && styles.quickActionPrimary,
                 ]}
-                onPress={() => router.push(action.route as any)}
+                onPress={() =>
+                  action.onPress
+                    ? action.onPress()
+                    : router.push(action.route as any)
+                }
                 activeOpacity={0.8}
                 accessibilityRole="button"
               >
@@ -1362,6 +1383,18 @@ export default function AdminDashboard() {
         fineId={shownEditFine?.fineId ?? null}
         onClose={closeEditFine}
         onSaved={handleFineChanged}
+      />
+
+      {/* ======================================
+          ADD NEW FINE (Record Fine)
+      ====================================== */}
+
+      <FineFormModal
+        visible={addFine}
+        mode="add"
+        onClose={() => setAddFine(false)}
+        onSaved={handleFineChanged}
+        onViewFine={handleViewSavedFine}
       />
 
       {/* ======================================
