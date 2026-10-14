@@ -11,11 +11,16 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.willbitoy.smartfine",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/smartfine-logo.png",
         "backgroundColor": "#173A73"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -36,6 +41,19 @@
           }
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SmartFine to use the camera to scan student QR codes.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
+        }
+      ],
       "expo-font",
       "expo-image",
       "expo-web-browser",
@@ -45,6 +63,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a88fbbd4-7b66-463c-bbd7-3de454b363c2"
+      }
+    },
+    "owner": "gowren"
   }
 }
