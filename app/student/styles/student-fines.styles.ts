@@ -1,11 +1,12 @@
 import { StyleSheet } from "react-native";
+import { card, navBar } from "@/constants/officer-theme";
 
 const colors = {
-  background: "#E8E8E8",
+  background: "#F1F4F9",
   navy: "#123266",
   white: "#FFFFFF",
-  text: "#111111",
-  muted: "#626975",
+  text: "#1B2437",
+  muted: "#6B7689",
   border: "#777777",
   red: "#E52323",
   green: "#238A35",
@@ -56,7 +57,7 @@ export const styles = StyleSheet.create({
   backIcon: {
     width: 23,
     height: 23,
-    tintColor: colors.text,
+    tintColor: colors.navy,
     transform: [{ rotate: "180deg" }],
   },
 
@@ -64,7 +65,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.bold,
     fontSize: 21,
-    color: colors.text,
+    color: colors.navy,
     textAlign: "center",
   },
 
@@ -88,8 +89,8 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#B9C4D3",
-    borderRadius: 9,
+    borderColor: "#CBD5E1",
+    borderRadius: 22,
   },
 
   filterActive: {
@@ -121,7 +122,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 19,
     paddingVertical: 18,
     backgroundColor: colors.navy,
-    borderRadius: 12,
+    borderRadius: 16,
+    shadowColor: "#173A73",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 4,
   },
 
   totalLabel: {
@@ -152,10 +158,10 @@ export const styles = StyleSheet.create({
     paddingVertical: 13,
     marginTop: 12,
     marginBottom: 23,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#EEF3FB",
     borderWidth: 1,
-    borderColor: "#C9D4E1",
-    borderRadius: 9,
+    borderColor: "#D5E0F2",
+    borderRadius: 14,
   },
 
   paymentNoteTitle: {
@@ -195,12 +201,9 @@ export const styles = StyleSheet.create({
   },
 
   fineCard: {
+    ...card,
     padding: 16,
     marginBottom: 12,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: "#C5CDD7",
-    borderRadius: 11,
   },
 
   fineHeader: {
@@ -362,7 +365,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.gcash,
-    borderRadius: 8,
+    borderRadius: 12,
   },
 
   gcashButtonText: {
@@ -377,7 +380,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.gcashLight,
     borderWidth: 1,
     borderColor: "#B9D3FB",
-    borderRadius: 10,
+    borderRadius: 12,
   },
 
   gcashPendingTitle: {
@@ -408,7 +411,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.gcash,
-    borderRadius: 8,
+    borderRadius: 12,
   },
 
   gcashOutlineButton: {
@@ -420,7 +423,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.gcash,
-    borderRadius: 8,
+    borderRadius: 12,
   },
 
   gcashOutlineText: {
@@ -476,7 +479,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.navy,
-    borderRadius: 8,
+    borderRadius: 12,
   },
 
   detailsButtonText: {
@@ -515,11 +518,8 @@ export const styles = StyleSheet.create({
   },
 
   emptyPanel: {
+    ...card,
     padding: 19,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: "#C5CDD7",
-    borderRadius: 10,
     marginBottom: 18,
   },
 
@@ -545,9 +545,9 @@ export const styles = StyleSheet.create({
   errorPanel: {
     padding: 14,
     borderWidth: 1,
-    borderColor: colors.red,
-    borderRadius: 10,
-    backgroundColor: colors.white,
+    borderColor: "#F3B8B8",
+    borderRadius: 12,
+    backgroundColor: "#FDECEC",
     marginBottom: 18,
   },
 
@@ -571,7 +571,7 @@ export const styles = StyleSheet.create({
   },
 
   bottomArea: {
-    backgroundColor: colors.navy,
+    ...navBar,
   },
 
   bottomNavigation: {
@@ -590,8 +590,8 @@ export const styles = StyleSheet.create({
   },
 
   navIcon: {
-    width: 28,
-    height: 28,
+    width: 27,
+    height: 27,
     tintColor: colors.white,
   },
 
@@ -603,8 +603,7 @@ export const styles = StyleSheet.create({
   },
 
   indicator: {
-    width: "65%",
-    maxWidth: 52,
+    width: "76%",
     height: 3,
     backgroundColor: colors.active,
     borderRadius: 2,

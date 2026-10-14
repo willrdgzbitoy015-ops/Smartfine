@@ -1,7 +1,8 @@
 import { StyleSheet } from "react-native";
+import { card, navBar } from "@/constants/officer-theme";
 
 const navy = "#123266";
-const background = "#E8E8E8";
+const background = "#F1F4F9";
 
 export const styles = StyleSheet.create({
   safeArea: {
@@ -57,20 +58,18 @@ export const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     fontSize: 12,
     lineHeight: 20,
-    color: "#626975",
+    color: "#6B7689",
     textAlign: "center",
     marginBottom: 20,
   },
   qrCard: {
+    ...card,
     width: "100%",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingTop: 22,
     paddingBottom: 24,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D1D7DF",
-    backgroundColor: "#FFFFFF",
   },
   cardBrand: {
     fontFamily: "Poppins_700Bold",
@@ -82,7 +81,7 @@ export const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     fontSize: 10,
     letterSpacing: 1.5,
-    color: "#626975",
+    color: "#6B7689",
     marginTop: 3,
   },
   // Placeholders while the QR code loads.
@@ -118,7 +117,7 @@ export const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     fontSize: 12,
     lineHeight: 20,
-    color: "#626975",
+    color: "#6B7689",
     textAlign: "center",
     marginTop: 4,
   },
@@ -141,7 +140,7 @@ export const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     fontSize: 12,
     lineHeight: 20,
-    color: "#626975",
+    color: "#6B7689",
     textAlign: "center",
     marginTop: 20,
     marginBottom: 20,
@@ -152,7 +151,7 @@ export const styles = StyleSheet.create({
     minHeight: 50,
     paddingHorizontal: 18,
     paddingVertical: 13,
-    borderRadius: 11,
+    borderRadius: 12,
     backgroundColor: navy,
     alignItems: "center",
     justifyContent: "center",
@@ -170,11 +169,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 12,
     marginTop: 12,
-    borderRadius: 11,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: navy,
+    borderColor: "#CBD5E1",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
   secondaryButtonText: {
     fontFamily: "Poppins_500Medium",
@@ -188,24 +188,24 @@ export const styles = StyleSheet.create({
     fontFamily: "Poppins_300Light",
     fontSize: 11,
     lineHeight: 18,
-    color: "#626975",
+    color: "#6B7689",
     textAlign: "center",
     marginTop: 14,
   },
   stateCard: {
+    ...card,
     width: "100%",
     padding: 24,
     minHeight: 240,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     gap: 18,
+    borderRadius: 18,
   },
   helper: {
     fontFamily: "Poppins_400Regular",
     fontSize: 13,
-    color: "#626975",
+    color: "#6B7689",
     textAlign: "center",
   },
   errorTitle: {
@@ -229,13 +229,13 @@ export const styles = StyleSheet.create({
     lineHeight: 20,
     color: navy,
     backgroundColor: "#EDF3FA",
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     marginTop: 14,
     textAlign: "center",
   },
   bottomArea: {
-    backgroundColor: navy,
+    ...navBar,
   },
   bottomNavigation: {
     flexDirection: "row",
@@ -251,8 +251,8 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   navIcon: {
-    width: 28,
-    height: 28,
+    width: 27,
+    height: 27,
     tintColor: "#FFFFFF",
   },
   navLabel: {
@@ -263,8 +263,7 @@ export const styles = StyleSheet.create({
     marginTop: 5,
   },
   indicator: {
-    width: "65%",
-    maxWidth: 52,
+    width: "76%",
     height: 3,
     marginTop: 4,
     backgroundColor: "#16E564",

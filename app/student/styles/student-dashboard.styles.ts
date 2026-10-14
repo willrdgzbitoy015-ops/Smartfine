@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { card, navBar } from "@/constants/officer-theme";
 
 const fonts = {
   bold: "Poppins_700Bold",
@@ -9,12 +10,12 @@ const fonts = {
 };
 
 const colors = {
-  background: "#E8E8E8",
+  background: "#F1F4F9",
   navy: "#123266",
   white: "#FFFFFF",
-  text: "#111111",
-  muted: "#626975",
-  border: "#C5CDD7",
+  text: "#1B2437",
+  muted: "#6B7689",
+  border: "#E1E7F0",
   red: "#E52323",
   green: "#238A35",
   active: "#16E564",
@@ -54,9 +55,9 @@ export const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
@@ -90,9 +91,9 @@ export const styles = StyleSheet.create({
 
   studentName: {
     fontFamily: fonts.bold,
-    fontSize: 18,
-    lineHeight: 25,
-    color: colors.text,
+    fontSize: 19,
+    lineHeight: 26,
+    color: colors.navy,
   },
 
   notificationButton: {
@@ -104,6 +105,11 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 23,
+    shadowColor: "#173A73",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   notificationIcon: {
@@ -115,14 +121,13 @@ export const styles = StyleSheet.create({
   // OUTSTANDING FINE
 
   balanceCard: {
+    ...card,
     width: "100%",
     minHeight: 160,
     paddingHorizontal: 20,
     paddingVertical: 19,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderTopWidth: 3,
+    borderTopColor: colors.red,
   },
 
   balanceTitle: {
@@ -179,6 +184,7 @@ export const styles = StyleSheet.create({
   },
 
   quickCard: {
+    ...card,
     flex: 1,
     minWidth: 0,
     minHeight: 92,
@@ -186,10 +192,6 @@ export const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 11,
   },
 
   quickIcon: {
@@ -238,14 +240,11 @@ export const styles = StyleSheet.create({
   },
 
   activityCard: {
+    ...card,
     width: "100%",
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 10,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 11,
   },
 
   activityTitle: {
@@ -316,12 +315,9 @@ export const styles = StyleSheet.create({
   },
 
   emptyPanel: {
+    ...card,
     padding: 18,
     marginBottom: 12,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 11,
   },
 
   emptyTitle: {
@@ -333,10 +329,10 @@ export const styles = StyleSheet.create({
   errorPanel: {
     padding: 14,
     marginBottom: 18,
-    backgroundColor: colors.white,
+    backgroundColor: "#FDECEC",
     borderWidth: 1,
-    borderColor: colors.red,
-    borderRadius: 10,
+    borderColor: "#F3B8B8",
+    borderRadius: 12,
   },
 
   errorText: {
@@ -363,7 +359,7 @@ export const styles = StyleSheet.create({
   // BOTTOM NAVIGATION
 
   bottomArea: {
-    backgroundColor: colors.navy,
+    ...navBar,
   },
 
   bottomNavigation: {
@@ -382,8 +378,8 @@ export const styles = StyleSheet.create({
   },
 
   navIcon: {
-    width: 28,
-    height: 28,
+    width: 27,
+    height: 27,
     tintColor: colors.white,
   },
 
@@ -396,8 +392,7 @@ export const styles = StyleSheet.create({
   },
 
   indicator: {
-    width: "65%",
-    maxWidth: 52,
+    width: "76%",
     height: 3,
     marginTop: 4,
     backgroundColor: colors.active,
@@ -426,9 +421,7 @@ export const styles = StyleSheet.create({
     flexShrink: 1,
     padding: 20,
     backgroundColor: colors.background,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#BFC5CE",
+    borderRadius: 20,
   },
 
   modalHeader: {
@@ -476,7 +469,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 11,
     marginTop: 14,
     backgroundColor: colors.navy,
-    borderRadius: 8,
+    borderRadius: 12,
   },
 
   modalCloseText: {

@@ -1,12 +1,14 @@
 import { StyleSheet } from "react-native";
+import { card, navBar } from "@/constants/officer-theme";
 
 const colors = {
-  background: "#E8E8E8",
+  background: "#F1F4F9",
   navy: "#123266",
   white: "#FFFFFF",
-  text: "#111111",
-  muted: "#626975",
-  border: "#777777",
+  text: "#1B2437",
+  muted: "#6B7689",
+  border: "#E1E7F0",
+  inputBorder: "#CBD5E1",
   green: "#238A35",
   red: "#E52323",
   active: "#16E564",
@@ -53,7 +55,7 @@ export const styles = StyleSheet.create({
     width: 23,
     height: 23,
     resizeMode: "contain",
-    tintColor: colors.text,
+    tintColor: colors.navy,
     transform: [{ rotate: "180deg" }],
   },
 
@@ -61,7 +63,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.bold,
     fontSize: 21,
-    color: colors.text,
+    color: colors.navy,
     textAlign: "center",
   },
 
@@ -95,10 +97,10 @@ export const styles = StyleSheet.create({
 
   errorCard: {
     padding: 16,
-    backgroundColor: colors.white,
+    backgroundColor: "#FDECEC",
     borderWidth: 1,
-    borderColor: colors.red,
-    borderRadius: 10,
+    borderColor: "#F3B8B8",
+    borderRadius: 12,
     marginBottom: 16,
   },
 
@@ -172,7 +174,7 @@ export const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 19,
     lineHeight: 27,
-    color: colors.text,
+    color: colors.navy,
   },
 
   studentSubtitle: {
@@ -191,10 +193,7 @@ export const styles = StyleSheet.create({
   },
 
   infoCard: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
+    ...card,
     padding: 17,
     marginBottom: 21,
   },
@@ -221,11 +220,8 @@ export const styles = StyleSheet.create({
   },
 
   overview: {
+    ...card,
     flexDirection: "row",
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
     paddingVertical: 17,
     paddingHorizontal: 8,
     marginBottom: 26,
@@ -240,7 +236,7 @@ export const styles = StyleSheet.create({
   overviewLabel: {
     fontFamily: fonts.medium,
     fontSize: 11,
-    color: colors.text,
+    color: colors.muted,
     textAlign: "center",
   },
 
@@ -265,13 +261,10 @@ export const styles = StyleSheet.create({
   },
 
   menuButton: {
+    ...card,
     minHeight: 60,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 9,
     paddingHorizontal: 14,
   },
 
@@ -279,7 +272,7 @@ export const styles = StyleSheet.create({
     width: 30,
     height: 30,
     resizeMode: "contain",
-    tintColor: colors.text,
+    tintColor: colors.navy,
   },
 
   menuText: {
@@ -287,15 +280,15 @@ export const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontSize: 13,
     color: colors.text,
-    textAlign: "center",
-    marginHorizontal: 8,
+    textAlign: "left",
+    marginHorizontal: 12,
   },
 
   arrowIcon: {
-    width: 25,
-    height: 25,
+    width: 22,
+    height: 22,
     resizeMode: "contain",
-    tintColor: colors.text,
+    tintColor: "#94A3B8",
     transform: [{ rotate: "180deg" }],
   },
 
@@ -304,7 +297,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.navy,
-    borderRadius: 9,
+    borderRadius: 12,
     paddingHorizontal: 18,
     marginTop: 20,
   },
@@ -372,8 +365,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 9,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    borderColor: colors.inputBorder,
+    borderRadius: 10,
     fontFamily: fonts.regular,
     fontSize: 14,
     color: colors.text,
@@ -402,8 +395,8 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    borderColor: colors.inputBorder,
+    borderRadius: 10,
   },
 
   passwordInput: {
@@ -443,12 +436,9 @@ export const styles = StyleSheet.create({
   },
 
   aboutHeading: {
+    ...card,
     minHeight: 40,
     justifyContent: "center",
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
     paddingHorizontal: 14,
     marginBottom: 6,
   },
@@ -460,10 +450,7 @@ export const styles = StyleSheet.create({
   },
 
   aboutCard: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    ...card,
     padding: 17,
     marginBottom: 14,
   },
@@ -477,13 +464,10 @@ export const styles = StyleSheet.create({
   },
 
   developerCard: {
+    ...card,
     flexDirection: "row",
     alignItems: "center",
     gap: 15,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
     padding: 16,
   },
 
@@ -516,10 +500,7 @@ export const styles = StyleSheet.create({
   },
 
   textCard: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
+    ...card,
     padding: 16,
     marginBottom: 16,
   },
@@ -539,7 +520,7 @@ export const styles = StyleSheet.create({
   },
 
   bottomArea: {
-    backgroundColor: colors.navy,
+    ...navBar,
   },
 
   bottomNavigation: {
@@ -558,8 +539,8 @@ export const styles = StyleSheet.create({
   },
 
   navIcon: {
-    width: 28,
-    height: 28,
+    width: 27,
+    height: 27,
     tintColor: colors.white,
     resizeMode: "contain",
   },
@@ -573,8 +554,7 @@ export const styles = StyleSheet.create({
   },
 
   indicator: {
-    width: "65%",
-    maxWidth: 52,
+    width: "76%",
     height: 3,
     marginTop: 4,
     backgroundColor: colors.active,
@@ -598,7 +578,7 @@ export const styles = StyleSheet.create({
     maxWidth: 390,
     padding: 20,
     backgroundColor: colors.white,
-    borderRadius: 13,
+    borderRadius: 20,
   },
 
   modalTitle: {

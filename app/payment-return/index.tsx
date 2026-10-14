@@ -28,6 +28,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E8E8E8",
+    backgroundColor: "#F1F4F9",
   },
 });

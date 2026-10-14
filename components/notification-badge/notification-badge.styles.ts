@@ -53,7 +53,7 @@ export const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: "#E52323",
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: "#F1F4F9",
   },
 
   adminText: {

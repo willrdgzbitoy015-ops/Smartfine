@@ -14,7 +14,7 @@ export const notificationStyles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#BFC5CE",
+    borderColor: "#CBD5E1",
   },
 
   notificationFilterActive: {
@@ -33,8 +33,8 @@ export const notificationStyles = StyleSheet.create({
   },
 
   unreadActivityCard: {
-    backgroundColor: "#EAF3FF",
-    borderColor: "#8FB7EA",
+    backgroundColor: "#F1F7FF",
+    borderColor: "#BFD3F2",
   },
 
   activityTitleRow: {
@@ -92,7 +92,7 @@ export const notificationStyles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: "#E52323",
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: "#F1F4F9",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -120,7 +120,7 @@ export const notificationStyles = StyleSheet.create({
   },
 
   readLabel: {
-    color: "#626975",
+    color: "#6B7689",
   },
 
   markReadButton: {
@@ -162,10 +162,8 @@ export const notificationStyles = StyleSheet.create({
     maxWidth: 420,
     maxHeight: "85%",
     padding: 20,
-    backgroundColor: "#E8E8E8",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#BFC5CE",
+    backgroundColor: "#F1F4F9",
+    borderRadius: 20,
   },
 
   detailsTitle: {
@@ -188,7 +186,7 @@ export const notificationStyles = StyleSheet.create({
     gap: 12,
     paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: "#D0D3D8",
+    borderBottomColor: "#E7ECF2",
   },
 
   detailsRemarks: {
@@ -199,7 +197,7 @@ export const notificationStyles = StyleSheet.create({
   detailsLabel: {
     fontFamily: "Poppins_500Medium",
     fontSize: 11,
-    color: "#626975",
+    color: "#6B7689",
   },
 
   detailsValue: {
@@ -223,7 +221,7 @@ export const notificationStyles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 16,
     backgroundColor: "#123266",
-    borderRadius: 8,
+    borderRadius: 12,
   },
 
   detailsCloseText: {
