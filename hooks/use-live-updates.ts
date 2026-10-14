@@ -28,6 +28,9 @@ type LiveListener = (topics: readonly LiveTopic[]) => void;
 
 const listeners = new Set<LiveListener>();
 
+// Told when a sign-in's connection starts (true) and when it is closed (false).
+const lifecycleListeners = new Set<(running: boolean) => void>();
+
 let socket: Socket | null = null;
 let socketToken: string | null = null;
 let hasConnected = false;
@@ -49,8 +52,18 @@ export function subscribeLive(listener: LiveListener) {
   };
 }
 
+export function onLiveLifecycle(listener: (running: boolean) => void) {
+  lifecycleListeners.add(listener);
+
+  return () => {
+    lifecycleListeners.delete(listener);
+  };
+}
+
 // Closes the connection, e.g. when the user signs out.
 export function stopLiveUpdates() {
+  const wasRunning = socket !== null;
+
   if (socket) {
     socket.removeAllListeners();
     socket.disconnect();
@@ -59,6 +72,10 @@ export function stopLiveUpdates() {
   socket = null;
   socketToken = null;
   hasConnected = false;
+
+  if (wasRunning) {
+    lifecycleListeners.forEach((listener) => listener(false));
+  }
 }
 
 // Opens the connection for the signed-in user, once. A different sign-in
@@ -103,6 +120,8 @@ export async function ensureLiveUpdates() {
   });
 
   socket = next;
+
+  lifecycleListeners.forEach((listener) => listener(true));
 
   next.on("changed", (payload: { topics?: unknown }) => {
     const topics = Array.isArray(payload?.topics)

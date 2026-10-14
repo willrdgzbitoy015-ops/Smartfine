@@ -28,6 +28,7 @@ import { useEffect, useRef, useState } from "react";
 import "react-native-reanimated";
 
 import { NATIVE_DRIVER, useReducedMotion } from "@/components/motion";
+import { NoticeBanner } from "@/components/notice-banner";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
@@ -484,6 +485,8 @@ export default function RootLayout() {
               : "fade",
         })}
       />
+
+      <NoticeBanner />
 
       <StatusBar style="auto" />
     </ThemeProvider>
