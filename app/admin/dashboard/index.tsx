@@ -1331,6 +1331,7 @@ export default function AdminDashboard() {
             onChanged={handleFineChanged}
             onNoticesRead={() => {}}
             onEdit={handleEditFine}
+            onClose={() => setModal(null)}
           />
         ) : null}
       </AdminModal>

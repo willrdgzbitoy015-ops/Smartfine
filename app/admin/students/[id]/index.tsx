@@ -15,6 +15,7 @@ import {
 
 import { useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
+import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import { StudentFormModal } from "@/components/admin-forms/student-form-modal";
 
 import QRCode from "react-native-qrcode-svg";
@@ -100,6 +101,9 @@ export default function StudentProfile() {
 
   // Edit Student Information is a pop-up; ?edit=1 (the old edit route) opens it.
   const [showEdit, setShowEdit] = useState(false);
+
+  // Add Fine is a pop-up too, opened from the profile card.
+  const [showFineForm, setShowFineForm] = useState(false);
 
   const editParam = Array.isArray(params.edit) ? params.edit[0] : params.edit;
 
@@ -257,6 +261,29 @@ export default function StudentProfile() {
   };
 
   // ==========================================
+  // ADD FINE
+  // ==========================================
+
+  // Opens the Add Fine pop-up with this student already chosen.
+  const handleAddFine = () => {
+    if (
+      !data?.student ||
+      String(data.student.account_status).toUpperCase() !== "ACTIVE"
+    ) {
+      return;
+    }
+
+    setShowFineForm(true);
+  };
+
+  // "View Fine" on the saved fine opens it in the Fines Directory.
+  const handleViewSavedFine = (fineId: number) => {
+    setShowFineForm(false);
+
+    router.push(`/admin/fines?fineId=${fineId}` as any);
+  };
+
+  // ==========================================
   // QR CODE
   // ==========================================
 
@@ -411,6 +438,9 @@ export default function StudentProfile() {
       [student.grade_level, student.section].filter(Boolean).join(" - ") ||
       "Not assigned";
 
+    // A fine can only be recorded for an active account.
+    const canAddFine = String(student.account_status).toUpperCase() === "ACTIVE";
+
     // ======================================
     // QR VALUE
     // ======================================
@@ -504,6 +534,28 @@ export default function StudentProfile() {
               isCompact && styles.profileActionsCompact,
             ]}
           >
+            {/* ADD FINE */}
+
+            <TouchableOpacity
+              style={[
+                styles.outlineButton,
+
+                styles.addFineButton,
+
+                isCompact && styles.outlineButtonCompact,
+
+                !canAddFine && styles.addFineButtonDisabled,
+              ]}
+              onPress={handleAddFine}
+              disabled={!canAddFine}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Add a fine for ${student.full_name}`}
+              accessibilityState={{ disabled: !canAddFine }}
+            >
+              <Text style={styles.addFineButtonText}>+ Add Fine</Text>
+            </TouchableOpacity>
+
             {/* QR */}
 
             <TouchableOpacity
@@ -543,6 +595,18 @@ export default function StudentProfile() {
 
               <Text style={styles.outlineButtonText}>Edit Information</Text>
             </TouchableOpacity>
+
+            {!canAddFine && (
+              <Text
+                style={[
+                  styles.inactiveHint,
+
+                  isCompact && styles.inactiveHintCompact,
+                ]}
+              >
+                This account is inactive, so a fine cannot be recorded.
+              </Text>
+            )}
           </View>
         </View>
 
@@ -1083,6 +1147,15 @@ export default function StudentProfile() {
         studentId={studentId}
         onClose={() => setShowEdit(false)}
         onSaved={() => void loadStudent()}
+      />
+
+      <FineFormModal
+        visible={showFineForm}
+        mode="add"
+        studentId={data?.student ? Number(data.student.id) : null}
+        onClose={() => setShowFineForm(false)}
+        onSaved={() => void loadStudent()}
+        onViewFine={handleViewSavedFine}
       />
     </View>
   );

@@ -339,6 +339,35 @@ export const styles = StyleSheet.create({
     fontSize: 12,
   },
 
+  // The main action on the profile: green, like "+ Add Fine" on the Fines page.
+  addFineButton: {
+    backgroundColor: COLORS.green,
+    borderColor: COLORS.green,
+  },
+
+  addFineButtonDisabled: {
+    opacity: 0.45,
+  },
+
+  addFineButtonText: {
+    color: COLORS.white,
+    fontFamily: "Poppins_700Bold",
+    fontSize: 12,
+  },
+
+  // Why the Add Fine button is dimmed.
+  inactiveHint: {
+    flexBasis: "100%",
+    color: "#B42318",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    textAlign: "right",
+  },
+
+  inactiveHintCompact: {
+    textAlign: "left",
+  },
+
   actionButtonIcon: {
     width: 20,
     height: 20,

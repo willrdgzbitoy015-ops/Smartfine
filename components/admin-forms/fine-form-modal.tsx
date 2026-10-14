@@ -216,10 +216,12 @@ export function FineFormModal({
 
       if (studentId != null && !picked) {
         setErrorMessage(
-          "The student selected from the QR Scanner could not be found. Please search for the student manually.",
+          "The selected student could not be found. Please search for the student manually.",
         );
       } else if (picked) {
-        setNotice(`Student selected from the QR Scanner: ${picked.full_name} • ${picked.student_id}`);
+        // Opened from the QR Scanner or a student's profile with a student
+        // already chosen.
+        setNotice(`Recording a fine for ${picked.full_name} • ${picked.student_id}`);
       }
 
       setSelectedOfficerId(loadedOfficers.length === 1 ? loadedOfficers[0].id : null);

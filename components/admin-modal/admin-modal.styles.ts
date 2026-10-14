@@ -212,8 +212,9 @@ export const styles = StyleSheet.create({
   bannerGcashTitle: { color: "#0A4BAF" },
   bannerGcashText: { color: "#3E5A80" },
   noticeChips: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 6 },
-  noticeChipNew: { color: COLORS.red, fontSize: 10, fontWeight: "800" },
-  noticeChipRead: { color: COLORS.muted, fontSize: 10, fontWeight: "700" },
+  // Calm information, not an alert: opening the fine marks its notice read.
+  noticeChipNew: { color: "#1265B0", fontSize: 11, fontWeight: "700" },
+  noticeChipRead: { color: COLORS.muted, fontSize: 11, fontWeight: "600" },
   banner: {
     backgroundColor: "#FFF5E8",
     borderWidth: 1,
@@ -287,6 +288,33 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#C8CFD9",
   },
+  // Outlined warning button for actions that cannot be undone.
+  buttonDanger: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: "#E3A4A4",
+  },
+  buttonDangerText: { color: "#C62828", fontSize: 12, fontWeight: "800" },
+  // "Cancel this fine" sits on its own row, apart from the everyday buttons.
+  dangerZone: {
+    flexBasis: "100%",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 4,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#E8ECF2",
+  },
+  dangerLink: {
+    minHeight: 38,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#E3A4A4",
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
+  },
+  dangerHint: { color: COLORS.muted, fontSize: 11, lineHeight: 16 },
   buttonDisabled: { opacity: 0.45 },
   buttonText: { color: COLORS.white, fontSize: 12, fontWeight: "800" },
   buttonSecondaryText: { color: COLORS.navy, fontSize: 12, fontWeight: "800" },

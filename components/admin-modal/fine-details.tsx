@@ -165,11 +165,14 @@ export default function AdminFineDetails({
   onChanged,
   onNoticesRead,
   onEdit,
+  onClose,
 }: {
   fineId: number;
   onChanged: () => void;
   onNoticesRead: () => void;
   onEdit: (fineId: number) => void;
+  // Closes the pop-up. Gives every state a plain way out that cancels nothing.
+  onClose?: () => void;
 }) {
   const [fine, setFine] = useState<Fine | null>(null);
   const [loading, setLoading] = useState(true);
@@ -633,7 +636,8 @@ export default function AdminFineDetails({
             {cashPending
               ? " The student's pending cashier request is cancelled with it."
               : ""}{" "}
-            This cannot be undone.
+            This cannot be undone. Only cancel a fine that was recorded by
+            mistake — to just leave this screen, choose Keep Fine.
           </Text>
           <Text style={styles.inputLabel}>Cancellation Reason *</Text>
           <TextInput
@@ -666,7 +670,7 @@ export default function AdminFineDetails({
             }}
             disabled={actionLoading}
           >
-            <Text style={styles.buttonSecondaryText}>Go Back</Text>
+            <Text style={styles.buttonSecondaryText}>Keep Fine</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
@@ -680,7 +684,7 @@ export default function AdminFineDetails({
             {actionLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Cancel Fine</Text>
+              <Text style={styles.buttonText}>Yes, Cancel Fine</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -929,6 +933,18 @@ export default function AdminFineDetails({
     );
   }
 
+  // The first button in every state: leaves the pop-up and changes nothing.
+  const closeButton = onClose ? (
+    <TouchableOpacity
+      style={[styles.button, styles.buttonSecondary]}
+      onPress={onClose}
+      accessibilityRole="button"
+      accessibilityLabel="Close fine details"
+    >
+      <Text style={styles.buttonSecondaryText}>Close</Text>
+    </TouchableOpacity>
+  ) : null;
+
   const statusMessage = cashPending
     ? "The student asked to pay at the cashier. Record the payment only after you receive the cash."
     : isUnpaid
@@ -992,7 +1008,9 @@ export default function AdminFineDetails({
                     : styles.noticeChipRead
                 }
               >
-                {notices.FINE.wasUnread ? "NEW FINE NOTICE" : "FINE NOTICE READ"}
+                {notices.FINE.wasUnread
+                  ? "New fine notice — marked as read"
+                  : "Fine notice already read"}
               </Text>
             )}
             {notices.PAYMENT && (
@@ -1004,8 +1022,8 @@ export default function AdminFineDetails({
                 }
               >
                 {notices.PAYMENT.wasUnread
-                  ? "NEW PAYMENT NOTICE"
-                  : "PAYMENT NOTICE READ"}
+                  ? "New payment notice — marked as read"
+                  : "Payment notice already read"}
               </Text>
             )}
           </View>
@@ -1179,13 +1197,7 @@ export default function AdminFineDetails({
       <View style={styles.footer}>
         {isUnpaid ? (
           <>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonCancel]}
-              onPress={() => setStep("cancel")}
-              accessibilityRole="button"
-            >
-              <Text style={styles.buttonText}>Cancel Fine</Text>
-            </TouchableOpacity>
+            {closeButton}
             <TouchableOpacity
               style={[
                 styles.button,
@@ -1211,15 +1223,33 @@ export default function AdminFineDetails({
                 Editing is locked while a cashier request is pending.
               </Text>
             )}
+
+            {/* Cancelling is kept on its own row, away from the everyday
+                buttons, and still asks for a reason before it happens. */}
+            <View style={styles.dangerZone}>
+              <TouchableOpacity
+                style={styles.dangerLink}
+                onPress={() => setStep("cancel")}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel this fine"
+              >
+                <Text style={styles.buttonDangerText}>Cancel this fine…</Text>
+              </TouchableOpacity>
+              <Text style={styles.dangerHint}>
+                Only for a fine recorded by mistake. You will be asked for a
+                reason first.
+              </Text>
+            </View>
           </>
         ) : pendingRefund ? (
           <>
+            {closeButton}
             <TouchableOpacity
-              style={[styles.button, styles.buttonCancel]}
+              style={[styles.button, styles.buttonDanger]}
               onPress={() => openRefundStep("rejectRefund")}
               accessibilityRole="button"
             >
-              <Text style={styles.buttonText}>Decline Refund</Text>
+              <Text style={styles.buttonDangerText}>Decline Refund</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -1242,26 +1272,30 @@ export default function AdminFineDetails({
             )}
           </>
         ) : processingRefund ? (
-          <TouchableOpacity
-            style={[styles.button, styles.buttonSecondary, actionLoading && styles.buttonDisabled]}
-            onPress={() => void checkRefund(processingRefund)}
-            disabled={actionLoading}
-            accessibilityRole="button"
-          >
-            {actionLoading ? (
-              <ActivityIndicator size="small" color="#173A73" />
-            ) : (
-              <Text style={styles.buttonSecondaryText}>Check Refund Status</Text>
-            )}
-          </TouchableOpacity>
+          <>
+            {closeButton}
+            <TouchableOpacity
+              style={[styles.button, styles.buttonEdit, actionLoading && styles.buttonDisabled]}
+              onPress={() => void checkRefund(processingRefund)}
+              disabled={actionLoading}
+              accessibilityRole="button"
+            >
+              {actionLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Check Refund Status</Text>
+              )}
+            </TouchableOpacity>
+          </>
         ) : canRefund && !completedRefund ? (
           <>
+            {closeButton}
             <TouchableOpacity
-              style={[styles.button, styles.buttonEdit]}
+              style={[styles.button, styles.buttonDanger]}
               onPress={() => openRefundStep("refund")}
               accessibilityRole="button"
             >
-              <Text style={styles.buttonText}>Refund Payment</Text>
+              <Text style={styles.buttonDangerText}>Refund Payment</Text>
             </TouchableOpacity>
             <Text style={styles.footerHint}>
               {isPaid
@@ -1270,15 +1304,18 @@ export default function AdminFineDetails({
             </Text>
           </>
         ) : (
-          <Text style={styles.footerHint}>
-            {completedRefund
-              ? "This payment was refunded and the fine is cancelled."
-              : isPaid
-                ? refundPayment && refundPayment.notRefundableReason
-                  ? `This fine has already been paid. ${refundPayment.notRefundableReason}`
-                  : "This fine has already been paid."
-                : "This fine has been cancelled."}
-          </Text>
+          <>
+            {closeButton}
+            <Text style={styles.footerHint}>
+              {completedRefund
+                ? "This payment was refunded and the fine is cancelled."
+                : isPaid
+                  ? refundPayment && refundPayment.notRefundableReason
+                    ? `This fine has already been paid. ${refundPayment.notRefundableReason}`
+                    : "This fine has already been paid."
+                  : "This fine has been cancelled."}
+            </Text>
+          </>
         )}
       </View>
     </FadeIn>

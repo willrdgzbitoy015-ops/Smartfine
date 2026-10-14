@@ -1027,14 +1027,14 @@ export default function FinesDirectory() {
                             {pendingFineIds.has(Number(fine.id)) && (
                               <Text style={styles.cashRequestedLabel}>{"\n"}CASH REQUESTED</Text>
                             )}
-                            {fineNotifications[fine.id] && (
-                              <Text style={fineNotifications[fine.id].isRead ? styles.fineReadLabel : styles.fineUnreadLabel}>
-                                {"\n"}FINE {fineNotifications[fine.id].isRead ? "READ" : "NEW"}
-                              </Text>
-                            )}
-                            {paymentNotifications[fine.id] && (
-                              <Text style={paymentNotifications[fine.id].isRead ? styles.fineReadLabel : styles.fineUnreadLabel}>
-                                {"\n"}CASH REQUEST {paymentNotifications[fine.id].isRead ? "READ" : "NEW"}
+                            {/* Only something you have not opened yet is
+                                tagged, so the tag always means "look here". */}
+                            {((fineNotifications[fine.id] &&
+                              !fineNotifications[fine.id].isRead) ||
+                              (paymentNotifications[fine.id] &&
+                                !paymentNotifications[fine.id].isRead)) && (
+                              <Text style={styles.fineUnreadLabel}>
+                                {"\n"}NEW NOTICE
                               </Text>
                             )}
                           </Text>
@@ -1151,6 +1151,7 @@ export default function FinesDirectory() {
             onChanged={handleFineChanged}
             onNoticesRead={handleNoticesRead}
             onEdit={handleEditFine}
+            onClose={() => setModal(null)}
           />
         ) : modal?.view === "missing" ? (
           <View style={styles.centerState}>
