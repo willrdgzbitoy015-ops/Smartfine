@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "com.willbitoy.smartfine",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/smartfine-logo.png",
         "backgroundColor": "#173A73"
