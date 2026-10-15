@@ -37,8 +37,10 @@ export function playNoticeSound() {
   try {
     const chime = getPlayer();
 
-    void chime.seekTo(0);
-    chime.play();
+    // On the web a browser can refuse to play before the user has tapped
+    // anything, and says so with a rejected promise; that is not an error.
+    Promise.resolve(chime.seekTo(0)).catch(() => {});
+    Promise.resolve(chime.play() as unknown).catch(() => {});
   } catch {
     // Silent is fine.
   }

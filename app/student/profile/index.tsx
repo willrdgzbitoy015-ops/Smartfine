@@ -21,8 +21,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import LogoutModal from "@/components/logout-modal";
 import {
+  FadeIn,
   PopIn,
-  TabIndicator,
+  PressableScale,
   useRetainedValue,
   useSwitchFade,
 } from "@/components/motion";
@@ -33,8 +34,9 @@ import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { styles } from "../styles/student-profile.styles";
-import { HomeTabBadge } from "@/components/notification-badge";
 
+import { CountUp } from "@/components/count-up";
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 type Page = "profile" | "edit" | "password" | "about" | "privacy";
 
 type StudentProfile = {
@@ -552,17 +554,24 @@ export default function StudentProfileScreen() {
 
   const avatar = photoUrl(profile?.profilePictureUri || null);
 
-  const menuButton = (label: string, icon: number, onPress: () => void) => (
-    <TouchableOpacity
-      key={label}
-      style={styles.menuButton}
-      onPress={onPress}
-      accessibilityRole="button"
-    >
-      <Image source={icon} style={styles.menuIcon} />
-      <Text style={styles.menuText}>{label}</Text>
-      <Image source={icons.arrow} style={styles.arrowIcon} />
-    </TouchableOpacity>
+  // Rows rise in one after another and squeeze slightly while pressed.
+  const menuButton = (
+    label: string,
+    icon: number,
+    onPress: () => void,
+    index: number,
+  ) => (
+    <FadeIn key={label} index={index + 3}>
+      <PressableScale
+        style={styles.menuButton}
+        onPress={onPress}
+        accessibilityRole="button"
+      >
+        <Image source={icon} style={styles.menuIcon} />
+        <Text style={styles.menuText}>{label}</Text>
+        <Image source={icons.arrow} style={styles.arrowIcon} />
+      </PressableScale>
+    </FadeIn>
   );
 
   const passwordField = (
@@ -663,6 +672,7 @@ export default function StudentProfileScreen() {
 
               {profile && page === "profile" && (
                 <>
+                  <FadeIn index={0}>
                   <View style={styles.identity}>
                     <TouchableOpacity
                       style={styles.avatarButton}
@@ -699,70 +709,116 @@ export default function StudentProfileScreen() {
                       <Text style={styles.photoHint}>Tap photo to change</Text>
                     </View>
                   </View>
+                  </FadeIn>
 
-                  <View style={styles.infoCard}>
-                    <Text style={styles.studentId}>
-                      ID: {profile.studentId || "Unavailable"}
-                    </Text>
-                    <Text style={styles.infoLine}>
-                      Email: {profile.email || "Not provided"}
-                    </Text>
-                    <Text style={styles.infoLine}>
-                      Contact Number: {profile.contactNumber || "Not provided"}
-                    </Text>
-                  </View>
-
-                  <Text style={styles.sectionTitle}>Account Overview</Text>
-
-                  <View style={styles.overview}>
-                    <View style={styles.overviewItem}>
-                      <Text style={styles.overviewLabel}>Total</Text>
-                      <Text style={styles.overviewValue}>
-                        {totals ? money(totals.totalAmountCentavos) : "—"}
+                  <FadeIn index={1}>
+                    <View style={styles.infoCard}>
+                      <Text style={styles.studentId}>
+                        ID: {profile.studentId || "Unavailable"}
+                      </Text>
+                      <Text style={styles.infoLine}>
+                        Email: {profile.email || "Not provided"}
+                      </Text>
+                      <Text style={styles.infoLine}>
+                        Contact Number: {profile.contactNumber || "Not provided"}
                       </Text>
                     </View>
+                  </FadeIn>
 
-                    <View style={styles.overviewItem}>
-                      <Text style={styles.overviewLabel}>Paid</Text>
-                      <Text style={[styles.overviewValue, styles.paidValue]}>
-                        {totals ? money(totals.paidAmountCentavos) : "—"}
-                      </Text>
-                    </View>
+                  <FadeIn index={2}>
+                    <Text style={styles.sectionTitle}>Account Overview</Text>
 
-                    <View style={styles.overviewItem}>
-                      <Text style={styles.overviewLabel}>Outstanding</Text>
-                      <Text
-                        style={[styles.overviewValue, styles.outstandingValue]}
-                      >
-                        {totals ? money(totals.outstandingAmountCentavos) : "—"}
-                      </Text>
+                    <View style={styles.overview}>
+                      <View style={styles.overviewItem}>
+                        <Text style={styles.overviewLabel}>Total</Text>
+                        {totals ? (
+                          <CountUp
+                            value={totals.totalAmountCentavos}
+                            format={money}
+                            style={styles.overviewValue}
+                          />
+                        ) : (
+                          <Text style={styles.overviewValue}>—</Text>
+                        )}
+                      </View>
+
+                      <View style={styles.overviewItem}>
+                        <Text style={styles.overviewLabel}>Paid</Text>
+                        {totals ? (
+                          <CountUp
+                            value={totals.paidAmountCentavos}
+                            format={money}
+                            style={[styles.overviewValue, styles.paidValue]}
+                          />
+                        ) : (
+                          <Text style={[styles.overviewValue, styles.paidValue]}>
+                            —
+                          </Text>
+                        )}
+                      </View>
+
+                      <View style={styles.overviewItem}>
+                        <Text style={styles.overviewLabel}>Outstanding</Text>
+                        {totals ? (
+                          <CountUp
+                            value={totals.outstandingAmountCentavos}
+                            format={money}
+                            style={[
+                              styles.overviewValue,
+                              styles.outstandingValue,
+                            ]}
+                          />
+                        ) : (
+                          <Text
+                            style={[
+                              styles.overviewValue,
+                              styles.outstandingValue,
+                            ]}
+                          >
+                            —
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
+                  </FadeIn>
 
                   <View style={styles.menu}>
                     {menuButton(
                       "Edit Personal Information",
                       icons.user,
                       openEdit,
+                      0,
                     )}
-                    {menuButton("Change Password", icons.lock, openPassword)}
-                    {menuButton("About SmartFine", icons.user, () => {
-                      setError("");
-                      setPage("about");
-                    })}
-                    {menuButton("Privacy Policy", icons.policy, () => {
-                      setError("");
-                      setPage("privacy");
-                    })}
+                    {menuButton("Change Password", icons.lock, openPassword, 1)}
+                    {menuButton(
+                      "About SmartFine",
+                      icons.user,
+                      () => {
+                        setError("");
+                        setPage("about");
+                      },
+                      2,
+                    )}
+                    {menuButton(
+                      "Privacy Policy",
+                      icons.policy,
+                      () => {
+                        setError("");
+                        setPage("privacy");
+                      },
+                      3,
+                    )}
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.primaryButton}
-                    onPress={() => setLogoutVisible(true)}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.primaryText}>Logout</Text>
-                  </TouchableOpacity>
+                  <FadeIn index={7}>
+                    <TouchableOpacity
+                      style={styles.primaryButton}
+                      onPress={() => setLogoutVisible(true)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.primaryText}>Logout</Text>
+                    </TouchableOpacity>
+                  </FadeIn>
                 </>
               )}
 
@@ -1022,39 +1078,18 @@ export default function StudentProfileScreen() {
           )}
         </Animated.ScrollView>
 
-        <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
-          <View style={styles.bottomNavigation}>
-            {navigation.map((item) => {
-              const active = item.label === "Profile";
+        <FloatingTabBar
+          items={navigation}
+          active="Profile"
+          onSelect={(item) => {
+            if (item.label === "Profile") {
+              setPage("profile");
+              return;
+            }
 
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  style={styles.navItem}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => {
-                    if (item.label === "Profile") {
-                      setPage("profile");
-                      return;
-                    }
-
-                    router.push(item.route);
-                  }}
-                >
-                  <Image source={item.icon} style={styles.navIcon} />
-                  <Text style={styles.navLabel}>{item.label}</Text>
-                  <HomeTabBadge label={item.label} />
-                  <TabIndicator
-                    active={active}
-                    style={styles.indicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </SafeAreaView>
+            router.push(item.route);
+          }}
+        />
       </View>
 
       <Modal

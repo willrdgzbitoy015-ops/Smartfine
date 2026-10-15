@@ -18,13 +18,13 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { FadeIn, PopIn, TabIndicator } from "@/components/motion";
+import { FadeIn, PopIn } from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
 import { styles } from "../styles/student-qr.styles";
-import { HomeTabBadge } from "@/components/notification-badge";
 
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 type StudentQRData = {
   student: {
     id: number;
@@ -506,44 +506,19 @@ export default function StudentQRScreen() {
           )}
         </ScrollView>
 
-        <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
-          <View style={styles.bottomNavigation}>
-            {navigation.map((item) => {
-              const active = item.label === "My QR";
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  style={styles.navItem}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => {
-                    if (item.label === "Home") {
-                      router.replace("/student/dashboard");
-                    } else if (item.label === "Fines") {
-                      router.replace("/student/fines");
-                    } else if (item.label === "Profile") {
-                      router.push("/student/profile");
-                    }
-                  }}
-                >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.navLabel}>{item.label}</Text>
-                  <HomeTabBadge label={item.label} />
-                  <TabIndicator
-                    active={active}
-                    style={styles.indicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </SafeAreaView>
+        <FloatingTabBar
+          items={navigation}
+          active="My QR"
+          onSelect={(item) => {
+            if (item.label === "Home") {
+              router.replace("/student/dashboard");
+            } else if (item.label === "Fines") {
+              router.replace("/student/fines");
+            } else if (item.label === "Profile") {
+              router.push("/student/profile");
+            }
+          }}
+        />
       </View>
     </SafeAreaView>
   );

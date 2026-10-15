@@ -22,7 +22,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   FadeIn,
   PopIn,
-  TabIndicator,
   useRetainedValue,
 } from "@/components/motion";
 import { FailedMark } from "@/components/result-mark";
@@ -40,10 +39,11 @@ import {
 import { haptics } from "@/utils/haptics";
 import { styles } from "../styles/student-fines.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
-import { HomeTabBadge } from "@/components/notification-badge";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 import { returnToLogin } from "@/hooks/use-auth";
 
+import { CountUp } from "@/components/count-up";
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 type FineStatus = "UNPAID" | "PAID" | "PENDING";
 
 type FineFilter = FineStatus | "CANCELLED";
@@ -1042,9 +1042,15 @@ export default function StudentFinesScreen() {
               <FadeIn style={styles.totalCard}>
                 <Text style={styles.totalLabel}>TOTAL OUTSTANDING</Text>
 
-                <Text style={styles.totalAmount}>
-                  {outstanding !== undefined ? money(outstanding) : "—"}
-                </Text>
+                {outstanding !== undefined ? (
+                  <CountUp
+                    value={outstanding}
+                    format={money}
+                    style={styles.totalAmount}
+                  />
+                ) : (
+                  <Text style={styles.totalAmount}>—</Text>
+                )}
 
                 <Text style={styles.totalHelper}>
                   {data && outstanding === 0
@@ -1306,48 +1312,21 @@ export default function StudentFinesScreen() {
           )}
         </ScrollView>
 
-        <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
-          <View style={styles.bottomNavigation}>
-            {navigation.map((item) => {
-              const active = item.label === "Fines";
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  style={styles.navItem}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => {
-                    if (item.label === "Home") {
-                      router.replace("/student/dashboard");
-                    } else if (active) {
-                      refresh();
-                    } else if (item.label === "My QR") {
-                      router.push("/student/qr");
-                    } else if (item.label === "Profile") {
-                      router.push("/student/profile");
-                    }
-                  }}
-                >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
-                  />
-
-                  <Text style={styles.navLabel}>{item.label}</Text>
-                  <HomeTabBadge label={item.label} />
-
-                  <TabIndicator
-                    active={active}
-                    style={styles.indicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </SafeAreaView>
+        <FloatingTabBar
+          items={navigation}
+          active="Fines"
+          onSelect={(item) => {
+            if (item.label === "Home") {
+              router.replace("/student/dashboard");
+            } else if (item.label === "Fines") {
+              refresh();
+            } else if (item.label === "My QR") {
+              router.push("/student/qr");
+            } else if (item.label === "Profile") {
+              router.push("/student/profile");
+            }
+          }}
+        />
       </View>
 
       <Modal

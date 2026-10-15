@@ -24,7 +24,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   FadeIn,
   PopIn,
-  TabIndicator,
   useSwitchFade,
 } from "@/components/motion";
 import { DeletableNotice, DeleteHint } from "@/components/deletable-notice";
@@ -37,7 +36,6 @@ import { API_BASE } from "@/constants/api";
 
 import { useResponsiveStyles } from "./dashboard-styles";
 import {
-  HomeTabBadge,
   NotificationBadge,
 } from "@/components/notification-badge";
 import {
@@ -47,6 +45,8 @@ import {
 } from "@/hooks/use-notification-counts";
 import { returnToLogin } from "@/hooks/use-auth";
 
+import { CountUp } from "@/components/count-up";
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 // ==========================================
 // TYPES
 // ==========================================
@@ -816,9 +816,15 @@ export default function OfficerDashboard() {
                 style={styles.valueSkeleton}
               />
             ) : (
-              <Text style={styles.totalValue}>
-                {stats ? stats.totalStudents.toLocaleString("en-PH") : "—"}
-              </Text>
+              stats ? (
+                <CountUp
+                  value={stats.totalStudents}
+                  format={(amount) => amount.toLocaleString("en-PH")}
+                  style={styles.totalValue}
+                />
+              ) : (
+                <Text style={styles.totalValue}>—</Text>
+              )
             )}
           </FadeIn>
 
@@ -833,9 +839,15 @@ export default function OfficerDashboard() {
               {loading && !data ? (
                 <Skeleton width={56} height={26} radius={8} />
               ) : (
-                <Text style={styles.countValue}>
-                  {stats ? stats.finesRecorded.toLocaleString("en-PH") : "—"}
-                </Text>
+                stats ? (
+                  <CountUp
+                    value={stats.finesRecorded}
+                    format={(amount) => amount.toLocaleString("en-PH")}
+                    style={styles.countValue}
+                  />
+                ) : (
+                  <Text style={styles.countValue}>—</Text>
+                )
               )}
             </View>
 
@@ -845,9 +857,15 @@ export default function OfficerDashboard() {
               {loading && !data ? (
                 <Skeleton width={96} height={26} radius={8} />
               ) : (
-                <Text style={styles.moneyValue}>
-                  {stats ? money(stats.todayAmountCentavos) : "—"}
-                </Text>
+                stats ? (
+                  <CountUp
+                    value={stats.todayAmountCentavos}
+                    format={money}
+                    style={styles.moneyValue}
+                  />
+                ) : (
+                  <Text style={styles.moneyValue}>—</Text>
+                )
               )}
             </View>
           </FadeIn>
@@ -902,65 +920,11 @@ export default function OfficerDashboard() {
             MOBILE BOTTOM NAVIGATION
         ================================= */}
 
-        <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
-          <View style={styles.bottomNavigation}>
-            {navigationItems.map((item) => {
-              const active = item.label === "Home";
-
-              const disabled = !item.enabled;
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  style={styles.navItem}
-                  activeOpacity={0.8}
-                  disabled={disabled}
-                  onPress={() => handleNavigation(item)}
-                  accessibilityRole="tab"
-                  accessibilityLabel={
-                    disabled ? `${item.label}, coming soon` : item.label
-                  }
-                  accessibilityState={{
-                    selected: active,
-
-                    disabled: disabled,
-                  }}
-                >
-                  <Image
-                    source={item.icon}
-                    style={[
-                      styles.navIcon,
-
-                      disabled && {
-                        opacity: 0.45,
-                      },
-                    ]}
-                    resizeMode="contain"
-                  />
-
-                  <Text
-                    style={[
-                      styles.navLabel,
-
-                      disabled && {
-                        opacity: 0.45,
-                      },
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  <HomeTabBadge label={item.label} />
-
-                  <TabIndicator
-                    active={active}
-                    style={styles.activeIndicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </SafeAreaView>
+        <FloatingTabBar
+          items={navigationItems.map((item) => ({ ...item, disabled: !item.enabled }))}
+          active="Home"
+          onSelect={handleNavigation}
+        />
       </View>
 
       {/* ======================================

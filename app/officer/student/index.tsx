@@ -25,13 +25,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import QRCode from "react-native-qrcode-svg";
 
-import { FadeIn, PopIn, TabIndicator, useSwitchFade } from "@/components/motion";
+import { FadeIn, PopIn, useSwitchFade } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 
 import { useResponsiveStyles } from "./student.styles";
-import { HomeTabBadge } from "@/components/notification-badge";
 
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 // ==========================================
 // TYPES
 // ==========================================
@@ -581,51 +581,17 @@ export default function OfficerStudentsScreen() {
             BOTTOM NAVIGATION
         ================================== */}
 
-        <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
-          <View style={styles.bottomNavigation}>
-            {NAV_ITEMS.map((item) => {
-              const active = item.label === "Students";
-              const disabled = item.route === null;
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  accessibilityRole="tab"
-                  accessibilityLabel={
-                    disabled ? `${item.label}, coming soon` : item.label
-                  }
-                  accessibilityState={{ selected: active, disabled }}
-                  disabled={disabled}
-                  style={styles.navItem}
-                  onPress={() => {
-                    if (active) {
-                      returnToList();
-                    } else if (item.route) {
-                      router.replace(item.route as Href);
-                    }
-                  }}
-                >
-                  <Image
-                    source={item.icon}
-                    resizeMode="contain"
-                    style={[styles.navIcon, disabled && styles.disabled]}
-                  />
-
-                  <Text style={[styles.navLabel, disabled && styles.disabled]}>
-                    {item.label}
-                  </Text>
-                  <HomeTabBadge label={item.label} />
-
-                  <TabIndicator
-                    active={active}
-                    style={styles.activeIndicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </SafeAreaView>
+        <FloatingTabBar
+          items={NAV_ITEMS}
+          active="Students"
+          onSelect={(item) => {
+            if (item.label === "Students") {
+              returnToList();
+            } else if (item.route) {
+              router.replace(item.route as Href);
+            }
+          }}
+        />
 
         {/* ==================================
             QR MODAL

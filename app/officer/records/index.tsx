@@ -22,14 +22,14 @@ import {
     useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
-import { FadeIn, TabIndicator } from "@/components/motion";
+import { FadeIn } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
 
 import { useResponsiveStyles } from "./records.styles";
-import { HomeTabBadge } from "@/components/notification-badge";
 
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 // ==========================================
 // TYPES
 // ==========================================
@@ -496,44 +496,15 @@ export default function OfficerRecordsScreen() {
           )}
         </ScrollView>
 
-        <View style={[styles.bottomArea, { paddingBottom: insets.bottom }]}>
-          <View style={styles.bottomNavigation}>
-            {NAV_ITEMS.map((item) => {
-              const active = item.label === "Records";
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  accessibilityState={{ selected: active }}
-                  activeOpacity={0.75}
-                  style={styles.navItem}
-                  onPress={() => {
-                    if (!active) {
-                      router.replace(item.route as Href);
-                    }
-                  }}
-                >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
-                  />
-
-                  <Text style={styles.navLabel}>{item.label}</Text>
-                  <HomeTabBadge label={item.label} />
-
-                  <TabIndicator
-                    active={active}
-                    style={styles.activeIndicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+        <FloatingTabBar
+          items={NAV_ITEMS}
+          active="Records"
+          onSelect={(item) => {
+            if (item.label !== "Records") {
+              router.replace(item.route as Href);
+            }
+          }}
+        />
       </View>
     </SafeAreaView>
   );

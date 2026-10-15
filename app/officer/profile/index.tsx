@@ -23,7 +23,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import LogoutModal from "@/components/logout-modal";
-import { TabIndicator, useSwitchFade } from "@/components/motion";
+import { FadeIn, PressableScale, useSwitchFade } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
 import SuccessModal from "@/components/success-modal";
 
@@ -34,8 +34,8 @@ import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { haptics } from "@/utils/haptics";
 
 import { useResponsiveStyles } from "./profile.styles";
-import { HomeTabBadge } from "@/components/notification-badge";
 
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 // ==========================================
 // TYPES
 // ==========================================
@@ -912,27 +912,35 @@ export default function OfficerProfile() {
   // MENU BUTTON
   // ==========================================
 
-  const menuButton = (label: string, icon: MenuIcon, onPress: () => void) => (
-    <TouchableOpacity
-      style={styles.menuButton}
-      onPress={onPress}
-      disabled={busy}
-      activeOpacity={0.7}
-    >
-      <Image
-        source={icons[icon]}
-        style={styles.menuIcon}
-        resizeMode="contain"
-      />
+  // Rows rise in one after another and squeeze slightly while pressed.
+  const menuButton = (
+    label: string,
+    icon: MenuIcon,
+    onPress: () => void,
+    index: number,
+  ) => (
+    <FadeIn key={label} index={index + 2}>
+      <PressableScale
+        style={styles.menuButton}
+        onPress={onPress}
+        disabled={busy}
+        accessibilityRole="button"
+      >
+        <Image
+          source={icons[icon]}
+          style={styles.menuIcon}
+          resizeMode="contain"
+        />
 
-      <Text style={styles.menuText}>{label}</Text>
+        <Text style={styles.menuText}>{label}</Text>
 
-      <Image
-        source={icons.arrow}
-        style={styles.menuArrow}
-        resizeMode="contain"
-      />
-    </TouchableOpacity>
+        <Image
+          source={icons.arrow}
+          style={styles.menuArrow}
+          resizeMode="contain"
+        />
+      </PressableScale>
+    </FadeIn>
   );
 
   // ==========================================
@@ -1078,70 +1086,96 @@ export default function OfficerProfile() {
 
                 {officer && page === "profile" && (
                   <>
-                    <View style={styles.identity}>
-                      {renderAvatar()}
+                    <FadeIn index={0}>
+                      <View style={styles.identity}>
+                        {renderAvatar()}
 
-                      <View style={styles.identityText}>
-                        <Text style={styles.name}>{officer.fullName}</Text>
+                        <View style={styles.identityText}>
+                          <Text style={styles.name}>{officer.fullName}</Text>
 
-                        <Text style={styles.role}>
-                          Fines Officer
-                          {officer.assignedArea
-                            ? ` | ${officer.assignedArea}`
-                            : ""}
+                          <Text style={styles.role}>
+                            Fines Officer
+                            {officer.assignedArea
+                              ? ` | ${officer.assignedArea}`
+                              : ""}
+                          </Text>
+                        </View>
+                      </View>
+                    </FadeIn>
+
+                    <FadeIn index={1}>
+                      <View style={styles.infoCard}>
+                        <Text style={styles.employeeId}>
+                          ID: {officer.employeeNumber || "Not assigned"}
+                        </Text>
+
+                        <Text style={styles.detail}>
+                          Email: {officer.email}
+                        </Text>
+
+                        <Text style={styles.detail}>
+                          Contact Number:{" "}
+                          {officer.contactNumber || "Not provided"}
                         </Text>
                       </View>
-                    </View>
-
-                    <View style={styles.infoCard}>
-                      <Text style={styles.employeeId}>
-                        ID: {officer.employeeNumber || "Not assigned"}
-                      </Text>
-
-                      <Text style={styles.detail}>Email: {officer.email}</Text>
-
-                      <Text style={styles.detail}>
-                        Contact Number:{" "}
-                        {officer.contactNumber || "Not provided"}
-                      </Text>
-                    </View>
+                    </FadeIn>
 
                     <View style={styles.menu}>
-                      {menuButton("Edit Personal Information", "user", () => {
-                        setDraft({
-                          ...officer,
-                        });
+                      {menuButton(
+                        "Edit Personal Information",
+                        "user",
+                        () => {
+                          setDraft({
+                            ...officer,
+                          });
 
-                        setFullNameInput(officer.fullName);
+                          setFullNameInput(officer.fullName);
 
-                        setError("");
+                          setError("");
 
-                        setPage("edit");
-                      })}
+                          setPage("edit");
+                        },
+                        0,
+                      )}
 
-                      {menuButton("Change Password", "padlock", openPassword)}
+                      {menuButton("Change Password", "padlock", openPassword, 1)}
 
-                      {menuButton("About SmartFine", "user", () => {
-                        setError("");
+                      {menuButton(
+                        "About SmartFine",
+                        "user",
+                        () => {
+                          setError("");
 
-                        setPage("about");
-                      })}
+                          setPage("about");
+                        },
+                        2,
+                      )}
 
-                      {menuButton("Privacy Policy", "policy", () => {
-                        setError("");
+                      {menuButton(
+                        "Privacy Policy",
+                        "policy",
+                        () => {
+                          setError("");
 
-                        setPage("privacy");
-                      })}
+                          setPage("privacy");
+                        },
+                        3,
+                      )}
 
-                      <TouchableOpacity
-                        style={[styles.primaryButton, busy && styles.disabled]}
-                        onPress={handleLogout}
-                        disabled={busy}
-                      >
-                        <Text style={styles.primaryText}>
-                          {loggingOut ? "Logging out…" : "Logout"}
-                        </Text>
-                      </TouchableOpacity>
+                      <FadeIn index={6}>
+                        <TouchableOpacity
+                          style={[
+                            styles.primaryButton,
+                            busy && styles.disabled,
+                          ]}
+                          onPress={handleLogout}
+                          disabled={busy}
+                        >
+                          <Text style={styles.primaryText}>
+                            {loggingOut ? "Logging out…" : "Logout"}
+                          </Text>
+                        </TouchableOpacity>
+                      </FadeIn>
                     </View>
                   </>
                 )}
@@ -1476,39 +1510,22 @@ export default function OfficerProfile() {
             BOTTOM NAVIGATION
         ================================== */}
 
-        <SafeAreaView edges={["bottom"]} style={styles.bottomArea}>
-          <View style={styles.bottomNavigation}>
-            {navigation.map((item) => (
-              <TouchableOpacity
-                key={item.label}
-                style={styles.navItem}
-                disabled={busy}
-                onPress={() => {
-                  if (item.label === "Profile") {
-                    setPage("profile");
+        <FloatingTabBar
+          items={navigation}
+          active="Profile"
+          disabled={busy}
+          onSelect={(item) => {
+            if (item.label === "Profile") {
+              setPage("profile");
 
-                    setError("");
+              setError("");
 
-                    clearPasswords();
-                  } else {
-                    router.replace(item.route as any);
-                  }
-                }}
-              >
-                <Image source={item.icon} style={styles.navIcon} />
-
-                <Text style={styles.navLabel}>{item.label}</Text>
-                <HomeTabBadge label={item.label} />
-
-                <TabIndicator
-                  active={item.label === "Profile"}
-                  style={styles.activeIndicator}
-                  hiddenStyle={styles.hiddenIndicator}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </SafeAreaView>
+              clearPasswords();
+            } else {
+              router.replace(item.route as any);
+            }
+          }}
+        />
       </View>
 
       {/* ======================================

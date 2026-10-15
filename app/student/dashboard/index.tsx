@@ -20,7 +20,6 @@ import {
   FadeIn,
   PopIn,
   PressableScale,
-  TabIndicator,
   useRetainedValue,
   useSwitchFade,
 } from "@/components/motion";
@@ -35,7 +34,6 @@ import { API_BASE } from "@/constants/api";
 import { styles } from "../styles/student-dashboard.styles";
 import { notificationStyles } from "../styles/student-notification.styles";
 import {
-  HomeTabBadge,
   NewFinesBadge,
   NotificationBadge,
 } from "@/components/notification-badge";
@@ -47,6 +45,8 @@ import {
 } from "@/hooks/use-notification-counts";
 import { returnToLogin } from "@/hooks/use-auth";
 
+import { CountUp } from "@/components/count-up";
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 type StudentUser = {
   id: number;
   fullName: string;
@@ -871,14 +871,25 @@ export default function StudentDashboard() {
               </SkeletonGroup>
             ) : (
               <>
-                <Text
-                  style={[
-                    styles.balanceValue,
-                    data && !hasBalance && styles.greenText,
-                  ]}
-                >
-                  {outstanding !== undefined ? money(outstanding) : "—"}
-                </Text>
+                {outstanding !== undefined ? (
+                  <CountUp
+                    value={outstanding}
+                    format={money}
+                    style={[
+                      styles.balanceValue,
+                      data && !hasBalance && styles.greenText,
+                    ]}
+                  />
+                ) : (
+                  <Text
+                    style={[
+                      styles.balanceValue,
+                      data && !hasBalance && styles.greenText,
+                    ]}
+                  >
+                    —
+                  </Text>
+                )}
 
                 <Text
                   style={[
@@ -978,48 +989,21 @@ export default function StudentDashboard() {
           ))}
         </ScrollView>
 
-        <SafeAreaView style={styles.bottomArea} edges={["bottom"]}>
-          <View style={styles.bottomNavigation}>
-            {navigation.map((item) => {
-              const active = item.label === "Home";
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  style={styles.navItem}
-                  accessibilityRole="tab"
-                  accessibilityState={{
-                    selected: active,
-                  }}
-                  onPress={() => {
-                    if (item.label === "Home") {
-                      void loadDashboard();
-                    } else if (item.label === "Fines") {
-                      router.push("/student/fines");
-                    } else if (item.label === "My QR") {
-                      router.push("/student/qr");
-                    } else if (item.label === "Profile") {
-                      router.push("/student/profile");
-                    }
-                  }}
-                >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.navLabel}>{item.label}</Text>
-                  <HomeTabBadge label={item.label} />
-                  <TabIndicator
-                    active={active}
-                    style={styles.indicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </SafeAreaView>
+        <FloatingTabBar
+          items={navigation}
+          active="Home"
+          onSelect={(item) => {
+            if (item.label === "Home") {
+              void loadDashboard();
+            } else if (item.label === "Fines") {
+              router.push("/student/fines");
+            } else if (item.label === "My QR") {
+              router.push("/student/qr");
+            } else if (item.label === "Profile") {
+              router.push("/student/profile");
+            }
+          }}
+        />
       </View>
 
       <Modal

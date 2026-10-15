@@ -25,14 +25,14 @@ import {
 } from "react-native-safe-area-context";
 
 import { FlowSteps } from "@/components/flow-steps";
-import { FadeIn, PopIn, ScanLine, TabIndicator } from "@/components/motion";
-import { HomeTabBadge } from "@/components/notification-badge";
+import { FadeIn, PopIn, ScanLine } from "@/components/motion";
 import { ScanFrame } from "@/components/scan-frame";
 import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
 import { useResponsiveStyles } from "./qr-scanner.styles";
 
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 type Student = {
   id: number;
   student_id: string;
@@ -746,44 +746,15 @@ export default function OfficerQRScanner() {
       ================================== */}
 
       {!manualOpen && (
-        <View style={[styles.bottomArea, { paddingBottom: insets.bottom }]}>
-          <View style={styles.bottomNavigation}>
-            {NAV_ITEMS.map((item) => {
-              const active = item.label === "Scan";
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  accessibilityState={{ selected: active }}
-                  activeOpacity={0.75}
-                  style={styles.navItem}
-                  onPress={() => {
-                    if (!active) {
-                      router.replace(item.route as any);
-                    }
-                  }}
-                >
-                  <Image
-                    source={item.icon}
-                    style={styles.navIcon}
-                    resizeMode="contain"
-                  />
-
-                  <Text style={styles.navLabel}>{item.label}</Text>
-                  <HomeTabBadge label={item.label} />
-
-                  <TabIndicator
-                    active={active}
-                    style={styles.activeIndicator}
-                    hiddenStyle={styles.hiddenIndicator}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+        <FloatingTabBar
+          items={NAV_ITEMS}
+          active="Scan"
+          onSelect={(item) => {
+            if (item.label !== "Scan") {
+              router.replace(item.route as any);
+            }
+          }}
+        />
       )}
 
       {/* ==================================
