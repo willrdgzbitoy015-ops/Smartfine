@@ -26,7 +26,9 @@ import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn, PopIn } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
+import { Pagination } from "@/components/pagination";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
+import { usePagination } from "@/hooks/use-pagination";
 import { formatPeso } from "@/utils/format-peso";
 
 import { styles } from "./student-profile.styles";
@@ -121,6 +123,12 @@ export default function StudentProfile() {
   // ==========================================
 
   const [data, setData] = useState<StudentProfileResponse | null>(null);
+
+  // The fines history shows ten per page, newest first.
+  const pager = usePagination(
+    data?.fines ?? [],
+    String(data?.student?.id ?? ""),
+  );
 
   const [loading, setLoading] = useState(true);
 
@@ -728,7 +736,7 @@ export default function StudentProfile() {
                   </Text>
                 </View>
               ) : (
-                fines.map((fine) => {
+                pager.pageItems.map((fine) => {
                   const status = String(fine.status || "").toUpperCase();
 
                   const isPaid = status === "PAID";
@@ -863,6 +871,8 @@ export default function StudentProfile() {
               )}
             </View>
           </ScrollView>
+
+          <Pagination pager={pager} noun="fines" />
         </View>
 
         {/* ==================================

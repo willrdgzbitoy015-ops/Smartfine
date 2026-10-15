@@ -22,7 +22,9 @@ import { API_BASE } from "@/constants/api";
 import { FadeIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SkeletonTable } from "@/components/skeleton";
+import { Pagination } from "@/components/pagination";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
+import { usePagination } from "@/hooks/use-pagination";
 
 import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
@@ -351,6 +353,12 @@ export default function OfficersDirectory() {
       return matchesSearch && matchesStatus && matchesArea;
     });
   }, [officers, search, selectedStatus, selectedArea]);
+
+  // Ten officers per page; a new search or filter starts at page 1.
+  const pager = usePagination(
+    filteredOfficers,
+    [search, selectedStatus, selectedArea].join("|"),
+  );
 
   // Numbers for the summary cards.
   const officerCounts = useMemo(() => {
@@ -972,7 +980,7 @@ export default function OfficersDirectory() {
                       // OFFICER ROWS
                       // ==================================
 
-                      filteredOfficers.map((officer, index) => {
+                      pager.pageItems.map((officer, index) => {
                         const normalizedStatus = String(
                           officer.account_status || "",
                         ).toUpperCase();
@@ -1113,7 +1121,7 @@ export default function OfficersDirectory() {
                         <Text style={styles.emptyText}>No officers found.</Text>
                       </View>
                     ) : (
-                      filteredOfficers.map((officer, index) => {
+                      pager.pageItems.map((officer, index) => {
                         const isActive =
                           String(officer.account_status || "").toUpperCase() ===
                           "ACTIVE";
@@ -1215,6 +1223,8 @@ export default function OfficersDirectory() {
                     )}
                   </View>
                 )}
+
+                <Pagination pager={pager} noun="officers" />
 
                 {/* ==================================
                     FOOTER

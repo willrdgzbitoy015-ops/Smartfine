@@ -3,10 +3,12 @@ import LogoutModal from "@/components/logout-modal";
 import WarningModal from "@/components/warningmodal";
 import { API_BASE } from "@/constants/api";
 import { AdminNavBadge } from "@/components/notification-badge";
+import { Pagination } from "@/components/pagination";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 import { FadeIn } from "@/components/motion";
 import { SkeletonDetails, SkeletonTable } from "@/components/skeleton";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
+import { usePagination } from "@/hooks/use-pagination";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
@@ -190,6 +192,11 @@ export default function PaymentReports() {
         .includes(search);
     });
   }, [transactions, searchText, statusFilter]);
+  // Ten transactions per page; a new search or filter starts at page 1.
+  const pager = usePagination(
+    visibleTransactions,
+    [searchText, statusFilter].join("|"),
+  );
   // ==========================================
   // PAGE STATE
   // ==========================================
@@ -773,7 +780,7 @@ export default function PaymentReports() {
                       // ==================================
                       // TRANSACTIONS
                       // ==================================
-                      visibleTransactions.map((payment, index) => {
+                      pager.pageItems.map((payment, index) => {
                         // ==================================
                         // DISPLAY STATUS
                         // ==================================
@@ -921,6 +928,7 @@ export default function PaymentReports() {
                     )}
                   </View>
                 </ScrollView>
+                <Pagination pager={pager} noun="transactions" />
                 {/* ==================================
                     ROW HELP
                 ================================== */}

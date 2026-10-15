@@ -10,7 +10,9 @@ import {
 
 import { DeletableNotice, DeleteHint } from "@/components/deletable-notice";
 import { FadeIn, PopIn } from "@/components/motion";
+import { Pagination } from "@/components/pagination";
 import { SkeletonList } from "@/components/skeleton";
+import { usePagination } from "@/hooks/use-pagination";
 import { formatNotificationTime } from "@/hooks/use-notification-counts";
 import { styles } from "./admin-modal.styles";
 
@@ -136,6 +138,9 @@ export function AdminNoticeList<T extends AdminNotice>({
     ...(activeFilter ? notices.filter(activeFilter.test) : notices),
   ].sort(byUnreadThenNewest);
 
+  // Ten notices per page; switching filter starts again at page 1.
+  const pager = usePagination(visibleNotices, filterKey);
+
   return (
     <>
       <View style={styles.filters}>
@@ -209,7 +214,7 @@ export function AdminNoticeList<T extends AdminNotice>({
               <DeleteHint />
             </View>
           )}
-          {visibleNotices.map((notice, index) => (
+          {pager.pageItems.map((notice, index) => (
             <FadeIn key={notice.id} index={index}>
               <NoticeRowShell
                 notice={notice}
@@ -240,6 +245,7 @@ export function AdminNoticeList<T extends AdminNotice>({
               </NoticeRowShell>
             </FadeIn>
           ))}
+          <Pagination pager={pager} noun="notifications" />
           <Text style={styles.listFooter}>
             Showing {visibleNotices.length} of {notices.length}
           </Text>

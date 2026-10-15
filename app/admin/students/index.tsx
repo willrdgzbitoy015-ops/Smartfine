@@ -34,8 +34,10 @@ import WarningModal from "@/components/warningmodal";
 import { API_BASE } from "@/constants/api";
 import { FadeIn, PopIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
+import { Pagination } from "@/components/pagination";
 import { SkeletonList, SkeletonTable } from "@/components/skeleton";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
+import { usePagination } from "@/hooks/use-pagination";
 
 import { styles } from "./students.styles";
 
@@ -743,6 +745,13 @@ export default function StudentsDirectory() {
     () =>
       matchingStudents.filter((student) => matchesView(student, selectedView)),
     [matchingStudents, selectedView],
+  );
+
+  // Ten students per page; a new search or filter starts at page 1. A
+  // student ticked for deletion stays ticked when you change page.
+  const pager = usePagination(
+    filteredStudents,
+    [search, selectedGrade, selectedSection, selectedView].join("|"),
   );
 
   // Chip counts match what each chip would show.
@@ -2449,7 +2458,7 @@ export default function StudentsDirectory() {
                 ) : compactList ? (
                   /* PHONE AND PORTRAIT TABLET: one card per student */
                   <View style={styles.compactList}>
-                    {filteredStudents.map((student, index) => {
+                    {pager.pageItems.map((student, index) => {
                       const isInactive = isInactiveStudent(
                         student.account_status,
                       );
@@ -2579,7 +2588,7 @@ export default function StudentsDirectory() {
                         <View style={styles.chevronColumn} />
                       </View>
 
-                      {filteredStudents.map((student, index) => {
+                      {pager.pageItems.map((student, index) => {
                         const isInactive = isInactiveStudent(
                           student.account_status,
                         );
@@ -2694,6 +2703,10 @@ export default function StudentsDirectory() {
                     </View>
                   </ScrollView>
                 )}
+
+                {/* PAGE NUMBERS */}
+
+                <Pagination pager={pager} noun="students" />
 
                 {/* TABLE FOOTER */}
 

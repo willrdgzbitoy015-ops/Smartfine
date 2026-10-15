@@ -23,10 +23,12 @@ import AdminFineDetails from "@/components/admin-modal/fine-details";
 import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import LogoutModal from "@/components/logout-modal";
 import { AdminNavBadge } from "@/components/notification-badge";
+import { Pagination } from "@/components/pagination";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 import WarningModal from "@/components/warningmodal";
 import { useLiveReload } from "@/hooks/use-live-updates";
 import { refreshNotificationCounts } from "@/hooks/use-notification-counts";
+import { usePagination } from "@/hooks/use-pagination";
 import { usePopupSwap } from "@/hooks/use-popup-swap";
 import { styles } from "./fines.styles";
 // ==========================================
@@ -482,6 +484,11 @@ export default function FinesDirectory() {
       return true;
     }).sort((a, b) => Number(pendingFineIds.has(Number(b.id))) - Number(pendingFineIds.has(Number(a.id))));
   }, [fines, searchText, selectedStatus, selectedViolationId, pendingFineIds]);
+  // Ten fines per page; a new search or filter starts again at page 1.
+  const pager = usePagination(
+    filteredFines,
+    [searchText, selectedStatus, selectedViolationId].join("|"),
+  );
   const pendingCount = pendingFineIds.size;
   const unpaidCount = fines.filter((fine) => String(fine.status).toUpperCase() === "UNPAID").length;
   // ==========================================
@@ -963,6 +970,7 @@ export default function FinesDirectory() {
               </View>
             ) : (
               /* TABLE */
+              <>
               <ScrollView horizontal showsHorizontalScrollIndicator={true}>
                 <View style={styles.table}>
                   {/* TABLE HEADER */}
@@ -1018,7 +1026,7 @@ export default function FinesDirectory() {
                     </View>
                   ) : (
                     /* FINE ROWS */
-                    filteredFines.map((fine, index) => (
+                    pager.pageItems.map((fine, index) => (
                       <FadeIn key={fine.id} index={index}>
                         <TouchableOpacity
                           style={[
@@ -1116,6 +1124,8 @@ export default function FinesDirectory() {
                   )}
                 </View>
               </ScrollView>
+              <Pagination pager={pager} noun="fines" />
+              </>
             )}
           </View>
         </ScrollView>
