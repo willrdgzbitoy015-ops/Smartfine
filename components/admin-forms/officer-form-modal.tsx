@@ -22,6 +22,7 @@ import {
 } from "@/components/form-popup";
 import { SkeletonForm } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { haptics } from "@/utils/haptics";
 
@@ -235,7 +236,7 @@ export function OfficerFormModal({
     try {
       setEmployeeNumberLoading(true);
 
-      const response = await fetch(`${API_BASE}/api/officers/next-id`);
+      const response = await apiFetch(`${API_BASE}/api/officers/next-id`);
       const data = await response.json();
 
       if (!response.ok || !data.success) {

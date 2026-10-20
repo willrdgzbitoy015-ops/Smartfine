@@ -16,6 +16,7 @@ import {
 } from "@/components/form-popup";
 import { SkeletonForm } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { haptics } from "@/utils/haptics";
 
@@ -159,17 +160,17 @@ export function FineFormModal({
       const [fineData, studentsData, violationsData, officersData] =
         await Promise.all([
           editing
-            ? fetch(`${API_BASE}/api/fines/${fineId}`).then((response) =>
+            ? apiFetch(`${API_BASE}/api/fines/${fineId}`).then((response) =>
                 readJson(response, "Failed to load fine."),
               )
             : Promise.resolve(null),
-          fetch(`${API_BASE}/api/fines/options/students`).then((response) =>
+          apiFetch(`${API_BASE}/api/fines/options/students`).then((response) =>
             readJson(response, "Failed to load students."),
           ),
-          fetch(`${API_BASE}/api/fines/options/violations`).then((response) =>
+          apiFetch(`${API_BASE}/api/fines/options/violations`).then((response) =>
             readJson(response, "Failed to load violation types."),
           ),
-          fetch(`${API_BASE}/api/fines/options/officers`).then((response) =>
+          apiFetch(`${API_BASE}/api/fines/options/officers`).then((response) =>
             readJson(response, "Failed to load officers."),
           ),
         ]);

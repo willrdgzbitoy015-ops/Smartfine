@@ -4,6 +4,7 @@ const crypto = require("node:crypto");
 const db = require("../database/database");
 const { notifyCashCollected } = require("../database/notifications");
 const { ensureStudentRecord } = require("../database/student-records");
+const { logActivity, personName, pesos } = require("../database/activity-log");
 const {
   settleErrorResponse,
   settlePendingOnlinePayment,
@@ -550,6 +551,20 @@ router.post(
         ).run(paymentId, req.paymentUserId);
 
         notifyCashCollected(fine.id, paymentId, req.paymentUserId);
+
+        const reference = db
+          .prepare("SELECT payment_reference FROM payments WHERE id = ?")
+          .get(paymentId).payment_reference;
+
+        logActivity({
+          actorId: req.paymentUserId,
+          action: "CASH_COLLECTED",
+          entityType: "PAYMENT",
+          entityId: paymentId,
+          fineId: fine.id,
+          description: `Received ${pesos(fine.amount_centavos)} cash for fine ${fine.fine_reference} from ${personName(fine.student_id) || "a student"} (payment ${reference})${notes ? `. Note: ${notes}` : ""}.`,
+          details: { paymentReference: reference, amountCentavos: fine.amount_centavos },
+        });
 
         return db
           .prepare(

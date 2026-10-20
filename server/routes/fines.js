@@ -3,6 +3,14 @@ const router = express.Router();
 const db = require("../database/database");
 const { notifyFineCancelled } = require("../database/notifications");
 const { authenticateToken } = require("./auth");
+const { requireActive } = require("../middleware/access");
+const {
+  changeText,
+  describeChanges,
+  logActivity,
+  personName,
+  pesos,
+} = require("../database/activity-log");
 const {
   settleErrorResponse,
   settlePendingOnlinePayment,
@@ -95,6 +103,26 @@ function cancelFineAndCashRequest(fineId, cancelledBy, cancellationReason) {
       cancellationReason,
       Number(requests.changes),
     );
+    const cancelled = db
+      .prepare(
+        `SELECT f.fine_reference, f.amount_centavos, f.student_id, vt.violation_name
+         FROM fines f
+         LEFT JOIN violation_types vt ON vt.id = f.violation_type_id
+         WHERE f.id = ?`,
+      )
+      .get(fineId);
+    logActivity({
+      actorId: cancelledBy,
+      action: "FINE_CANCELLED",
+      entityType: "FINE",
+      entityId: fineId,
+      fineId,
+      description: `Cancelled fine ${cancelled.fine_reference} (${cancelled.violation_name || "Violation"}, ${pesos(cancelled.amount_centavos)}) for ${personName(cancelled.student_id) || "a student"}. Reason: ${cancellationReason || "none given"}.`,
+      details: {
+        reason: cancellationReason || null,
+        cashRequestsClosed: Number(requests.changes),
+      },
+    });
     db.exec("COMMIT");
     return result;
   } catch (error) {
@@ -130,6 +158,7 @@ function requireActiveFineManager(req, res, next) {
       });
     }
     req.cancellingUserId = userId;
+    req.cancellingRole = user.role;
     next();
   } catch (error) {
     console.error("Cancel fine authorization error:", error);
@@ -140,6 +169,48 @@ function requireActiveFineManager(req, res, next) {
   }
 }
 const canCancelFines = [authenticateToken, requireActiveFineManager];
+// A Fines Officer may cancel only fines they recorded; an Admin any fine.
+function officerCannotCancel(req, fineId) {
+  if (req.cancellingRole !== "FINES_OFFICER") {
+    return false;
+  }
+  const fine = db.prepare("SELECT recorded_by FROM fines WHERE id = ?").get(fineId);
+  return !fine || Number(fine.recorded_by) !== Number(req.cancellingUserId);
+}
+// The fine as people read it, for the activity log's before/after.
+function fineSnapshot(fineId) {
+  const row = db
+    .prepare(
+      `SELECT
+         f.fine_reference, f.amount_centavos, f.remarks, f.issued_at,
+         vt.violation_name,
+         TRIM(s.first_name || ' ' || COALESCE(s.middle_name || ' ', '') || s.last_name) AS student_name,
+         COALESCE(s.student_number, s.username) AS student_number,
+         TRIM(o.first_name || ' ' || COALESCE(o.middle_name || ' ', '') || o.last_name) AS recorder_name
+       FROM fines f
+       LEFT JOIN violation_types vt ON vt.id = f.violation_type_id
+       LEFT JOIN users s ON s.id = f.student_id
+       LEFT JOIN users o ON o.id = f.recorded_by
+       WHERE f.id = ?`,
+    )
+    .get(fineId);
+  if (!row) {
+    return null;
+  }
+  return {
+    reference: row.fine_reference,
+    student: `${row.student_name} (${row.student_number})`,
+    violation: row.violation_name || "",
+    amount: pesos(row.amount_centavos),
+    recorder: row.recorder_name || "",
+    remarks: row.remarks || "",
+    issued: row.issued_at || "",
+  };
+}
+// GET /:id must not catch the student's own /my-fines list further down.
+function skipMyFines(req, res, next) {
+  return req.params.id === "my-fines" ? next("route") : next();
+}
 function formatFullName(firstName, middleName, lastName) {
   return [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
 }
@@ -321,7 +392,7 @@ function validateViolationMaintenanceInput(body, existing = null) {
     },
   };
 }
-router.get("/options/students", (req, res) => {
+router.get("/options/students", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
   try {
     const students = db
       .prepare(
@@ -360,7 +431,7 @@ router.get("/options/students", (req, res) => {
     });
   }
 });
-router.get("/options/violations", (req, res) => {
+router.get("/options/violations", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
   try {
     const violations = db
       .prepare(
@@ -393,8 +464,7 @@ router.get("/options/violations", (req, res) => {
 });
 router.get(
   "/maintenance/violation-types",
-  authenticateToken,
-  requireAdmin,
+  requireActive("ADMIN"),
   (req, res) => {
     try {
       const violations = db
@@ -430,8 +500,7 @@ router.get(
 );
 router.post(
   "/maintenance/violation-types",
-  authenticateToken,
-  requireAdmin,
+  requireActive("ADMIN"),
   (req, res) => {
     try {
       const validation = validateViolationMaintenanceInput(req.body);
@@ -487,6 +556,14 @@ router.post(
       const violation = getViolationMaintenanceRow(
         Number(result.lastInsertRowid),
       );
+      logActivity({
+        actorId: req.account.id,
+        action: "FINE_TYPE_ADDED",
+        entityType: "VIOLATION_TYPE",
+        entityId: violation.id,
+        description: `Added fine type ${violationCode} ${violationName} (${pesos(amountCentavos)}${isActive === 1 ? "" : ", inactive"}).`,
+        details: { violationCode, violationName, amountCentavos, isActive },
+      });
       return res.status(201).json({
         success: true,
         message: `Fine type ${violationCode} added successfully.`,
@@ -506,8 +583,7 @@ router.post(
 );
 router.put(
   "/maintenance/violation-types/:id",
-  authenticateToken,
-  requireAdmin,
+  requireActive("ADMIN"),
   (req, res) => {
     try {
       const violationId = Number(req.params.id);
@@ -576,6 +652,31 @@ router.put(
           message: "Fine type could not be updated.",
         });
       }
+      const changes = describeChanges(
+        {
+          name: existing.violation_name,
+          amount: pesos(existing.amount_centavos),
+          description: existing.description || "",
+          status: Number(existing.is_active) === 1 ? "Active" : "Inactive",
+        },
+        {
+          name: violationName,
+          amount: pesos(amountCentavos),
+          description: description || "",
+          status: isActive === 1 ? "Active" : "Inactive",
+        },
+        { name: "name", amount: "amount", description: "description", status: "status" },
+      );
+      if (changes.length) {
+        logActivity({
+          actorId: req.account.id,
+          action: "FINE_TYPE_EDITED",
+          entityType: "VIOLATION_TYPE",
+          entityId: violationId,
+          description: `Edited fine type ${existing.violation_code} ${existing.violation_name}: ${changeText(changes)}.`,
+          details: { changes },
+        });
+      }
       return res.json({
         success: true,
         message: "Fine type updated successfully.",
@@ -595,8 +696,7 @@ router.put(
 );
 router.patch(
   "/maintenance/violation-types/:id/status",
-  authenticateToken,
-  requireAdmin,
+  requireActive("ADMIN"),
   (req, res) => {
     try {
       const violationId = Number(req.params.id);
@@ -630,6 +730,16 @@ router.patch(
         WHERE id = ?
         `,
       ).run(isActive, violationId);
+      if (Number(existing.is_active) !== isActive) {
+        logActivity({
+          actorId: req.account.id,
+          action: "FINE_TYPE_STATUS",
+          entityType: "VIOLATION_TYPE",
+          entityId: violationId,
+          description: `${isActive === 1 ? "Activated" : "Deactivated"} fine type ${existing.violation_code} ${existing.violation_name}.`,
+          details: { isActive },
+        });
+      }
       return res.json({
         success: true,
         message:
@@ -650,7 +760,7 @@ router.patch(
     }
   },
 );
-router.get("/options/officers", (req, res) => {
+router.get("/options/officers", requireActive("ADMIN"), (req, res) => {
   try {
     const officers = db
       .prepare(
@@ -687,8 +797,10 @@ router.get("/options/officers", (req, res) => {
     });
   }
 });
-router.get("/", (req, res) => {
+router.get("/", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
   try {
+    // An Officer's list holds only the fines they recorded.
+    const onlyRecordedBy = req.account.role === "FINES_OFFICER" ? req.account.id : null;
     const search = String(req.query.search || "")
       .trim()
       .toLowerCase();
@@ -747,10 +859,11 @@ router.get("/", (req, res) => {
           ON vt.id = f.violation_type_id
         LEFT JOIN users officer
           ON officer.id = f.recorded_by
+        WHERE (? IS NULL OR f.recorded_by = ?)
         ORDER BY f.issued_at DESC, f.id DESC
         `,
       )
-      .all();
+      .all(onlyRecordedBy, onlyRecordedBy);
     const filteredFines = fines.filter((fine) => {
       if (search) {
         const searchable = [
@@ -797,13 +910,29 @@ router.get("/", (req, res) => {
     });
   }
 });
-router.post("/", (req, res) => {
+router.post("/", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
   try {
     const { studentId, violationTypeId, recordedBy, remarks, issuedAt } =
       req.body;
     const normalizedStudentId = Number(studentId);
     const normalizedViolationTypeId = Number(violationTypeId);
-    const normalizedRecordedBy = Number(recordedBy);
+    // A Fines Officer always records under their own name. An Admin may
+    // record a fine under any active officer (or themselves).
+    const officerAccount = req.account.role === "FINES_OFFICER";
+    if (
+      officerAccount &&
+      recordedBy !== undefined &&
+      recordedBy !== null &&
+      recordedBy !== "" &&
+      Number(recordedBy) !== req.account.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        code: "RECORDER_NOT_ALLOWED",
+        message: "A Fines Officer can only record fines under their own name.",
+      });
+    }
+    const normalizedRecordedBy = officerAccount ? req.account.id : Number(recordedBy);
     const normalizedRemarks = remarks ? String(remarks).trim() : null;
     const normalizedIssuedAt = issuedAt ? String(issuedAt).trim() : null;
     if (!Number.isInteger(normalizedStudentId) || normalizedStudentId <= 0) {
@@ -982,6 +1111,32 @@ router.post("/", (req, res) => {
         `,
       )
       .get(fineId);
+    const recordedFor = formatFullName(
+      student.first_name,
+      student.middle_name,
+      student.last_name,
+    );
+    const recorderName = formatFullName(
+      officer.first_name,
+      officer.middle_name,
+      officer.last_name,
+    );
+    logActivity({
+      actorId: req.account.id,
+      action: "FINE_RECORDED",
+      entityType: "FINE",
+      entityId: fineId,
+      fineId,
+      description: `Recorded fine ${fineReference} (${violation.violation_name}, ${pesos(violation.amount_centavos)}) for ${recordedFor} (${student.student_number || student.username})${normalizedRecordedBy !== req.account.id ? `, under ${recorderName}` : ""}.`,
+      details: {
+        fineReference,
+        studentId: normalizedStudentId,
+        violationTypeId: violation.id,
+        amountCentavos: violation.amount_centavos,
+        recordedBy: normalizedRecordedBy,
+        issuedAt: normalizedIssuedAt,
+      },
+    });
     return res.status(201).json({
       success: true,
       message: "Fine recorded successfully.",
@@ -1022,10 +1177,7 @@ router.post("/", (req, res) => {
     });
   }
 });
-router.get("/:id", (req, res, next) => {
-  if (req.params.id === "my-fines") {
-    return next("route");
-  }
+router.get("/:id", skipMyFines, requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
   try {
     const fineId = Number(req.params.id);
     if (!Number.isInteger(fineId) || fineId <= 0) {
@@ -1130,6 +1282,17 @@ router.get("/:id", (req, res, next) => {
         message: "Fine not found.",
       });
     }
+    // An Officer sees only the fines they recorded.
+    if (
+      req.account.role === "FINES_OFFICER" &&
+      Number(fine.officer_id) !== req.account.id
+    ) {
+      return res.status(404).json({
+        success: false,
+        code: "FINE_NOT_FOUND",
+        message: "Fine not found.",
+      });
+    }
     return res.json({
       success: true,
       fine,
@@ -1143,7 +1306,7 @@ router.get("/:id", (req, res, next) => {
     });
   }
 });
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireActive("ADMIN"), async (req, res) => {
   try {
     const fineId = Number(req.params.id);
     if (!Number.isInteger(fineId) || fineId <= 0) {
@@ -1192,7 +1355,7 @@ router.put("/:id", async (req, res) => {
     try {
       const settled = await settlePendingOnlinePayment(
         fineId,
-        null,
+        req.account.id,
         "FINE_EDITED",
       );
       if (settled.paid) {
@@ -1289,6 +1452,7 @@ router.put("/:id", async (req, res) => {
         message: "Please select a valid officer.",
       });
     }
+    const before = fineSnapshot(fineId);
     const result = db
       .prepare(
         `
@@ -1318,6 +1482,26 @@ router.put("/:id", async (req, res) => {
         success: false,
         code: "FINE_NOT_UPDATED",
         message: "Fine could not be updated.",
+      });
+    }
+    const after = fineSnapshot(fineId);
+    const changes = describeChanges(before, after, {
+      student: "student",
+      violation: "violation",
+      amount: "amount",
+      recorder: "recorded by",
+      remarks: "notes",
+      issued: "issued",
+    });
+    if (changes.length) {
+      logActivity({
+        actorId: req.account.id,
+        action: "FINE_EDITED",
+        entityType: "FINE",
+        entityId: fineId,
+        fineId,
+        description: `Edited fine ${existingFine.fine_reference}: ${changeText(changes)}.`,
+        details: { changes },
       });
     }
     return res.json({
@@ -1402,6 +1586,14 @@ router.delete("/:id", canCancelFines, async (req, res) => {
         success: false,
         code: "FINE_NOT_FOUND",
         message: "Fine not found.",
+      });
+    }
+    // Checked before the fine's status, so another officer learns nothing.
+    if (officerCannotCancel(req, fineId)) {
+      return res.status(403).json({
+        success: false,
+        code: "NOT_YOUR_FINE",
+        message: "A Fines Officer can only cancel fines they recorded.",
       });
     }
     if (fine.cancelled_at) {
@@ -1497,6 +1689,14 @@ router.patch("/:id/cancel", canCancelFines, async (req, res) => {
         success: false,
         code: "FINE_NOT_FOUND",
         message: "Fine not found.",
+      });
+    }
+    // Checked before the fine's status, so another officer learns nothing.
+    if (officerCannotCancel(req, fineId)) {
+      return res.status(403).json({
+        success: false,
+        code: "NOT_YOUR_FINE",
+        message: "A Fines Officer can only cancel fines they recorded.",
       });
     }
     const currentStatus = String(fine.fine_status || "").toUpperCase();

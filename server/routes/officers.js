@@ -5,6 +5,12 @@ const path = require("path");
 const fs = require("fs");
 
 const { authenticateToken } = require("./auth");
+const { requireActive } = require("../middleware/access");
+const {
+  changeText,
+  describeChanges,
+  logActivity,
+} = require("../database/activity-log");
 const db = require("../database/database");
 
 const router = express.Router();
@@ -37,6 +43,31 @@ if (!fs.existsSync(officerProfileUploadDirectory)) {
 // ==========================================
 // HELPERS
 // ==========================================
+
+// An officer account as people read it, for the activity log's before/after.
+function officerSnapshot(officer) {
+  if (!officer) {
+    return null;
+  }
+
+  return {
+    name: formatName(officer.first_name, officer.middle_name, officer.last_name),
+    username: officer.username || "",
+    email: officer.email || "",
+    contact: officer.contact_number || "",
+    area: officer.assigned_area || "",
+    status: officer.account_status || "",
+  };
+}
+
+const OFFICER_FIELDS = {
+  name: "name",
+  username: "username",
+  email: "email",
+  contact: "contact number",
+  area: "assigned area",
+  status: "status",
+};
 
 function formatName(firstName, middleName, lastName) {
   return [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
@@ -425,7 +456,7 @@ function handleOfficerProfileUpload(req, res, next) {
 // GET /api/officers/next-id
 // ==========================================
 
-router.get("/next-id", (req, res) => {
+router.get("/next-id", requireActive("ADMIN"), (req, res) => {
   try {
     return res.json({
       success: true,
@@ -450,7 +481,7 @@ router.get("/next-id", (req, res) => {
 // GET /api/officers
 // ==========================================
 
-router.get("/", (req, res) => {
+router.get("/", requireActive("ADMIN"), (req, res) => {
   try {
     const officers = db
       .prepare(
@@ -555,7 +586,7 @@ router.get("/", (req, res) => {
 // Password policy is enforced here too.
 // ==========================================
 
-router.post("/", async (req, res) => {
+router.post("/", requireActive("ADMIN"), async (req, res) => {
   try {
     const {
       username,
@@ -968,6 +999,15 @@ router.post("/", async (req, res) => {
       normalizedLastName,
     );
 
+    logActivity({
+      actorId: req.account.id,
+      action: "OFFICER_ADDED",
+      entityType: "USER",
+      entityId: createdUserId,
+      description: `Added Fines Officer ${fullName} (${employeeNumber}).`,
+      details: { employeeNumber, username: normalizedUsername },
+    });
+
     return res.status(201).json({
       success: true,
 
@@ -1038,6 +1078,9 @@ router.post("/", async (req, res) => {
 
 router.post(
   "/:id/profile-picture",
+
+  // Checked before the upload is accepted.
+  requireActive("ADMIN"),
 
   handleOfficerProfileUpload,
 
@@ -1149,7 +1192,7 @@ router.post(
 // REMOVE OFFICER PROFILE PICTURE
 // ==========================================
 
-router.delete("/:id/profile-picture", (req, res) => {
+router.delete("/:id/profile-picture", requireActive("ADMIN"), (req, res) => {
   try {
     const officerId = getValidOfficerId(req.params.id);
 
@@ -1232,7 +1275,7 @@ router.delete("/:id/profile-picture", (req, res) => {
 // GET SINGLE OFFICER
 // ==========================================
 
-router.get("/:id", (req, res) => {
+router.get("/:id", requireActive("ADMIN"), (req, res) => {
   try {
     const officerId = getValidOfficerId(req.params.id);
 
@@ -1971,6 +2014,28 @@ router.put(
         normalizedLastName,
       );
 
+      const changes = describeChanges(
+        officerSnapshot(existingOfficer),
+        officerSnapshot(findOfficerById(officerId)),
+        OFFICER_FIELDS,
+      );
+
+      if (changes.length || passwordChanged) {
+        logActivity({
+          actorId: Number(req.authUser.userId),
+          action: "OFFICER_EDITED",
+          entityType: "USER",
+          entityId: officerId,
+          description: `Edited Fines Officer ${fullName} (${existingOfficer.employee_number}): ${[
+            changeText(changes),
+            passwordChanged ? "password reset" : "",
+          ]
+            .filter(Boolean)
+            .join("; ")}.`,
+          details: { changes, passwordReset: Boolean(passwordChanged) },
+        });
+      }
+
       return res.json({
         success: true,
 
@@ -2042,7 +2107,7 @@ router.put(
 // DELETE / ARCHIVE OFFICER
 // ==========================================
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", requireActive("ADMIN"), (req, res) => {
   try {
     const officerId = getValidOfficerId(req.params.id);
 
@@ -2201,6 +2266,18 @@ router.delete("/:id", (req, res) => {
         deleteOfficerProfileFile(officer.profile_picture_uri);
       }
 
+      logActivity({
+        actorId: req.account.id,
+        action: "OFFICER_REMOVED",
+        entityType: "USER",
+        entityId: officer.id,
+        description: `Removed Fines Officer ${formatName(
+          officer.first_name,
+          officer.middle_name,
+          officer.last_name,
+        )} (${officer.employee_number || officer.username}). The fines they recorded were kept.`,
+      });
+
       return res.json({
         success: true,
 
@@ -2256,6 +2333,18 @@ router.delete("/:id", (req, res) => {
     if (officer.profile_picture_uri) {
       deleteOfficerProfileFile(officer.profile_picture_uri);
     }
+
+    logActivity({
+      actorId: req.account.id,
+      action: "OFFICER_DELETED",
+      entityType: "USER",
+      entityId: officer.id,
+      description: `Deleted Fines Officer ${formatName(
+        officer.first_name,
+        officer.middle_name,
+        officer.last_name,
+      )} (${officer.employee_number || officer.username}), who had recorded no fines.`,
+    });
 
     return res.json({
       success: true,

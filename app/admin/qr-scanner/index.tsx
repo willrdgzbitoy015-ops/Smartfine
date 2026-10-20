@@ -21,6 +21,7 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { PopIn, ScanLine } from "@/components/motion";
 import { ScanFrame } from "@/components/scan-frame";
 import { AdminNavBadge } from "@/components/notification-badge";
@@ -261,7 +262,7 @@ export default function QRScanner() {
 
       setErrorMessage("");
 
-      const response = await fetch(`${API_BASE}/api/students`);
+      const response = await apiFetch(`${API_BASE}/api/students`);
 
       const data = await response.json();
 
@@ -356,7 +357,7 @@ export default function QRScanner() {
       let currentStudents = students;
 
       if (currentStudents.length === 0) {
-        const response = await fetch(`${API_BASE}/api/students`);
+        const response = await apiFetch(`${API_BASE}/api/students`);
 
         const data = await response.json();
 

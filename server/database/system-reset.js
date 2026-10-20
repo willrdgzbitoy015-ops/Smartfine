@@ -28,6 +28,7 @@ const UPLOAD_FOLDERS = ["student-profiles", "officer-profiles", "admin-profiles"
 
 // Creates the fine_evidence table if this backend has not made it yet.
 require("./fine-evidence");
+const { logActivity } = require("./activity-log");
 
 const CONFIRM_PHRASE = "RESET SMARTFINE";
 
@@ -359,13 +360,14 @@ async function resetSystem({ adminId, keepFineTypes = true, keepSchoolDetails = 
           `DELETE FROM sqlite_sequence WHERE name IN (${renumbered.map(() => "?").join(", ")})`,
         ).run(...renumbered);
 
-        db.prepare(
-          `INSERT INTO audit_logs (user_id, action, entity_type, description)
-           VALUES (?, 'SYSTEM_RESET', 'SYSTEM', ?)`,
-        ).run(
-          adminId,
-          `System reset. Backup: ${folderName}. Fine types ${keepFineTypes ? "kept" : "deleted"}; school details ${keepSchoolDetails ? "kept" : "cleared"}.`,
-        );
+        // The first entry of the new, empty log.
+        logActivity({
+          actorId: adminId,
+          action: "SYSTEM_RESET",
+          entityType: "SYSTEM",
+          description: `System reset. Backup: ${folderName}. Fine types ${keepFineTypes ? "kept" : "deleted"}; school details ${keepSchoolDetails ? "kept" : "cleared"}.`,
+          details: { backupFolder: folderName, keepFineTypes, keepSchoolDetails },
+        });
 
         return counts;
       });

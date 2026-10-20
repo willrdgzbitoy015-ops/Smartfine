@@ -32,6 +32,7 @@ import SuccessModal from "@/components/success-modal";
 import WarningModal from "@/components/warningmodal";
 
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { FadeIn, PopIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { Pagination } from "@/components/pagination";
@@ -1734,7 +1735,7 @@ export default function StudentsDirectory() {
         contactNumber: row.contactNumber,
       }));
 
-      const response = await fetch(`${API_BASE}/api/students/bulk-import`, {
+      const response = await apiFetch(`${API_BASE}/api/students/bulk-import`, {
         method: "POST",
 
         headers: {
@@ -1869,7 +1870,7 @@ export default function StudentsDirectory() {
 
       for (const student of selectedStudents) {
         try {
-          const response = await fetch(
+          const response = await apiFetch(
             `${API_BASE}/api/students/${student.id}`,
             {
               method: "DELETE",

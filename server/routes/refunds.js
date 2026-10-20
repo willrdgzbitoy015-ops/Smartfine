@@ -5,6 +5,7 @@ const db = require("../database/database");
 const paymongo = require("../payments/paymongo");
 const refunds = require("../payments/refunds");
 const { authenticateToken } = require("./auth");
+const { logActivity, personName, pesos } = require("../database/activity-log");
 
 const router = express.Router();
 
@@ -230,6 +231,8 @@ router.post("/", allow("STUDENT", "ADMIN"), async (req, res) => {
       note: req.body?.note,
     });
 
+    logRefund("REFUND_STARTED", "Started", refund, user.id, req.body?.reason);
+
     return res.status(refund.status === "FAILED" ? 200 : 201).json({
       success: refund.status !== "FAILED",
       message: refundMessage(refund),
@@ -239,6 +242,29 @@ router.post("/", allow("STUDENT", "ADMIN"), async (req, res) => {
     return sendError(res, error);
   }
 });
+
+// One activity log entry for an Administrator's refund decision.
+function logRefund(action, verb, refund, adminId, note) {
+  const fine = db.prepare("SELECT fine_reference FROM fines WHERE id = ?").get(refund.fine_id);
+  const student = personName(refund.student_user_id);
+  const text = typeof note === "string" ? note.trim() : "";
+  const status = {
+    SUCCEEDED: "completed",
+    PROCESSING: "processing with PayMongo",
+    FAILED: "failed",
+    REJECTED: "declined",
+  }[refund.status] || String(refund.status || "").toLowerCase();
+
+  logActivity({
+    actorId: adminId,
+    action,
+    entityType: "REFUND",
+    entityId: refund.id,
+    fineId: refund.fine_id,
+    description: `${verb} ${refund.payment_method === "GCASH" ? "GCash" : "cash"} refund ${refund.refund_reference} of ${pesos(refund.amount_centavos)} for fine ${fine?.fine_reference || "?"}${student ? ` (${student})` : ""}. Now ${status}${text ? `. Note: ${text}` : ""}.`,
+    details: { refundReference: refund.refund_reference, status: refund.status, reason: refund.reason || null },
+  });
+}
 
 function refundMessage(refund) {
   if (refund.status === "SUCCEEDED") {
@@ -299,6 +325,8 @@ router.post("/:id/approve", allow("ADMIN"), async (req, res) => {
       cashReturned: req.body?.cashReturned === true,
     });
 
+    logRefund("REFUND_APPROVED", "Approved", refund, req.refundUser.id, req.body?.note);
+
     return res.json({
       success: refund.status !== "FAILED",
       message: refundMessage(refund),
@@ -318,6 +346,8 @@ router.post("/:id/reject", allow("ADMIN"), (req, res) => {
 
   try {
     const refund = refunds.rejectRefund(refundId, req.refundUser.id, req.body?.note);
+
+    logRefund("REFUND_DECLINED", "Declined", refund, req.refundUser.id, req.body?.note);
 
     return res.json({
       success: true,

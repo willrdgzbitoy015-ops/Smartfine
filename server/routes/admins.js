@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 
 const db = require("../database/database");
+const { logActivity } = require("../database/activity-log");
 // Creates the refunds table, which the history count below reads.
 require("../payments/refunds");
 
@@ -328,6 +329,14 @@ router.post("/", async (req, res) => {
       });
     }
 
+    logActivity({
+      actorId: Number(req.authUser.userId),
+      action: "ADMIN_ADDED",
+      entityType: "USER",
+      entityId: outcome.id,
+      description: `Added administrator ${firstName} ${lastName} (${username}).`,
+    });
+
     return res.status(201).json({
       success: true,
       message: `${firstName} ${lastName} can now sign in as an administrator.`,
@@ -431,6 +440,15 @@ router.patch("/:id/status", (req, res) => {
 
     const name = [outcome.admin.first_name, outcome.admin.last_name].join(" ");
 
+    logActivity({
+      actorId: Number(req.authUser.userId),
+      action: "ADMIN_STATUS",
+      entityType: "USER",
+      entityId: adminId,
+      description: `${status === "ACTIVE" ? "Reactivated" : "Deactivated"} administrator ${name}.`,
+      details: { status },
+    });
+
     return res.json({
       success: true,
       message:
@@ -525,6 +543,14 @@ router.delete("/:id", (req, res) => {
     }
 
     removeAdminProfileFile(outcome.admin.profile_picture_uri);
+
+    logActivity({
+      actorId: Number(req.authUser.userId),
+      action: "ADMIN_DELETED",
+      entityType: "USER",
+      entityId: adminId,
+      description: `Deleted administrator ${outcome.admin.first_name} ${outcome.admin.last_name}, who had no records.`,
+    });
 
     return res.json({
       success: true,

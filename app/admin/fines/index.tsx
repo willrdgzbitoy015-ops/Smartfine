@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { FadeIn, useRetainedValue } from "@/components/motion";
 import { SkeletonTable } from "@/components/skeleton";
 import { AdminModal, AdminNoticeList } from "@/components/admin-modal";
@@ -375,8 +376,8 @@ export default function FinesDirectory() {
       }
       setErrorMessage("");
       const [finesResponse, violationsResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/fines`),
-        fetch(`${API_BASE}/api/fines/options/violations`),
+        apiFetch(`${API_BASE}/api/fines`),
+        apiFetch(`${API_BASE}/api/fines/options/violations`),
       ]);
       const finesData = await finesResponse.json();
       const violationsData = await violationsResponse.json();

@@ -11,6 +11,11 @@ const multer = require("multer");
 const db = require("../database/database");
 const evidence = require("../database/fine-evidence");
 const { authenticateToken } = require("./auth");
+const { logActivity } = require("../database/activity-log");
+
+function fineReference(fineId) {
+  return db.prepare("SELECT fine_reference FROM fines WHERE id = ?").get(fineId)?.fine_reference || `#${fineId}`;
+}
 
 const router = express.Router();
 
@@ -169,6 +174,15 @@ router.post("/:id/evidence", authenticateToken, activeUser, viewableFine, (req, 
 
       const trail = evidence.fineTrail(evidence.fineRow(req.evidenceFine.id), req.evidenceUser);
 
+      logActivity({
+        actorId: req.evidenceUser.id,
+        action: "EVIDENCE_ADDED",
+        entityType: "FINE_EVIDENCE",
+        entityId: evidenceId,
+        fineId: req.evidenceFine.id,
+        description: `Added an evidence photo to fine ${fineReference(req.evidenceFine.id)} (${trail.evidence.length} of ${trail.maxEvidence}).`,
+      });
+
       return res.status(201).json({
         success: true,
         message: "Evidence photo added.",
@@ -198,6 +212,15 @@ router.delete(
         fineId: req.evidenceFine.id,
         evidenceId,
         user: req.evidenceUser,
+      });
+
+      logActivity({
+        actorId: req.evidenceUser.id,
+        action: "EVIDENCE_REMOVED",
+        entityType: "FINE_EVIDENCE",
+        entityId: evidenceId,
+        fineId: req.evidenceFine.id,
+        description: `Removed an evidence photo from fine ${fineReference(req.evidenceFine.id)}.`,
       });
 
       return res.json({

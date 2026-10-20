@@ -19,6 +19,7 @@ import { OfficerFormModal } from "@/components/admin-forms/officer-form-modal";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { FadeIn } from "@/components/motion";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { SkeletonTable } from "@/components/skeleton";
@@ -246,7 +247,7 @@ export default function OfficersDirectory() {
 
       setError("");
 
-      const response = await fetch(`${API_BASE}/api/officers`);
+      const response = await apiFetch(`${API_BASE}/api/officers`);
 
       const data = await response.json();
 

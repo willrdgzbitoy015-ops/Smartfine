@@ -34,6 +34,7 @@ import {
   initialsOf,
   pictureUrl,
 } from "@/components/admin-settings/administrators-panel";
+import { ActivityLogPanel } from "@/components/admin-settings/activity-log-panel";
 import { ChangePasswordModal } from "@/components/admin-settings/change-password-modal";
 import { FormPopup, PopupButton } from "@/components/admin-settings/form";
 import { SectionCard } from "@/components/admin-settings/section-card";
@@ -129,7 +130,13 @@ type BasicResponse = {
 
 const FINE_TABLE_MIN_WIDTH = 570;
 
-type SettingsTab = "account" | "security" | "admins" | "fineTypes" | "system";
+type SettingsTab =
+  | "account"
+  | "security"
+  | "admins"
+  | "fineTypes"
+  | "activity"
+  | "system";
 
 const TABS: { key: SettingsTab; label: string; icon: any }[] = [
   {
@@ -151,6 +158,11 @@ const TABS: { key: SettingsTab; label: string; icon: any }[] = [
     key: "fineTypes",
     label: "Fine Types",
     icon: require("../../../assets/icons/fines.png"),
+  },
+  {
+    key: "activity",
+    label: "Activity Log",
+    icon: require("../../../assets/icons/reports.png"),
   },
   {
     key: "system",
@@ -2452,6 +2464,8 @@ export default function AdminSettings() {
                   )}
 
                   {activeTab === "fineTypes" && renderFineTypesTab()}
+
+                  {activeTab === "activity" && <ActivityLogPanel />}
 
                   {activeTab === "system" && renderSystemTab()}
                 </Animated.View>

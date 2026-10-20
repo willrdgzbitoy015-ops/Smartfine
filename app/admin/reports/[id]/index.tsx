@@ -15,6 +15,7 @@ import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
@@ -231,7 +232,7 @@ export default function DetailedPaymentReport() {
 
       setError("");
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE}/api/reports/payments/${paymentId}`,
       );
 

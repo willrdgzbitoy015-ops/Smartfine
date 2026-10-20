@@ -22,6 +22,7 @@ import QRCode from "react-native-qrcode-svg";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn, PopIn } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
@@ -216,7 +217,7 @@ export default function StudentProfile() {
 
       setProfileImageFailed(false);
 
-      const response = await fetch(`${API_BASE}/api/students/${studentId}`);
+      const response = await apiFetch(`${API_BASE}/api/students/${studentId}`);
 
       const result = await response.json();
 

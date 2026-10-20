@@ -26,6 +26,7 @@ const systemResetRoutes = require("./routes/system-reset");
 const adminNotificationRoutes = require("./routes/admin-notifications");
 const notificationRoutes = require("./routes/notifications");
 const onlinePaymentRoutes = require("./routes/online-payments");
+const activityLogRoutes = require("./routes/activity-log");
 const realtime = require("./realtime");
 
 const app = express();
@@ -64,6 +65,7 @@ app.use("/api/refunds", refundRoutes);
 app.use("/api/system-reset", systemResetRoutes);
 app.use("/api/admin/notifications", adminNotificationRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/activity-log", activityLogRoutes);
 app.use("/api/officer-profile", officerProfilePhotoRoutes);
 app.use("/api/officer-profile", officerProfileRoutes);
 

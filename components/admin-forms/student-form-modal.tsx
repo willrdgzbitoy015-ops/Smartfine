@@ -28,6 +28,7 @@ import {
 } from "@/components/form-popup";
 import { SkeletonForm } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { apiFetch } from "@/utils/api-fetch";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { haptics } from "@/utils/haptics";
 
@@ -168,7 +169,7 @@ export function StudentFormModal({
     try {
       setStudentNumberLoading(true);
 
-      const response = await fetch(`${API_BASE}/api/students/next-id`);
+      const response = await apiFetch(`${API_BASE}/api/students/next-id`);
       const data = await response.json();
 
       setStudentNumber(response.ok && data.success ? data.studentId : "");
@@ -193,7 +194,7 @@ export function StudentFormModal({
       setNotice("");
       setDone(null);
 
-      const response = await fetch(`${API_BASE}/api/students/${studentId}`);
+      const response = await apiFetch(`${API_BASE}/api/students/${studentId}`);
       const data = await response.json();
 
       if (!response.ok || !data.success || !data.student) {
@@ -365,7 +366,7 @@ export function StudentFormModal({
         } as any);
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE}/api/students/${databaseId}/profile-picture`,
         { method: "POST", body: formData },
       );
@@ -400,7 +401,7 @@ export function StudentFormModal({
         setRemovingPicture(true);
         clearMessages();
 
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_BASE}/api/students/${studentId}/profile-picture`,
           { method: "DELETE" },
         );

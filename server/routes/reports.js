@@ -199,7 +199,7 @@ const confirmerName = `
   END
 `;
 // GET /api/reports/payments
-router.get("/payments", (req, res) => {
+router.get("/payments", authenticateToken, activeAdmin, (req, res) => {
   try {
     const summary = db
       .prepare(
@@ -345,7 +345,7 @@ router.get("/payments", (req, res) => {
   }
 });
 // GET /api/reports/payments/:id
-router.get("/payments/:id", (req, res) => {
+router.get("/payments/:id", authenticateToken, activeAdmin, (req, res) => {
   const paymentId = Number(req.params.id);
   if (!Number.isSafeInteger(paymentId) || paymentId < 1) {
     return res.status(400).json({

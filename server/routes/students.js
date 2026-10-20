@@ -14,6 +14,47 @@ const {
   ensureStudentRecord,
 } = require("../database/student-records");
 const { authenticateToken } = require("./auth");
+const { requireActive } = require("../middleware/access");
+const {
+  changeText,
+  describeChanges,
+  logActivity,
+} = require("../database/activity-log");
+
+// A student account as people read it, for the activity log's before/after.
+function studentAccountSnapshot(userId) {
+  const user = db
+    .prepare(
+      `SELECT first_name, middle_name, last_name, username, email,
+              contact_number, grade_level, section, account_status
+       FROM users WHERE id = ?`,
+    )
+    .get(userId);
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    name: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" "),
+    username: user.username || "",
+    email: user.email || "",
+    contact: user.contact_number || "",
+    grade: user.grade_level || "",
+    section: user.section || "",
+    status: user.account_status || "",
+  };
+}
+
+const STUDENT_FIELDS = {
+  name: "name",
+  username: "username",
+  email: "email",
+  contact: "contact number",
+  grade: "grade",
+  section: "section",
+  status: "status",
+};
 
 console.log("students.js loaded");
 
@@ -1108,7 +1149,7 @@ function validatePasswordPolicy(password) {
 // GET NEXT STUDENT ID
 // ==========================================
 
-router.get("/next-id", (req, res) => {
+router.get("/next-id", requireActive("ADMIN"), (req, res) => {
   try {
     const studentId = generateNextStudentId();
 
@@ -1131,7 +1172,7 @@ router.get("/next-id", (req, res) => {
 // GET ALL STUDENTS
 // ==========================================
 
-router.get("/", (req, res) => {
+router.get("/", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
   try {
     const students = db
       .prepare(
@@ -2541,7 +2582,7 @@ router.get(
 // CREATE STUDENT
 // ==========================================
 
-router.post("/", async (req, res) => {
+router.post("/", requireActive("ADMIN"), async (req, res) => {
   try {
     const {
       username,
@@ -2835,6 +2876,21 @@ router.post("/", async (req, res) => {
 
       ensureStudentRecord(Number(result.lastInsertRowid));
 
+      logActivity({
+        actorId: req.account.id,
+        action: "STUDENT_ADDED",
+        entityType: "USER",
+        entityId: Number(result.lastInsertRowid),
+        description: `Added student ${formatName(
+          normalizedFirstName,
+          normalizedMiddleName,
+          normalizedLastName,
+        )} (${generatedStudentId}), ${normalizedGradeLevel} - ${normalizedSection}${
+          normalizedStatus === "ACTIVE" ? "" : ", inactive"
+        }.`,
+        details: { studentId: generatedStudentId, username: normalizedUsername },
+      });
+
       db.exec("COMMIT;");
     } catch (transactionError) {
       try {
@@ -2925,7 +2981,7 @@ router.post("/", async (req, res) => {
 // BULK IMPORT STUDENTS
 // ==========================================
 
-router.post("/bulk-import", async (req, res) => {
+router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
   try {
     const { gradeLevel, section, students } = req.body;
 
@@ -3313,6 +3369,22 @@ router.post("/bulk-import", async (req, res) => {
         });
       }
 
+      logActivity({
+        actorId: req.account.id,
+        action: "STUDENTS_IMPORTED",
+        entityType: "USER",
+        description: `Imported ${importedStudents.length} student account${
+          importedStudents.length === 1 ? "" : "s"
+        } into ${normalizedGradeLevel} - ${normalizedSection}.`,
+        details: {
+          students: importedStudents.map((student) => ({
+            id: student.id,
+            studentId: student.studentId,
+            name: student.fullName,
+          })),
+        },
+      });
+
       db.exec("COMMIT;");
     } catch (transactionError) {
       try {
@@ -3382,7 +3454,7 @@ router.post("/bulk-import", async (req, res) => {
 // UPLOAD PROFILE PICTURE
 // ==========================================
 
-router.post("/:id/profile-picture", (req, res) => {
+router.post("/:id/profile-picture", requireActive("ADMIN"), (req, res) => {
   uploadProfilePicture.single("profilePicture")(req, res, (uploadError) => {
     if (uploadError) {
       console.error("Profile picture upload error:", uploadError);
@@ -3528,7 +3600,7 @@ router.post("/:id/profile-picture", (req, res) => {
 // REMOVE PROFILE PICTURE
 // ==========================================
 
-router.delete("/:id/profile-picture", (req, res) => {
+router.delete("/:id/profile-picture", requireActive("ADMIN"), (req, res) => {
   try {
     const studentId = Number(req.params.id);
 
@@ -3622,7 +3694,7 @@ router.delete("/:id/profile-picture", (req, res) => {
 // GET SINGLE STUDENT PROFILE
 // ==========================================
 
-router.get("/:id", (req, res) => {
+router.get("/:id", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
   try {
     const studentId = Number(req.params.id);
 
@@ -3928,7 +4000,7 @@ router.get("/:id", (req, res) => {
 // UPDATE STUDENT
 // ==========================================
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireActive("ADMIN"), async (req, res) => {
   try {
     const studentId = Number(req.params.id);
 
@@ -4186,6 +4258,8 @@ router.put("/:id", async (req, res) => {
       newPasswordHash = await bcrypt.hash(newPassword, 10);
     }
 
+    const beforeAccount = studentAccountSnapshot(studentId);
+
     try {
       db.exec("BEGIN TRANSACTION;");
 
@@ -4258,6 +4332,24 @@ router.put("/:id", async (req, res) => {
               AND role = 'STUDENT'
             `,
         ).run(newPasswordHash, studentId);
+      }
+
+      const afterAccount = studentAccountSnapshot(studentId);
+      const changes = describeChanges(beforeAccount, afterAccount, STUDENT_FIELDS);
+
+      if (changes.length || newPasswordHash !== null) {
+        logActivity({
+          actorId: req.account.id,
+          action: "STUDENT_EDITED",
+          entityType: "USER",
+          entityId: studentId,
+          description: `Edited student ${afterAccount.name} (${
+            existingStudent.student_number || existingStudent.username
+          }): ${[changeText(changes), newPasswordHash !== null ? "password reset" : ""]
+            .filter(Boolean)
+            .join("; ")}.`,
+          details: { changes, passwordReset: newPasswordHash !== null },
+        });
       }
 
       db.exec("COMMIT;");
@@ -4341,7 +4433,7 @@ router.put("/:id", async (req, res) => {
 // DELETE / ARCHIVE INACTIVE STUDENT
 // ==========================================
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", requireActive("ADMIN"), (req, res) => {
   try {
     const studentId = Number(req.params.id);
 
@@ -4534,6 +4626,19 @@ router.delete("/:id", (req, res) => {
         deleteProfilePictureFile(student.profile_picture_uri);
       }
 
+      logActivity({
+        actorId: req.account.id,
+        action: "STUDENT_REMOVED",
+        entityType: "USER",
+        entityId: student.id,
+        description: `Removed student ${formatName(
+          student.first_name,
+          student.middle_name,
+          student.last_name,
+        )} (${student.student_number || student.username}). Their ${fineCount} fine record(s) and ${paymentCount} payment record(s) were kept.`,
+        details: { fines: fineCount, payments: paymentCount },
+      });
+
       return res.json({
         success: true,
 
@@ -4588,6 +4693,18 @@ router.delete("/:id", (req, res) => {
     if (student.profile_picture_uri) {
       deleteProfilePictureFile(student.profile_picture_uri);
     }
+
+    logActivity({
+      actorId: req.account.id,
+      action: "STUDENT_DELETED",
+      entityType: "USER",
+      entityId: student.id,
+      description: `Deleted student ${formatName(
+        student.first_name,
+        student.middle_name,
+        student.last_name,
+      )} (${student.student_number || student.username}), who had no fines.`,
+    });
 
     return res.json({
       success: true,
