@@ -24,12 +24,16 @@ const refunds = require("../payments/refunds");
 const DB_PATH = path.join(__dirname, "smartfine.db");
 const BACKUP_ROOT = path.join(__dirname, "backups");
 const UPLOADS = path.join(__dirname, "..", "uploads");
-const UPLOAD_FOLDERS = ["student-profiles", "officer-profiles", "admin-profiles"];
+const UPLOAD_FOLDERS = ["student-profiles", "officer-profiles", "admin-profiles", "fine-evidence"];
+
+// Creates the fine_evidence table if this backend has not made it yet.
+require("./fine-evidence");
 
 const CONFIRM_PHRASE = "RESET SMARTFINE";
 
 // Deleted children first, so foreign keys never point at a removed row.
 const WIPED_TABLES = [
+  "fine_evidence",
   "refunds",
   "payment_events",
   "payments",

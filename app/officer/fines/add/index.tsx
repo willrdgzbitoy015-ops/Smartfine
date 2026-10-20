@@ -31,6 +31,12 @@ import { FlowSteps } from "@/components/flow-steps";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
+import {
+  EVIDENCE_MAX,
+  type EvidencePhoto,
+  pickEvidencePhotos,
+  uploadEvidencePhoto,
+} from "@/utils/evidence-photos";
 import { haptics } from "@/utils/haptics";
 import { useResponsiveStyles } from "./add-fine.styles";
 
@@ -53,6 +59,7 @@ type Violation = {
 };
 
 type SavedFine = {
+  id?: number;
   fineReference?: string;
   violationName?: string;
   amount?: number;
@@ -149,6 +156,14 @@ export default function OfficerAddFine() {
 
   const [savedFine, setSavedFine] = useState<SavedFine | null>(null);
   const savingRef = useRef(false);
+
+  // Evidence photos: chosen here, uploaded right after the fine is recorded.
+  const [photos, setPhotos] = useState<EvidencePhoto[]>([]);
+  const [photoError, setPhotoError] = useState("");
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadedCount, setUploadedCount] = useState(0);
+  const [failedPhotos, setFailedPhotos] = useState<EvidencePhoto[]>([]);
+  const [uploadProblem, setUploadProblem] = useState("");
 
   const selected = violations.find((item) => item.id === selectedId);
   const amount = Number(selected?.amount_centavos ?? 0) / 100;
@@ -290,9 +305,27 @@ export default function OfficerAddFine() {
       });
 
       const data = await readResponse(response);
+      const fine: SavedFine = data.fine || {};
 
-      haptics.success();
-      setSavedFine(data.fine || {});
+      setSavedFine(fine);
+
+      // The fine is saved now. A photo that fails to upload never undoes it;
+      // the success pop-up offers to try that photo again.
+      const fineId = Number(fine.id);
+      const failed = Number.isSafeInteger(fineId) && fineId > 0
+        ? await uploadPhotos(fineId, photos)
+        : photos;
+
+      if (failed.length && !(Number.isSafeInteger(fineId) && fineId > 0)) {
+        setUploadProblem("The fine was saved, but its ID was not returned, so the photos could not be attached.");
+      }
+
+      if (failed.length) {
+        haptics.warning();
+      } else {
+        haptics.success();
+      }
+
       setModal("success");
     } catch (caught) {
       haptics.error();
@@ -305,7 +338,83 @@ export default function OfficerAddFine() {
     } finally {
       savingRef.current = false;
       setSaving(false);
+      setUploadStatus("");
     }
+  };
+
+  // Uploads photos one at a time. Returns the ones that did not upload.
+  const uploadPhotos = async (fineId: number, list: EvidencePhoto[]) => {
+    const failed: EvidencePhoto[] = [];
+    let problem = "";
+
+    for (let index = 0; index < list.length; index += 1) {
+      setUploadStatus(
+        list.length > 1
+          ? `Uploading photo ${index + 1} of ${list.length}…`
+          : "Uploading photo…",
+      );
+
+      try {
+        await uploadEvidencePhoto(fineId, list[index]);
+        setUploadedCount((count) => count + 1);
+      } catch (caught) {
+        failed.push(list[index]);
+        problem = caught instanceof Error ? caught.message : "Please try again.";
+      }
+    }
+
+    setFailedPhotos(failed);
+    setUploadProblem(problem);
+
+    return failed;
+  };
+
+  const retryUpload = async () => {
+    const fineId = Number(savedFine?.id);
+
+    if (savingRef.current || !failedPhotos.length || !Number.isSafeInteger(fineId)) {
+      return;
+    }
+
+    savingRef.current = true;
+    setSaving(true);
+
+    try {
+      const failed = await uploadPhotos(fineId, failedPhotos);
+
+      if (failed.length) {
+        haptics.warning();
+      } else {
+        haptics.success();
+      }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+      setUploadStatus("");
+    }
+  };
+
+  const addPhotos = async (source: "camera" | "library") => {
+    setPhotoError("");
+
+    try {
+      const picked = await pickEvidencePhotos(source, EVIDENCE_MAX - photos.length);
+
+      if (picked.length) {
+        haptics.selection();
+        setPhotos((current) => [...current, ...picked].slice(0, EVIDENCE_MAX));
+      }
+    } catch (caught) {
+      haptics.warning();
+      setPhotoError(
+        caught instanceof Error ? caught.message : "The photo could not be added.",
+      );
+    }
+  };
+
+  const removePhoto = (uri: string) => {
+    haptics.selection();
+    setPhotos((current) => current.filter((photo) => photo.uri !== uri));
   };
 
   // The pop-up keeps its last step on screen while it fades out.
@@ -461,6 +570,82 @@ export default function OfficerAddFine() {
                   editable={active && !saving}
                   textAlignVertical="top"
                 />
+
+                <View style={styles.evidenceLabelRow}>
+                  <Text style={styles.label}>Evidence Photos (optional)</Text>
+                  <Text style={styles.evidenceCount}>
+                    {photos.length} of {EVIDENCE_MAX}
+                  </Text>
+                </View>
+
+                {photos.length > 0 && (
+                  <View style={styles.evidenceThumbs}>
+                    {photos.map((photo, index) => (
+                      <View key={photo.uri} style={styles.evidenceThumb}>
+                        <Image
+                          source={{ uri: photo.uri }}
+                          style={styles.evidenceImage}
+                          resizeMode="cover"
+                          accessibilityLabel={`Evidence photo ${index + 1}`}
+                        />
+
+                        <TouchableOpacity
+                          style={styles.evidenceRemove}
+                          onPress={() => removePhoto(photo.uri)}
+                          disabled={saving}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove evidence photo ${index + 1}`}
+                        >
+                          <Text style={styles.evidenceRemoveText}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {photos.length < EVIDENCE_MAX && (
+                  <View style={styles.evidenceButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.evidenceButton,
+                        (!active || saving) && styles.disabled,
+                      ]}
+                      onPress={() => void addPhotos("camera")}
+                      disabled={!active || saving}
+                      accessibilityRole="button"
+                      accessibilityLabel="Take an evidence photo"
+                    >
+                      <Text style={styles.evidenceButtonText}>Take Photo</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.evidenceButton,
+                        (!active || saving) && styles.disabled,
+                      ]}
+                      onPress={() => void addPhotos("library")}
+                      disabled={!active || saving}
+                      accessibilityRole="button"
+                      accessibilityLabel="Choose evidence photos from the gallery"
+                    >
+                      <Text style={styles.evidenceButtonText}>
+                        Choose from Gallery
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {!!photoError && (
+                  <Text style={styles.error} accessibilityRole="alert">
+                    {photoError}
+                  </Text>
+                )}
+
+                <Text style={styles.fieldHint}>
+                  Up to {EVIDENCE_MAX} photos. The student, the Admin and you
+                  can see them once the fine is recorded.
+                </Text>
               </View>
 
               <View style={styles.actions}>
@@ -584,6 +769,34 @@ export default function OfficerAddFine() {
                     {description.trim() || "No description"}
                   </Text>
 
+                  <Text style={styles.detailLabel}>Evidence</Text>
+
+                  {photos.length > 0 ? (
+                    <View style={styles.evidenceThumbs}>
+                      {photos.map((photo, index) => (
+                        <View
+                          key={photo.uri}
+                          style={[styles.evidenceThumb, styles.evidenceThumbSmall]}
+                        >
+                          <Image
+                            source={{ uri: photo.uri }}
+                            style={styles.evidenceImage}
+                            resizeMode="cover"
+                            accessibilityLabel={`Evidence photo ${index + 1}`}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={styles.detailText}>No photos attached</Text>
+                  )}
+
+                  {!!uploadStatus && (
+                    <Text style={styles.uploadStatus} accessibilityLiveRegion="polite">
+                      Fine recorded. {uploadStatus}
+                    </Text>
+                  )}
+
                   <View style={styles.modalActions}>
                     <TouchableOpacity
                       style={[styles.button, styles.cancelButton]}
@@ -642,18 +855,67 @@ export default function OfficerAddFine() {
                         {formatRecordedAt(savedFine.recordedAt)}
                       </Text>
                     )}
+
+                    {uploadedCount > 0 && (
+                      <Text style={styles.uploadedNote}>
+                        {uploadedCount} evidence{" "}
+                        {uploadedCount === 1 ? "photo" : "photos"} attached
+                      </Text>
+                    )}
                   </View>
 
+                  {(failedPhotos.length > 0 || !!uploadProblem) && (
+                    <View style={styles.uploadWarning} accessibilityRole="alert">
+                      <Text style={styles.uploadWarningText}>
+                        {failedPhotos.length > 0
+                          ? `${failedPhotos.length} ${
+                              failedPhotos.length === 1 ? "photo" : "photos"
+                            } did not upload. The fine itself is saved.`
+                          : "Some photos did not upload. The fine itself is saved."}
+                        {uploadProblem ? ` ${uploadProblem}` : ""}
+                      </Text>
+
+                      {!!uploadStatus && (
+                        <Text style={styles.uploadStatus}>{uploadStatus}</Text>
+                      )}
+
+                      {failedPhotos.length > 0 && (
+                        <TouchableOpacity
+                          style={[
+                            styles.button,
+                            styles.cancelButton,
+                            saving && styles.disabled,
+                          ]}
+                          onPress={() => void retryUpload()}
+                          disabled={saving}
+                          accessibilityRole="button"
+                        >
+                          {saving ? (
+                            <ActivityIndicator color="#123266" />
+                          ) : (
+                            <Text style={styles.cancelText}>Retry Upload</Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+
+                      <Text style={styles.uploadWarningText}>
+                        You can also add photos later from Records.
+                      </Text>
+                    </View>
+                  )}
+
                   <TouchableOpacity
-                    style={[styles.button, styles.successButton]}
+                    style={[styles.button, styles.successButton, saving && styles.disabled]}
                     onPress={() => router.replace("/officer/dashboard")}
+                    disabled={saving}
                   >
                     <Text style={styles.buttonText}>Back to Dashboard</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.button, styles.cancelButton]}
+                    style={[styles.button, styles.cancelButton, saving && styles.disabled]}
                     onPress={() => router.replace("/officer/qr-scanner")}
+                    disabled={saving}
                   >
                     <Text style={styles.cancelText}>Scan Another Student</Text>
                   </TouchableOpacity>

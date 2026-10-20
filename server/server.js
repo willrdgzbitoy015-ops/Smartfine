@@ -13,6 +13,7 @@ const studentProfileRoutes = require("./routes/student-profile");
 const dashboardRoutes = require("./routes/dashboard");
 const studentsRoutes = require("./routes/students");
 const finesRoutes = require("./routes/fines");
+const fineEvidenceRoutes = require("./routes/fine-evidence");
 const studentFineReadRoutes = require("./routes/student-fine-reads");
 const studentQRRoutes = require("./routes/student-qr");
 const cashPaymentRoutes = require("./routes/cash-payments");
@@ -47,6 +48,7 @@ app.use("/api/students", studentsRoutes);
 app.use("/api/auth", authRoutes);
 
 app.use("/api/fines/my-fines", studentFineReadRoutes);
+app.use("/api/fines", fineEvidenceRoutes);
 app.use("/api/fines", finesRoutes);
 
 app.use("/api/student-qr", studentQRRoutes);
@@ -65,6 +67,11 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/officer-profile", officerProfilePhotoRoutes);
 app.use("/api/officer-profile", officerProfileRoutes);
 
+// Evidence photos are private: they are only served through the signed links
+// of /api/fines/evidence-file.
+app.use("/uploads/fine-evidence", (_req, res) => {
+  res.status(404).json({ success: false, message: "Not found." });
+});
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/", (req, res) => {

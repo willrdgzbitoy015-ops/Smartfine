@@ -334,6 +334,112 @@ export const styles = StyleSheet.create({
   successButton: {
     backgroundColor: OFFICER.green,
   },
+
+  // Evidence photos chosen before the fine is recorded.
+  evidenceLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 18,
+  },
+  evidenceCount: {
+    color: OFFICER.muted,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    marginBottom: 6,
+  },
+  evidenceThumbs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 12,
+  },
+  evidenceThumb: {
+    width: 84,
+    height: 84,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: OFFICER.greySoft,
+    borderWidth: 1,
+    borderColor: OFFICER.line,
+  },
+  evidenceThumbSmall: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+  },
+  evidenceImage: {
+    width: "100%",
+    height: "100%",
+  },
+  evidenceRemove: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(17, 24, 39, 0.72)",
+  },
+  evidenceRemoveText: {
+    color: "#FFFFFF",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  evidenceButtons: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  evidenceButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: OFFICER.navy,
+    backgroundColor: OFFICER.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  evidenceButtonText: {
+    color: OFFICER.navyDeep,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  uploadStatus: {
+    color: OFFICER.muted,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  // A photo that did not upload after the fine was saved.
+  uploadWarning: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F2C86B",
+    backgroundColor: "#FFF7E6",
+    marginBottom: 12,
+  },
+  uploadWarningText: {
+    color: "#7A5200",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  uploadedNote: {
+    color: OFFICER.greenText,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 4,
+  },
 });
 
 // Preserves your requested colocated file structure.

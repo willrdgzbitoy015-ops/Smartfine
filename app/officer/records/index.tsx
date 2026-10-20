@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import {
-    Image,
+    Modal,
     RefreshControl,
     ScrollView,
     Text,
@@ -22,7 +22,8 @@ import {
     useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
-import { FadeIn } from "@/components/motion";
+import { FineTrail } from "@/components/fine-trail";
+import { FadeIn, PopIn, useRetainedValue } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { haptics } from "@/utils/haptics";
@@ -182,6 +183,10 @@ export default function OfficerRecordsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+
+  // The record whose details and evidence are open.
+  const [selected, setSelected] = useState<Fine | null>(null);
+  const shownSelected = useRetainedValue(selected);
 
   const requestRef = useRef<AbortController | null>(null);
 
@@ -418,61 +423,76 @@ export default function OfficerRecordsScreen() {
                   .join(" - ");
 
                 return (
-                  <FadeIn key={fine.id} index={index} style={styles.card}>
-                    <View style={styles.details}>
-                      <Text style={styles.studentName}>
-                        {fine.student_name}
-                      </Text>
-
-                      <Text style={styles.studentMeta}>
-                        {gradeAndSection ? `${gradeAndSection} | ` : ""}
-                        ID: {fine.student_number || "Unavailable"}
-                      </Text>
-
-                      {!!fine.transaction_id && (
-                        <Text style={styles.transactionText}>
-                          Transaction ID: {fine.transaction_id}
+                  <FadeIn key={fine.id} index={index}>
+                    <TouchableOpacity
+                      style={styles.card}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        haptics.selection();
+                        setSelected(fine);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${fine.violation_name} for ${fine.student_name}, ${status}. Opens details and evidence.`}
+                    >
+                      <View style={styles.details}>
+                        <Text style={styles.studentName}>
+                          {fine.student_name}
                         </Text>
-                      )}
 
-                      <Text style={styles.violation}>
-                        {fine.violation_name}
-                      </Text>
+                        <Text style={styles.studentMeta}>
+                          {gradeAndSection ? `${gradeAndSection} | ` : ""}
+                          ID: {fine.student_number || "Unavailable"}
+                        </Text>
 
-                      <Text style={styles.recordedDate}>
-                        Date Recorded: {dateLabel(recordedAt)}
-                      </Text>
-
-                      {!!recordedTime && (
-                        <Text style={styles.recordedTime}>{recordedTime}</Text>
-                      )}
-                    </View>
-
-                    <View style={styles.amountArea}>
-                      <Text
-                        style={[
-                          styles.status,
-                          status === "PAID" && styles.paid,
-                          status === "UNPAID" && styles.unpaid,
-                          status === "CANCELLED" && styles.cancelled,
-                        ]}
-                      >
-                        {status}
-                      </Text>
-
-                      <Text style={styles.amount}>
-                        {money(fine.amount_centavos)}
-                      </Text>
-
-                      {status === "PAID" && (
-                        <View style={styles.paidDateArea}>
-                          <Text style={styles.paidDate}>Date Paid:</Text>
-                          <Text style={styles.paidDate}>
-                            {dateLabel(fine.paid_at)}
+                        {!!fine.transaction_id && (
+                          <Text style={styles.transactionText}>
+                            Transaction ID: {fine.transaction_id}
                           </Text>
-                        </View>
-                      )}
-                    </View>
+                        )}
+
+                        <Text style={styles.violation}>
+                          {fine.violation_name}
+                        </Text>
+
+                        <Text style={styles.recordedDate}>
+                          Date Recorded: {dateLabel(recordedAt)}
+                        </Text>
+
+                        {!!recordedTime && (
+                          <Text style={styles.recordedTime}>{recordedTime}</Text>
+                        )}
+
+                        <Text style={styles.openHint}>
+                          Details &amp; evidence ›
+                        </Text>
+                      </View>
+
+                      <View style={styles.amountArea}>
+                        <Text
+                          style={[
+                            styles.status,
+                            status === "PAID" && styles.paid,
+                            status === "UNPAID" && styles.unpaid,
+                            status === "CANCELLED" && styles.cancelled,
+                          ]}
+                        >
+                          {status}
+                        </Text>
+
+                        <Text style={styles.amount}>
+                          {money(fine.amount_centavos)}
+                        </Text>
+
+                        {status === "PAID" && (
+                          <View style={styles.paidDateArea}>
+                            <Text style={styles.paidDate}>Date Paid:</Text>
+                            <Text style={styles.paidDate}>
+                              {dateLabel(fine.paid_at)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
                   </FadeIn>
                 );
               })}
@@ -506,6 +526,72 @@ export default function OfficerRecordsScreen() {
           }}
         />
       </View>
+
+      {/* FINE DETAILS + EVIDENCE */}
+      <Modal
+        visible={selected !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelected(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <PopIn style={styles.modalCard} accessibilityViewIsModal>
+            <Text style={styles.modalTitle}>Fine Details</Text>
+
+            {shownSelected && (
+              <ScrollView
+                style={styles.modalScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.modalViolation}>
+                  {shownSelected.violation_name}
+                </Text>
+
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Student</Text>
+                  <Text style={styles.modalValue}>
+                    {shownSelected.student_name}
+                    {shownSelected.student_number
+                      ? ` · ${shownSelected.student_number}`
+                      : ""}
+                  </Text>
+                </View>
+
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Reference</Text>
+                  <Text style={styles.modalValue}>
+                    {shownSelected.fine_reference}
+                  </Text>
+                </View>
+
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Amount</Text>
+                  <Text style={styles.modalValue}>
+                    {money(shownSelected.amount_centavos)}
+                  </Text>
+                </View>
+
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalLabel}>Status</Text>
+                  <Text style={styles.modalValue}>
+                    {statusLabel(shownSelected.status)}
+                  </Text>
+                </View>
+
+                <FineTrail fineId={shownSelected.id} />
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => setSelected(null)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </PopIn>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

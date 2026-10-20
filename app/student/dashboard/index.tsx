@@ -24,6 +24,7 @@ import {
   useSwitchFade,
 } from "@/components/motion";
 import { DeletableNotice, DeleteHint } from "@/components/deletable-notice";
+import { FineTrail } from "@/components/fine-trail";
 import {
   Skeleton,
   SkeletonDetails,
@@ -1128,6 +1129,8 @@ export default function StudentDashboard() {
                     </Text>
                   </View>
 
+                  <FineTrail fineId={shownSelectedFine.id} />
+
                   {!!readError && (
                     <View style={notificationStyles.readErrorBox}>
                       <Text style={notificationStyles.readErrorText}>
@@ -1250,6 +1253,8 @@ export default function StudentDashboard() {
                           </Text>
                         </View>
                       )}
+
+                      <FineTrail fineId={noticeFine.id} />
                     </>
                   ) : null}
 

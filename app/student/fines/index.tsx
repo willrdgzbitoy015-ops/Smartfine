@@ -24,6 +24,7 @@ import {
   PopIn,
   useRetainedValue,
 } from "@/components/motion";
+import { FineTrail } from "@/components/fine-trail";
 import { FailedMark } from "@/components/result-mark";
 import { SuccessCheck } from "@/components/success-check";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
@@ -56,6 +57,7 @@ type CancelledFine = {
   recordedAt: string | null;
   cancelledAt: string | null;
   cancelledCashRequestReference: string | null;
+  remarks?: string | null;
 };
 
 type Fine = {
@@ -69,6 +71,12 @@ type Fine = {
   status: FineStatus;
   isRead: number | boolean;
   readAt: string | null;
+};
+
+// The Fine Details pop-up also opens cancelled fines.
+type DetailsFine = Omit<Fine, "status"> & {
+  status: FineStatus | "CANCELLED";
+  cancelledAt?: string | null;
 };
 
 type FinesResponse = {
@@ -221,7 +229,7 @@ export default function StudentFinesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
-  const [selectedFine, setSelectedFine] = useState<Fine | null>(null);
+  const [selectedFine, setSelectedFine] = useState<DetailsFine | null>(null);
 
   const [cashRequests, setCashRequests] = useState<CashRequest[]>([]);
   const [cashError, setCashError] = useState("");
@@ -896,6 +904,17 @@ export default function StudentFinesScreen() {
     }
   };
 
+  const openCancelledDetails = (fine: CancelledFine) => {
+    setSelectedFine({
+      ...fine,
+      remarks: fine.remarks ?? null,
+      paidAt: null,
+      status: "CANCELLED",
+      isRead: true,
+      readAt: null,
+    });
+  };
+
   const returnToLogin = async () => {
     try {
       await AsyncStorage.multiRemove([
@@ -1288,6 +1307,17 @@ export default function StudentFinesScreen() {
                       This fine was cancelled. No payment is needed.
                     </Text>
                   )}
+
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.detailsButton}
+                      onPress={() => openCancelledDetails(fine)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`View details for ${fine.violationName}`}
+                    >
+                      <Text style={styles.detailsButtonText}>View details</Text>
+                    </TouchableOpacity>
+                  </View>
                 </FadeIn>
               ))}
 
@@ -1340,7 +1370,10 @@ export default function StudentFinesScreen() {
             <Text style={notificationStyles.detailsTitle}>Fine Details</Text>
 
             {shownSelectedFine && (
-              <>
+              <ScrollView
+                style={notificationStyles.detailsScroll}
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={notificationStyles.detailsViolation}>
                   {shownSelectedFine.violationName}
                 </Text>
@@ -1362,9 +1395,11 @@ export default function StudentFinesScreen() {
                 <View style={notificationStyles.detailsRow}>
                   <Text style={notificationStyles.detailsLabel}>Status</Text>
                   <Text style={notificationStyles.detailsValue}>
-                    {pendingCashRequest(shownSelectedFine.id)
-                      ? "Unpaid — cash requested"
-                      : shownSelectedFine.status}
+                    {shownSelectedFine.status === "CANCELLED"
+                      ? "Cancelled — no payment needed"
+                      : pendingCashRequest(shownSelectedFine.id)
+                        ? "Unpaid — cash requested"
+                        : shownSelectedFine.status}
                   </Text>
                 </View>
 
@@ -1396,6 +1431,15 @@ export default function StudentFinesScreen() {
                   </View>
                 )}
 
+                {!!shownSelectedFine.cancelledAt && (
+                  <View style={notificationStyles.detailsRow}>
+                    <Text style={notificationStyles.detailsLabel}>Cancelled</Text>
+                    <Text style={notificationStyles.detailsValue}>
+                      {dateLabel(shownSelectedFine.cancelledAt)}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={notificationStyles.detailsRemarks}>
                   <Text style={notificationStyles.detailsLabel}>Remarks</Text>
                   <Text style={notificationStyles.detailsValue}>
@@ -1403,17 +1447,22 @@ export default function StudentFinesScreen() {
                   </Text>
                 </View>
 
-                <Text
-                  style={[
-                    notificationStyles.detailsReadStatus,
-                    shownSelectedFine.isRead
-                      ? notificationStyles.readLabel
-                      : notificationStyles.newLabel,
-                  ]}
-                >
-                  {shownSelectedFine.isRead ? "READ" : "NEW"}
-                </Text>
-              </>
+                {/* Who recorded, collected or cancelled it, and the evidence. */}
+                <FineTrail fineId={shownSelectedFine.id} />
+
+                {shownSelectedFine.status !== "CANCELLED" && (
+                  <Text
+                    style={[
+                      notificationStyles.detailsReadStatus,
+                      shownSelectedFine.isRead
+                        ? notificationStyles.readLabel
+                        : notificationStyles.newLabel,
+                    ]}
+                  >
+                    {shownSelectedFine.isRead ? "READ" : "NEW"}
+                  </Text>
+                )}
+              </ScrollView>
             )}
 
             <TouchableOpacity

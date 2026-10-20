@@ -50,6 +50,8 @@ server/.env
 # Runtime uploaded profile pictures
 server/uploads/admin-profiles/
 server/uploads/officer-profiles/
+# Fine evidence photos (private; never committed)
+server/uploads/fine-evidence/
 # Database backups made by repair scripts (they contain student records)
 server/database/backups/
 

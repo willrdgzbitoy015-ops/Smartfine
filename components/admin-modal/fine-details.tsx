@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import { FineTrail } from "@/components/fine-trail";
 import { FadeIn } from "@/components/motion";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
@@ -1186,6 +1187,9 @@ export default function AdminFineDetails({
             </>
           )}
         </View>
+
+        {/* Who recorded, collected or cancelled it, and the evidence. */}
+        <FineTrail fineId={fine.id} />
 
         {!!loadError && (
           <View style={styles.errorBanner}>

@@ -1716,6 +1716,7 @@ router.get("/my-fines", authenticateToken, (req, res) => {
           f.amount_centavos AS amountCentavos,
           f.created_at AS recordedAt,
           f.cancelled_at AS cancelledAt,
+          f.remarks,
           (
             SELECT p.payment_reference
             FROM payments p

@@ -44,13 +44,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow SmartFine to use the camera to scan student QR codes.",
+          "cameraPermission": "Allow SmartFine to use the camera to scan student QR codes and take evidence photos.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
+          "cameraPermission": "Allow SmartFine to use the camera to scan student QR codes and take evidence photos.",
           "microphonePermission": false
         }
       ],

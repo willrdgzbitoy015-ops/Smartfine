@@ -180,6 +180,12 @@ export const notificationStyles = StyleSheet.create({
     marginBottom: 12,
   },
 
+  // Long details (with who handled the fine and its photos) scroll inside
+  // the pop-up, above the Close button.
+  detailsScroll: {
+    flexShrink: 1,
+  },
+
   detailsRow: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -306,6 +306,91 @@ export const styles = StyleSheet.create({
   hiddenIndicator: {
     backgroundColor: "transparent",
   },
+
+  // Under each record: opens its details and evidence.
+  openHint: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 11,
+    lineHeight: 16,
+    color: OFFICER.navy,
+    marginTop: 8,
+  },
+
+  // ---------- Fine details pop-up ----------
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(11, 22, 44, 0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 36,
+  },
+
+  modalCard: {
+    width: "100%",
+    maxWidth: 440,
+    maxHeight: "90%",
+    padding: 20,
+    backgroundColor: OFFICER.background,
+    borderRadius: 20,
+  },
+
+  modalTitle: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 18,
+    color: OFFICER.navyDeep,
+    marginBottom: 6,
+  },
+
+  modalScroll: {
+    flexShrink: 1,
+  },
+
+  modalViolation: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 15,
+    color: OFFICER.text,
+    marginTop: 4,
+  },
+
+  modalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: OFFICER.line,
+  },
+
+  modalLabel: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    color: OFFICER.muted,
+  },
+
+  modalValue: {
+    flexShrink: 1,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    color: OFFICER.text,
+    textAlign: "right",
+  },
+
+  modalClose: {
+    minHeight: 48,
+    marginTop: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: OFFICER.navyDeep,
+  },
+
+  modalCloseText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
+    color: "#FFFFFF",
+  },
 });
 
 // Compatibility workaround for your chosen structure:
