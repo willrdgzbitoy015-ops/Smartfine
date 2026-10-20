@@ -750,7 +750,8 @@ export default function StudentDashboard() {
   );
 
 
-  const returnToLogin = async () => {
+  // Clears the session, then the shared returnToLogin() opens the login screen.
+  const leaveToLogin = async () => {
     try {
       await AsyncStorage.multiRemove([
         "token",
@@ -837,7 +838,7 @@ export default function StudentDashboard() {
                 disabled={loading}
                 onPress={() => {
                   if (accessDenied) {
-                    void returnToLogin();
+                    void leaveToLogin();
                   } else {
                     void loadDashboard();
                   }

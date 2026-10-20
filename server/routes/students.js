@@ -9,6 +9,10 @@ const path = require("path");
 const router = express.Router();
 
 const db = require("../database/database");
+const {
+  StudentRecordError,
+  ensureStudentRecord,
+} = require("../database/student-records");
 const { authenticateToken } = require("./auth");
 
 console.log("students.js loaded");
@@ -2755,72 +2759,92 @@ router.post("/", async (req, res) => {
 
     const passwordHash = await bcrypt.hash(passwordValue, 10);
 
-    const result = db
-      .prepare(
-        `
-          INSERT INTO users (
-            student_number,
-            username,
+    // The account and its student record (which payments need) are saved
+    // together, or not at all.
+    let result;
 
-            first_name,
-            middle_name,
-            last_name,
+    db.exec("BEGIN TRANSACTION;");
 
-            email,
-            contact_number,
+    try {
+      result = db
+        .prepare(
+          `
+            INSERT INTO users (
+              student_number,
+              username,
 
-            password_hash,
+              first_name,
+              middle_name,
+              last_name,
 
-            role,
-            account_status,
+              email,
+              contact_number,
 
-            grade_level,
-            section,
+              password_hash,
 
-            profile_picture_uri
-          )
+              role,
+              account_status,
 
-          VALUES (
-            ?,
-            ?,
+              grade_level,
+              section,
 
-            ?,
-            ?,
-            ?,
+              profile_picture_uri
+            )
 
-            ?,
-            ?,
+            VALUES (
+              ?,
+              ?,
 
-            ?,
+              ?,
+              ?,
+              ?,
 
-            'STUDENT',
-            ?,
+              ?,
+              ?,
 
-            ?,
-            ?,
+              ?,
 
-            NULL
-          )
-          `,
-      )
-      .run(
-        generatedStudentId,
-        normalizedUsername,
+              'STUDENT',
+              ?,
 
-        normalizedFirstName,
-        normalizedMiddleName,
-        normalizedLastName,
+              ?,
+              ?,
 
-        normalizedEmail,
-        normalizedContactNumber,
+              NULL
+            )
+            `,
+        )
+        .run(
+          generatedStudentId,
+          normalizedUsername,
 
-        passwordHash,
+          normalizedFirstName,
+          normalizedMiddleName,
+          normalizedLastName,
 
-        normalizedStatus,
+          normalizedEmail,
+          normalizedContactNumber,
 
-        normalizedGradeLevel,
-        normalizedSection,
-      );
+          passwordHash,
+
+          normalizedStatus,
+
+          normalizedGradeLevel,
+          normalizedSection,
+        );
+
+      ensureStudentRecord(Number(result.lastInsertRowid));
+
+      db.exec("COMMIT;");
+    } catch (transactionError) {
+      try {
+        db.exec("ROLLBACK;");
+      } catch (rollbackError) {
+        console.error("Create student rollback error:", rollbackError);
+      }
+
+      throw transactionError;
+    }
 
     return res.status(201).json({
       success: true,
@@ -2870,6 +2894,16 @@ router.post("/", async (req, res) => {
         code: "USERNAME_EXISTS",
 
         message: "This username is already being used by another account.",
+      });
+    }
+
+    if (error instanceof StudentRecordError) {
+      return res.status(409).json({
+        success: false,
+
+        code: error.code,
+
+        message: `${error.message} No account was created.`,
       });
     }
 
@@ -3243,6 +3277,9 @@ router.post("/bulk-import", async (req, res) => {
           normalizedSection,
         );
 
+        // Each imported account gets the student record payments need.
+        ensureStudentRecord(Number(result.lastInsertRowid));
+
         importedStudents.push({
           id: Number(result.lastInsertRowid),
 
@@ -3317,6 +3354,16 @@ router.post("/bulk-import", async (req, res) => {
       students: importedStudents,
     });
   } catch (error) {
+    if (error instanceof StudentRecordError) {
+      return res.status(409).json({
+        success: false,
+
+        code: error.code,
+
+        message: `${error.message} No student accounts were created.`,
+      });
+    }
+
     console.error("Bulk student import error:", error);
 
     return res.status(500).json({
@@ -4191,6 +4238,10 @@ router.put("/:id", async (req, res) => {
         throw new Error("Student information could not be updated.");
       }
 
+      // Keeps the student record's grade and section the same, and creates
+      // the record for an older account that has none.
+      ensureStudentRecord(studentId);
+
       if (newPasswordHash !== null) {
         db.prepare(
           `
@@ -4262,6 +4313,16 @@ router.put("/:id", async (req, res) => {
       },
     });
   } catch (error) {
+    if (error instanceof StudentRecordError) {
+      return res.status(409).json({
+        success: false,
+
+        code: error.code,
+
+        message: `${error.message} The changes were not saved.`,
+      });
+    }
+
     console.error("Update student error:", error);
 
     return res.status(500).json({

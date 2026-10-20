@@ -6,6 +6,7 @@ const db = require("../database/database");
 const paymongo = require("../payments/paymongo");
 const online = require("../payments/online-payments");
 const refunds = require("../payments/refunds");
+const { ensureStudentRecord } = require("../database/student-records");
 const { authenticateToken } = require("./auth");
 
 const router = express.Router();
@@ -248,9 +249,10 @@ router.post(
       const reserved = online.runTransaction(() => {
         const current = payableFineForStudent(fine.id, userId);
 
-        const student = db
-          .prepare("SELECT id FROM students WHERE user_id = ?")
-          .get(userId);
+        // Creates the student record for an account that was added without
+        // one, instead of refusing the payment.
+        const studentRecordId = ensureStudentRecord(userId);
+        const student = studentRecordId ? { id: studentRecordId } : null;
 
         if (!student) {
           throw routeError(409, "STUDENT_RECORD_MISSING", "Your student record is unavailable.");

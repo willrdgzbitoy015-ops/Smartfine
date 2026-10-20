@@ -5,7 +5,6 @@ import { useCallback, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   KeyboardAvoidingView,
@@ -313,6 +312,7 @@ export default function OfficerProfile() {
   // ==========================================
 
   const [logoutVisible, setLogoutVisible] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
 
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -848,6 +848,7 @@ export default function OfficerProfile() {
       return;
     }
 
+    setLogoutError("");
     setLogoutVisible(true);
   };
 
@@ -867,7 +868,8 @@ export default function OfficerProfile() {
 
       returnToLogin();
     } catch {
-      Alert.alert("Logout failed", "Unable to log out. Please try again.");
+      // Shown inside the Log Out pop-up (no system dialog).
+      setLogoutError("Unable to log out. Please try again.");
     } finally {
       logoutLock.current = false;
 
@@ -1561,6 +1563,7 @@ export default function OfficerProfile() {
           }
         }}
         onConfirm={() => void confirmLogout()}
+        error={logoutError}
       />
     </SafeAreaView>
   );

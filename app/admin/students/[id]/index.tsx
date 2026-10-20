@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 
 import {
-  Alert,
   Image,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -17,6 +15,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import { StudentFormModal } from "@/components/admin-forms/student-form-modal";
+import LogoutModal from "@/components/logout-modal";
 
 import QRCode from "react-native-qrcode-svg";
 
@@ -105,6 +104,11 @@ export default function StudentProfile() {
 
   // Edit Student Information is a pop-up; ?edit=1 (the old edit route) opens it.
   const [showEdit, setShowEdit] = useState(false);
+
+  // Log Out pop-up.
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
 
   // Add Fine is a pop-up too, opened from the profile card.
   const [showFineForm, setShowFineForm] = useState(false);
@@ -344,44 +348,32 @@ export default function StudentProfile() {
   // ==========================================
 
   const performLogout = async () => {
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
+    setLogoutError("");
+
     try {
       await logout();
+
+      setLogoutVisible(false);
 
       returnToLogin();
     } catch (error) {
       console.error("Logout error:", error);
+
+      setLogoutError("Could not log out. Please try again.");
+    } finally {
+      setLoggingOut(false);
     }
   };
 
+  // Asks in the app's own Log Out pop-up (no browser or system dialog).
   const handleLogout = () => {
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm("Are you sure you want to log out?");
-
-      if (confirmed) {
-        void performLogout();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Log Out",
-
-      "Are you sure you want to log out?",
-
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: () => void performLogout(),
-        },
-      ],
-    );
+    setLogoutError("");
+    setLogoutVisible(true);
   };
 
   // ==========================================
@@ -1268,6 +1260,18 @@ export default function StudentProfile() {
         onClose={() => setShowFineForm(false)}
         onSaved={() => void loadStudent()}
         onViewFine={handleViewSavedFine}
+      />
+
+      <LogoutModal
+        visible={logoutVisible}
+        loading={loggingOut}
+        onCancel={() => {
+          if (!loggingOut) {
+            setLogoutVisible(false);
+          }
+        }}
+        onConfirm={() => void performLogout()}
+        error={logoutError}
       />
     </View>
   );

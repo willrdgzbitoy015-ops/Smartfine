@@ -3,6 +3,7 @@ const crypto = require("node:crypto");
 
 const db = require("../database/database");
 const { notifyCashCollected } = require("../database/notifications");
+const { ensureStudentRecord } = require("../database/student-records");
 const {
   settleErrorResponse,
   settlePendingOnlinePayment,
@@ -175,9 +176,10 @@ router.post(
           paymentError(403, "This fine does not belong to your account.");
         }
 
-        const student = db
-          .prepare("SELECT id FROM students WHERE user_id = ?")
-          .get(req.paymentUserId);
+        // Creates the student record for an account that was added without
+        // one, instead of refusing the payment.
+        const studentRecordId = ensureStudentRecord(req.paymentUserId);
+        const student = studentRecordId ? { id: studentRecordId } : null;
 
         if (!student) {
           paymentError(409, "Your student record is unavailable.");
@@ -429,9 +431,8 @@ router.post(
         const fine = getPayableFine(fineId);
 
         // fines.student_id uses users.id; payments.student_id uses students.id.
-        const student = db
-          .prepare("SELECT id FROM students WHERE user_id = ?")
-          .get(fine.student_id);
+        const studentRecordId = ensureStudentRecord(fine.student_id);
+        const student = studentRecordId ? { id: studentRecordId } : null;
 
         if (!student) {
           paymentError(

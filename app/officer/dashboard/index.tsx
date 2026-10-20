@@ -674,7 +674,8 @@ export default function OfficerDashboard() {
   // RETURN TO LOGIN
   // ========================================
 
-  const returnToLogin = async () => {
+  // Clears the session, then the shared returnToLogin() opens the login screen.
+  const leaveToLogin = async () => {
     try {
       await AsyncStorage.multiRemove([
         "token",
@@ -787,7 +788,7 @@ export default function OfficerDashboard() {
                 disabled={loading}
                 onPress={() => {
                   if (accessDenied) {
-                    void returnToLogin();
+                    void leaveToLogin();
                   } else {
                     void loadDashboard();
                   }

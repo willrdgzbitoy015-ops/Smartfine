@@ -15,6 +15,8 @@ type LogoutModalProps = {
   loading?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  // Shown inside the pop-up when logging out failed.
+  error?: string;
 };
 
 export default function LogoutModal({
@@ -22,6 +24,7 @@ export default function LogoutModal({
   loading = false,
   onCancel,
   onConfirm,
+  error = "",
 }: LogoutModalProps) {
   return (
     <Modal
@@ -47,6 +50,12 @@ export default function LogoutModal({
             Are you sure you want to log out of your SmartFine{"\n"}
             account?
           </Text>
+
+          {!!error && (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          )}
 
           {/* BUTTONS */}
 

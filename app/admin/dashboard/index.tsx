@@ -3,11 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Easing,
   Image,
-  Platform,
   RefreshControl,
   ScrollView,
   Text,
@@ -316,6 +314,7 @@ export default function AdminDashboard() {
   // ==========================================
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
 
   const [logoutLoading, setLogoutLoading] = useState(false);
 
@@ -907,6 +906,7 @@ export default function AdminDashboard() {
   // ==========================================
 
   const handleLogout = () => {
+    setLogoutError("");
     setShowLogoutModal(true);
   };
 
@@ -921,6 +921,7 @@ export default function AdminDashboard() {
   const performLogout = async () => {
     try {
       setLogoutLoading(true);
+      setLogoutError("");
 
       await logout();
 
@@ -930,11 +931,8 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Logout error:", error);
 
-      if (Platform.OS === "web") {
-        window.alert("Could not log out. Please try again.");
-      } else {
-        Alert.alert("Logout Error", "Could not log out. Please try again.");
-      }
+      // Shown inside the Log Out pop-up (no browser or system dialog).
+      setLogoutError("Could not log out. Please try again.");
     } finally {
       setLogoutLoading(false);
     }
@@ -1406,6 +1404,7 @@ export default function AdminDashboard() {
         loading={logoutLoading}
         onCancel={handleCancelLogout}
         onConfirm={performLogout}
+        error={logoutError}
       />
     </View>
   );

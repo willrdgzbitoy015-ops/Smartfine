@@ -93,6 +93,27 @@ export const styles = StyleSheet.create({
   },
 
   // ==========================================
+  // ERROR
+  // ==========================================
+
+  error: {
+    width: "100%",
+    maxWidth: 355,
+
+    color: "#D32F2F",
+
+    fontSize: 13,
+    fontWeight: "600",
+
+    lineHeight: 19,
+
+    textAlign: "center",
+
+    marginTop: -36,
+    marginBottom: 24,
+  },
+
+  // ==========================================
   // BUTTON ROW
   // ==========================================
 

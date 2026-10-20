@@ -7,7 +7,6 @@ import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
   Platform,
@@ -230,6 +229,10 @@ export default function StudentFinesScreen() {
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
   const [selectedFine, setSelectedFine] = useState<DetailsFine | null>(null);
+  const [readError, setReadError] = useState<{
+    fineId: number;
+    message: string;
+  } | null>(null);
 
   const [cashRequests, setCashRequests] = useState<CashRequest[]>([]);
   const [cashError, setCashError] = useState("");
@@ -837,6 +840,8 @@ export default function StudentFinesScreen() {
     });
 
   const markFineRead = async (fineId: number) => {
+    setReadError(null);
+
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token) return;
@@ -889,12 +894,30 @@ export default function StudentFinesScreen() {
       // Reading the fine also reads its New Fine Issued notification.
       void refreshNotificationCounts();
     } catch (caught) {
-      Alert.alert(
-        "Unable to update",
-        caught instanceof Error ? caught.message : "Please try again.",
-      );
+      // Shown on the fine's card and in its details (no system dialog).
+      setReadError({
+        fineId,
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "Could not mark this fine as read.",
+      });
     }
   };
+
+  // The read-mark error for one fine, with a way to try again.
+  const renderReadError = (fineId: number) =>
+    readError?.fineId === fineId ? (
+      <View style={notificationStyles.readErrorBox}>
+        <Text style={notificationStyles.readErrorText}>{readError.message}</Text>
+        <TouchableOpacity
+          onPress={() => void markFineRead(fineId)}
+          accessibilityRole="button"
+        >
+          <Text style={notificationStyles.readRetryText}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    ) : null;
 
   const openFineDetails = (fine: Fine) => {
     setSelectedFine(fine);
@@ -915,7 +938,8 @@ export default function StudentFinesScreen() {
     });
   };
 
-  const returnToLogin = async () => {
+  // Clears the session, then the shared returnToLogin() opens the login screen.
+  const leaveToLogin = async () => {
     try {
       await AsyncStorage.multiRemove([
         "token",
@@ -1009,7 +1033,7 @@ export default function StudentFinesScreen() {
                 disabled={loading}
                 onPress={() => {
                   if (accessDenied) {
-                    void returnToLogin();
+                    void leaveToLogin();
                   } else {
                     refresh();
                   }
@@ -1222,6 +1246,8 @@ export default function StudentFinesScreen() {
                       </TouchableOpacity>
                     )}
                   </View>
+
+                  {renderReadError(fine.id)}
 
                   {renderGcashActions(fine)}
 
@@ -1446,6 +1472,8 @@ export default function StudentFinesScreen() {
                     {shownSelectedFine.remarks || "No additional remarks."}
                   </Text>
                 </View>
+
+                {renderReadError(shownSelectedFine.id)}
 
                 {/* Who recorded, collected or cancelled it, and the evidence. */}
                 <FineTrail fineId={shownSelectedFine.id} />
