@@ -72,7 +72,11 @@ function isArchivedUsername(username) {
 // BULK IMPORT DEFAULT PASSWORD
 // ==========================================
 
-const DEFAULT_STUDENT_PASSWORD = "Smartfine@2026";
+// Imported students get a long random password that nobody sees or stores.
+// They activate their account with Forgot Password (a code goes to the email
+// on file) and choose their own.
+const ACTIVATION_HELP =
+  "Open SmartFine, choose Forgot Password, enter the username or email, then follow the code sent to the email on file.";
 
 // ==========================================
 // ALLOWED GRADE LEVELS
@@ -2066,7 +2070,7 @@ router.get(
             middle_name,
             last_name,
 
-            password_hash,
+            needs_first_login,
 
             grade_level,
             section
@@ -2113,17 +2117,6 @@ router.get(
           message: `No active student accounts were found for ${gradeLevel} - ${section}.`,
         });
       }
-
-      const defaultPasswordMatches = await Promise.all(
-        accounts.map((student) =>
-          student.password_hash
-            ? bcrypt.compare(
-                DEFAULT_STUDENT_PASSWORD,
-                String(student.password_hash),
-              )
-            : Promise.resolve(false),
-        ),
-      );
 
       const workbook = new ExcelJS.Workbook();
 
@@ -2256,7 +2249,7 @@ router.get(
 
       const accountRuleCell = worksheet.getCell("A4");
 
-      accountRuleCell.value = `Username = First Name + Last Name in lowercase without spaces. Duplicate names receive a number suffix. Initial Password = ${DEFAULT_STUDENT_PASSWORD}`;
+      accountRuleCell.value = `Username = First Name + Last Name in lowercase without spaces. Duplicate names receive a number suffix. Passwords are never shown or exported.`;
 
       accountRuleCell.font = {
         size: 10,
@@ -2277,7 +2270,7 @@ router.get(
       const passwordNoticeCell = worksheet.getCell("A5");
 
       passwordNoticeCell.value =
-        "Important: The Initial Password is shown only while the account still uses Smartfine@2026. SmartFine never retrieves or exports a changed password.";
+        "Important: SmartFine never shows or exports passwords. A student who has not activated the account yet signs in for the first time with Forgot Password.";
 
       passwordNoticeCell.font = {
         italic: true,
@@ -2304,7 +2297,7 @@ router.get(
         "Student ID",
         "Student Name",
         "Username",
-        "Initial Password",
+        "Account Status",
         "Grade Level",
         "Section",
         "Account Note",
@@ -2374,15 +2367,13 @@ router.get(
 
         const username = String(student.username || "").trim();
 
-        const stillUsesDefaultPassword = Boolean(defaultPasswordMatches[index]);
+        const notActivated = Number(student.needs_first_login) === 1;
 
-        const initialPassword = stillUsesDefaultPassword
-          ? DEFAULT_STUDENT_PASSWORD
-          : "";
+        const initialPassword = notActivated ? "Not activated yet" : "Activated";
 
-        const accountNote = stillUsesDefaultPassword
-          ? "Initial password is currently valid. The student should change it after first login."
-          : "The password has already been changed or was set individually. SmartFine cannot retrieve the current password.";
+        const accountNote = notActivated
+          ? ACTIVATION_HELP
+          : "The student chose their own password. SmartFine cannot retrieve it.";
 
         const row = worksheet.addRow({
           number: index + 1,
@@ -2476,7 +2467,7 @@ router.get(
 
         passwordCell.numFmt = "@";
 
-        if (stillUsesDefaultPassword) {
+        if (notActivated) {
           passwordCell.font = {
             bold: true,
             color: {
@@ -3033,21 +3024,6 @@ router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
       });
     }
 
-    const defaultPasswordValidation = validatePasswordPolicy(
-      DEFAULT_STUDENT_PASSWORD,
-    );
-
-    if (!defaultPasswordValidation.valid) {
-      return res.status(500).json({
-        success: false,
-
-        code: "DEFAULT_PASSWORD_INVALID",
-
-        message:
-          "The configured default student password does not meet the SmartFine password policy.",
-      });
-    }
-
     const requestStudentNumbers = new Set();
 
     const requestEmails = new Set();
@@ -3259,7 +3235,12 @@ router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
       });
     }
 
-    const defaultPasswordHash = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10);
+    // A password nobody knows (random, never shown or kept): each student
+    // sets their own when they activate the account.
+    const defaultPasswordHash = await bcrypt.hash(
+      `${require("node:crypto").randomBytes(32).toString("hex")}Aa1!`,
+      10,
+    );
 
     const insertStudent = db.prepare(
       `
@@ -3424,7 +3405,7 @@ router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
       accountSetup: {
         username: "First Name + Last Name (lowercase, no spaces, unique)",
 
-        defaultPassword: DEFAULT_STUDENT_PASSWORD,
+        activation: ACTIVATION_HELP,
 
         role: "STUDENT",
 
@@ -4373,6 +4354,18 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
       }
 
       throw transactionError;
+    }
+
+    // A deactivated or locked student, or one whose password an administrator
+    // just set, is signed out everywhere.
+    if (
+      (existingStudent.account_status === "ACTIVE" && normalizedStatus !== "ACTIVE") ||
+      newPasswordHash !== null
+    ) {
+      require("../security/sessions").endAllForUser(
+        studentId,
+        newPasswordHash !== null ? "PASSWORD_RESET_BY_ADMIN" : "ACCOUNT_DEACTIVATED",
+      );
     }
 
     return res.json({

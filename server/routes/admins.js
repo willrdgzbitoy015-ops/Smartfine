@@ -441,6 +441,10 @@ router.patch("/:id/status", (req, res) => {
 
     const name = [outcome.admin.first_name, outcome.admin.last_name].join(" ");
 
+    if (status !== "ACTIVE") {
+      require("../security/sessions").endAllForUser(adminId, "ACCOUNT_DEACTIVATED");
+    }
+
     logActivity({
       actorId: Number(req.authUser.userId),
       action: "ADMIN_STATUS",

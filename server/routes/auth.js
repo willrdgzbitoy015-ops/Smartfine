@@ -1,6 +1,5 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -9,11 +8,13 @@ const crypto = require("crypto");
 const db = require("../database/database");
 require("../database/auth-schema");
 const otp = require("../security/otp");
+const sessions = require("../security/sessions");
+const captcha = require("../security/captcha");
+const { signingKey } = require("../security/secrets");
+const { rateLimit } = require("../security/rate-limit");
 const { sendMail } = require("../security/mailer");
 
 const router = express.Router();
-
-const JWT_SECRET = "REMOVED";
 
 // ==========================================
 // PASSWORD RESET SETTINGS
@@ -52,11 +53,17 @@ const MAX_LOGIN_ATTEMPTS = 3;
 
 // Progressive lockout:
 //
-// First lockout  = 30 seconds
-// Second lockout = 1 minute
-// Third lockout  = 3 minutes
-// Fourth+        = 5 minutes
-const LOCKOUT_DURATIONS_SECONDS = [30, 60, 180, 300];
+// First lockout  = 1 minute
+// Second lockout = 5 minutes
+// Third+ lockout = 15 minutes
+const LOCKOUT_DURATIONS_SECONDS = [60, 300, 900];
+
+// After the first lockout, every further sign-in attempt needs a CAPTCHA
+// until the person signs in successfully.
+const CAPTCHA_AFTER_LOCKOUTS = 1;
+
+// Picture CAPTCHAs and lockout checks are limited per IP address.
+const captchaLimit = rateLimit({ max: 40, windowMs: 60 * 1000 });
 
 function getLockoutSeconds(lockoutCount) {
   const index = Math.min(
@@ -153,7 +160,7 @@ function createVerificationCode() {
 function hashPasswordResetValue(value, challengeId) {
   return crypto
     .createHash("sha256")
-    .update(`${challengeId}:${value}:${JWT_SECRET}`)
+    .update(`${challengeId}:${value}:${signingKey()}`)
     .digest("hex");
 }
 
@@ -354,12 +361,19 @@ function authenticateToken(req, res, next) {
 
     const token = authorizationHeader.substring(7);
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    req.authUser = decoded;
+    // The token must belong to a session that is still alive.
+    req.authUser = sessions.verifyToken(token);
 
     next();
   } catch (error) {
+    if (error instanceof sessions.SessionError) {
+      return res.status(error.status).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+      });
+    }
+
     return res.status(401).json({
       success: false,
       code: "INVALID_TOKEN",
@@ -628,27 +642,25 @@ function uploadProfilePicture(req, res, next) {
 // POST /api/auth/login
 // ==========================================
 
-// The token and user details a successful sign-in returns.
-function buildLoginSuccess(user) {
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      username: user.username,
-      role: user.role,
-    },
-
-    JWT_SECRET,
-
-    {
-      expiresIn: "8h",
-    },
-  );
+// The token and user details a successful sign-in returns. Starts the
+// person's session (see security/sessions.js).
+function buildLoginSuccess(user, req) {
+  const session = sessions.startSession({
+    user,
+    ...sessions.clientDetails(req),
+  });
 
   return {
     success: true,
     message: "Login successful.",
 
-    token,
+    token: session.token,
+
+    // How long a session may sit idle, and how long before that the app warns.
+    session: {
+      idleSeconds: session.idleSeconds,
+      warningSeconds: session.warningSeconds,
+    },
 
     user: {
       id: user.id,
@@ -671,6 +683,98 @@ function buildLoginSuccess(user) {
     },
   };
 }
+
+// ==========================================
+// CAPTCHA, LOCKOUT STATUS, LOGOUT, ACTIVITY
+// ==========================================
+
+// A fresh picture CAPTCHA (shown once sign-in needs one).
+router.get("/captcha", captchaLimit, (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  return res.json({ success: true, ...captcha.createCaptcha() });
+});
+
+// Whether an account is locked, so the sign-in screen can show the timer (and
+// the CAPTCHA) again after a refresh or reopening the app. Says nothing about
+// the password.
+router.post("/login-status", captchaLimit, (req, res) => {
+  const identifier = String(req.body?.identifier || "").trim();
+
+  res.set("Cache-Control", "no-store");
+
+  const user = identifier
+    ? db
+        .prepare(
+          `SELECT account_status, locked_until, lockout_count
+           FROM users
+           WHERE username = ? OR LOWER(email) = LOWER(?)
+           ORDER BY (username = ?) DESC
+           LIMIT 1`,
+        )
+        .get(identifier, identifier, identifier)
+    : null;
+
+  if (!user) {
+    return res.json({ success: true, locked: false, captchaRequired: false });
+  }
+
+  if (String(user.account_status).toUpperCase() === "LOCKED") {
+    return res.json({ success: true, locked: true, lockedByAdmin: true, captchaRequired: false });
+  }
+
+  const until = user.locked_until ? new Date(user.locked_until).getTime() : 0;
+  const retryAfterSeconds = until > Date.now() ? Math.ceil((until - Date.now()) / 1000) : 0;
+  const captchaRequired = Number(user.lockout_count) >= CAPTCHA_AFTER_LOCKOUTS;
+
+  return res.json({
+    success: true,
+    locked: retryAfterSeconds > 0,
+    retryAfterSeconds,
+    captchaRequired,
+    // Only once the lockout is over: the picture is for the next attempt.
+    ...(captchaRequired && retryAfterSeconds === 0 ? { captcha: captcha.createCaptcha() } : {}),
+  });
+});
+
+// Ends the session the token belongs to, at once, for every device and tab
+// using it. Quiet when the session is already over.
+router.post("/logout", (req, res) => {
+  const header = req.headers.authorization || "";
+  const session = sessions.peek(header.startsWith("Bearer ") ? header.substring(7) : "");
+
+  if (session && !session.ended_at) {
+    sessions.end(session.id, req.body?.reason === "AUTO_LOGOUT" ? "IDLE" : "LOGOUT");
+  }
+
+  return res.json({ success: true, message: "You have been signed out." });
+});
+
+// "Someone is using the app": keeps the session from going idle. Background
+// refreshes do not call this, so an unattended screen still times out.
+router.post("/activity", authenticateToken, (req, res) => {
+  sessions.touch(req.authUser.sid);
+
+  res.set("Cache-Control", "no-store");
+
+  return res.json({
+    success: true,
+    idleSeconds: sessions.IDLE_SECONDS,
+    warningSeconds: sessions.WARNING_SECONDS,
+  });
+});
+
+// Is this token's session still good? (Does not count as activity.)
+router.get("/session", authenticateToken, (req, res) => {
+  res.set("Cache-Control", "no-store");
+
+  return res.json({
+    success: true,
+    role: req.authUser.role,
+    idleSeconds: sessions.IDLE_SECONDS,
+    warningSeconds: sessions.WARNING_SECONDS,
+  });
+});
 
 router.post(
   "/login",
@@ -808,6 +912,9 @@ router.post(
             lockoutCount: Number(user.lockout_count) || 0,
 
             lockedUntil: user.locked_until,
+
+            captchaRequired:
+              Number(user.lockout_count) >= CAPTCHA_AFTER_LOCKOUTS,
           });
         }
 
@@ -826,6 +933,32 @@ router.post(
           WHERE id = ?
           `,
         ).run(user.id);
+      }
+
+      // ====================================
+      // CAPTCHA
+      //
+      // After a lockout, each further attempt must solve a CAPTCHA first.
+      // The password is not even checked until it is solved, so the answer
+      // reveals nothing about the password.
+      // ====================================
+
+      const needsCaptcha = Number(user.lockout_count) >= CAPTCHA_AFTER_LOCKOUTS;
+
+      if (needsCaptcha) {
+        const answered = req.body.captchaId && req.body.captchaAnswer;
+
+        if (!answered || !captcha.checkCaptcha(req.body.captchaId, req.body.captchaAnswer)) {
+          return res.status(400).json({
+            success: false,
+            code: answered ? "CAPTCHA_INVALID" : "CAPTCHA_REQUIRED",
+            message: answered
+              ? "The characters did not match. Please try again."
+              : "Please type the characters in the picture to continue.",
+            captchaRequired: true,
+            captcha: captcha.createCaptcha(),
+          });
+        }
       }
 
       // ====================================
@@ -893,6 +1026,8 @@ router.post(
             lockoutCount: newLockoutCount,
 
             lockedUntil,
+
+            captchaRequired: newLockoutCount >= CAPTCHA_AFTER_LOCKOUTS,
           });
         }
 
@@ -923,6 +1058,9 @@ router.post(
           code: "INVALID_CREDENTIALS",
           message: "Invalid username or password.",
           attemptsRemaining,
+          ...(needsCaptcha
+            ? { captchaRequired: true, captcha: captcha.createCaptcha() }
+            : {}),
         });
       }
 
@@ -989,7 +1127,7 @@ router.post(
         }
       }
 
-      return res.json(buildLoginSuccess(user));
+      return res.json(buildLoginSuccess(user, req));
     } catch (error) {
       console.error("Login error:", error);
 
@@ -1478,6 +1616,9 @@ router.post(
         `,
       ).run(passwordHash, user.id);
 
+      // Whoever was signed in with the old password is signed out.
+      sessions.endAllForUser(user.id, "PASSWORD_RESET");
+
       passwordResetChallenges.delete(challengeId);
 
       return res.json({
@@ -1815,6 +1956,9 @@ router.put(
         WHERE id = ?
         `,
       ).run(passwordHash, user.id);
+
+      // Every other session of this account is signed out; this one stays.
+      sessions.endAllForUser(user.id, "PASSWORD_CHANGED", req.authUser.sid);
 
       return res.json({
         success: true,
@@ -2349,4 +2493,4 @@ module.exports.buildLoginSuccess = buildLoginSuccess;
 module.exports.removeAdminProfileFile = removeAdminProfileFile;
 
 // Lets the live-update socket check a sign-in token the same way as the API.
-module.exports.verifyAuthToken = (token) => jwt.verify(token, JWT_SECRET);
+module.exports.verifyAuthToken = (token) => sessions.verifyToken(token);

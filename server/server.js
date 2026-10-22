@@ -35,6 +35,10 @@ const realtime = require("./realtime");
 const app = express();
 const PORT = 3000;
 
+// ngrok (one hop) sits in front of the app; this makes req.ip the real
+// client address for the Log Trail and the request limits.
+app.set("trust proxy", 1);
+
 app.use(cors());
 // Announces every successful change to the signed-in apps (live updates).
 app.use("/api", realtime.announceChanges);

@@ -36,6 +36,7 @@ import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { styles } from "../styles/student-profile.styles";
 
 import { ChangeEmailModal } from "@/components/change-email-modal";
+import { PasswordRules } from "@/components/password-rules";
 import { CountUp } from "@/components/count-up";
 import { FloatingTabBar } from "@/components/floating-tab-bar";
 type Page = "profile" | "edit" | "password" | "about" | "privacy";
@@ -979,6 +980,11 @@ export default function StudentProfileScreen() {
                         confirmPassword: value,
                       })),
                   )}
+
+                  <PasswordRules
+                    password={password.newPassword}
+                    confirmPassword={password.confirmPassword}
+                  />
 
                   <TouchableOpacity
                     style={[styles.primaryButton, busy && styles.disabled]}

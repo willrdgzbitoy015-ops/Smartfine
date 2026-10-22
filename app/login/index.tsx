@@ -17,12 +17,16 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { SvgXml } from "react-native-svg";
+
+import { PasswordRules } from "@/components/password-rules";
 
 import { FadeIn, useShake, useSwitchFade } from "@/components/motion";
 import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
 import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
+import { NOTICE_KEY, beginSession } from "@/utils/session-guard";
 
 // ==========================================
 // TYPES
@@ -86,6 +90,19 @@ export default function LoginScreen() {
 
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
+  // After a lockout, sign-in also needs a CAPTCHA (a picture the server draws).
+  const [captchaRequired, setCaptchaRequired] = useState(false);
+
+  const [captcha, setCaptcha] = useState<{
+    captchaId: string;
+    svg: string;
+  } | null>(null);
+
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+
+  // Why the last session ended ("idle" or "ended"), shown once.
+  const [signedOutNotice, setSignedOutNotice] = useState("");
+
   const [lockedUsername, setLockedUsername] = useState("");
 
   // ==========================================
@@ -123,6 +140,10 @@ export default function LoginScreen() {
   // email and choosing its own password. Both use the same code and password
   // steps.
   const [flow, setFlow] = useState<"reset" | "firstLogin">("reset");
+
+  // "Set up your account" is the same email-code steps as Forgot Password,
+  // worded for someone who has never signed in (an imported student).
+  const [setupMode, setSetupMode] = useState(false);
 
   const [stepToken, setStepToken] = useState("");
 
@@ -266,6 +287,50 @@ export default function LoginScreen() {
   }, [username, lockoutSeconds, lockedUsername]);
 
   // ==========================================
+  // OPENING THE APP: NOTICE AND REMEMBERED LOCKOUT
+  // ==========================================
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restore() {
+      try {
+        const [notice, lockedIdentifier] = await Promise.all([
+          AsyncStorage.getItem(NOTICE_KEY),
+          AsyncStorage.getItem("lockedIdentifier"),
+        ]);
+
+        if (cancelled) return;
+
+        if (notice === "idle") {
+          setSignedOutNotice("You were signed out after 15 minutes of inactivity. Please sign in again.");
+        } else if (notice === "ended") {
+          setSignedOutNotice("You were signed out. Please sign in again.");
+        }
+
+        if (notice) {
+          await AsyncStorage.removeItem(NOTICE_KEY);
+        }
+
+        // A lockout lasts on the server; show its timer again.
+        if (lockedIdentifier) {
+          setUsername(lockedIdentifier);
+
+          await checkLoginStatus(lockedIdentifier);
+        }
+      } catch {
+        // Nothing to restore.
+      }
+    }
+
+    void restore();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ==========================================
   // LOCKOUT FINISHED
   // ==========================================
 
@@ -275,6 +340,12 @@ export default function LoginScreen() {
     }
 
     setLockedUsername("");
+
+    AsyncStorage.removeItem("lockedIdentifier").catch(() => undefined);
+
+    if (captchaRequired) {
+      void loadCaptcha();
+    }
 
     if (errorTitle === "Account Temporarily Locked") {
       clearError();
@@ -322,6 +393,69 @@ export default function LoginScreen() {
       2,
       "0",
     )}`;
+  };
+
+  // ==========================================
+  // CAPTCHA AND LOCKOUT STATUS
+  // ==========================================
+
+  const loadCaptcha = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/captcha`, {
+        headers: { "ngrok-skip-browser-warning": "true" },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data?.captchaId && data?.svg) {
+        setCaptcha({ captchaId: data.captchaId, svg: data.svg });
+
+        setCaptchaAnswer("");
+      }
+    } catch {
+      // The next sign-in answer brings a CAPTCHA too.
+    }
+  };
+
+  // Asks the server whether this account is locked or needs a CAPTCHA, so the
+  // timer and the picture come back after a refresh or reopening the app.
+  const checkLoginStatus = async (identifier: string) => {
+    const typed = identifier.trim();
+
+    if (!typed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/login-status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({ identifier: typed }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        return;
+      }
+
+      if (data.locked && !data.lockedByAdmin && Number(data.retryAfterSeconds) > 0) {
+        setLockedUsername(typed);
+
+        setLockoutSeconds(Number(data.retryAfterSeconds));
+      }
+
+      setCaptchaRequired(Boolean(data.captchaRequired));
+
+      if (data.captcha?.captchaId && data.captcha?.svg) {
+        setCaptcha({ captchaId: data.captcha.captchaId, svg: data.captcha.svg });
+      }
+    } catch {
+      // Offline: signing in will say so.
+    }
   };
 
   // ==========================================
@@ -390,6 +524,9 @@ export default function LoginScreen() {
       ["userRole", userRole],
     ]);
 
+    // Starts watching for inactivity with the limits the server gave.
+    await beginSession(data.session);
+
     console.log("Login session saved.");
 
     console.log("Saved user ID:", userId);
@@ -441,6 +578,14 @@ export default function LoginScreen() {
     setLockoutSeconds(0);
 
     setLockedUsername("");
+
+    setCaptchaRequired(false);
+
+    setCaptcha(null);
+
+    setCaptchaAnswer("");
+
+    AsyncStorage.removeItem("lockedIdentifier").catch(() => undefined);
 
     await saveLoginSession(data);
 
@@ -547,6 +692,20 @@ export default function LoginScreen() {
       return;
     }
 
+    if (captchaRequired && captcha && !captchaAnswer.trim()) {
+      showError(
+        "Verification",
+
+        "Please type the characters in the picture.",
+
+        {
+          hideAfter: 3000,
+        },
+      );
+
+      return;
+    }
+
     const loginUrl = `${API_BASE}/api/auth/login`;
 
     try {
@@ -582,6 +741,10 @@ export default function LoginScreen() {
             username: username.trim(),
 
             password,
+
+            ...(captcha && captchaRequired
+              ? { captchaId: captcha.captchaId, captchaAnswer: captchaAnswer.trim() }
+              : {}),
           }),
         },
       );
@@ -594,7 +757,36 @@ export default function LoginScreen() {
       // LOGIN FAILED
       // ====================================
 
+      // The server hands out the next CAPTCHA with its answer.
+      if (data.captchaRequired) {
+        setCaptchaRequired(true);
+      }
+
+      if (data.captcha?.captchaId && data.captcha?.svg) {
+        setCaptcha({ captchaId: data.captcha.captchaId, svg: data.captcha.svg });
+
+        setCaptchaAnswer("");
+      }
+
       if (!response.ok || !data.success) {
+        // ================================
+        // CAPTCHA
+        // ================================
+
+        if (data.code === "CAPTCHA_REQUIRED" || data.code === "CAPTCHA_INVALID") {
+          showError(
+            "Verification",
+
+            data.message || "Please type the characters in the picture.",
+
+            {
+              hideAfter: 4000,
+            },
+          );
+
+          return;
+        }
+
         // ================================
         // INVALID CREDENTIALS
         // ================================
@@ -638,6 +830,11 @@ export default function LoginScreen() {
           setLockedUsername(username.trim());
 
           setLockoutSeconds(seconds);
+
+          AsyncStorage.setItem("lockedIdentifier", username.trim()).catch(() => undefined);
+
+          // The next attempt after the timer needs a CAPTCHA.
+          setCaptcha(null);
 
           showError(
             "Account Temporarily Locked",
@@ -779,6 +976,12 @@ export default function LoginScreen() {
   // ==========================================
   // OPEN FORGOT PASSWORD
   // ==========================================
+
+  const handleOpenSetup = () => {
+    setSetupMode(true);
+
+    handleOpenForgotPassword();
+  };
 
   const handleOpenForgotPassword = () => {
     clearError();
@@ -1289,6 +1492,8 @@ export default function LoginScreen() {
 
     setFlow("reset");
 
+    setSetupMode(false);
+
     setStepToken("");
 
     setResetIdentifier("");
@@ -1361,6 +1566,12 @@ export default function LoginScreen() {
 
   const LoginForm = () => (
     <>
+      {!!signedOutNotice && (
+        <View style={styles.noticeBox} accessibilityRole="alert">
+          <Text style={styles.noticeText}>{signedOutNotice}</Text>
+        </View>
+      )}
+
       {/* USERNAME */}
 
       <View
@@ -1404,6 +1615,12 @@ export default function LoginScreen() {
           editable={!loading}
           returnKeyType="next"
           blurOnSubmit={false}
+          onBlur={() => {
+            // Bound highlight first (see bindFocus), then the lockout check.
+            bindFocus("username").onBlur();
+
+            void checkLoginStatus(username);
+          }}
           onSubmitEditing={() => {
             if (!isCurrentAccountLocked) {
               passwordRef.current?.focus();
@@ -1473,6 +1690,52 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* CAPTCHA (after a lockout) */}
+
+      {captchaRequired && captcha && !isCurrentAccountLocked && (
+        <View style={styles.captchaBox}>
+          <Text style={styles.captchaLabel}>Type the characters you see</Text>
+
+          <View style={styles.captchaRow}>
+            <View
+              style={styles.captchaImage}
+              accessible
+              accessibilityLabel="CAPTCHA picture. Type the characters you see."
+            >
+              <SvgXml xml={captcha.svg} width={170} height={60} />
+            </View>
+
+            <TouchableOpacity
+              onPress={() => void loadCaptcha()}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Get a new CAPTCHA picture"
+            >
+              <Text style={styles.captchaRefresh}>New picture</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.captchaInput}
+            value={captchaAnswer}
+            onChangeText={(value) => {
+              setCaptchaAnswer(value);
+
+              clearError();
+            }}
+            placeholder="Enter the characters"
+            placeholderTextColor="#6E6E6E"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            editable={!loading}
+            maxLength={8}
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+            accessibilityLabel="CAPTCHA characters"
+          />
+        </View>
+      )}
+
       {renderErrorBox()}
 
       {/* OPTIONS */}
@@ -1522,6 +1785,18 @@ export default function LoginScreen() {
           </Text>
         )}
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.setupLinkButton}
+        onPress={handleOpenSetup}
+        disabled={loading}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+      >
+        <Text style={styles.setupLinkText}>
+          First time here? Set up your account
+        </Text>
+      </TouchableOpacity>
     </>
   );
 
@@ -1531,10 +1806,14 @@ export default function LoginScreen() {
 
   const ForgotPasswordForm = () => (
     <>
-      <Text style={styles.recoveryTitle}>Forgot Password?</Text>
+      <Text style={styles.recoveryTitle}>
+        {setupMode ? "Set Up Your Account" : "Forgot Password?"}
+      </Text>
 
       <Text style={styles.recoveryDescription}>
-        Enter your username or email to recover your account.
+        {setupMode
+          ? "Enter your username or email. We will send a code to the email on file, then you choose your own password."
+          : "Enter your username or email to recover your account."}
       </Text>
 
       <View style={styles.recoveryFieldCard}>
@@ -1797,10 +2076,11 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      <Text style={styles.passwordHelper}>
-        Minimum 8 characters with uppercase, lowercase, number, and special
-        character.
-      </Text>
+      <PasswordRules
+        password={newPassword}
+        confirmPassword={confirmPassword}
+        tone="dark"
+      />
 
       {renderErrorBox()}
 
@@ -1836,12 +2116,16 @@ export default function LoginScreen() {
     <View style={styles.successContent}>
       <SuccessCheck style={styles.successIcon} />
 
-      <Text style={styles.successTitle}>Password Reset</Text>
+      <Text style={styles.successTitle}>
+        {setupMode ? "Account Ready" : "Password Reset"}
+      </Text>
 
       <Text style={styles.successSubtitle}>Successful!</Text>
 
       <Text style={styles.successDescription}>
-        Your password has been updated successfully.
+        {setupMode
+          ? "Your password is set. You can sign in now."
+          : "Your password has been updated successfully."}
       </Text>
 
       <TouchableOpacity
@@ -2255,6 +2539,70 @@ const styles = StyleSheet.create({
     height: 23,
   },
 
+  noticeBox: {
+    width: "100%",
+    backgroundColor: "#E8F1FF",
+    borderWidth: 1,
+    borderColor: "#7FA8E6",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 14,
+  },
+
+  noticeText: {
+    color: "#123266",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  captchaBox: {
+    width: "100%",
+    marginBottom: 14,
+  },
+
+  captchaLabel: {
+    color: "#FFFFFF",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    marginBottom: 6,
+  },
+
+  captchaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+
+  captchaImage: {
+    width: 170,
+    height: 60,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#EEF2F8",
+  },
+
+  captchaRefresh: {
+    color: "#FFFFFF",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+
+  captchaInput: {
+    width: "100%",
+    height: 48,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    color: "#123266",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 15,
+    letterSpacing: 3,
+  },
+
   errorBox: {
     width: "100%",
     backgroundColor: "#FFF1F1",
@@ -2362,6 +2710,19 @@ const styles = StyleSheet.create({
     color: "#18E968",
     fontFamily: "Poppins_600SemiBold",
     fontSize: 10,
+  },
+
+  setupLinkButton: {
+    alignSelf: "center",
+    marginTop: 12,
+    paddingVertical: 6,
+  },
+
+  setupLinkText: {
+    color: "#FFFFFF",
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    textDecorationLine: "underline",
   },
 
   loginButton: {

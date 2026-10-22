@@ -181,7 +181,7 @@ router.post("/complete", async (req, res) => {
     }
 
     return res.json({
-      ...buildLoginSuccess(user),
+      ...buildLoginSuccess(user, req),
       message: "Your account is ready. You are signed in.",
     });
   } catch (error) {

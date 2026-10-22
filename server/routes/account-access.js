@@ -11,6 +11,7 @@ const db = require("../database/database");
 const { logActivity, fullName } = require("../database/activity-log");
 const { requireActive } = require("../middleware/access");
 const { generateNextEmployeeNumber } = require("./officers");
+const sessions = require("../security/sessions");
 
 const router = express.Router();
 
@@ -127,6 +128,9 @@ router.post("/:id/lock", (req, res) => {
     db.prepare(
       "UPDATE users SET account_status = 'LOCKED', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     ).run(user.id);
+
+    // They are signed out everywhere, right now.
+    sessions.endAllForUser(user.id, "ACCOUNT_LOCKED");
 
     logActivity({
       actorId: req.account.id,
@@ -280,6 +284,9 @@ router.post("/:id/role", (req, res) => {
       db.exec("ROLLBACK");
       throw error;
     }
+
+    // Signed out everywhere, so the next sign-in carries the new role.
+    sessions.endAllForUser(user.id, "ACCOUNT_ROLE_CHANGED");
 
     return res.json({
       success: true,

@@ -598,6 +598,13 @@ router.put("/me/password", async (req, res) => {
       });
     }
 
+    // Every other session of this account is signed out; this one stays.
+    require("../security/sessions").endAllForUser(
+      req.officerUserId,
+      "PASSWORD_CHANGED",
+      req.authUser.sid,
+    );
+
     // ======================================
     // SUCCESS
     // ======================================

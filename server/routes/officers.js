@@ -2016,6 +2016,18 @@ router.put(
         throw transactionError;
       }
 
+      // A deactivated or locked officer, or one whose password an
+      // administrator just set, is signed out everywhere.
+      if (
+        (existingOfficer.account_status === "ACTIVE" && normalizedStatus !== "ACTIVE") ||
+        passwordChanged
+      ) {
+        require("../security/sessions").endAllForUser(
+          officerId,
+          passwordChanged ? "PASSWORD_RESET_BY_ADMIN" : "ACCOUNT_DEACTIVATED",
+        );
+      }
+
       const fullName = formatName(
         normalizedFirstName,
         normalizedMiddleName,

@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 
+import { API_BASE } from "@/constants/api";
+
 // ==========================================
 // ROLE GUARD
 // Keeps each person on their own screens. Checked on every screen change:
@@ -25,6 +27,9 @@ const HOME_BY_AREA: Record<string, string> = {
 };
 
 const PROTECTED_AREAS = Object.keys(HOME_BY_AREA);
+
+// The sign-in whose session was last checked with the server.
+let sessionCheckedFor: string | null = null;
 
 export function useRoleGuard(enabled: boolean) {
   const router = useRouter();
@@ -66,6 +71,18 @@ export function useRoleGuard(enabled: boolean) {
           router.replace("/login");
         } else if (own !== area) {
           router.replace(HOME_BY_AREA[own] as never);
+        } else if (token !== sessionCheckedFor) {
+          // A typed address or an old tab may hold a sign-in whose session has
+          // ended. Asking once makes the app notice at once (the session guard
+          // signs out on the server's answer).
+          sessionCheckedFor = token;
+
+          void fetch(`${API_BASE}/api/auth/session`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+          }).catch(() => undefined);
         }
       } catch {
         // The navigator is not ready yet; the next screen change checks again.

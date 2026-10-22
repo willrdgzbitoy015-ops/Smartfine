@@ -88,6 +88,7 @@ function announceChanges(req, res, next) {
 // Only signed-in, active accounts may listen.
 function attach(httpServer) {
   const { verifyAuthToken } = require("./routes/auth");
+  const sessions = require("./security/sessions");
 
   io = new Server(httpServer, {
     serveClient: false,
@@ -106,11 +107,35 @@ function attach(httpServer) {
         return next(new Error("ACCOUNT_INACTIVE"));
       }
 
+      // Remembered so the connection can be closed when its session ends.
+      socket.data.sessionId = decoded.sid;
+
       next();
     } catch {
       next(new Error("AUTH_REQUIRED"));
     }
   });
+
+  // A session that ends (logout, idle, password change, lock...) closes its
+  // live connection at once.
+  sessions.events.on("ended", ({ sessionId }) => {
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data.sessionId === sessionId) {
+        socket.disconnect(true);
+      }
+    }
+  });
+
+  // Sessions that simply ran out of idle time are noticed here.
+  const sweep = setInterval(() => {
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data.sessionId && !sessions.isLive(socket.data.sessionId)) {
+        socket.disconnect(true);
+      }
+    }
+  }, 30 * 1000);
+
+  sweep.unref();
 
   return io;
 }

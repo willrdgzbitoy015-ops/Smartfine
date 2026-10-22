@@ -1805,7 +1805,7 @@ export default function StudentsDirectory() {
       setImportSuccessMessage(
         `${importedCount} student account${
           importedCount === 1 ? "" : "s"
-        } imported successfully.\n\nClass: ${importedClass}\nUsername: First Name + Last Name (lowercase, no spaces; number added if needed)\nDefault Password: Smartfine@2026\nAccount Status: Active`,
+        } imported successfully.\n\nClass: ${importedClass}\nUsername: First Name + Last Name (lowercase, no spaces; number added if needed)\nPassword: each student sets their own (Forgot Password sends a code to their email)\nAccount Status: Active`,
       );
 
       resetImportState();
@@ -3089,8 +3089,9 @@ export default function StudentsDirectory() {
 
                 <Text style={styles.csvGuideNote}>
                   Imported account: Username = First Name + Last Name
-                  (lowercase, no spaces; number added if needed) · Default
-                  Password = Smartfine@2026 · Status = Active
+                  (lowercase, no spaces; number added if needed) · Each
+                  student sets their own password with Forgot Password ·
+                  Status = Active
                 </Text>
               </View>
 
@@ -3377,10 +3378,8 @@ export default function StudentsDirectory() {
                       Username = First Name + Last Name (lowercase, no spaces;
                       number added if needed)
                       {"\n"}
-                      Default Password ={" "}
-                      <Text style={styles.defaultPasswordText}>
-                        Smartfine@2026
-                      </Text>
+                      Password = each student sets their own (Forgot
+                      Password sends a code to their email)
                       {"\n"}
                       Account Status = Active
                       {"\n"}
@@ -3491,7 +3490,7 @@ export default function StudentsDirectory() {
               </Text>
 
               <Text style={styles.confirmAccountText}>
-                Default Password: Smartfine@2026
+                Password: each student sets their own with Forgot Password
               </Text>
 
               <Text style={styles.confirmAccountText}>Status: Active</Text>

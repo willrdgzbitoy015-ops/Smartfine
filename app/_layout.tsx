@@ -29,9 +29,11 @@ import "react-native-reanimated";
 
 import { NATIVE_DRIVER, useReducedMotion } from "@/components/motion";
 import { NoticeBanner } from "@/components/notice-banner";
+import { SessionWatcher } from "@/components/session-watcher";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRoleGuard } from "@/hooks/use-role-guard";
+import { installSessionInterceptor, markActivity } from "@/utils/session-guard";
 
 // ==========================================
 // KEEP NATIVE SPLASH VISIBLE
@@ -41,6 +43,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   // Ignore if splash is already controlled
   // by the development environment.
 });
+
+// Any answer saying "your session is over" signs this device out, whichever
+// screen asked.
+installSessionInterceptor();
 
 // ==========================================
 // SPLASH SETTINGS
@@ -479,19 +485,37 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack
-        screenOptions={({ route }) => ({
-          headerShown: false,
+      {/* On phones, a touch anywhere counts as activity (the web listens to
+          the page itself, in SessionWatcher). It never takes the touch. */}
+      <View
+        style={styles.appFrame}
+        onStartShouldSetResponderCapture={() => {
+          markActivity();
 
-          animation: reduceMotion
-            ? "none"
-            : slidesIn(route.name)
-              ? "slide_from_right"
-              : "fade",
-        })}
-      />
+          return false;
+        }}
+        onMoveShouldSetResponderCapture={() => {
+          markActivity();
+
+          return false;
+        }}
+      >
+        <Stack
+          screenOptions={({ route }) => ({
+            headerShown: false,
+
+            animation: reduceMotion
+              ? "none"
+              : slidesIn(route.name)
+                ? "slide_from_right"
+                : "fade",
+          })}
+        />
+      </View>
 
       <NoticeBanner />
+
+      <SessionWatcher />
 
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -514,6 +538,11 @@ function slidesIn(routeName: string) {
 // ==========================================
 
 const styles = StyleSheet.create({
+  // Holds the screens; only there to hear touches (see RootLayout).
+  appFrame: {
+    flex: 1,
+  },
+
   // ======================================
   // SPLASH
   // ======================================

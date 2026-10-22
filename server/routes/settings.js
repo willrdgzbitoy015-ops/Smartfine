@@ -1,12 +1,9 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 
 const db = require('../database/database');
+const sessions = require('../security/sessions');
 
 const router = express.Router();
-
-const JWT_SECRET =
-  'REMOVED';
 
 console.log('settings.js loaded');
 
@@ -42,17 +39,22 @@ function authenticateToken(
         7
       );
 
-    const decoded =
-      jwt.verify(
-        token,
-        JWT_SECRET
-      );
-
+    // The token must belong to a session that is still alive.
     req.authUser =
-      decoded;
+      sessions.verifyToken(
+        token
+      );
 
     next();
   } catch (error) {
+    if (error instanceof sessions.SessionError) {
+      return res.status(error.status).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+      });
+    }
+
     return res.status(401).json({
       success: false,
       code: 'INVALID_TOKEN',

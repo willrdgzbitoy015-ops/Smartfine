@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
 import { stopLiveUpdates } from '@/hooks/use-live-updates';
+import { signOut } from '@/utils/session-guard';
 
 // Leaves the signed-in screens for Login. Every open screen is closed
 // first: a screen left underneath would keep running (and asking the
@@ -49,6 +50,10 @@ export function useAuth() {
   const logout = async () => {
     try {
       console.log('Starting logout...');
+
+      // Ends the session on the server (so the sign-in is dead on every
+      // device and tab), then clears what this device remembers.
+      await signOut();
 
       await AsyncStorage.multiRemove([
         'userEmail',

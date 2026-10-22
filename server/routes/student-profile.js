@@ -469,6 +469,13 @@ router.put("/me/password", async (req, res) => {
       });
     }
 
+    // Every other session of this account is signed out; this one stays.
+    require("../security/sessions").endAllForUser(
+      req.studentProfileUserId,
+      "PASSWORD_CHANGED",
+      req.authUser.sid,
+    );
+
     return res.json({
       success: true,
       message: "Password updated successfully.",

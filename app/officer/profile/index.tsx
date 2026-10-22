@@ -35,6 +35,7 @@ import { haptics } from "@/utils/haptics";
 import { useResponsiveStyles } from "./profile.styles";
 
 import { ChangeEmailModal } from "@/components/change-email-modal";
+import { PasswordRules } from "@/components/password-rules";
 import { FloatingTabBar } from "@/components/floating-tab-bar";
 // ==========================================
 // TYPES
@@ -1363,6 +1364,11 @@ export default function OfficerProfile() {
                         showConfirmPassword,
                         () => setShowConfirmPassword((current) => !current),
                       )}
+
+                      <PasswordRules
+                        password={newPassword}
+                        confirmPassword={confirmPassword}
+                      />
                     </View>
 
                     <TouchableOpacity
