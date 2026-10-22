@@ -8,8 +8,9 @@
 //   with PayMongo first (closed, or recorded if they were paid), and a
 //   refund PayMongo is still processing blocks the reset.
 // - A full copy of the database is saved before anything is deleted, and the
-//   uploaded profile pictures are moved next to it, in
-//   server/database/backups/reset-<time>/.
+//   uploaded profile pictures are moved to server/database/backups/reset-<time>/.
+//   The database copy is an encrypted backup (database/backup.js, listed in
+//   Settings > Backups), so it can be restored from there.
 // - The administrator who resets keeps their account and stays signed in.
 //   Everything else is deleted in one transaction; fine types and the
 //   school name can be kept.
@@ -20,6 +21,7 @@ const { DatabaseSync } = require("node:sqlite");
 const db = require("./database");
 const online = require("../payments/online-payments");
 const refunds = require("../payments/refunds");
+const backups = require("./backup");
 
 const DB_PATH = path.join(__dirname, "smartfine.db");
 const BACKUP_ROOT = path.join(__dirname, "backups");
@@ -28,7 +30,7 @@ const UPLOAD_FOLDERS = ["student-profiles", "officer-profiles", "admin-profiles"
 
 // Creates the fine_evidence table if this backend has not made it yet.
 require("./fine-evidence");
-const { logActivity } = require("./activity-log");
+const { clearForReset, logActivity } = require("./activity-log");
 
 const CONFIRM_PHRASE = "RESET SMARTFINE";
 
@@ -220,25 +222,10 @@ async function settleMoneyInMotion(adminId) {
   }
 }
 
-function saveDatabaseBackup(folder) {
-  const target = path.join(folder, "smartfine.db");
-
-  db.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
-
-  // The copy must open and hold the same people before anything is deleted.
-  const copy = new DatabaseSync(target, { readOnly: true });
-
-  try {
-    const users = Number(copy.prepare("SELECT COUNT(*) n FROM users").get().n);
-
-    if (users !== count("SELECT COUNT(*) n FROM users")) {
-      throw new Error("The backup copy does not match the database.");
-    }
-  } finally {
-    copy.close();
-  }
-
-  return target;
+// The database copy goes to the encrypted backup folder (checked when it is
+// made), not next to the pictures.
+function saveDatabaseBackup(adminId) {
+  return backups.createBackup({ type: "BEFORE_RESET", adminId });
 }
 
 function movePictures(files, folder) {
@@ -287,8 +274,10 @@ async function resetSystem({ adminId, keepFineTypes = true, keepSchoolDetails = 
 
     fs.mkdirSync(folder, { recursive: true });
 
+    let databaseBackup;
+
     try {
-      saveDatabaseBackup(folder);
+      databaseBackup = saveDatabaseBackup(adminId);
     } catch (error) {
       console.error("System reset: backup failed:", error);
 
@@ -336,7 +325,13 @@ async function resetSystem({ adminId, keepFineTypes = true, keepSchoolDetails = 
         };
 
         for (const table of WIPED_TABLES) {
-          db.exec(`DELETE FROM ${table}`);
+          // The Log Trail refuses ordinary deletes; the reset (which saved a
+          // backup copy above) is the one thing allowed to clear it.
+          if (table === "audit_logs") {
+            clearForReset();
+          } else {
+            db.exec(`DELETE FROM ${table}`);
+          }
         }
 
         db.prepare("DELETE FROM users WHERE id != ?").run(adminId);
@@ -365,8 +360,8 @@ async function resetSystem({ adminId, keepFineTypes = true, keepSchoolDetails = 
           actorId: adminId,
           action: "SYSTEM_RESET",
           entityType: "SYSTEM",
-          description: `System reset. Backup: ${folderName}. Fine types ${keepFineTypes ? "kept" : "deleted"}; school details ${keepSchoolDetails ? "kept" : "cleared"}.`,
-          details: { backupFolder: folderName, keepFineTypes, keepSchoolDetails },
+          description: `System reset. The data was saved first as an encrypted backup (${databaseBackup.id}); profile pictures were moved to ${folderName}. Fine types ${keepFineTypes ? "kept" : "deleted"}; school details ${keepSchoolDetails ? "kept" : "cleared"}.`,
+          details: { backupId: databaseBackup.id, backupFolder: folderName, keepFineTypes, keepSchoolDetails },
         });
 
         return counts;
@@ -374,6 +369,7 @@ async function resetSystem({ adminId, keepFineTypes = true, keepSchoolDetails = 
     } catch (error) {
       // Nothing was deleted, so the backup of this attempt is not needed.
       fs.rmSync(folder, { recursive: true, force: true });
+      backups.discard(databaseBackup.id);
       throw error;
     }
 
@@ -383,6 +379,7 @@ async function resetSystem({ adminId, keepFineTypes = true, keepSchoolDetails = 
 
     return {
       backupFolder: folderName,
+      databaseBackupId: databaseBackup.id,
       removed: { ...removed, pictures: pictureResult.moved },
       picturesNotMoved: pictureResult.failed,
       keptFineTypes: keepFineTypes,

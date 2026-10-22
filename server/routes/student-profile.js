@@ -1,4 +1,5 @@
 const express = require("express");
+const { isValidEmail } = require("../security/validation");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const fs = require("fs");
@@ -7,6 +8,8 @@ const crypto = require("crypto");
 
 const db = require("../database/database");
 const { authenticateToken } = require("./auth");
+const { logActivity } = require("../database/activity-log");
+const passwordTries = require("../security/password-tries");
 
 const router = express.Router();
 
@@ -284,7 +287,7 @@ router.put("/me", (req, res) => {
       });
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (email && !isValidEmail(email)) {
       return res.status(400).json({
         success: false,
         message: "Please enter a valid email address.",
@@ -427,12 +430,25 @@ router.put("/me/password", async (req, res) => {
       });
     }
 
+    if (passwordTries.blocked(req.studentProfileUserId)) {
+      return res.status(429).json(passwordTries.TOO_MANY);
+    }
+
     const correctPassword = await bcrypt.compare(
       currentPassword,
       student.password_hash,
     );
 
     if (!correctPassword) {
+      passwordTries.fail(req.studentProfileUserId);
+
+      logActivity({
+        actorId: req.studentProfileUserId,
+        action: "PASSWORD_CHANGE_FAILED",
+        result: "FAILED",
+        description: "Password change refused: the current password was wrong.",
+      });
+
       return res.status(400).json({
         success: false,
         message: "Current password is incorrect.",
@@ -475,6 +491,14 @@ router.put("/me/password", async (req, res) => {
       "PASSWORD_CHANGED",
       req.authUser.sid,
     );
+
+    passwordTries.clear(req.studentProfileUserId);
+
+    logActivity({
+      actorId: req.studentProfileUserId,
+      action: "PASSWORD_CHANGED",
+      description: "Password changed. Other signed-in devices were signed out.",
+    });
 
     return res.json({
       success: true,

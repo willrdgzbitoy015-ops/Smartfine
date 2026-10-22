@@ -1,3 +1,4 @@
+import { MAX_PASSWORD_BYTES, PASSWORD_TOO_LONG_MESSAGE, passwordBytes } from "@/utils/validation";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -306,6 +307,8 @@ export default function LoginScreen() {
           setSignedOutNotice("You were signed out after 15 minutes of inactivity. Please sign in again.");
         } else if (notice === "ended") {
           setSignedOutNotice("You were signed out. Please sign in again.");
+        } else if (notice === "restored") {
+          setSignedOutNotice("SmartFine's data was restored from a backup. Please sign in again.");
         }
 
         if (notice) {
@@ -1348,6 +1351,11 @@ export default function LoginScreen() {
         "Please enter and confirm your new password.",
       );
 
+      return;
+    }
+
+    if (passwordBytes(newPassword) > MAX_PASSWORD_BYTES) {
+      showError("Invalid Password", PASSWORD_TOO_LONG_MESSAGE);
       return;
     }
 

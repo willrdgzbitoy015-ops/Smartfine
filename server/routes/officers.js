@@ -1,10 +1,11 @@
 const express = require("express");
+const { isValidEmail } = require("../security/validation");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const { authenticateToken } = require("./auth");
+const { authenticateToken, validatePasswordPolicy } = require("./auth");
 const { requireActive } = require("../middleware/access");
 const {
   changeText,
@@ -100,65 +101,7 @@ function getValidOfficerId(value) {
 
   return officerId;
 }
-
-// ==========================================
-// PASSWORD POLICY
-//
-// Requirements:
-// - Minimum 8 characters
-// - At least 1 lowercase letter
-// - At least 1 uppercase letter
-// - At least 1 number
-// - At least 1 special character
-// ==========================================
-
-function validatePasswordPolicy(password) {
-  const value = String(password || "");
-
-  if (value.length < 8) {
-    return {
-      valid: false,
-      code: "PASSWORD_TOO_SHORT",
-      message: "Password must contain at least 8 characters.",
-    };
-  }
-
-  if (!/[a-z]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_LOWERCASE_REQUIRED",
-      message: "Password must contain at least one lowercase letter.",
-    };
-  }
-
-  if (!/[A-Z]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_UPPERCASE_REQUIRED",
-      message: "Password must contain at least one uppercase letter.",
-    };
-  }
-
-  if (!/[0-9]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_NUMBER_REQUIRED",
-      message: "Password must contain at least one number.",
-    };
-  }
-
-  if (!/[^A-Za-z0-9\s]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
-      message: "Password must contain at least one special character.",
-    };
-  }
-
-  return {
-    valid: true,
-  };
-}
+// Password rules: see validatePasswordPolicy in routes/auth.js.
 
 // ==========================================
 // FIND ACTIVE / VISIBLE OFFICER PROFILE
@@ -470,8 +413,6 @@ router.get("/next-id", requireActive("ADMIN"), (req, res) => {
       success: false,
 
       message: "Failed to generate officer number.",
-
-      error: error.message,
     });
   }
 });
@@ -573,8 +514,6 @@ router.get("/", requireActive("ADMIN"), (req, res) => {
       success: false,
 
       message: "Failed to load officers.",
-
-      error: error.message,
     });
   }
 });
@@ -744,7 +683,7 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
     // EMAIL
     // ====================================
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return res.status(400).json({
         success: false,
 
@@ -1070,8 +1009,6 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
       code: "CREATE_OFFICER_ERROR",
 
       message: "Failed to create officer account.",
-
-      error: error.message,
     });
   }
 });
@@ -1185,8 +1122,6 @@ router.post(
         code: "OFFICER_PROFILE_UPLOAD_ERROR",
 
         message: "Failed to update officer profile picture.",
-
-        error: error.message,
       });
     }
   },
@@ -1269,8 +1204,6 @@ router.delete("/:id/profile-picture", requireActive("ADMIN"), (req, res) => {
       code: "REMOVE_OFFICER_PROFILE_ERROR",
 
       message: "Failed to remove officer profile picture.",
-
-      error: error.message,
     });
   }
 });
@@ -1529,8 +1462,6 @@ router.get("/:id", requireActive("ADMIN"), (req, res) => {
       success: false,
 
       message: "Failed to load officer profile.",
-
-      error: error.message,
     });
   }
 });
@@ -1720,7 +1651,7 @@ router.put(
       // EMAIL
       // ====================================
 
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      if (!isValidEmail(normalizedEmail)) {
         return res.status(400).json({
           success: false,
 
@@ -2054,6 +1985,16 @@ router.put(
             .join("; ")}.`,
           details: { changes, passwordReset: Boolean(passwordChanged) },
         });
+
+        if (passwordChanged) {
+          logActivity({
+            actorId: Number(req.authUser.userId),
+            action: "PASSWORD_SET_BY_ADMIN",
+            entityType: "USER",
+            entityId: officerId,
+            description: `Set a new password for Fines Officer ${fullName}. They were signed out everywhere.`,
+          });
+        }
       }
 
       return res.json({
@@ -2116,8 +2057,6 @@ router.put(
         code: "UPDATE_OFFICER_ERROR",
 
         message: "Failed to update officer information.",
-
-        error: error.message,
       });
     }
   },
@@ -2398,8 +2337,6 @@ router.delete("/:id", requireActive("ADMIN"), (req, res) => {
       code: "DELETE_OFFICER_ERROR",
 
       message: "Failed to remove officer.",
-
-      error: error.message,
     });
   }
 });

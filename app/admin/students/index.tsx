@@ -1,3 +1,4 @@
+import { isValidEmail } from "@/utils/validation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -1414,7 +1415,7 @@ export default function StudentsDirectory() {
       // EMAIL
       // ==================================
 
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (email && !isValidEmail(email)) {
         invalidIssues.push("Invalid Email");
       }
 

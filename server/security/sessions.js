@@ -14,6 +14,7 @@ const { EventEmitter } = require("node:events");
 const jwt = require("jsonwebtoken");
 
 const db = require("../database/database");
+const { clientIp } = require("./request-context");
 const { signingKey } = require("./secrets");
 
 function positive(value, fallback) {
@@ -100,7 +101,12 @@ function endRow(row, reason) {
     .run(Date.now(), reason, row.id);
 
   if (Number(result.changes) === 1) {
-    events.emit("ended", { sessionId: row.id, userId: Number(row.user_id) });
+    events.emit("ended", {
+      sessionId: row.id,
+      userId: Number(row.user_id),
+      reason,
+      ipAddress: row.ip_address || null,
+    });
   }
 }
 
@@ -184,6 +190,15 @@ function endAllForUser(userId, reason, exceptSessionId = null) {
   return rows.length;
 }
 
+// Ends every live session, for everybody.
+function endEverySession(reason) {
+  const rows = db.prepare("SELECT * FROM user_sessions WHERE ended_at IS NULL").all();
+
+  rows.forEach((row) => endRow(row, reason));
+
+  return rows.length;
+}
+
 // Whether a session is still good right now (the live-update socket asks).
 function isLive(sessionId) {
   const row = db.prepare("SELECT * FROM user_sessions WHERE id = ?").get(sessionId);
@@ -197,10 +212,30 @@ function isLive(sessionId) {
   );
 }
 
+// Sessions nobody has used for the idle time end on their own, even when the
+// app was simply closed, so the Log Trail shows the automatic sign-out.
+function sweepIdle() {
+  try {
+    const now = Date.now();
+
+    db.prepare("SELECT * FROM user_sessions WHERE ended_at IS NULL AND last_activity_at < ?")
+      .all(now - IDLE_SECONDS * 1000)
+      .forEach((row) => endRow(row, "IDLE"));
+
+    db.prepare("SELECT * FROM user_sessions WHERE ended_at IS NULL AND expires_at < ?")
+      .all(now)
+      .forEach((row) => endRow(row, "EXPIRED"));
+  } catch (error) {
+    console.error("Session sweep failed:", error);
+  }
+}
+
+setInterval(sweepIdle, 15 * 1000).unref();
+
 // The IP address (as the server sees it) and the device of a request.
 function clientDetails(req) {
   return {
-    ipAddress: String(req.ip || req.socket?.remoteAddress || "").replace(/^::ffff:/, "") || null,
+    ipAddress: clientIp(req),
     userAgent: String(req.headers?.["user-agent"] || "").slice(0, 200) || null,
   };
 }
@@ -213,6 +248,7 @@ module.exports = {
   clientDetails,
   end,
   endAllForUser,
+  endEverySession,
   events,
   isLive,
   peek,

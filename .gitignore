@@ -58,3 +58,6 @@ server/database/backups/
 .notes
 # SmartFine private signing key (created on first start)
 server/.signing-key
+# SmartFine backup encryption key and the encrypted backups themselves
+server/.backup-key
+server/backups/

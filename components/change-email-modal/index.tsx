@@ -1,3 +1,4 @@
+import { isValidEmail } from "@/utils/validation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -149,7 +150,7 @@ export function ChangeEmailModal({
     run(async () => {
       const email = newEmail.trim();
 
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!email || !isValidEmail(email)) {
         setError("Please enter a valid email address.");
         return;
       }

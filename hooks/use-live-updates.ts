@@ -11,7 +11,13 @@ import { API_BASE } from "@/constants/api";
 // reload quietly instead of waiting for a manual refresh. A message names a
 // topic only; the screen reloads through the normal API, so it still shows
 // just what that user may see.
-export type LiveTopic = "fines" | "payments" | "refunds" | "people" | "settings";
+export type LiveTopic =
+  | "fines"
+  | "payments"
+  | "refunds"
+  | "people"
+  | "settings"
+  | "activity";
 
 const ALL_TOPICS: LiveTopic[] = [
   "fines",
@@ -19,6 +25,7 @@ const ALL_TOPICS: LiveTopic[] = [
   "refunds",
   "people",
   "settings",
+  "activity",
 ];
 
 // Several messages in a burst cause one reload.

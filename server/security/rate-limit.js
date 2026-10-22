@@ -1,11 +1,13 @@
 // A small in-memory request limiter, per client IP address.
 //
-//   const limit = rateLimit({ max: 40, windowMs: 60000 });
+//   const limit = rateLimit({ max: 40, windowMs: 60000, name: "the picture check" });
 //   router.get("/captcha", limit, handler);
 //
 // Over the limit, the answer is 429 with Retry-After. The counts live in
 // memory, so a restart clears them.
-function rateLimit({ max, windowMs }) {
+const { logActivity } = require("../database/activity-log");
+
+function rateLimit({ max, windowMs, name = "this service" }) {
   const hits = new Map();
 
   return (req, res, next) => {
@@ -17,6 +19,13 @@ function rateLimit({ max, windowMs }) {
       hits.set(key, recent);
 
       res.set("Retry-After", String(Math.ceil((recent[0] + windowMs - now) / 1000)));
+
+      logActivity({
+        action: "ACCESS_RATE_LIMITED",
+        result: "DENIED",
+        description: `Too many requests to ${name} from one address; it was paused for a while.`,
+        onceEvery: { key: `${key}|${name}`, seconds: 60 },
+      });
 
       return res.status(429).json({
         success: false,

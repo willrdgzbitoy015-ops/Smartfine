@@ -27,7 +27,7 @@ const ENDED_CODES: Record<string, "idle" | "ended"> = {
 
 export const NOTICE_KEY = "signedOutNotice";
 
-export type SignedOutReason = "idle" | "ended" | "logout";
+export type SignedOutReason = "idle" | "ended" | "logout" | "restored";
 
 type Settings = { idleSeconds: number; warningSeconds: number };
 

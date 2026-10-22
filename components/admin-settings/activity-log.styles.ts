@@ -10,6 +10,28 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
+  filterLabel: {
+    marginBottom: 6,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 0.3,
+    color: COLORS.muted,
+  },
+
+  tags: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+    flexShrink: 1,
+  },
+
+  meta: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    color: COLORS.muted,
+  },
+
   chip: {
     minHeight: 34,
     paddingHorizontal: 14,
@@ -144,4 +166,12 @@ export const TAG_COLORS: Record<string, [string, string]> = {
   ACCOUNTS: ["#6A3FB5", "#F0EAFB"],
   FINE_TYPES: ["#9A5B00", "#FFF4E0"],
   SYSTEM: ["#B3261E", "#FDECEC"],
+  SECURITY: ["#0F5F73", "#E3F3F7"],
+};
+
+// Result badges: [text, background].
+export const RESULT_COLORS: Record<string, [string, string]> = {
+  SUCCESS: ["#2E7D32", "#E8F6EA"],
+  FAILED: ["#B3261E", "#FDECEC"],
+  DENIED: ["#9A5B00", "#FFF4E0"],
 };

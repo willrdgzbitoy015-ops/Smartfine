@@ -1,3 +1,4 @@
+import { isValidEmail } from "@/utils/validation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
@@ -471,7 +472,7 @@ export function StudentFormModal({
       return "Contact Number must contain 10 to 15 digits.";
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!isValidEmail(email)) {
       return "Please enter a valid email address.";
     }
 

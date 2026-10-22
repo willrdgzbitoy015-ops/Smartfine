@@ -13,11 +13,15 @@ const db = require("../database/database");
 require("../database/auth-schema");
 const otp = require("../security/otp");
 const { logActivity } = require("../database/activity-log");
+const { rateLimit } = require("../security/rate-limit");
 const { buildLoginSuccess, validatePasswordPolicy } = require("./auth");
 
 const router = express.Router();
 
 const PURPOSE = "FIRST_LOGIN";
+
+// Trying and asking for codes, per address.
+const codeLimit = rateLimit({ max: 60, windowMs: 10 * 60 * 1000, name: "account verification" });
 
 function fullName(user) {
   return (
@@ -52,7 +56,7 @@ function waitingAccount(userId) {
   return user;
 }
 
-router.post("/verify", (req, res) => {
+router.post("/verify", codeLimit, (req, res) => {
   try {
     const challenge = otp.checkCode({
       challengeId: req.body?.challengeId,
@@ -74,7 +78,7 @@ router.post("/verify", (req, res) => {
   }
 });
 
-router.post("/resend", async (req, res) => {
+router.post("/resend", codeLimit, async (req, res) => {
   try {
     const challenge = db
       .prepare("SELECT user_id FROM otp_challenges WHERE id = ? AND purpose = ?")
@@ -102,7 +106,7 @@ router.post("/resend", async (req, res) => {
   }
 });
 
-router.post("/complete", async (req, res) => {
+router.post("/complete", codeLimit, async (req, res) => {
   try {
     const { challengeId, stepToken, newPassword, confirmPassword } = req.body || {};
 

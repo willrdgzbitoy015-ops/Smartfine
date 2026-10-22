@@ -41,6 +41,7 @@ type Summary = {
 
 type ResetResult = {
   backupFolder: string;
+  databaseBackupId: string;
   removed: {
     students: number;
     officers: number;
@@ -166,7 +167,7 @@ export function SystemResetModal({
       setResetting(false);
       setPassword("");
 
-      if (!ok || !data.backupFolder || !data.removed) {
+      if (!ok || !data.backupFolder || !data.removed || !data.databaseBackupId) {
         haptics.error();
         setError(data.message || "The reset failed. Nothing was deleted.");
         // Something may have changed (a checkout closed, a refund finished).
@@ -231,7 +232,8 @@ export function SystemResetModal({
         <SuccessPanel
           title="SmartFine Was Reset"
           lines={[
-            `Backup saved on the server as ${result.backupFolder}.`,
+            "An encrypted backup of everything was saved first. An administrator can restore it in Settings › Backups.",
+            `Profile pictures were moved to the folder ${result.backupFolder} on the server.`,
             `Deleted ${plural(result.removed.students, "student")}, ${plural(result.removed.officers, "officer")}, ${plural(result.removed.otherAdmins, "other administrator")}, ${plural(result.removed.fines, "fine")} and ${plural(result.removed.payments, "payment")}.`,
             result.keptFineTypes
               ? "Fine types were kept."
@@ -258,7 +260,7 @@ export function SystemResetModal({
           <Banner
             tone="warning"
             title="This deletes everything in SmartFine"
-            message="Use this to hand SmartFine to another school or to start a new school year. A full backup is saved on the server first, but the app has no undo."
+            message="Use this to hand SmartFine to another school or to start a new school year. An encrypted backup of everything is saved first; an administrator can restore it later in Settings › Backups."
           />
 
           {blocked ? (

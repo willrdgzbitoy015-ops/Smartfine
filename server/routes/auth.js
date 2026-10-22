@@ -1,4 +1,5 @@
 const express = require("express");
+const { isValidEmail } = require("../security/validation");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const path = require("path");
@@ -13,6 +14,9 @@ const captcha = require("../security/captcha");
 const { signingKey } = require("../security/secrets");
 const { rateLimit } = require("../security/rate-limit");
 const { sendMail } = require("../security/mailer");
+const { logActivity, maskIdentifier } = require("../database/activity-log");
+const { logDenied } = require("../security/access-log");
+const passwordTries = require("../security/password-tries");
 
 const router = express.Router();
 
@@ -63,7 +67,15 @@ const LOCKOUT_DURATIONS_SECONDS = [60, 300, 900];
 const CAPTCHA_AFTER_LOCKOUTS = 1;
 
 // Picture CAPTCHAs and lockout checks are limited per IP address.
-const captchaLimit = rateLimit({ max: 40, windowMs: 60 * 1000 });
+const captchaLimit = rateLimit({ max: 40, windowMs: 60 * 1000, name: "the sign-in checks" });
+
+// Sign-in is also limited per address (many students may share one school
+// connection, so this is generous; each account has its own lockout).
+const loginLimit = rateLimit({ max: 120, windowMs: 60 * 1000, name: "sign-in" });
+
+// Password reset codes: asking for codes and trying them.
+const resetLimit = rateLimit({ max: 25, windowMs: 10 * 60 * 1000, name: "password reset codes" });
+const resetCheckLimit = rateLimit({ max: 60, windowMs: 10 * 60 * 1000, name: "password reset checks" });
 
 function getLockoutSeconds(lockoutCount) {
   const index = Math.min(
@@ -80,6 +92,16 @@ function getLockoutSeconds(lockoutCount) {
 
 function validatePasswordPolicy(password) {
   const value = String(password || "");
+
+  // Only the first 72 bytes of a password are used by the hashing, so longer
+  // ones are refused instead of being silently cut.
+  if (Buffer.byteLength(value, "utf8") > 72) {
+    return {
+      valid: false,
+      code: "PASSWORD_TOO_LONG",
+      message: "Password must not exceed 72 characters.",
+    };
+  }
 
   if (value.length < 8) {
     return {
@@ -352,6 +374,8 @@ function authenticateToken(req, res, next) {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+      logDenied(req, { reason: "no sign-in token was sent" });
+
       return res.status(401).json({
         success: false,
         code: "AUTH_REQUIRED",
@@ -366,13 +390,28 @@ function authenticateToken(req, res, next) {
 
     next();
   } catch (error) {
+    // Who the token belonged to, when it is a real one (never the token).
+    const header = req.headers.authorization || "";
+    const known = sessions.peek(header.startsWith("Bearer ") ? header.substring(7) : "");
+
     if (error instanceof sessions.SessionError) {
+      logDenied(req, {
+        reason: {
+          SESSION_IDLE: "the session had ended after inactivity",
+          SESSION_ENDED: "the session was already signed out",
+          SESSION_EXPIRED: "the session had expired",
+        }[error.code] || "the sign-in token is not valid",
+        userId: known ? Number(known.user_id) : null,
+      });
+
       return res.status(error.status).json({
         success: false,
         code: error.code,
         message: error.message,
       });
     }
+
+    logDenied(req, { reason: "the sign-in token is not valid" });
 
     return res.status(401).json({
       success: false,
@@ -390,6 +429,8 @@ function requireAdmin(req, res, next) {
   const role = String(req.authUser?.role || "").toUpperCase();
 
   if (role !== "ADMIN") {
+    logDenied(req, { reason: "only an administrator may use it", userId: Number(req.authUser?.userId) || null });
+
     return res.status(403).json({
       success: false,
       code: "ADMIN_REQUIRED",
@@ -650,6 +691,8 @@ function buildLoginSuccess(user, req) {
     ...sessions.clientDetails(req),
   });
 
+  logActivity({ actorId: user.id, action: "LOGIN_SUCCESS", description: "Signed in." });
+
   return {
     success: true,
     message: "Login successful.",
@@ -750,6 +793,33 @@ router.post("/logout", (req, res) => {
   return res.json({ success: true, message: "You have been signed out." });
 });
 
+// The app turned someone away from a page (not signed in, or the wrong
+// role). Only the page path is kept. Limited per address, and written to the
+// Log Trail at most once a minute per page.
+router.post("/access-denied", captchaLimit, (req, res) => {
+  const header = req.headers.authorization || "";
+  const known = sessions.peek(header.startsWith("Bearer ") ? header.substring(7) : "");
+  const page = String(req.body?.page || "");
+
+  if (/^\/[A-Za-z0-9/_\-[\]()]{0,80}$/.test(page)) {
+    const owner = known
+      ? db.prepare("SELECT role FROM users WHERE id = ?").get(known.user_id)
+      : null;
+
+    logActivity({
+      actorId: known ? Number(known.user_id) : null,
+      action: "ACCESS_DENIED",
+      result: "DENIED",
+      description: owner
+        ? `Blocked page ${page}: a ${String(owner.role).toLowerCase().replace("_", " ")} account may not open it.`
+        : `Blocked page ${page}: not signed in.`,
+      onceEvery: { key: `page|${known ? known.user_id : "anonymous"}|${page}`, seconds: 60 },
+    });
+  }
+
+  return res.json({ success: true });
+});
+
 // "Someone is using the app": keeps the session from going idle. Background
 // refreshes do not call this, so an unattended screen still times out.
 router.post("/activity", authenticateToken, (req, res) => {
@@ -778,6 +848,7 @@ router.get("/session", authenticateToken, (req, res) => {
 
 router.post(
   "/login",
+  loginLimit,
 
   async (req, res) => {
     try {
@@ -840,6 +911,14 @@ router.post(
       );
 
       if (!user) {
+        logActivity({
+          action: "LOGIN_FAILED",
+          result: "FAILED",
+          actorName: `Unknown account (${maskIdentifier(normalizedUsername)})`,
+          description: "Failed sign-in: no account matches that username or email.",
+          onceEvery: { key: maskIdentifier(normalizedUsername), seconds: 10 },
+        });
+
         return res.status(401).json({
           success: false,
           code: "INVALID_CREDENTIALS",
@@ -852,6 +931,19 @@ router.post(
       // ====================================
 
       const accountStatus = String(user.account_status || "").toUpperCase();
+
+      if (accountStatus !== "ACTIVE") {
+        logActivity({
+          actorId: user.id,
+          action: "LOGIN_FAILED",
+          result: "DENIED",
+          description:
+            accountStatus === "LOCKED"
+              ? "Sign-in refused: the account is locked by an administrator."
+              : "Sign-in refused: the account is deactivated.",
+          onceEvery: { key: `${user.id}|${accountStatus}`, seconds: 60 },
+        });
+      }
 
       if (accountStatus === "DEACTIVATED") {
         return res.status(403).json({
@@ -897,6 +989,14 @@ router.post(
             1,
             Math.ceil(remainingMilliseconds / 1000),
           );
+
+          logActivity({
+            actorId: user.id,
+            action: "LOGIN_FAILED",
+            result: "DENIED",
+            description: `Sign-in refused: the account is temporarily locked (${remainingSeconds} second(s) left).`,
+            onceEvery: { key: `${user.id}|timed-lock`, seconds: 60 },
+          });
 
           return res.status(423).json({
             success: false,
@@ -949,6 +1049,16 @@ router.post(
         const answered = req.body.captchaId && req.body.captchaAnswer;
 
         if (!answered || !captcha.checkCaptcha(req.body.captchaId, req.body.captchaAnswer)) {
+          if (answered) {
+            logActivity({
+              actorId: user.id,
+              action: "LOGIN_FAILED",
+              result: "FAILED",
+              description: "Sign-in stopped: the CAPTCHA was answered wrongly.",
+              onceEvery: { key: `${user.id}|captcha`, seconds: 10 },
+            });
+          }
+
           return res.status(400).json({
             success: false,
             code: answered ? "CAPTCHA_INVALID" : "CAPTCHA_REQUIRED",
@@ -978,6 +1088,16 @@ router.post(
         const currentAttempts = Number(user.failed_login_attempts) || 0;
 
         const newAttempts = currentAttempts + 1;
+
+        logActivity({
+          actorId: user.id,
+          action: "LOGIN_FAILED",
+          result: "FAILED",
+          description:
+            newAttempts >= MAX_LOGIN_ATTEMPTS
+              ? `Wrong password (failed attempt ${newAttempts} in a row).`
+              : `Wrong password (${MAX_LOGIN_ATTEMPTS - newAttempts} attempt(s) left before the account is locked).`,
+        });
 
         // ==================================
         // LOCK AFTER THIRD FAILED ATTEMPT
@@ -1011,6 +1131,13 @@ router.post(
           console.log(
             `Account ${user.username} locked for ${lockoutSeconds} second(s). Lockout count: ${newLockoutCount}`,
           );
+
+          logActivity({
+            actorId: user.id,
+            action: "LOCKOUT_STARTED",
+            result: "DENIED",
+            description: `Account locked for ${lockoutSeconds >= 60 ? `${lockoutSeconds / 60} minute(s)` : `${lockoutSeconds} second(s)`} after ${MAX_LOGIN_ATTEMPTS} failed sign-ins (lockout number ${newLockoutCount}).`,
+          });
 
           return res.status(423).json({
             success: false,
@@ -1094,7 +1221,7 @@ router.post(
       if (Number(user.needs_first_login) === 1) {
         const verificationEmail = String(user.email || "").trim();
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(verificationEmail)) {
+        if (!isValidEmail(verificationEmail)) {
           return res.status(409).json({
             success: false,
             code: "VERIFICATION_EMAIL_MISSING",
@@ -1146,6 +1273,7 @@ router.post(
 
 router.post(
   "/forgot-password/request",
+  resetLimit,
 
   async (req, res) => {
     try {
@@ -1164,6 +1292,14 @@ router.post(
       const user = findPasswordResetUser(identifier);
 
       if (!user) {
+        logActivity({
+          action: "PASSWORD_RESET_FAILED",
+          result: "FAILED",
+          actorName: `Unknown account (${maskIdentifier(identifier)})`,
+          description: "Password reset asked for an account that does not exist.",
+          onceEvery: { key: maskIdentifier(identifier), seconds: 10 },
+        });
+
         return res.status(404).json({
           success: false,
           code: "ACCOUNT_NOT_FOUND",
@@ -1197,6 +1333,12 @@ router.post(
       const now = Date.now();
 
       await sendPasswordResetCode(user, verificationCode);
+
+      logActivity({
+        actorId: user.id,
+        action: "OTP_SENT",
+        description: `Verification code sent to ${maskEmail(user.email)} (password reset).`,
+      });
 
       passwordResetChallenges.set(challengeId, {
         userId: Number(user.id),
@@ -1256,6 +1398,7 @@ router.post(
 
 router.post(
   "/forgot-password/resend",
+  resetLimit,
 
   async (req, res) => {
     try {
@@ -1323,6 +1466,12 @@ router.post(
 
       await sendPasswordResetCode(user, verificationCode);
 
+      logActivity({
+        actorId: user.id,
+        action: "OTP_RESENT",
+        description: `A new verification code was sent to ${maskEmail(user.email)} (password reset).`,
+      });
+
       challenge.codeHash = hashPasswordResetValue(
         verificationCode,
         challengeId,
@@ -1371,6 +1520,7 @@ router.post(
 
 router.post(
   "/forgot-password/verify",
+  resetCheckLimit,
 
   (req, res) => {
     try {
@@ -1400,6 +1550,13 @@ router.post(
       }
 
       if (Date.now() > challenge.codeExpiresAt) {
+        logActivity({
+          actorId: challenge.userId,
+          action: "OTP_FAILED",
+          result: "FAILED",
+          description: "The verification code had expired (password reset).",
+        });
+
         passwordResetChallenges.delete(challengeId);
 
         return res.status(400).json({
@@ -1419,6 +1576,16 @@ router.post(
           0,
           MAX_PASSWORD_RESET_ATTEMPTS - challenge.attempts,
         );
+
+        logActivity({
+          actorId: challenge.userId,
+          action: attemptsRemaining <= 0 ? "OTP_LOCKED" : "OTP_FAILED",
+          result: attemptsRemaining <= 0 ? "DENIED" : "FAILED",
+          description:
+            attemptsRemaining <= 0
+              ? "Too many wrong verification codes (password reset); the request was cancelled."
+              : `Wrong verification code (password reset); ${attemptsRemaining} attempt(s) left.`,
+        });
 
         if (attemptsRemaining <= 0) {
           passwordResetChallenges.delete(challengeId);
@@ -1442,6 +1609,12 @@ router.post(
       }
 
       const resetToken = crypto.randomBytes(32).toString("hex");
+
+      logActivity({
+        actorId: challenge.userId,
+        action: "OTP_VERIFIED",
+        description: "Verification code accepted (password reset).",
+      });
 
       challenge.verified = true;
 
@@ -1479,6 +1652,7 @@ router.post(
 
 router.post(
   "/forgot-password/reset",
+  resetCheckLimit,
 
   async (req, res) => {
     try {
@@ -1618,6 +1792,12 @@ router.post(
 
       // Whoever was signed in with the old password is signed out.
       sessions.endAllForUser(user.id, "PASSWORD_RESET");
+
+      logActivity({
+        actorId: user.id,
+        action: "PASSWORD_RESET",
+        description: "Password reset with an emailed code. Every signed-in device was signed out.",
+      });
 
       passwordResetChallenges.delete(challengeId);
 
@@ -1920,12 +2100,25 @@ router.put(
         });
       }
 
+      if (passwordTries.blocked(user.id)) {
+        return res.status(429).json(passwordTries.TOO_MANY);
+      }
+
       const matches = await bcrypt.compare(currentPassword, user.password_hash);
 
       if (!matches) {
+        passwordTries.fail(user.id);
+
+        logActivity({
+          actorId: user.id,
+          action: "PASSWORD_CHANGE_FAILED",
+          result: "FAILED",
+          description: "Password change refused: the current password was wrong.",
+        });
+
         return res.status(401).json({
-          success: false,
-          code: "CURRENT_PASSWORD_INCORRECT",
+        success: false,
+        code: "CURRENT_PASSWORD_INCORRECT",
           message: "Current password is incorrect.",
         });
       }
@@ -1959,6 +2152,14 @@ router.put(
 
       // Every other session of this account is signed out; this one stays.
       sessions.endAllForUser(user.id, "PASSWORD_CHANGED", req.authUser.sid);
+
+      passwordTries.clear(user.id);
+
+      logActivity({
+        actorId: user.id,
+        action: "PASSWORD_CHANGED",
+        description: "Password changed. Other signed-in devices were signed out.",
+      });
 
       return res.json({
         success: true,

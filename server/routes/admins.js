@@ -1,4 +1,5 @@
 const express = require("express");
+const { isValidEmail } = require("../security/validation");
 const bcrypt = require("bcryptjs");
 
 const db = require("../database/database");
@@ -22,7 +23,7 @@ router.use(authenticateToken, requireAdmin);
 
 const USERNAME_PATTERN = /^[A-Za-z0-9]{3,30}$/;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_PATTERN = { test: isValidEmail };
 
 const CONTACT_PATTERN = /^\+?[0-9]{7,15}$/;
 

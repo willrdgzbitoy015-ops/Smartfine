@@ -10,6 +10,7 @@
 const crypto = require("node:crypto");
 
 const db = require("../database/database");
+const { logActivity } = require("../database/activity-log");
 const { MailError, codeEmail, sendMail } = require("./mailer");
 const { signingKey } = require("./secrets");
 
@@ -30,6 +31,14 @@ const PURPOSES = {
     intro: "Use this code to confirm this email address for your SmartFine account:",
   },
 };
+
+const LABEL = { FIRST_LOGIN: "first sign-in", EMAIL_CHANGE: "email change" };
+
+// The Log Trail records that a code was sent, accepted or refused, never the
+// code itself.
+function note(userId, action, result, description) {
+  logActivity({ actorId: userId, action, result, description });
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS otp_challenges (
@@ -195,8 +204,11 @@ async function issue({ userId, purpose, targetEmail, name, reuseRecent = false }
     });
   } catch (error) {
     db.prepare("DELETE FROM otp_challenges WHERE id = ?").run(id);
+    note(userId, "OTP_SEND_FAILED", "FAILED", `The verification email could not be sent (${LABEL[purpose]}).`);
     throw mailError(error);
   }
+
+  note(userId, "OTP_SENT", "SUCCESS", `Verification code sent to ${maskEmail(targetEmail)} (${LABEL[purpose]}).`);
 
   return info(db.prepare("SELECT * FROM otp_challenges WHERE id = ?").get(id), now);
 }
@@ -211,6 +223,8 @@ async function resend({ challengeId, purpose, userId = null, name }) {
   }
 
   if (now - row.created_at > MAX_LIFETIME_MINUTES * 60 * 1000 || row.send_count >= MAX_SENDS) {
+    note(row.user_id, "OTP_BLOCKED", "DENIED", `Too many verification codes were requested (${LABEL[purpose]}).`);
+
     throw new OtpError(
       429,
       "TOO_MANY_CODES",
@@ -250,12 +264,43 @@ async function resend({ challengeId, purpose, userId = null, name }) {
     row.id,
   );
 
+  note(row.user_id, "OTP_RESENT", "SUCCESS", `A new verification code was sent to ${maskEmail(row.target_email)} (${LABEL[purpose]}).`);
+
   return info(db.prepare("SELECT * FROM otp_challenges WHERE id = ?").get(row.id), now);
 }
 
 // Checks a code. Returns the request when it is right; the caller then
 // finishes with markVerified() or markUsed().
-function checkCode({ challengeId, code, purpose, userId = null }) {
+function checkCode(args) {
+  const label = LABEL[args.purpose] || "verification";
+
+  try {
+    const row = checkCodeInner(args);
+
+    note(row.user_id, "OTP_VERIFIED", "SUCCESS", `Verification code accepted (${label}).`);
+
+    return row;
+  } catch (error) {
+    if (error instanceof OtpError) {
+      const owner = db.prepare("SELECT user_id FROM otp_challenges WHERE id = ?").get(String(args.challengeId || ""));
+      const who = owner ? Number(owner.user_id) : null;
+
+      if (error.code === "CODE_INCORRECT") {
+        note(who, "OTP_FAILED", "FAILED", `Wrong verification code (${label}); ${error.extra.attemptsRemaining} attempt(s) left.`);
+      } else if (error.code === "TOO_MANY_ATTEMPTS") {
+        note(who, "OTP_LOCKED", "DENIED", `Too many wrong verification codes (${label}); the request was cancelled.`);
+      } else if (error.code === "CODE_EXPIRED") {
+        note(who, "OTP_FAILED", "FAILED", `The verification code had expired (${label}).`);
+      } else if (error.code === "CODE_ALREADY_USED") {
+        note(who, "OTP_FAILED", "FAILED", `A verification code that was already used was tried again (${label}).`);
+      }
+    }
+
+    throw error;
+  }
+}
+
+function checkCodeInner({ challengeId, code, purpose, userId = null }) {
   const row = loadOpen(challengeId, purpose, userId);
   const now = Date.now();
 

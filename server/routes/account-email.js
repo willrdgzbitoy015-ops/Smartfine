@@ -5,6 +5,7 @@
 //   POST /resend   { challengeId }
 //   POST /verify   { challengeId, code }           -> email saved
 const express = require("express");
+const { isValidEmail } = require("../security/validation");
 const bcrypt = require("bcryptjs");
 
 const db = require("../database/database");
@@ -15,7 +16,7 @@ const { requireActive } = require("../middleware/access");
 const router = express.Router();
 
 const PURPOSE = "EMAIL_CHANGE";
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_PATTERN = { test: isValidEmail };
 
 // Wrong current passwords: 5 in 15 minutes, then a pause. Kept in memory.
 const PASSWORD_TRIES = 5;
@@ -86,6 +87,14 @@ router.post("/request", async (req, res) => {
     }
 
     if (recentFailures(user.id).length >= PASSWORD_TRIES) {
+      logActivity({
+        actorId: user.id,
+        action: "EMAIL_CHANGE_FAILED",
+        result: "DENIED",
+        description: "Email change refused: too many wrong passwords in a row.",
+        onceEvery: { key: String(user.id), seconds: 60 },
+      });
+
       return res.status(429).json({
         success: false,
         code: "TOO_MANY_PASSWORD_TRIES",
@@ -96,6 +105,13 @@ router.post("/request", async (req, res) => {
     if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
       passwordFailures.get(user.id).push(Date.now());
 
+      logActivity({
+        actorId: user.id,
+        action: "EMAIL_CHANGE_FAILED",
+        result: "FAILED",
+        description: "Email change refused: the current password was wrong.",
+      });
+
       return res.status(401).json({
         success: false,
         code: "INVALID_PASSWORD",
@@ -104,6 +120,13 @@ router.post("/request", async (req, res) => {
     }
 
     if (emailTaken(newEmail, user.id)) {
+      logActivity({
+        actorId: user.id,
+        action: "EMAIL_CHANGE_FAILED",
+        result: "FAILED",
+        description: "Email change refused: that address already belongs to another account.",
+      });
+
       return res.status(409).json({
         success: false,
         code: "EMAIL_EXISTS",

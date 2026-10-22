@@ -1,4 +1,5 @@
 const express = require("express");
+const { isValidEmail } = require("../security/validation");
 const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const ExcelJS = require("exceljs");
@@ -8,12 +9,16 @@ const path = require("path");
 
 const router = express.Router();
 
+// A problem with an uploaded student file that we explain ourselves (as
+// opposed to a spreadsheet library's own error text, which is not shown).
+class ImportFileError extends Error {}
+
 const db = require("../database/database");
 const {
   StudentRecordError,
   ensureStudentRecord,
 } = require("../database/student-records");
-const { authenticateToken } = require("./auth");
+const { authenticateToken, validatePasswordPolicy } = require("./auth");
 const { requireActive } = require("../middleware/access");
 const {
   changeText,
@@ -145,7 +150,7 @@ function parseImportClassInformation(value) {
   const match = className.match(/^Grade\s+(7|8|9|10|11|12)\s*-\s*(.+)$/i);
 
   if (!match) {
-    throw new Error(
+    throw new ImportFileError(
       'Invalid class format. Expected something like "Grade 8 - Ponkan" or "Grade 12 - TVL ICT - Pagatpat".',
     );
   }
@@ -155,14 +160,14 @@ function parseImportClassInformation(value) {
   const classPart = String(match[2] || "").trim();
 
   if (!classPart) {
-    throw new Error("The student file does not contain a Section.");
+    throw new ImportFileError("The student file does not contain a Section.");
   }
 
   if (gradeLevel === "Grade 11" || gradeLevel === "Grade 12") {
     const strandMatch = classPart.match(/^(STEM|ABM|TVL)\b\s*(.*)$/i);
 
     if (!strandMatch) {
-      throw new Error(
+      throw new ImportFileError(
         `${gradeLevel} must include a valid Strand: STEM, ABM, or TVL.`,
       );
     }
@@ -174,7 +179,7 @@ function parseImportClassInformation(value) {
       .trim();
 
     if (!section) {
-      throw new Error(`${gradeLevel} must include a Section after the Strand.`);
+      throw new ImportFileError(`${gradeLevel} must include a Section after the Strand.`);
     }
 
     return {
@@ -325,7 +330,7 @@ function findImportColumns(headers) {
   }
 
   if (missing.length > 0) {
-    throw new Error(
+    throw new ImportFileError(
       `Missing required student file column(s): ${missing.join(", ")}.`,
     );
   }
@@ -374,7 +379,7 @@ function parseCsvStudentImport(buffer) {
   const rows = parseCsvRows(rawText);
 
   if (rows.length < 3) {
-    throw new Error(
+    throw new ImportFileError(
       "Invalid CSV format. Please use the official SmartFine student template.",
     );
   }
@@ -409,7 +414,7 @@ function parseCsvStudentImport(buffer) {
   }
 
   if (!className) {
-    throw new Error(
+    throw new ImportFileError(
       "The CSV does not contain valid Grade and Section information.",
     );
   }
@@ -432,7 +437,7 @@ function parseCsvStudentImport(buffer) {
   }
 
   if (headerRowIndex < 0 || !columns) {
-    throw new Error(
+    throw new ImportFileError(
       "Could not find the SmartFine student column headings in the CSV.",
     );
   }
@@ -493,7 +498,7 @@ function parseCsvStudentImport(buffer) {
   }
 
   if (students.length === 0) {
-    throw new Error("The CSV does not contain any real student records.");
+    throw new ImportFileError("The CSV does not contain any real student records.");
   }
 
   return {
@@ -511,7 +516,7 @@ async function parseExcelStudentImport(buffer) {
   const worksheet = workbook.worksheets[0];
 
   if (!worksheet) {
-    throw new Error("The Excel file does not contain a worksheet.");
+    throw new ImportFileError("The Excel file does not contain a worksheet.");
   }
 
   let className = "";
@@ -551,7 +556,7 @@ async function parseExcelStudentImport(buffer) {
   }
 
   if (!className) {
-    throw new Error(
+    throw new ImportFileError(
       "The Excel file does not contain valid Grade and Section information.",
     );
   }
@@ -590,7 +595,7 @@ async function parseExcelStudentImport(buffer) {
   }
 
   if (headerRowNumber < 0 || !columns) {
-    throw new Error(
+    throw new ImportFileError(
       "Could not find the SmartFine student column headings in the Excel file.",
     );
   }
@@ -650,7 +655,7 @@ async function parseExcelStudentImport(buffer) {
   }
 
   if (students.length === 0) {
-    throw new Error(
+    throw new ImportFileError(
       "The Excel file does not contain any real student records.",
     );
   }
@@ -1096,58 +1101,7 @@ function isScientificNotation(value) {
     String(value || "").trim(),
   );
 }
-
-// ==========================================
-// PASSWORD POLICY
-// ==========================================
-
-function validatePasswordPolicy(password) {
-  const value = String(password || "");
-
-  if (value.length < 8) {
-    return {
-      valid: false,
-      code: "PASSWORD_TOO_SHORT",
-      message: "Password must contain at least 8 characters.",
-    };
-  }
-
-  if (!/[a-z]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_LOWERCASE_REQUIRED",
-      message: "Password must contain at least one lowercase letter.",
-    };
-  }
-
-  if (!/[A-Z]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_UPPERCASE_REQUIRED",
-      message: "Password must contain at least one uppercase letter.",
-    };
-  }
-
-  if (!/[0-9]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_NUMBER_REQUIRED",
-      message: "Password must contain at least one number.",
-    };
-  }
-
-  if (!/[^A-Za-z0-9\s]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
-      message: "Password must contain at least one special character.",
-    };
-  }
-
-  return {
-    valid: true,
-  };
-}
+// Password rules: see validatePasswordPolicy in routes/auth.js.
 
 // ==========================================
 // GET NEXT STUDENT ID
@@ -1167,7 +1121,6 @@ router.get("/next-id", requireActive("ADMIN"), (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to generate Student ID.",
-      error: error.message,
     });
   }
 });
@@ -1303,7 +1256,6 @@ router.get("/", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to load students.",
-      error: error.message,
     });
   }
 });
@@ -1844,8 +1796,6 @@ router.get(
         code: "STUDENT_IMPORT_TEMPLATE_ERROR",
 
         message: "Failed to create the SmartFine student import template.",
-
-        error: error.message,
       });
     }
   },
@@ -1955,8 +1905,9 @@ router.post(
             code: "STUDENT_IMPORT_FILE_PARSE_ERROR",
 
             message:
-              error.message ||
-              "Failed to read the SmartFine student import file.",
+              error instanceof ImportFileError
+                ? error.message
+                : "Failed to read the SmartFine student import file. Please use the SmartFine template (.xlsx or .csv).",
           });
         }
       },
@@ -2021,8 +1972,6 @@ router.post(
         code: "MIGRATE_STUDENT_USERNAMES_ERROR",
 
         message: "Failed to update legacy student usernames.",
-
-        error: error.message,
       });
     }
   },
@@ -2535,6 +2484,12 @@ router.get(
 
       const fileName = `SmartFine_${safeGrade}_${safeSection}_Student_Accounts.xlsx`;
 
+      logActivity({
+        actorId: Number(req.authUser.userId),
+        action: "EXPORT_ACCOUNTS",
+        description: `Downloaded the student account list for ${gradeLevel} - ${section}.`,
+      });
+
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -2562,8 +2517,6 @@ router.get(
         code: "EXPORT_STUDENT_ACCOUNTS_ERROR",
 
         message: "Failed to export student account sheet.",
-
-        error: error.message,
       });
     }
   },
@@ -2677,7 +2630,7 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
       );
     }
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailPattern = { test: isValidEmail };
 
     if (!emailPattern.test(normalizedEmail)) {
       return res.status(400).json({
@@ -2966,8 +2919,6 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
       code: "CREATE_STUDENT_ERROR",
 
       message: "Failed to create student account.",
-
-      error: error.message,
     });
   }
 });
@@ -3089,7 +3040,7 @@ router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
         );
       }
 
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (email && !isValidEmail(email)) {
         studentErrors.push("Invalid email address.");
       }
 
@@ -3433,8 +3384,6 @@ router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
       code: "BULK_STUDENT_IMPORT_ERROR",
 
       message: "Failed to import student accounts.",
-
-      error: error.message,
     });
   }
 });
@@ -3578,8 +3527,6 @@ router.post("/:id/profile-picture", requireActive("ADMIN"), (req, res) => {
         code: "SAVE_PROFILE_PICTURE_ERROR",
 
         message: "Failed to save student profile picture.",
-
-        error: error.message,
       });
     }
   });
@@ -3673,8 +3620,6 @@ router.delete("/:id/profile-picture", requireActive("ADMIN"), (req, res) => {
       code: "REMOVE_PROFILE_PICTURE_ERROR",
 
       message: "Failed to remove student profile picture.",
-
-      error: error.message,
     });
   }
 });
@@ -3979,8 +3924,6 @@ router.get("/:id", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
       success: false,
 
       message: "Failed to load student profile.",
-
-      error: error.message,
     });
   }
 });
@@ -4128,7 +4071,7 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
       });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    if (!isValidEmail(normalizedEmail)) {
       return res.status(400).json({
         success: false,
 
@@ -4343,6 +4286,16 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
             .join("; ")}.`,
           details: { changes, passwordReset: newPasswordHash !== null },
         });
+
+        if (newPasswordHash !== null) {
+          logActivity({
+            actorId: req.account.id,
+            action: "PASSWORD_SET_BY_ADMIN",
+            entityType: "USER",
+            entityId: studentId,
+            description: `Set a new password for student ${afterAccount.name}. They were signed out everywhere.`,
+          });
+        }
       }
 
       db.exec("COMMIT;");
@@ -4428,8 +4381,6 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
       code: "UPDATE_STUDENT_ERROR",
 
       message: "Failed to update student information.",
-
-      error: error.message,
     });
   }
 });
@@ -4743,8 +4694,6 @@ router.delete("/:id", requireActive("ADMIN"), (req, res) => {
       code: "DELETE_STUDENT_ERROR",
 
       message: "Failed to delete student.",
-
-      error: error.message,
     });
   }
 });

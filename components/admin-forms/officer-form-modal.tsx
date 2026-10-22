@@ -1,3 +1,4 @@
+import { isValidEmail } from "@/utils/validation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
@@ -501,7 +502,7 @@ export function OfficerFormModal({
       return "Username must contain at least 3 characters.";
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!isValidEmail(email)) {
       return "Please enter a valid email address.";
     }
 

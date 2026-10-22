@@ -1,9 +1,14 @@
+import { MAX_PASSWORD_BYTES, PASSWORD_TOO_LONG_MESSAGE, passwordBytes } from "@/utils/validation";
 import * as ImagePicker from "expo-image-picker";
 
 import { API_BASE } from "@/constants/api";
 
 // Same password policy as the server (auth.js validatePasswordPolicy).
 export function validatePassword(password: string): string | null {
+  if (passwordBytes(password) > MAX_PASSWORD_BYTES) {
+    return PASSWORD_TOO_LONG_MESSAGE;
+  }
+
   if (password.length < 8) {
     return "Password must contain at least 8 characters.";
   }

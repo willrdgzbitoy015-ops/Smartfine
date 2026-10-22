@@ -7,7 +7,7 @@ const { Server } = require("socket.io");
 
 const db = require("./database/database");
 
-const ALL_TOPICS = ["fines", "payments", "refunds", "people", "settings"];
+const ALL_TOPICS = ["fines", "payments", "refunds", "people", "settings", "activity"];
 
 // What a successful change under each API path touches. The first matching
 // prefix wins, so the narrow ones come first.
@@ -21,10 +21,18 @@ const TOPICS_BY_PREFIX = [
   ["/api/officers", ["people", "fines"]],
   ["/api/admins", ["people"]],
   // Locking an account or changing a role or email changes people's records.
-  ["/api/access", ["people"]],
-  ["/api/account/email", ["people"]],
+  ["/api/access", ["people", "activity"]],
+  ["/api/account/email", ["people", "activity"]],
+  // Signing in, out and the like only show in the Log Trail. The "I am active"
+  // signal and the lockout check are sent all the time and say nothing new.
+  ["/api/auth/activity", []],
+  ["/api/auth/login-status", []],
+  ["/api/auth/captcha", []],
+  ["/api/auth", ["activity"]],
   ["/api/settings", ["settings"]],
   ["/api/system-reset", ALL_TOPICS],
+  // A restore replaces everything.
+  ["/api/backups", ALL_TOPICS],
 ];
 
 // Changes made in quick succession (an import, a payment that touches several
@@ -77,7 +85,13 @@ function announceChanges(req, res, next) {
   }
 
   res.on("finish", () => {
-    if (res.statusCode < 400) {
+    // Failed sign-ins are Log Trail entries too, so /api/auth announces
+    // refusals as well (but not server errors).
+    const announce =
+      res.statusCode < 400 ||
+      (res.statusCode < 500 && /^\/api\/auth(\/|\?|$)/i.test(req.originalUrl));
+
+    if (announce) {
       publish(topicsForPath(req.originalUrl));
     }
   });

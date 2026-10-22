@@ -1,3 +1,4 @@
+import { isValidEmail } from "@/utils/validation";
 import { useEffect, useState } from "react";
 import { Animated, Text, View } from "react-native";
 
@@ -96,7 +97,7 @@ export function AddAdminModal({
       return "Username must be 3 to 30 letters or numbers, with no spaces.";
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!isValidEmail(email)) {
       return "Please enter a valid email address.";
     }
 

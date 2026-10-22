@@ -31,6 +31,20 @@ const PROTECTED_AREAS = Object.keys(HOME_BY_AREA);
 // The sign-in whose session was last checked with the server.
 let sessionCheckedFor: string | null = null;
 
+// Tells the server a screen was refused, for the Log Trail (the server keeps
+// only the screen path and who it was, if signed in).
+function reportRefusal(screen: string, token: string | null) {
+  void fetch(`${API_BASE}/api/auth/access-denied`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ page: `/${screen}` }),
+  }).catch(() => undefined);
+}
+
 export function useRoleGuard(enabled: boolean) {
   const router = useRouter();
   const segments = useSegments();
@@ -68,8 +82,10 @@ export function useRoleGuard(enabled: boolean) {
 
       try {
         if (!token || !own) {
+          reportRefusal(screen, token);
           router.replace("/login");
         } else if (own !== area) {
+          reportRefusal(screen, token);
           router.replace(HOME_BY_AREA[own] as never);
         } else if (token !== sessionCheckedFor) {
           // A typed address or an old tab may hold a sign-in whose session has

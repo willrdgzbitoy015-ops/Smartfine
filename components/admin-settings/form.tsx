@@ -1,3 +1,4 @@
+import { MAX_PASSWORD_BYTES, passwordBytes } from "@/utils/validation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ReactNode, RefObject, useState } from "react";
 import {
@@ -88,7 +89,10 @@ export const PASSWORD_RULES = [
 ];
 
 export function meetsPasswordPolicy(value: string) {
-  return PASSWORD_RULES.every((rule) => rule.test(value));
+  return (
+    PASSWORD_RULES.every((rule) => rule.test(value)) &&
+    passwordBytes(value) <= MAX_PASSWORD_BYTES
+  );
 }
 
 export function PasswordChecklist({
@@ -107,6 +111,10 @@ export function PasswordChecklist({
       label: "Both passwords match",
       met: confirmation.length > 0 && password === confirmation,
     },
+    // Shown only when the password is too long to be used.
+    ...(passwordBytes(password) > MAX_PASSWORD_BYTES
+      ? [{ label: "No more than 72 characters", met: false }]
+      : []),
   ];
 
   return (

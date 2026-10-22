@@ -1,116 +1,15 @@
 const express = require('express');
 
 const db = require('../database/database');
-const sessions = require('../security/sessions');
+const { changeText, describeChanges, logActivity } = require('../database/activity-log');
 
 const router = express.Router();
 
 console.log('settings.js loaded');
 
-// ==========================================
-// AUTHENTICATE JWT
-// ==========================================
-
-function authenticateToken(
-  req,
-  res,
-  next
-) {
-  try {
-    const authorizationHeader =
-      req.headers.authorization;
-
-    if (
-      !authorizationHeader ||
-      !authorizationHeader.startsWith(
-        'Bearer '
-      )
-    ) {
-      return res.status(401).json({
-        success: false,
-        code: 'AUTH_REQUIRED',
-        message:
-          'Authentication is required.',
-      });
-    }
-
-    const token =
-      authorizationHeader.substring(
-        7
-      );
-
-    // The token must belong to a session that is still alive.
-    req.authUser =
-      sessions.verifyToken(
-        token
-      );
-
-    next();
-  } catch (error) {
-    if (error instanceof sessions.SessionError) {
-      return res.status(error.status).json({
-        success: false,
-        code: error.code,
-        message: error.message,
-      });
-    }
-
-    return res.status(401).json({
-      success: false,
-      code: 'INVALID_TOKEN',
-      message:
-        'Your session is invalid or has expired.',
-    });
-  }
-}
-
-// ==========================================
-// ADMIN ONLY
-// ==========================================
-
-function requireAdmin(
-  req,
-  res,
-  next
-) {
-  const role =
-    String(
-      req.authUser?.role ||
-        ''
-    ).toUpperCase();
-
-  if (
-    role !==
-    'ADMIN'
-  ) {
-    return res.status(403).json({
-      success: false,
-      code: 'ADMIN_REQUIRED',
-      message:
-        'Administrator access is required.',
-    });
-  }
-
-  // A deactivated or deleted administrator's session stops working at once.
-  const user = db
-    .prepare('SELECT role, account_status FROM users WHERE id = ?')
-    .get(req.authUser?.userId);
-
-  if (
-    !user ||
-    user.role !== 'ADMIN' ||
-    user.account_status !== 'ACTIVE'
-  ) {
-    return res.status(403).json({
-      success: false,
-      code: 'ADMIN_INACTIVE',
-      message:
-        'This administrator account is no longer active. Please contact another SmartFine administrator.',
-    });
-  }
-
-  next();
-}
+// The shared sign-in and administrator checks (routes/auth.js): they also
+// write refused requests to the Log Trail.
+const { authenticateToken, requireAdmin } = require('./auth');
 
 // ==========================================
 // FORMAT SETTINGS
@@ -412,6 +311,27 @@ router.put(
 
       const updatedSettings =
         getSettings();
+
+      const settingChanges = describeChanges(
+        {
+          school: existingSettings?.school_name || '',
+          year: existingSettings?.academic_year || '',
+          system: existingSettings?.system_name || '',
+        },
+        { school: schoolName, year: academicYear, system: systemName },
+        { school: 'school name', year: 'academic year', system: 'system name' },
+      );
+
+      if (settingChanges.length) {
+        logActivity({
+          actorId: Number(req.authUser.userId),
+          action: 'SETTINGS_UPDATED',
+          entityType: 'SETTINGS',
+          entityId: 1,
+          description: `Changed the system settings: ${changeText(settingChanges)}.`,
+          details: { changes: settingChanges },
+        });
+      }
 
       return res.json({
         success: true,

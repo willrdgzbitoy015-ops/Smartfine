@@ -5,6 +5,8 @@ const bcrypt = require("bcryptjs");
 const db = require("../database/database");
 const reset = require("../database/system-reset");
 const { authenticateToken, requireAdmin } = require("./auth");
+const { logActivity } = require("../database/activity-log");
+const passwordTries = require("../security/password-tries");
 
 const router = express.Router();
 
@@ -53,12 +55,33 @@ router.post("/", async (req, res) => {
     });
   }
 
+  if (passwordTries.blocked(adminId)) {
+    logActivity({
+      actorId: adminId,
+      action: "SYSTEM_RESET_FAILED",
+      result: "DENIED",
+      description: "System reset refused: too many wrong passwords in a row.",
+      onceEvery: { key: String(adminId), seconds: 60 },
+    });
+
+    return res.status(429).json(passwordTries.TOO_MANY);
+  }
+
   try {
     const user = db
       .prepare("SELECT password_hash FROM users WHERE id = ?")
       .get(adminId);
 
     if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+      passwordTries.fail(adminId);
+
+      logActivity({
+        actorId: adminId,
+        action: "SYSTEM_RESET_FAILED",
+        result: "FAILED",
+        description: "System reset refused: the current password was wrong.",
+      });
+
       return res.status(401).json({
         success: false,
         code: "CURRENT_PASSWORD_INCORRECT",

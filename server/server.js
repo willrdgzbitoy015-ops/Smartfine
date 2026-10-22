@@ -30,16 +30,33 @@ const activityLogRoutes = require("./routes/activity-log");
 const firstLoginRoutes = require("./routes/first-login");
 const accountEmailRoutes = require("./routes/account-email");
 const accountAccessRoutes = require("./routes/account-access");
+const backupRoutes = require("./routes/backups");
 const realtime = require("./realtime");
+const { requestContext } = require("./security/request-context");
+const {
+  errorHandler,
+  notFound,
+  sanitizeInput,
+  securityHeaders,
+} = require("./security/hardening");
+
+// Writes sign-outs to the Log Trail.
+require("./security/security-log");
 
 const app = express();
 const PORT = 3000;
 
-// ngrok (one hop) sits in front of the app; this makes req.ip the real
-// client address for the Log Trail and the request limits.
-app.set("trust proxy", 1);
+// ngrok sits in front of the app and connects from this computer; this makes
+// req.ip the real client address for the Log Trail and the request limits.
+// A forwarded address is only believed when it comes through that local
+// connection, so someone on the network cannot invent their address.
+app.set("trust proxy", "loopback");
+app.disable("x-powered-by");
 
 app.use(cors());
+// Lets the Log Trail record the client address of every request.
+app.use(requestContext);
+app.use(securityHeaders);
 // Announces every successful change to the signed-in apps (live updates).
 app.use("/api", realtime.announceChanges);
 // The raw body is kept so PayMongo webhook signatures can be verified.
@@ -50,6 +67,9 @@ app.use(
     },
   }),
 );
+
+// Cleans text in JSON bodies before any route reads it.
+app.use(sanitizeInput);
 
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/students", studentsRoutes);
@@ -76,6 +96,7 @@ app.use("/api/system-reset", systemResetRoutes);
 app.use("/api/admin/notifications", adminNotificationRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/activity-log", activityLogRoutes);
+app.use("/api/backups", backupRoutes);
 app.use("/api/officer-profile", officerProfilePhotoRoutes);
 app.use("/api/officer-profile", officerProfileRoutes);
 
@@ -93,8 +114,16 @@ app.get("/", (req, res) => {
   });
 });
 
+// Anything no route answered, and any failure a route did not handle.
+app.use(notFound);
+app.use(errorHandler);
+
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`SmartFine server running on port ${PORT}`);
 });
 
 realtime.attach(server);
+
+// Automatic database backups (once a day, and one missed while the server was
+// off is made as soon as it runs again).
+require("./database/backup").startScheduler();

@@ -1,3 +1,4 @@
+import { MAX_PASSWORD_BYTES, PASSWORD_TOO_LONG_MESSAGE, passwordBytes } from "@/utils/validation";
 import { File as ExpoFile } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { fetch as expoFetch } from "expo/fetch";
@@ -142,6 +143,10 @@ function imageUrl(uri: string | null) {
 // ==========================================
 
 function validatePassword(password: string): string | null {
+  if (passwordBytes(password) > MAX_PASSWORD_BYTES) {
+    return PASSWORD_TOO_LONG_MESSAGE;
+  }
+
   if (password.length < 8) {
     return "New password must contain at least 8 characters.";
   }

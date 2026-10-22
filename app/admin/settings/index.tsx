@@ -1,3 +1,4 @@
+import { isValidEmail } from "@/utils/validation";
 import { File as ExpoFile } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
 import { useCallback, useEffect, useState } from "react";
@@ -35,6 +36,7 @@ import {
   pictureUrl,
 } from "@/components/admin-settings/administrators-panel";
 import { ActivityLogPanel } from "@/components/admin-settings/activity-log-panel";
+import { BackupPanel } from "@/components/admin-settings/backup-panel";
 import { ChangeEmailModal } from "@/components/change-email-modal";
 import { ChangePasswordModal } from "@/components/admin-settings/change-password-modal";
 import { FormPopup, PopupButton } from "@/components/admin-settings/form";
@@ -137,6 +139,7 @@ type SettingsTab =
   | "admins"
   | "fineTypes"
   | "activity"
+  | "backups"
   | "system";
 
 const TABS: { key: SettingsTab; label: string; icon: any }[] = [
@@ -162,8 +165,13 @@ const TABS: { key: SettingsTab; label: string; icon: any }[] = [
   },
   {
     key: "activity",
-    label: "Activity Log",
+    label: "Log Trail",
     icon: require("../../../assets/icons/reports.png"),
+  },
+  {
+    key: "backups",
+    label: "Backups",
+    icon: require("../../../assets/icons/download.png"),
   },
   {
     key: "system",
@@ -201,8 +209,8 @@ export default function AdminSettings() {
 
   const compactProfile = width < 560;
 
-  // Tab icons only where all five tabs fit with them.
-  const showTabIcons = width >= 1000;
+  // Tab icons only where all seven tabs fit with them.
+  const showTabIcons = width >= 1500;
 
   // ========================================
   // TABS
@@ -2475,6 +2483,8 @@ export default function AdminSettings() {
 
                   {activeTab === "activity" && <ActivityLogPanel />}
 
+                  {activeTab === "backups" && <BackupPanel />}
+
                   {activeTab === "system" && renderSystemTab()}
                 </Animated.View>
               </View>
@@ -2893,6 +2903,3 @@ function getNextFineCodeFromTypes(fineTypes: FineType[]) {
 // EMAIL VALIDATION
 // ==========================================
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}

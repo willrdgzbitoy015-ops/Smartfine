@@ -1,3 +1,4 @@
+import { MAX_PASSWORD_BYTES, passwordBytes } from "@/utils/validation";
 import { StyleSheet, Text, View } from "react-native";
 
 // ==========================================
@@ -20,7 +21,7 @@ export const PASSWORD_RULES = [
 ];
 
 export function meetsPasswordRules(value: string) {
-  return PASSWORD_RULES.every((rule) => rule.test(value));
+  return PASSWORD_RULES.every((rule) => rule.test(value)) && passwordBytes(value) <= MAX_PASSWORD_BYTES;
 }
 
 type Tone = "light" | "dark";
@@ -48,6 +49,11 @@ export function PasswordRules({
     label: rule.label,
     state: rule.test(password) ? "met" : "unmet",
   }));
+
+  // Shown only when the password is too long to be used.
+  if (passwordBytes(password) > MAX_PASSWORD_BYTES) {
+    rows.push({ key: "max", label: "No more than 72 characters", state: "bad" });
+  }
 
   if (confirmPassword !== undefined) {
     rows.push({

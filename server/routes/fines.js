@@ -427,7 +427,6 @@ router.get("/options/students", requireActive("ADMIN", "FINES_OFFICER"), (req, r
     return res.status(500).json({
       success: false,
       message: "Failed to load student options.",
-      error: error.message,
     });
   }
 });
@@ -458,7 +457,6 @@ router.get("/options/violations", requireActive("ADMIN", "FINES_OFFICER"), (req,
     return res.status(500).json({
       success: false,
       message: "Failed to load violation types.",
-      error: error.message,
     });
   }
 });
@@ -493,7 +491,6 @@ router.get(
       return res.status(500).json({
         success: false,
         message: "Failed to load fine types.",
-        error: error.message,
       });
     }
   },
@@ -576,7 +573,6 @@ router.post(
         success: false,
         code: "CREATE_FINE_TYPE_ERROR",
         message: "Failed to add fine type.",
-        error: error.message,
       });
     }
   },
@@ -689,7 +685,6 @@ router.put(
         success: false,
         code: "UPDATE_FINE_TYPE_ERROR",
         message: "Failed to update fine type.",
-        error: error.message,
       });
     }
   },
@@ -755,7 +750,6 @@ router.patch(
         success: false,
         code: "UPDATE_FINE_TYPE_STATUS_ERROR",
         message: "Failed to update fine type status.",
-        error: error.message,
       });
     }
   },
@@ -793,7 +787,6 @@ router.get("/options/officers", requireActive("ADMIN"), (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to load officer options.",
-      error: error.message,
     });
   }
 });
@@ -906,7 +899,6 @@ router.get("/", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to load fines.",
-      error: error.message,
     });
   }
 });
@@ -1173,7 +1165,6 @@ router.post("/", requireActive("ADMIN", "FINES_OFFICER"), (req, res) => {
       success: false,
       code: "CREATE_FINE_ERROR",
       message: "Failed to record fine.",
-      error: error.message,
     });
   }
 });
@@ -1302,7 +1293,6 @@ router.get("/:id", skipMyFines, requireActive("ADMIN", "FINES_OFFICER"), (req, r
     return res.status(500).json({
       success: false,
       message: "Failed to load fine details.",
-      error: error.message,
     });
   }
 });
@@ -1518,7 +1508,6 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
       success: false,
       code: "UPDATE_FINE_ERROR",
       message: "Failed to update fine.",
-      error: error.message,
     });
   }
 });
@@ -1639,7 +1628,6 @@ router.delete("/:id", canCancelFines, async (req, res) => {
       success: false,
       code: "CANCEL_FINE_ERROR",
       message: "Failed to cancel fine.",
-      error: error.message,
     });
   }
 });
@@ -1761,7 +1749,6 @@ router.patch("/:id/cancel", canCancelFines, async (req, res) => {
       success: false,
       code: "CANCEL_FINE_ERROR",
       message: "Failed to cancel fine.",
-      error: error.message,
     });
   }
 });

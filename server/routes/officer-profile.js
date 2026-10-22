@@ -1,8 +1,11 @@
 const express = require("express");
+const { isValidEmail } = require("../security/validation");
 const bcrypt = require("bcryptjs");
 
 const db = require("../database/database");
-const { authenticateToken } = require("./auth");
+const { authenticateToken, validatePasswordPolicy } = require("./auth");
+const { logActivity } = require("../database/activity-log");
+const passwordTries = require("../security/password-tries");
 
 const router = express.Router();
 
@@ -66,76 +69,7 @@ router.use((req, res, next) => {
     });
   }
 });
-
-// ==========================================
-// PASSWORD POLICY
-// ==========================================
-//
-// Requirements:
-// - Minimum 8 characters
-// - At least 1 uppercase letter
-// - At least 1 lowercase letter
-// - At least 1 number
-// - At least 1 special character
-//
-// bcrypt only processes the first 72 bytes.
-// ==========================================
-
-function validatePasswordPolicy(password) {
-  const value = String(password || "");
-
-  if (value.length < 8) {
-    return {
-      valid: false,
-      code: "PASSWORD_TOO_SHORT",
-      message: "New password must contain at least 8 characters.",
-    };
-  }
-
-  if (!/[A-Z]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_UPPERCASE_REQUIRED",
-      message: "New password must contain at least one uppercase letter.",
-    };
-  }
-
-  if (!/[a-z]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_LOWERCASE_REQUIRED",
-      message: "New password must contain at least one lowercase letter.",
-    };
-  }
-
-  if (!/[0-9]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_NUMBER_REQUIRED",
-      message: "New password must contain at least one number.",
-    };
-  }
-
-  if (!/[^A-Za-z0-9\s]/.test(value)) {
-    return {
-      valid: false,
-      code: "PASSWORD_SPECIAL_CHARACTER_REQUIRED",
-      message: "New password must contain at least one special character.",
-    };
-  }
-
-  if (Buffer.byteLength(value, "utf8") > 72) {
-    return {
-      valid: false,
-      code: "PASSWORD_TOO_LONG",
-      message: "Password must not exceed 72 bytes.",
-    };
-  }
-
-  return {
-    valid: true,
-  };
-}
+// Password rules: see validatePasswordPolicy in routes/auth.js.
 
 // ==========================================
 // GET OFFICER PROFILE
@@ -318,7 +252,7 @@ router.put("/me", (req, res) => {
     // EMAIL VALIDATION
     // ======================================
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isValidEmail(email)) {
       return res.status(400).json({
         success: false,
         message: "Please enter a valid email address.",
@@ -527,12 +461,25 @@ router.put("/me/password", async (req, res) => {
     // VERIFY CURRENT PASSWORD
     // ======================================
 
+    if (passwordTries.blocked(req.officerUserId)) {
+      return res.status(429).json(passwordTries.TOO_MANY);
+    }
+
     const currentPasswordValid = await bcrypt.compare(
       currentPassword,
       user.password_hash,
     );
 
     if (!currentPasswordValid) {
+      passwordTries.fail(req.officerUserId);
+
+      logActivity({
+        actorId: req.officerUserId,
+        action: "PASSWORD_CHANGE_FAILED",
+        result: "FAILED",
+        description: "Password change refused: the current password was wrong.",
+      });
+
       return res.status(400).json({
         success: false,
         code: "CURRENT_PASSWORD_INCORRECT",
@@ -604,6 +551,14 @@ router.put("/me/password", async (req, res) => {
       "PASSWORD_CHANGED",
       req.authUser.sid,
     );
+
+    passwordTries.clear(req.officerUserId);
+
+    logActivity({
+      actorId: req.officerUserId,
+      action: "PASSWORD_CHANGED",
+      description: "Password changed. Other signed-in devices were signed out.",
+    });
 
     // ======================================
     // SUCCESS
