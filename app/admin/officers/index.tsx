@@ -430,6 +430,10 @@ export default function OfficersDirectory() {
       return "Inactive";
     }
 
+    if (normalizedStatus === "LOCKED") {
+      return "Locked";
+    }
+
     return status || "Unknown";
   };
 

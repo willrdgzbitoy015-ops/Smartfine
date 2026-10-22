@@ -31,6 +31,7 @@ import { NATIVE_DRIVER, useReducedMotion } from "@/components/motion";
 import { NoticeBanner } from "@/components/notice-banner";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useRoleGuard } from "@/hooks/use-role-guard";
 
 // ==========================================
 // KEEP NATIVE SPLASH VISIBLE
@@ -67,6 +68,10 @@ export default function RootLayout() {
   // ========================================
 
   const [showAppSplash, setShowAppSplash] = useState(true);
+
+  // Each role stays on its own screens (checked on every screen change).
+  // Starts once the splash is over, when the screens are mounted.
+  useRoleGuard(!showAppSplash);
 
   // The bar fills over the splash duration on the native thread; it is a
   // timer, so no percentage is shown.

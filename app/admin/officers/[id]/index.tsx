@@ -22,6 +22,7 @@ import { apiFetch } from "@/utils/api-fetch";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn, PopIn, useRetainedValue } from "@/components/motion";
 import { SkeletonProfile } from "@/components/skeleton";
+import { AccountAccess } from "@/components/account-access";
 import { SummaryCard, SummaryCardRow } from "@/components/summary-card";
 
 import DeleteModal from "@/components/deletationmodal";
@@ -299,7 +300,9 @@ export default function OfficerProfile() {
   // LOAD OFFICER
   // ==========================================
 
-  const loadOfficer = async () => {
+  // `quiet` refreshes in place (no loading skeleton), so a pop-up or message
+  // on the page stays where it is.
+  const loadOfficer = async (quiet = false) => {
     if (!officerId) {
       setError("Officer ID is missing.");
 
@@ -309,11 +312,13 @@ export default function OfficerProfile() {
     }
 
     try {
-      setLoading(true);
+      if (!quiet) {
+        setLoading(true);
 
-      setError("");
+        setError("");
 
-      setProfileImageFailed(false);
+        setProfileImageFailed(false);
+      }
 
       const response = await apiFetch(`${API_BASE}/api/officers/${officerId}`);
 
@@ -322,7 +327,7 @@ export default function OfficerProfile() {
       console.log("Officer profile response:", result);
 
       if (!response.ok || !result.success) {
-        setError(result.message || "Failed to load officer profile.");
+        if (!quiet) setError(result.message || "Failed to load officer profile.");
 
         return;
       }
@@ -331,7 +336,7 @@ export default function OfficerProfile() {
     } catch (error) {
       console.error("Officer profile connection error:", error);
 
-      setError("Could not connect to the SmartFine server.");
+      if (!quiet) setError("Could not connect to the SmartFine server.");
     } finally {
       setLoading(false);
     }
@@ -566,7 +571,10 @@ export default function OfficerProfile() {
         <View style={styles.centerState}>
           <Text style={styles.errorText}>{error || "Officer not found."}</Text>
 
-          <TouchableOpacity style={styles.retryButton} onPress={loadOfficer}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => void loadOfficer()}
+          >
             <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -773,6 +781,18 @@ export default function OfficerProfile() {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* ==================================
+            ACCOUNT ACCESS (lock / unlock, role)
+        ================================== */}
+
+        <View style={styles.summaryWrap}>
+          <AccountAccess
+            userId={Number(officer.id)}
+            name={officer.full_name}
+            onChanged={() => void loadOfficer(true)}
+          />
         </View>
 
         {/* ==================================

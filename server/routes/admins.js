@@ -294,10 +294,11 @@ router.post("/", async (req, res) => {
             password_hash,
             role,
             account_status,
-            is_verified
+            is_verified,
+            needs_first_login
           )
 
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'ADMIN', 'ACTIVE', 1)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'ADMIN', 'ACTIVE', 0, 1)
           `,
         )
         .run(

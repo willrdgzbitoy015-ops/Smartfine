@@ -2829,7 +2829,9 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
               grade_level,
               section,
 
-              profile_picture_uri
+              profile_picture_uri,
+
+              needs_first_login
             )
 
             VALUES (
@@ -2851,7 +2853,9 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
               ?,
               ?,
 
-              NULL
+              NULL,
+
+              1
             )
             `,
         )
@@ -3278,7 +3282,9 @@ router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
             grade_level,
             section,
 
-            profile_picture_uri
+            profile_picture_uri,
+
+            needs_first_login
           )
 
           VALUES (
@@ -3300,7 +3306,9 @@ router.post("/bulk-import", requireActive("ADMIN"), async (req, res) => {
             ?,
             ?,
 
-            NULL
+            NULL,
+
+            1
           )
           `,
     );
@@ -4090,7 +4098,11 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
 
     const normalizedSection = String(section).trim();
 
-    const normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
+    let normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
+
+    if (existingStudent.account_status === "LOCKED" && normalizedStatus === "INACTIVE") {
+      normalizedStatus = "LOCKED";
+    }
 
     if (!/^[a-z0-9]+$/.test(normalizedUsername)) {
       return res.status(400).json({
@@ -4191,7 +4203,7 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
       });
     }
 
-    if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
+    if (!["ACTIVE", "INACTIVE", "LOCKED"].includes(normalizedStatus)) {
       return res.status(400).json({
         success: false,
 

@@ -240,7 +240,24 @@ router.put("/me", (req, res) => {
     const firstName = String(body.firstName ?? current.firstName).trim();
     const middleName = String(body.middleName ?? current.middleName).trim();
     const lastName = String(body.lastName ?? current.lastName).trim();
-    const email = String(body.email ?? current.email)
+    const requestedEmail = String(body.email ?? current.email)
+      .trim()
+      .toLowerCase();
+
+    // Your own email address changes only through Change Email, which sends a
+    // code to the new address first.
+    if (
+      requestedEmail !== String(current.email || "").trim().toLowerCase()
+    ) {
+      return res.status(400).json({
+        success: false,
+        code: "EMAIL_CHANGE_REQUIRES_VERIFICATION",
+        message:
+          "Use Change Email to change your email address. We send a code to the new address to confirm it.",
+      });
+    }
+
+    const email = String(current.email ?? "")
       .trim()
       .toLowerCase();
     const contactNumber = String(

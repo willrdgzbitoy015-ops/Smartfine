@@ -382,6 +382,20 @@ export const styles = StyleSheet.create({
     color: colors.muted,
   },
 
+  // Under the read-only email: opens the Change Email pop-up.
+  changeEmailButton: {
+    alignSelf: "flex-start",
+    minHeight: 40,
+    justifyContent: "center",
+    paddingTop: 4,
+  },
+
+  changeEmailText: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: "#173A73",
+  },
+
   passwordHelp: {
     fontFamily: fonts.regular,
     fontSize: 12,

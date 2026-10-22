@@ -295,6 +295,25 @@ export const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
+  // The email is shown, not typed: it changes through Change Email.
+  readOnlyInput: {
+    backgroundColor: OFFICER.greySoft,
+    color: OFFICER.muted,
+  },
+
+  changeEmailButton: {
+    alignSelf: "flex-start",
+    minHeight: 40,
+    justifyContent: "center",
+    paddingTop: 4,
+  },
+
+  changeEmailText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 13,
+    color: OFFICER.navy,
+  },
+
   // Border colour only, so focusing never shifts the layout.
   inputFocused: {
     borderColor: OFFICER.navy,

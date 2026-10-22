@@ -35,6 +35,7 @@ import {
   pictureUrl,
 } from "@/components/admin-settings/administrators-panel";
 import { ActivityLogPanel } from "@/components/admin-settings/activity-log-panel";
+import { ChangeEmailModal } from "@/components/change-email-modal";
 import { ChangePasswordModal } from "@/components/admin-settings/change-password-modal";
 import { FormPopup, PopupButton } from "@/components/admin-settings/form";
 import { SectionCard } from "@/components/admin-settings/section-card";
@@ -274,6 +275,7 @@ export default function AdminSettings() {
   const [username, setUsername] = useState("");
 
   const [email, setEmail] = useState("");
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
 
   const [contactNumber, setContactNumber] = useState("");
 
@@ -1778,23 +1780,29 @@ export default function AdminSettings() {
             Primary Email <Text style={styles.requiredMark}>*</Text>
           </Text>
 
-          <TextInput
-            value={email}
-            {...bindFocus("email")}
-            onChangeText={setEmail}
-            placeholder="Email address"
-            placeholderTextColor="#A0A7B2"
-            style={[
-              styles.input,
-              focusedField === "email" && styles.inputFocused,
-            ]}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!savingAccount}
-          />
+          <View
+            style={[styles.input, styles.inputReadOnly]}
+            accessible
+            accessibilityLabel={`Primary email ${email || "not set"}. Change it with Change Email.`}
+          >
+            <Text style={styles.inputReadOnlyText} numberOfLines={1}>
+              {email || "Not provided"}
+            </Text>
+          </View>
 
-          <Text style={styles.fieldHint}>Receives password reset codes.</Text>
+          <TouchableOpacity
+            style={styles.changeEmailLink}
+            onPress={() => setShowChangeEmail(true)}
+            disabled={savingAccount}
+            accessibilityRole="button"
+          >
+            <Text style={styles.changeEmailLinkText}>Change Email</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.fieldHint}>
+            Receives password reset codes. A new address is confirmed with a
+            code first.
+          </Text>
         </View>
       </View>
 
@@ -2478,6 +2486,16 @@ export default function AdminSettings() {
       {/* =====================================
           CHANGE PASSWORD
       ====================================== */}
+
+      <ChangeEmailModal
+        visible={showChangeEmail}
+        currentEmail={admin?.email ?? ""}
+        onClose={() => setShowChangeEmail(false)}
+        onChanged={(next) => {
+          setAdmin((current) => (current ? { ...current, email: next } : current));
+          setEmail(next);
+        }}
+      />
 
       <SystemResetModal
         visible={showResetModal}

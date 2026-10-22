@@ -20,6 +20,9 @@ const TOPICS_BY_PREFIX = [
   ["/api/students", ["people", "fines"]],
   ["/api/officers", ["people", "fines"]],
   ["/api/admins", ["people"]],
+  // Locking an account or changing a role or email changes people's records.
+  ["/api/access", ["people"]],
+  ["/api/account/email", ["people"]],
   ["/api/settings", ["settings"]],
   ["/api/system-reset", ALL_TOPICS],
 ];

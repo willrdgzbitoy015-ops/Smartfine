@@ -34,6 +34,7 @@ import { haptics } from "@/utils/haptics";
 
 import { useResponsiveStyles } from "./profile.styles";
 
+import { ChangeEmailModal } from "@/components/change-email-modal";
 import { FloatingTabBar } from "@/components/floating-tab-bar";
 // ==========================================
 // TYPES
@@ -313,6 +314,7 @@ export default function OfficerProfile() {
 
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [logoutError, setLogoutError] = useState("");
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
 
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -1267,7 +1269,30 @@ export default function OfficerProfile() {
 
                         ["contactNumber", "Contact Number"],
                       ] as const
-                    ).map(([key, label]) => (
+                    ).map(([key, label]) =>
+                      key === "email" ? (
+                        <View key={key} style={styles.field}>
+                          <Text style={styles.label}>{label}</Text>
+
+                          <TextInput
+                            style={[styles.input, styles.readOnlyInput]}
+                            value={draft.email}
+                            editable={false}
+                            accessibilityLabel="Email (change it with Change Email)"
+                          />
+
+                          <TouchableOpacity
+                            style={styles.changeEmailButton}
+                            onPress={() => setShowChangeEmail(true)}
+                            disabled={busy}
+                            accessibilityRole="button"
+                          >
+                            <Text style={styles.changeEmailText}>
+                              Change Email
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
                       <View key={key} style={styles.field}>
                         <Text style={styles.label}>{label}</Text>
 
@@ -1282,11 +1307,7 @@ export default function OfficerProfile() {
                           editable={!busy}
                           autoCapitalize="none"
                           keyboardType={
-                            key === "email"
-                              ? "email-address"
-                              : key === "contactNumber"
-                                ? "phone-pad"
-                                : "default"
+                            key === "contactNumber" ? "phone-pad" : "default"
                           }
                         />
                       </View>
@@ -1553,6 +1574,16 @@ export default function OfficerProfile() {
       {/* ======================================
           LOGOUT MODAL
       ====================================== */}
+
+      <ChangeEmailModal
+        visible={showChangeEmail}
+        currentEmail={officer?.email ?? ""}
+        onClose={() => setShowChangeEmail(false)}
+        onChanged={(email) => {
+          setOfficer((current) => (current ? { ...current, email } : current));
+          setDraft((current) => (current ? { ...current, email } : current));
+        }}
+      />
 
       <LogoutModal
         visible={logoutVisible}

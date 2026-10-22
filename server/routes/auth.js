@@ -5,9 +5,11 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 
 const db = require("../database/database");
+require("../database/auth-schema");
+const otp = require("../security/otp");
+const { sendMail } = require("../security/mailer");
 
 const router = express.Router();
 
@@ -235,63 +237,30 @@ function findPasswordResetUser(identifier) {
           )
         ) = LOWER(?)
 
+        OR LOWER(COALESCE(u.email, '')) = LOWER(?)
+
+      ORDER BY (LOWER(u.username) = LOWER(?)) DESC
+
       LIMIT 1
       `,
     )
-    .get(normalized, normalized, normalized);
+    .get(normalized, normalized, normalized, normalized, normalized);
 }
 
 // ==========================================
 // CREATE EMAIL TRANSPORTER
 // ==========================================
 
-function createPasswordResetTransporter() {
-  const emailUser = String(process.env.SMARTFINE_EMAIL_USER || "").trim();
-
-  const emailPassword = String(process.env.SMARTFINE_EMAIL_APP_PASSWORD || "")
-    .replace(/\s+/g, "")
-    .trim();
-
-  if (!emailUser || !emailPassword) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    service: "gmail",
-
-    auth: {
-      user: emailUser,
-      pass: emailPassword,
-    },
-  });
-}
-
 // ==========================================
 // SEND PASSWORD RESET EMAIL
 // ==========================================
 
 async function sendPasswordResetCode(user, verificationCode) {
-  const transporter = createPasswordResetTransporter();
-
-  if (!transporter) {
-    const error = new Error(
-      "SmartFine password reset email service is not configured.",
-    );
-
-    error.code = "EMAIL_NOT_CONFIGURED";
-
-    throw error;
-  }
-
-  const emailUser = String(process.env.SMARTFINE_EMAIL_USER || "").trim();
-
   const fullName = [user.first_name, user.middle_name, user.last_name]
     .filter(Boolean)
     .join(" ");
 
-  await transporter.sendMail({
-    from: `"SmartFine" <${emailUser}>`,
-
+  await sendMail({
     to: user.email,
 
     subject: "SmartFine Password Reset Verification",
@@ -659,6 +628,50 @@ function uploadProfilePicture(req, res, next) {
 // POST /api/auth/login
 // ==========================================
 
+// The token and user details a successful sign-in returns.
+function buildLoginSuccess(user) {
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+    },
+
+    JWT_SECRET,
+
+    {
+      expiresIn: "8h",
+    },
+  );
+
+  return {
+    success: true,
+    message: "Login successful.",
+
+    token,
+
+    user: {
+      id: user.id,
+
+      username: user.username,
+
+      firstName: user.first_name,
+
+      middleName: user.middle_name,
+
+      lastName: user.last_name,
+
+      email: user.email,
+
+      contactNumber: user.contact_number,
+
+      profilePictureUri: user.profile_picture_uri,
+
+      role: user.role,
+    },
+  };
+}
+
 router.post(
   "/login",
 
@@ -701,17 +714,26 @@ router.post(
             is_verified,
             failed_login_attempts,
             locked_until,
-            lockout_count
+            lockout_count,
+            needs_first_login
 
           FROM users
 
           WHERE username = ?
+             OR LOWER(email) = LOWER(?)
+
+          ORDER BY (username = ?) DESC
 
           LIMIT 1
           `,
       );
 
-      const user = statement.get(normalizedUsername);
+      // The first box accepts the username or the email address.
+      const user = statement.get(
+        normalizedUsername,
+        normalizedUsername,
+        normalizedUsername,
+      );
 
       if (!user) {
         return res.status(401).json({
@@ -733,6 +755,16 @@ router.post(
           code: "ACCOUNT_DEACTIVATED",
           message:
             "This account has been deactivated. Please contact the SmartFine administrator.",
+        });
+      }
+
+      if (accountStatus === "LOCKED") {
+        return res.status(423).json({
+          success: false,
+          code: "ACCOUNT_LOCKED_BY_ADMIN",
+          message:
+            "This account has been locked by an administrator. Please contact the SmartFine administrator.",
+          lockedByAdmin: true,
         });
       }
 
@@ -915,49 +947,49 @@ router.post(
       ).run(user.id);
 
       // ====================================
-      // TOKEN
+      // FIRST SIGN-IN: VERIFY THE EMAIL FIRST
+      //
+      // A new account gets no session until its owner proves the email
+      // address with a one-time code and chooses their own password.
       // ====================================
 
-      const token = jwt.sign(
-        {
-          userId: user.id,
-          username: user.username,
-          role: user.role,
-        },
+      if (Number(user.needs_first_login) === 1) {
+        const verificationEmail = String(user.email || "").trim();
 
-        JWT_SECRET,
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(verificationEmail)) {
+          return res.status(409).json({
+            success: false,
+            code: "VERIFICATION_EMAIL_MISSING",
+            message:
+              "This account has no valid email address to verify. Please contact the SmartFine administrator.",
+          });
+        }
 
-        {
-          expiresIn: "8h",
-        },
-      );
+        try {
+          const challenge = await otp.issue({
+            userId: user.id,
+            purpose: "FIRST_LOGIN",
+            targetEmail: verificationEmail,
+            name:
+              [user.first_name, user.middle_name, user.last_name]
+                .filter(Boolean)
+                .join(" ") || user.username,
+            reuseRecent: true,
+          });
 
-      return res.json({
-        success: true,
-        message: "Login successful.",
+          return res.json({
+            success: true,
+            requiresVerification: true,
+            message:
+              "We sent a verification code to your email. Enter it to finish setting up your account.",
+            ...challenge,
+          });
+        } catch (error) {
+          return otp.sendOtpError(res, error);
+        }
+      }
 
-        token,
-
-        user: {
-          id: user.id,
-
-          username: user.username,
-
-          firstName: user.first_name,
-
-          middleName: user.middle_name,
-
-          lastName: user.last_name,
-
-          email: user.email,
-
-          contactNumber: user.contact_number,
-
-          profilePictureUri: user.profile_picture_uri,
-
-          role: user.role,
-        },
-      });
+      return res.json(buildLoginSuccess(user));
     } catch (error) {
       console.error("Login error:", error);
 
@@ -1438,6 +1470,8 @@ router.post(
           failed_login_attempts = 0,
           locked_until = NULL,
           lockout_count = 0,
+          needs_first_login = 0,
+          is_verified = 1,
           updated_at = CURRENT_TIMESTAMP
 
         WHERE id = ?
@@ -1528,7 +1562,24 @@ router.put(
 
       const username = String(req.body.username ?? currentUser.username).trim();
 
-      const email = String(req.body.email ?? currentUser.email ?? "").trim();
+      const requestedEmail = String(req.body.email ?? currentUser.email ?? "")
+        .trim()
+        .toLowerCase();
+
+      // Your own email address changes only through Change Email, which sends a
+      // code to the new address first.
+      if (
+        requestedEmail !== String(currentUser.email || "").trim().toLowerCase()
+      ) {
+        return res.status(400).json({
+          success: false,
+          code: "EMAIL_CHANGE_REQUIRES_VERIFICATION",
+          message:
+            "Use Change Email to change your email address. We send a code to the new address to confirm it.",
+        });
+      }
+
+      const email = String(currentUser.email ?? "").trim();
 
       const contactNumber = String(
         req.body.contactNumber ?? currentUser.contact_number ?? "",
@@ -2292,6 +2343,8 @@ module.exports.validatePasswordPolicy = validatePasswordPolicy;
 module.exports.validatePersonName = validatePersonName;
 
 module.exports.formatUser = formatUser;
+
+module.exports.buildLoginSuccess = buildLoginSuccess;
 
 module.exports.removeAdminProfileFile = removeAdminProfileFile;
 

@@ -916,7 +916,9 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
 
                 account_status,
 
-                profile_picture_uri
+                profile_picture_uri,
+
+                needs_first_login
               )
 
               VALUES (
@@ -936,7 +938,9 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
 
                 ?,
 
-                NULL
+                NULL,
+
+                1
               )
               `,
         )
@@ -1623,7 +1627,11 @@ router.put(
 
       const normalizedAssignedArea = String(assignedArea).trim();
 
-      const normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
+      let normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
+
+      if (existingOfficer.account_status === "LOCKED" && normalizedStatus === "INACTIVE") {
+        normalizedStatus = "LOCKED";
+      }
 
       // ====================================
       // USERNAME
@@ -1799,7 +1807,7 @@ router.put(
       // STATUS
       // ====================================
 
-      if (normalizedStatus !== "ACTIVE" && normalizedStatus !== "INACTIVE") {
+      if (!["ACTIVE", "INACTIVE", "LOCKED"].includes(normalizedStatus)) {
         return res.status(400).json({
           success: false,
 
@@ -2385,3 +2393,6 @@ router.delete("/:id", requireActive("ADMIN"), (req, res) => {
 });
 
 module.exports = router;
+
+// Used when an administrator is made a Fines Officer.
+module.exports.generateNextEmployeeNumber = generateNextEmployeeNumber;

@@ -27,6 +27,9 @@ const adminNotificationRoutes = require("./routes/admin-notifications");
 const notificationRoutes = require("./routes/notifications");
 const onlinePaymentRoutes = require("./routes/online-payments");
 const activityLogRoutes = require("./routes/activity-log");
+const firstLoginRoutes = require("./routes/first-login");
+const accountEmailRoutes = require("./routes/account-email");
+const accountAccessRoutes = require("./routes/account-access");
 const realtime = require("./realtime");
 
 const app = express();
@@ -46,7 +49,10 @@ app.use(
 
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/students", studentsRoutes);
+app.use("/api/auth/first-login", firstLoginRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/account/email", accountEmailRoutes);
+app.use("/api/access", accountAccessRoutes);
 
 app.use("/api/fines/my-fines", studentFineReadRoutes);
 app.use("/api/fines", fineEvidenceRoutes);

@@ -119,6 +119,13 @@ export default function LoginScreen() {
 
   const [resendCountdown, setResendCountdown] = useState(0);
 
+  // "reset" is Forgot Password; "firstLogin" is a new account verifying its
+  // email and choosing its own password. Both use the same code and password
+  // steps.
+  const [flow, setFlow] = useState<"reset" | "firstLogin">("reset");
+
+  const [stepToken, setStepToken] = useState("");
+
   // ==========================================
   // LOADING
   // ==========================================
@@ -394,6 +401,113 @@ export default function LoginScreen() {
   // LOGIN
   // ==========================================
 
+  // Everything after a successful sign-in: remember the session and open the
+  // person's own dashboard. Also used when a new account finishes setup.
+  const completeSignIn = async (data: any) => {
+    if (!data.user || !data.user.role) {
+      showError(
+        "Login Error",
+
+        "The server did not return a valid user role.",
+
+        {
+          hideAfter: 1000,
+        },
+      );
+
+      return;
+    }
+
+    if (!data.token) {
+      showError(
+        "Login Error",
+
+        "The server did not return a valid login token.",
+
+        {
+          hideAfter: 1000,
+        },
+      );
+
+      return;
+    }
+
+    // ====================================
+    // LOGIN SUCCESS
+    // ====================================
+
+    clearError();
+
+    setLockoutSeconds(0);
+
+    setLockedUsername("");
+
+    await saveLoginSession(data);
+
+    const role = String(data.user.role).toUpperCase();
+
+    haptics.success();
+
+    // ====================================
+    // ROLE REDIRECTION
+    // ====================================
+
+    // Screens from a previous sign-in must not stay open underneath.
+    if (router.canDismiss()) {
+      router.dismissAll();
+    }
+
+    if (role === "ADMIN") {
+      router.replace("/admin/dashboard");
+    } else if (role === "FINES_OFFICER") {
+      router.replace("/officer/dashboard");
+    } else if (role === "STUDENT") {
+      router.replace("/student/dashboard");
+    } else {
+      await AsyncStorage.multiRemove([
+        "token",
+        "userEmail",
+        "userId",
+        "userRole",
+      ]);
+
+      showError(
+        "Login Error",
+
+        `Unknown user role: ${role}`,
+
+        {
+          hideAfter: 1000,
+        },
+      );
+    }
+  };
+
+  // A new account has no session yet: show the code step.
+  const startFirstLogin = (data: any) => {
+    clearError();
+
+    setPassword("");
+
+    setFlow("firstLogin");
+
+    setChallengeId(String(data.challengeId || ""));
+
+    setMaskedEmail(String(data.maskedEmail || ""));
+
+    setVerificationCode(["", "", "", "", "", ""]);
+
+    setStepToken("");
+
+    setResendCountdown(Number(data.resendAfterSeconds || 60));
+
+    setScreenMode("verify");
+
+    setTimeout(() => {
+      otpRefs.current[0]?.focus();
+    }, 300);
+  };
+
   const handleLogin = async () => {
     // ======================================
     // LOCAL LOCK CHECK
@@ -423,7 +537,7 @@ export default function LoginScreen() {
       showError(
         "Missing Information",
 
-        "Please enter your ID/Username and password.",
+        "Please enter your username or email and your password.",
 
         {
           hideAfter: 1000,
@@ -486,7 +600,7 @@ export default function LoginScreen() {
         // ================================
 
         if (data.code === "INVALID_CREDENTIALS") {
-          let message = "The username or password is incorrect.";
+          let message = "The username/email or password is incorrect.";
 
           if (typeof data.attemptsRemaining === "number") {
             const attemptWord =
@@ -529,6 +643,27 @@ export default function LoginScreen() {
             "Account Temporarily Locked",
 
             "Too many failed login attempts. This account is temporarily locked.",
+
+            {
+              persistent: true,
+            },
+          );
+
+          setPassword("");
+
+          return;
+        }
+
+        // ================================
+        // LOCKED BY AN ADMINISTRATOR
+        // ================================
+
+        if (data.code === "ACCOUNT_LOCKED_BY_ADMIN") {
+          showError(
+            "Account Locked",
+
+            data.message ||
+              "This account has been locked by an administrator. Please contact the SmartFine administrator.",
 
             {
               persistent: true,
@@ -614,86 +749,16 @@ export default function LoginScreen() {
       }
 
       // ====================================
-      // VALIDATE RESPONSE
+      // NEW ACCOUNT: VERIFY THE EMAIL FIRST
       // ====================================
 
-      if (!data.user || !data.user.role) {
-        showError(
-          "Login Error",
-
-          "The server did not return a valid user role.",
-
-          {
-            hideAfter: 1000,
-          },
-        );
+      if (data.requiresVerification) {
+        startFirstLogin(data);
 
         return;
       }
 
-      if (!data.token) {
-        showError(
-          "Login Error",
-
-          "The server did not return a valid login token.",
-
-          {
-            hideAfter: 1000,
-          },
-        );
-
-        return;
-      }
-
-      // ====================================
-      // LOGIN SUCCESS
-      // ====================================
-
-      clearError();
-
-      setLockoutSeconds(0);
-
-      setLockedUsername("");
-
-      await saveLoginSession(data);
-
-      const role = String(data.user.role).toUpperCase();
-
-      haptics.success();
-
-      // ====================================
-      // ROLE REDIRECTION
-      // ====================================
-
-      // Screens from a previous sign-in must not stay open underneath.
-      if (router.canDismiss()) {
-        router.dismissAll();
-      }
-
-      if (role === "ADMIN") {
-        router.replace("/admin/dashboard");
-      } else if (role === "FINES_OFFICER") {
-        router.replace("/officer/dashboard");
-      } else if (role === "STUDENT") {
-        router.replace("/student/dashboard");
-      } else {
-        await AsyncStorage.multiRemove([
-          "token",
-          "userEmail",
-          "userId",
-          "userRole",
-        ]);
-
-        showError(
-          "Login Error",
-
-          `Unknown user role: ${role}`,
-
-          {
-            hideAfter: 1000,
-          },
-        );
-      }
+      await completeSignIn(data);
     } catch (error) {
       console.error("SMARTFINE LOGIN CONNECTION ERROR:", error);
 
@@ -738,7 +803,7 @@ export default function LoginScreen() {
       showError(
         "Missing Information",
 
-        "Please enter your ID or username.",
+        "Please enter your username or email.",
       );
 
       setTimeout(() => {
@@ -928,7 +993,9 @@ export default function LoginScreen() {
       setLoading(true);
 
       const response = await fetch(
-        `${API_BASE}/api/auth/forgot-password/verify`,
+        flow === "firstLogin"
+          ? `${API_BASE}/api/auth/first-login/verify`
+          : `${API_BASE}/api/auth/forgot-password/verify`,
 
         {
           method: "POST",
@@ -965,6 +1032,8 @@ export default function LoginScreen() {
       }
 
       setResetToken(String(data.resetToken || ""));
+
+      setStepToken(String(data.stepToken || ""));
 
       setNewPassword("");
 
@@ -1005,7 +1074,9 @@ export default function LoginScreen() {
       setLoading(true);
 
       const response = await fetch(
-        `${API_BASE}/api/auth/forgot-password/resend`,
+        flow === "firstLogin"
+          ? `${API_BASE}/api/auth/first-login/resend`
+          : `${API_BASE}/api/auth/forgot-password/resend`,
 
         {
           method: "POST",
@@ -1149,7 +1220,9 @@ export default function LoginScreen() {
       setLoading(true);
 
       const response = await fetch(
-        `${API_BASE}/api/auth/forgot-password/reset`,
+        flow === "firstLogin"
+          ? `${API_BASE}/api/auth/first-login/complete`
+          : `${API_BASE}/api/auth/forgot-password/reset`,
 
         {
           method: "POST",
@@ -1160,12 +1233,11 @@ export default function LoginScreen() {
             Accept: "application/json",
           },
 
-          body: JSON.stringify({
-            challengeId,
-            resetToken,
-            newPassword,
-            confirmPassword,
-          }),
+          body: JSON.stringify(
+            flow === "firstLogin"
+              ? { challengeId, stepToken, newPassword, confirmPassword }
+              : { challengeId, resetToken, newPassword, confirmPassword },
+          ),
         },
       );
 
@@ -1177,6 +1249,13 @@ export default function LoginScreen() {
 
           data.message || "Unable to reset your password.",
         );
+
+        return;
+      }
+
+      // A new account is signed in as soon as its password is chosen.
+      if (flow === "firstLogin") {
+        await completeSignIn(data);
 
         return;
       }
@@ -1207,6 +1286,10 @@ export default function LoginScreen() {
     clearError();
 
     setScreenMode("login");
+
+    setFlow("reset");
+
+    setStepToken("");
 
     setResetIdentifier("");
 
@@ -1298,7 +1381,7 @@ export default function LoginScreen() {
           ref={usernameRef}
           {...bindFocus("username")}
           style={styles.input}
-          placeholder="Enter your ID or Username"
+          placeholder="Enter your username or email"
           placeholderTextColor="#6E6E6E"
           value={username}
           onChangeText={(text) => {
@@ -1451,11 +1534,11 @@ export default function LoginScreen() {
       <Text style={styles.recoveryTitle}>Forgot Password?</Text>
 
       <Text style={styles.recoveryDescription}>
-        Enter your ID or username to recover your account.
+        Enter your username or email to recover your account.
       </Text>
 
       <View style={styles.recoveryFieldCard}>
-        <Text style={styles.fieldLabel}>ID or Username</Text>
+        <Text style={styles.fieldLabel}>Username or Email</Text>
 
         <View style={styles.recoveryInputContainer}>
           <Image
@@ -1467,7 +1550,7 @@ export default function LoginScreen() {
           <TextInput
             ref={resetIdentifierRef}
             style={styles.recoveryInput}
-            placeholder="Enter your ID or Username"
+            placeholder="Enter your username or email"
             placeholderTextColor="#777777"
             value={resetIdentifier}
             onChangeText={(text) => {
@@ -1516,10 +1599,14 @@ export default function LoginScreen() {
 
   const VerifyForm = () => (
     <>
-      <Text style={styles.recoveryTitle}>Enter Verification Code</Text>
+      <Text style={styles.recoveryTitle}>
+        {flow === "firstLogin" ? "Verify Your Email" : "Enter Verification Code"}
+      </Text>
 
       <Text style={styles.recoveryDescription}>
-        Enter the 6-digit code we sent to
+        {flow === "firstLogin"
+          ? "Welcome to SmartFine! To finish setting up your account, enter the 6-digit code we sent to"
+          : "Enter the 6-digit code we sent to"}
       </Text>
 
       <Text style={styles.maskedEmailText}>{maskedEmail}</Text>
@@ -1613,10 +1700,14 @@ export default function LoginScreen() {
 
   const ResetPasswordForm = () => (
     <>
-      <Text style={styles.recoveryTitle}>Create New Password</Text>
+      <Text style={styles.recoveryTitle}>
+        {flow === "firstLogin" ? "Choose Your Password" : "Create New Password"}
+      </Text>
 
       <Text style={styles.recoveryDescription}>
-        Create a secure new password for your SmartFine account.
+        {flow === "firstLogin"
+          ? "Choose your own password. The temporary one you were given can no longer be used."
+          : "Create a secure new password for your SmartFine account."}
       </Text>
 
       <View style={styles.passwordFieldCard}>
@@ -1721,7 +1812,9 @@ export default function LoginScreen() {
         {loading ? (
           <ActivityIndicator color="#FFFFFF" size="small" />
         ) : (
-          <Text style={styles.recoveryButtonText}>Create Password</Text>
+          <Text style={styles.recoveryButtonText}>
+            {flow === "firstLogin" ? "Finish and Sign In" : "Create Password"}
+          </Text>
         )}
       </TouchableOpacity>
 

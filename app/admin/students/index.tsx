@@ -210,6 +210,10 @@ function getStatusLabel(status: string) {
     return "Inactive";
   }
 
+  if (normalizedStatus === "LOCKED") {
+    return "Locked";
+  }
+
   return status || "Unknown";
 }
 

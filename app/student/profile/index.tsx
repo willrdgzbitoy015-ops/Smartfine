@@ -35,6 +35,7 @@ import { haptics } from "@/utils/haptics";
 import { returnToLogin, useAuth } from "@/hooks/use-auth";
 import { styles } from "../styles/student-profile.styles";
 
+import { ChangeEmailModal } from "@/components/change-email-modal";
 import { CountUp } from "@/components/count-up";
 import { FloatingTabBar } from "@/components/floating-tab-bar";
 type Page = "profile" | "edit" | "password" | "about" | "privacy";
@@ -154,6 +155,7 @@ export default function StudentProfileScreen() {
   const { logout } = useAuth();
 
   const [page, setPage] = useState<Page>("profile");
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [totals, setTotals] = useState<DashboardResponse["stats"] | null>(null);
 
@@ -885,7 +887,26 @@ export default function StudentProfileScreen() {
                       ["Email", "email"],
                       ["Contact Number", "contactNumber"],
                     ] as const
-                  ).map(([label, key]) => (
+                  ).map(([label, key]) =>
+                    key === "email" ? (
+                      <View style={styles.field} key={key}>
+                        <Text style={styles.label}>{label}</Text>
+                        <TextInput
+                          style={[styles.input, styles.readOnlyInput]}
+                          value={profile.email}
+                          editable={false}
+                          accessibilityLabel="Email (change it with Change Email)"
+                        />
+                        <TouchableOpacity
+                          style={styles.changeEmailButton}
+                          onPress={() => setShowChangeEmail(true)}
+                          disabled={busy}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.changeEmailText}>Change Email</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
                     <View style={styles.field} key={key}>
                       <Text style={styles.label}>{label}</Text>
                       <TextInput
@@ -902,13 +923,9 @@ export default function StudentProfileScreen() {
                           }))
                         }
                         editable={!busy}
-                        autoCapitalize={key === "email" ? "none" : "words"}
+                        autoCapitalize="words"
                         keyboardType={
-                          key === "email"
-                            ? "email-address"
-                            : key === "contactNumber"
-                              ? "phone-pad"
-                              : "default"
+                          key === "contactNumber" ? "phone-pad" : "default"
                         }
                       />
                     </View>
@@ -1111,6 +1128,16 @@ export default function StudentProfileScreen() {
           </PopIn>
         </View>
       </Modal>
+
+      <ChangeEmailModal
+        visible={showChangeEmail}
+        currentEmail={profile?.email ?? ""}
+        onClose={() => setShowChangeEmail(false)}
+        onChanged={(email) => {
+          setProfile((current) => (current ? { ...current, email } : current));
+          setDraft((current) => ({ ...current, email }));
+        }}
+      />
 
       <LogoutModal
         visible={logoutVisible}

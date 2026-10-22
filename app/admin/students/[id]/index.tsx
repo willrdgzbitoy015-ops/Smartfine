@@ -15,6 +15,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useGuardedRouter } from "@/hooks/use-guarded-router";
 import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import { StudentFormModal } from "@/components/admin-forms/student-form-modal";
+import { AccountAccess } from "@/components/account-access";
 import LogoutModal from "@/components/logout-modal";
 
 import QRCode from "react-native-qrcode-svg";
@@ -209,13 +210,17 @@ export default function StudentProfile() {
     void loadStudent();
   }, [studentId]);
 
-  const loadStudent = async () => {
+  // `quiet` refreshes in place (no loading skeleton), so a pop-up or message
+  // on the page stays where it is.
+  const loadStudent = async (quiet = false) => {
     try {
-      setLoading(true);
+      if (!quiet) {
+        setLoading(true);
 
-      setError("");
+        setError("");
 
-      setProfileImageFailed(false);
+        setProfileImageFailed(false);
+      }
 
       const response = await apiFetch(`${API_BASE}/api/students/${studentId}`);
 
@@ -224,7 +229,7 @@ export default function StudentProfile() {
       console.log("Student profile response:", result);
 
       if (!response.ok || !result.success) {
-        setError(result.message || "Failed to load student.");
+        if (!quiet) setError(result.message || "Failed to load student.");
 
         return;
       }
@@ -233,7 +238,7 @@ export default function StudentProfile() {
     } catch (error) {
       console.error("Student profile connection error:", error);
 
-      setError("Could not connect to the SmartFine server.");
+      if (!quiet) setError("Could not connect to the SmartFine server.");
     } finally {
       setLoading(false);
     }
@@ -618,10 +623,26 @@ export default function StudentProfile() {
                   isCompact && styles.inactiveHintCompact,
                 ]}
               >
-                This account is inactive, so a fine cannot be recorded.
+                This account is{" "}
+                {String(student.account_status).toUpperCase() === "LOCKED"
+                  ? "locked"
+                  : "inactive"}
+                , so a fine cannot be recorded.
               </Text>
             )}
           </View>
+        </View>
+
+        {/* ==================================
+            ACCOUNT ACCESS (lock / unlock)
+        ================================== */}
+
+        <View style={styles.summaryWrap}>
+          <AccountAccess
+            userId={Number(student.id)}
+            name={student.full_name}
+            onChanged={() => void loadStudent(true)}
+          />
         </View>
 
         {/* ==================================

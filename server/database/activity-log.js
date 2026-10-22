@@ -38,6 +38,7 @@ const CATEGORY_BY_PREFIX = [
   ["STUDENT", "ACCOUNTS"],
   ["OFFICER_", "ACCOUNTS"],
   ["ADMIN_", "ACCOUNTS"],
+  ["ACCOUNT_", "ACCOUNTS"],
   ["SYSTEM_", "SYSTEM"],
 ];
 

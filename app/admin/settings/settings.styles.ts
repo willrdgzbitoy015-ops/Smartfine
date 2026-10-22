@@ -604,6 +604,28 @@ export const styles = StyleSheet.create({
     fontSize: 13,
   },
 
+  // The email is shown, not typed: it changes through Change Email.
+  inputReadOnly: {
+    justifyContent: "center",
+    backgroundColor: "#EEF1F5",
+  },
+
+  inputReadOnlyText: {
+    color: "#6B7689",
+    fontSize: 13,
+  },
+
+  changeEmailLink: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+  },
+
+  changeEmailLinkText: {
+    color: "#173A73",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
   fieldHint: {
     color: "#8C939F",
     fontSize: 10,

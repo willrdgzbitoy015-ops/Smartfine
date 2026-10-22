@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
+import { AccountAccessModal } from "@/components/account-access";
 import DeleteModal from "@/components/deletationmodal";
 import { FadeIn } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
@@ -52,6 +53,7 @@ export function AdministratorsPanel({
   const [showAdd, setShowAdd] = useState(false);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [workingId, setWorkingId] = useState<number | null>(null);
+  const [accessAdmin, setAccessAdmin] = useState<AdminAccount | null>(null);
 
   // Saving, paying and changing records run once per tap.
   const runLocked = useActionLock();
@@ -251,12 +253,21 @@ export function AdministratorsPanel({
                   onActivate={() => changeStatus(admin, "ACTIVE")}
                   onDeactivate={() => setPending({ type: "deactivate", admin })}
                   onDelete={() => requestDelete(admin)}
+                  onAccess={() => setAccessAdmin(admin)}
                 />
               </FadeIn>
             ))}
           </>
         )}
       </SectionCard>
+
+      <AccountAccessModal
+        visible={accessAdmin !== null}
+        userId={accessAdmin ? accessAdmin.id : null}
+        name={accessAdmin ? displayName(accessAdmin) : ""}
+        onClose={() => setAccessAdmin(null)}
+        onChanged={() => void load("refresh")}
+      />
 
       <AddAdminModal
         visible={showAdd}
@@ -307,6 +318,7 @@ function AdminRow({
   onActivate,
   onDeactivate,
   onDelete,
+  onAccess,
 }: {
   admin: AdminAccount;
   working: boolean;
@@ -314,6 +326,7 @@ function AdminRow({
   onActivate: () => void;
   onDeactivate: () => void;
   onDelete: () => void;
+  onAccess: () => void;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -379,7 +392,7 @@ function AdminRow({
             active ? styles.statusActive : styles.statusInactive,
           ]}
         >
-          {active ? "Active" : "Inactive"}
+          {admin.accountStatus === "LOCKED" ? "Locked" : active ? "Active" : "Inactive"}
         </Text>
 
         {admin.isCurrentUser ? (
@@ -405,6 +418,15 @@ function AdminRow({
                 accessibilityLabel={`Activate ${displayName(admin)}`}
               />
             )}
+
+            <RowButton
+              label="Access"
+              buttonStyle={styles.rowButtonMuted}
+              textStyle={styles.rowTextMuted}
+              disabled={disabled}
+              onPress={onAccess}
+              accessibilityLabel={`Lock, unlock or change the role of ${displayName(admin)}`}
+            />
 
             <RowButton
               label="Delete"
