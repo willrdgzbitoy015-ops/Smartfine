@@ -47,14 +47,15 @@ function runTransaction(work) {
   }
 }
 
-// Records that would lose who did them if the account were deleted.
+// Records that would lose who did them if the account were deleted. Log Trail
+// entries are not counted: each one keeps the person's name and role, and the
+// database only clears its link to the deleted account.
 const HISTORY_COUNT_SQL = `
   (SELECT COUNT(*) FROM fines f
      WHERE f.recorded_by = u.id OR f.cancelled_by = u.id)
   + (SELECT COUNT(*) FROM payments p WHERE p.confirmed_by = u.id)
   + (SELECT COUNT(*) FROM payment_events e WHERE e.actor_user_id = u.id)
   + (SELECT COUNT(*) FROM violation_types v WHERE v.created_by = u.id)
-  + (SELECT COUNT(*) FROM audit_logs a WHERE a.user_id = u.id)
   + (SELECT COUNT(*) FROM refunds r WHERE r.reviewed_by = u.id OR r.requested_by = u.id)
 `;
 
@@ -123,6 +124,31 @@ function parseAdminId(value) {
   const id = Number(value);
 
   return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+// Editing or deleting another administrator needs that person's username
+// typed first. The app asks for it; checking here too means calling the API
+// directly can't skip the step.
+function confirmationProblem(req, admin) {
+  const typed = String(req.body?.confirmation ?? "").trim();
+
+  if (!typed) {
+    return {
+      status: 400,
+      code: "CONFIRMATION_REQUIRED",
+      message: `Type ${admin.username} to confirm.`,
+    };
+  }
+
+  if (typed.toUpperCase() !== String(admin.username).toUpperCase()) {
+    return {
+      status: 400,
+      code: "CONFIRMATION_MISMATCH",
+      message: `That doesn't match. Type ${admin.username} exactly to confirm.`,
+    };
+  }
+
+  return null;
 }
 
 function activeAdminCount() {
@@ -356,6 +382,150 @@ router.post("/", async (req, res) => {
 });
 
 // ==========================================
+// EDIT ANOTHER ADMINISTRATOR
+// PATCH /api/admins/:id
+// ==========================================
+
+// Name and contact number only. The username and email are not changed here
+// (an email change needs that person's own verification code); Access handles
+// lock and role. The body must carry the person's username as "confirmation".
+router.patch("/:id", (req, res) => {
+  try {
+    const adminId = parseAdminId(req.params.id);
+
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_ADMIN_ID",
+        message: "Invalid administrator.",
+      });
+    }
+
+    if (adminId === Number(req.authUser.userId)) {
+      return res.status(400).json({
+        success: false,
+        code: "CANNOT_EDIT_SELF",
+        message: "Change your own details from the Account tab.",
+      });
+    }
+
+    const before = getAdmin(adminId);
+
+    if (!before) {
+      return res.status(404).json({
+        success: false,
+        code: "ADMIN_NOT_FOUND",
+        message: "Administrator not found.",
+      });
+    }
+
+    const problem = confirmationProblem(req, before);
+
+    if (problem) {
+      return res.status(problem.status).json({
+        success: false,
+        code: problem.code,
+        message: problem.message,
+      });
+    }
+
+    const firstName = String(req.body.firstName ?? "").trim();
+    const middleName = String(req.body.middleName ?? "").trim();
+    const lastName = String(req.body.lastName ?? "").trim();
+    const contactNumber = String(req.body.contactNumber ?? "").trim();
+
+    const nameError = validatePersonName({ firstName, middleName, lastName });
+
+    if (nameError) {
+      return res.status(400).json({ success: false, ...nameError });
+    }
+
+    if (contactNumber && !CONTACT_PATTERN.test(contactNumber)) {
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_CONTACT_NUMBER",
+        message: "Please enter a valid contact number.",
+      });
+    }
+
+    const fields = [
+      ["first name", before.first_name, firstName],
+      ["middle name", before.middle_name, middleName],
+      ["last name", before.last_name, lastName],
+      ["contact number", before.contact_number, contactNumber],
+    ].filter(([, was, now]) => String(was ?? "") !== now);
+
+    if (fields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        code: "NO_CHANGES",
+        message: "Nothing has been changed.",
+      });
+    }
+
+    const changed = runTransaction(() => {
+      const result = db
+        .prepare(
+          `
+          UPDATE users
+
+          SET
+            first_name = ?,
+            middle_name = ?,
+            last_name = ?,
+            contact_number = ?,
+            updated_at = CURRENT_TIMESTAMP
+
+          WHERE id = ? AND role = 'ADMIN'
+          `,
+        )
+        .run(firstName, middleName || null, lastName, contactNumber || null, adminId);
+
+      return Number(result.changes) > 0;
+    });
+
+    if (!changed) {
+      return res.status(404).json({
+        success: false,
+        code: "ADMIN_NOT_FOUND",
+        message: "Administrator not found.",
+      });
+    }
+
+    const after = getAdmin(adminId);
+
+    logActivity({
+      actorId: Number(req.authUser.userId),
+      action: "ADMIN_UPDATED",
+      entityType: "USER",
+      entityId: adminId,
+      description: `Edited administrator ${after.username}: changed ${fields.map(([label]) => label).join(", ")}.`,
+      details: {
+        changes: fields.map(([label, was, now]) => ({
+          field: label,
+          from: was ?? null,
+          to: now || null,
+        })),
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: `${after.first_name} ${after.last_name}'s details have been updated.`,
+      admin: formatAdmin(after, req.authUser.userId),
+    });
+  } catch (error) {
+    console.error("Edit administrator error:", error);
+
+    return res.status(500).json({
+      success: false,
+      code: "SERVER_ERROR",
+      message: "Failed to update the administrator.",
+    });
+  }
+});
+
+// ==========================================
 // ACTIVATE / DEACTIVATE ADMINISTRATOR
 // PATCH /api/admins/:id/status
 // ==========================================
@@ -499,6 +669,26 @@ router.delete("/:id", (req, res) => {
       });
     }
 
+    const target = getAdmin(adminId);
+
+    if (!target) {
+      return res.status(404).json({
+        success: false,
+        code: "ADMIN_NOT_FOUND",
+        message: "Administrator not found.",
+      });
+    }
+
+    const problem = confirmationProblem(req, target);
+
+    if (problem) {
+      return res.status(problem.status).json({
+        success: false,
+        code: problem.code,
+        message: problem.message,
+      });
+    }
+
     const outcome = runTransaction(() => {
       const admin = getAdmin(adminId);
 
@@ -515,6 +705,9 @@ router.delete("/:id", (req, res) => {
       if (admin.account_status === "ACTIVE" && activeAdminCount() <= 1) {
         return { error: "LAST_ACTIVE_ADMIN" };
       }
+
+      // They may be signed in right now; end every session before the account goes.
+      require("../security/sessions").endAllForUser(adminId, "ACCOUNT_REMOVED");
 
       db.prepare("DELETE FROM users WHERE id = ? AND role = 'ADMIN'").run(
         adminId,

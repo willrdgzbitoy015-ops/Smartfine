@@ -10,8 +10,10 @@ import { useActionLock } from "@/hooks/use-action-lock";
 
 import { AddAdminModal } from "./add-admin-modal";
 import { COLORS, styles } from "./admin-settings.styles";
+import { EditAdminModal } from "./edit-admin-modal";
 import { adminRequest, PopupButton } from "./form";
 import { SectionCard } from "./section-card";
+import { TypeToConfirmModal } from "./type-to-confirm-modal";
 import type { AdminAccount } from "./types";
 
 type AdminsResponse = {
@@ -25,6 +27,7 @@ type AdminsResponse = {
 type AdminResponse = {
   success: boolean;
   message?: string;
+  code?: string;
   admin?: AdminAccount;
 };
 
@@ -37,9 +40,10 @@ type PendingAction = {
 // ADMINISTRATORS PANEL
 // ==========================================
 
-// Lists every administrator and lets the signed-in admin add, deactivate,
-// reactivate or delete the others. Results are reported through `onMessage`
-// (the screen's Success / Warning pop-ups).
+// Lists every administrator and lets the signed-in admin add, edit, deactivate,
+// reactivate or delete the others. Editing and deleting ask for the person's
+// username to be typed first. Results are reported through `onMessage` (the
+// screen's Success / Warning pop-ups).
 export function AdministratorsPanel({
   onMessage,
 }: {
@@ -54,6 +58,8 @@ export function AdministratorsPanel({
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [workingId, setWorkingId] = useState<number | null>(null);
   const [accessAdmin, setAccessAdmin] = useState<AdminAccount | null>(null);
+  const [editAdmin, setEditAdmin] = useState<AdminAccount | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
   // Saving, paying and changing records run once per tap.
   const runLocked = useActionLock();
@@ -124,16 +130,24 @@ export function AdministratorsPanel({
       onMessage("Success", data.message || "Administrator updated.");
     });
 
-  const deleteAdmin = (admin: AdminAccount) =>
+  const deleteAdmin = (admin: AdminAccount, typed: string) =>
     runLocked(async () => {
       setWorkingId(admin.id);
+      setDeleteError("");
 
       const { ok, data } = await adminRequest<AdminResponse>(
         `/api/admins/${admin.id}`,
-        { method: "DELETE" },
+        { method: "DELETE", body: { confirmation: typed } },
       );
 
       setWorkingId(null);
+
+      // A wrong word stays in the pop-up so it can be typed again.
+      if (!ok && data.code?.startsWith("CONFIRMATION")) {
+        setDeleteError(data.message || "Type the username to confirm.");
+        return;
+      }
+
       setPending(null);
 
       if (!ok) {
@@ -161,17 +175,12 @@ export function AdministratorsPanel({
       return;
     }
 
+    setDeleteError("");
     setPending({ type: "delete", admin });
   };
 
-  const confirmPending = () => {
-    if (!pending) {
-      return;
-    }
-
-    if (pending.type === "delete") {
-      deleteAdmin(pending.admin);
-    } else {
+  const confirmDeactivate = () => {
+    if (pending?.type === "deactivate") {
       changeStatus(pending.admin, "INACTIVE");
     }
   };
@@ -190,7 +199,7 @@ export function AdministratorsPanel({
     <>
       <SectionCard
         title="Administrators"
-        description="People who can sign in to the SmartFine admin panel. You can't deactivate or delete your own account."
+        description="People who can sign in to the SmartFine admin panel. You can edit or delete another administrator after typing their username to confirm. You can't deactivate or delete your own account."
         icon={require("../../assets/icons/officers.png")}
         actions={
           <>
@@ -253,6 +262,7 @@ export function AdministratorsPanel({
                   onActivate={() => changeStatus(admin, "ACTIVE")}
                   onDeactivate={() => setPending({ type: "deactivate", admin })}
                   onDelete={() => requestDelete(admin)}
+                  onEdit={() => setEditAdmin(admin)}
                   onAccess={() => setAccessAdmin(admin)}
                 />
               </FadeIn>
@@ -280,28 +290,62 @@ export function AdministratorsPanel({
         }}
       />
 
-      <DeleteModal
-        visible={pending !== null}
-        loading={workingId !== null}
-        title={
-          pending?.type === "delete"
-            ? "Delete Administrator?"
-            : "Deactivate Administrator?"
+      <EditAdminModal
+        visible={editAdmin !== null}
+        admin={editAdmin}
+        onClose={() => setEditAdmin(null)}
+        onSaved={(updated, message) => {
+          setEditAdmin(null);
+          replaceAdmin(updated);
+          onMessage("Success", message);
+        }}
+      />
+
+      <TypeToConfirmModal
+        visible={pending?.type === "delete"}
+        busy={workingId !== null}
+        title="Delete Administrator?"
+        subtitle={
+          pending ? `${displayName(pending.admin)} (@${pending.admin.username})` : ""
         }
         message={
           pending
-            ? pending.type === "delete"
-              ? `${displayName(pending.admin)} (@${pending.admin.username}) will be permanently removed. This can't be undone.`
-              : `${displayName(pending.admin)} won't be able to sign in until an administrator reactivates the account.`
+            ? `${displayName(pending.admin)} will be permanently removed and will no longer be able to sign in. This can't be undone. Their name stays on the Log Trail entries they made.`
             : ""
         }
-        confirmText={pending?.type === "delete" ? "Delete" : "Deactivate"}
+        word={pending?.admin.username ?? ""}
+        confirmLabel="Delete Administrator"
+        busyLabel="Deleting..."
+        danger
+        error={deleteError}
         onCancel={() => {
           if (workingId === null) {
             setPending(null);
           }
         }}
-        onConfirm={confirmPending}
+        onConfirm={(typed) => {
+          if (pending?.type === "delete") {
+            deleteAdmin(pending.admin, typed);
+          }
+        }}
+      />
+
+      <DeleteModal
+        visible={pending?.type === "deactivate"}
+        loading={workingId !== null}
+        title="Deactivate Administrator?"
+        message={
+          pending
+            ? `${displayName(pending.admin)} won't be able to sign in until an administrator reactivates the account.`
+            : ""
+        }
+        confirmText="Deactivate"
+        onCancel={() => {
+          if (workingId === null) {
+            setPending(null);
+          }
+        }}
+        onConfirm={confirmDeactivate}
       />
     </>
   );
@@ -318,6 +362,7 @@ function AdminRow({
   onActivate,
   onDeactivate,
   onDelete,
+  onEdit,
   onAccess,
 }: {
   admin: AdminAccount;
@@ -326,6 +371,7 @@ function AdminRow({
   onActivate: () => void;
   onDeactivate: () => void;
   onDelete: () => void;
+  onEdit: () => void;
   onAccess: () => void;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -426,6 +472,15 @@ function AdminRow({
               disabled={disabled}
               onPress={onAccess}
               accessibilityLabel={`Lock, unlock or change the role of ${displayName(admin)}`}
+            />
+
+            <RowButton
+              label="Edit"
+              buttonStyle={styles.rowButtonMuted}
+              textStyle={styles.rowTextMuted}
+              disabled={disabled}
+              onPress={onEdit}
+              accessibilityLabel={`Edit ${displayName(admin)}`}
             />
 
             <RowButton
