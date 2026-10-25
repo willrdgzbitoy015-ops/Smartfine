@@ -27,7 +27,7 @@ import { SuccessCheck } from "@/components/success-check";
 import { API_BASE } from "@/constants/api";
 import { useFieldFocus } from "@/hooks/use-field-focus";
 import { haptics } from "@/utils/haptics";
-import { NOTICE_KEY, beginSession } from "@/utils/session-guard";
+import { NOTICE_KEY, beginSession, idleLimitText } from "@/utils/session-guard";
 
 // ==========================================
 // TYPES
@@ -303,8 +303,10 @@ export default function LoginScreen() {
 
         if (cancelled) return;
 
-        if (notice === "idle") {
-          setSignedOutNotice("You were signed out after 15 minutes of inactivity. Please sign in again.");
+        if (notice === "idle" || notice?.startsWith("idle:")) {
+          setSignedOutNotice(
+            `You were signed out after ${idleLimitText(Number(notice.split(":")[1]))} of inactivity. Please sign in again.`,
+          );
         } else if (notice === "ended") {
           setSignedOutNotice("You were signed out. Please sign in again.");
         } else if (notice === "restored") {

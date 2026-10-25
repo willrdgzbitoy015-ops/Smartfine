@@ -9,14 +9,6 @@ const { logActivity } = require("../database/activity-log");
 const { currentIp } = require("./request-context");
 const sessions = require("./sessions");
 
-function idleText() {
-  const seconds = sessions.IDLE_SECONDS;
-
-  return seconds >= 60
-    ? `${Math.round(seconds / 60)} minute${Math.round(seconds / 60) === 1 ? "" : "s"}`
-    : `${seconds} seconds`;
-}
-
 const WHY = {
   PASSWORD_RESET: "the password was reset",
   PASSWORD_CHANGED: "the password was changed on another device",
@@ -35,7 +27,7 @@ function describe(reason) {
   if (reason === "IDLE") {
     return {
       action: "AUTO_LOGOUT",
-      text: `Signed out automatically after ${idleText()} without activity.`,
+      text: `Signed out automatically after ${sessions.idleText()} without activity.`,
     };
   }
 

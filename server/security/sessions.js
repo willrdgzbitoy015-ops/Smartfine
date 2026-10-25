@@ -24,7 +24,25 @@ function positive(value, fallback) {
 }
 
 // 15 minutes. SMARTFINE_IDLE_SECONDS exists so tests can use a short time.
-const IDLE_SECONDS = Math.floor(positive(process.env.SMARTFINE_IDLE_SECONDS, 15 * 60));
+const IDLE_SECONDS = Math.floor(
+  positive(process.env.SMARTFINE_IDLE_SECONDS, 15 * 60),
+);
+
+// PRESENTATION DEMO: to show the idle logout without waiting 15 minutes,
+// comment out the IDLE_SECONDS line above and remove the "//" in front of the
+// line below. With 10 seconds the app warns after about 6 seconds of no
+// activity and signs out about 2 seconds later. Restart the backend, and put
+// it back to the 15-minute line afterwards.
+// const IDLE_SECONDS = 10;
+
+// "15 minutes", or "10 seconds" when a short demo time is set.
+function idleText() {
+  if (IDLE_SECONDS < 60) return `${IDLE_SECONDS} seconds`;
+
+  const minutes = Math.round(IDLE_SECONDS / 60);
+
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
 
 // A session never lasts longer than this, however active.
 const ABSOLUTE_SECONDS = 8 * 60 * 60;
@@ -49,9 +67,9 @@ db.exec(`
 `);
 
 // Old sessions are not needed after a month.
-db.prepare("DELETE FROM user_sessions WHERE COALESCE(ended_at, expires_at) < ?").run(
-  Date.now() - 30 * 24 * 60 * 60 * 1000,
-);
+db.prepare(
+  "DELETE FROM user_sessions WHERE COALESCE(ended_at, expires_at) < ?",
+).run(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
 // Listeners (the live-update socket) hear about every ended session.
 const events = new EventEmitter();
@@ -65,8 +83,9 @@ class SessionError extends Error {
 }
 
 const MESSAGES = {
-  INVALID_TOKEN: "Your session is invalid or has expired. Please sign in again.",
-  SESSION_IDLE: "You were signed out after 15 minutes of inactivity. Please sign in again.",
+  INVALID_TOKEN:
+    "Your session is invalid or has expired. Please sign in again.",
+  SESSION_IDLE: `You were signed out after ${idleText()} of inactivity. Please sign in again.`,
   SESSION_ENDED: "You were signed out. Please sign in again.",
   SESSION_EXPIRED: "Your session has expired. Please sign in again.",
 };
@@ -84,7 +103,15 @@ function startSession({ user, ipAddress = null, userAgent = null }) {
   db.prepare(
     `INSERT INTO user_sessions (id, user_id, created_at, last_activity_at, expires_at, ip_address, user_agent)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, user.id, now, now, now + ABSOLUTE_SECONDS * 1000, ipAddress, userAgent);
+  ).run(
+    id,
+    user.id,
+    now,
+    now,
+    now + ABSOLUTE_SECONDS * 1000,
+    ipAddress,
+    userAgent,
+  );
 
   const token = jwt.sign(
     { userId: user.id, username: user.username, role: user.role, sid: id },
@@ -92,12 +119,19 @@ function startSession({ user, ipAddress = null, userAgent = null }) {
     { expiresIn: ABSOLUTE_SECONDS },
   );
 
-  return { token, sessionId: id, idleSeconds: IDLE_SECONDS, warningSeconds: WARNING_SECONDS };
+  return {
+    token,
+    sessionId: id,
+    idleSeconds: IDLE_SECONDS,
+    warningSeconds: WARNING_SECONDS,
+  };
 }
 
 function endRow(row, reason) {
   const result = db
-    .prepare("UPDATE user_sessions SET ended_at = ?, end_reason = ? WHERE id = ? AND ended_at IS NULL")
+    .prepare(
+      "UPDATE user_sessions SET ended_at = ?, end_reason = ? WHERE id = ? AND ended_at IS NULL",
+    )
     .run(Date.now(), reason, row.id);
 
   if (Number(result.changes) === 1) {
@@ -126,7 +160,9 @@ function verifyToken(token) {
     throw reject("INVALID_TOKEN");
   }
 
-  const row = db.prepare("SELECT * FROM user_sessions WHERE id = ?").get(decoded.sid);
+  const row = db
+    .prepare("SELECT * FROM user_sessions WHERE id = ?")
+    .get(decoded.sid);
 
   if (!row || Number(row.user_id) !== Number(decoded.userId)) {
     throw reject("INVALID_TOKEN");
@@ -157,7 +193,11 @@ function peek(token) {
   try {
     const decoded = jwt.verify(String(token || ""), signingKey());
 
-    return decoded.sid ? db.prepare("SELECT * FROM user_sessions WHERE id = ?").get(decoded.sid) || null : null;
+    return decoded.sid
+      ? db
+          .prepare("SELECT * FROM user_sessions WHERE id = ?")
+          .get(decoded.sid) || null
+      : null;
   } catch {
     return null;
   }
@@ -165,14 +205,15 @@ function peek(token) {
 
 // "I am using the app": keeps the session from going idle.
 function touch(sessionId) {
-  db.prepare("UPDATE user_sessions SET last_activity_at = ? WHERE id = ? AND ended_at IS NULL").run(
-    Date.now(),
-    sessionId,
-  );
+  db.prepare(
+    "UPDATE user_sessions SET last_activity_at = ? WHERE id = ? AND ended_at IS NULL",
+  ).run(Date.now(), sessionId);
 }
 
 function end(sessionId, reason) {
-  const row = db.prepare("SELECT * FROM user_sessions WHERE id = ?").get(sessionId);
+  const row = db
+    .prepare("SELECT * FROM user_sessions WHERE id = ?")
+    .get(sessionId);
 
   if (row && !row.ended_at) {
     endRow(row, reason);
@@ -182,7 +223,9 @@ function end(sessionId, reason) {
 // Ends every live session of a person, except `exceptSessionId`.
 function endAllForUser(userId, reason, exceptSessionId = null) {
   const rows = db
-    .prepare("SELECT * FROM user_sessions WHERE user_id = ? AND ended_at IS NULL AND id != ?")
+    .prepare(
+      "SELECT * FROM user_sessions WHERE user_id = ? AND ended_at IS NULL AND id != ?",
+    )
     .all(userId, exceptSessionId || "");
 
   rows.forEach((row) => endRow(row, reason));
@@ -192,7 +235,9 @@ function endAllForUser(userId, reason, exceptSessionId = null) {
 
 // Ends every live session, for everybody.
 function endEverySession(reason) {
-  const rows = db.prepare("SELECT * FROM user_sessions WHERE ended_at IS NULL").all();
+  const rows = db
+    .prepare("SELECT * FROM user_sessions WHERE ended_at IS NULL")
+    .all();
 
   rows.forEach((row) => endRow(row, reason));
 
@@ -201,14 +246,16 @@ function endEverySession(reason) {
 
 // Whether a session is still good right now (the live-update socket asks).
 function isLive(sessionId) {
-  const row = db.prepare("SELECT * FROM user_sessions WHERE id = ?").get(sessionId);
+  const row = db
+    .prepare("SELECT * FROM user_sessions WHERE id = ?")
+    .get(sessionId);
   const now = Date.now();
 
   return Boolean(
     row &&
-      !row.ended_at &&
-      now <= Number(row.expires_at) &&
-      now - Number(row.last_activity_at) <= IDLE_SECONDS * 1000,
+    !row.ended_at &&
+    now <= Number(row.expires_at) &&
+    now - Number(row.last_activity_at) <= IDLE_SECONDS * 1000,
   );
 }
 
@@ -218,11 +265,15 @@ function sweepIdle() {
   try {
     const now = Date.now();
 
-    db.prepare("SELECT * FROM user_sessions WHERE ended_at IS NULL AND last_activity_at < ?")
+    db.prepare(
+      "SELECT * FROM user_sessions WHERE ended_at IS NULL AND last_activity_at < ?",
+    )
       .all(now - IDLE_SECONDS * 1000)
       .forEach((row) => endRow(row, "IDLE"));
 
-    db.prepare("SELECT * FROM user_sessions WHERE ended_at IS NULL AND expires_at < ?")
+    db.prepare(
+      "SELECT * FROM user_sessions WHERE ended_at IS NULL AND expires_at < ?",
+    )
       .all(now)
       .forEach((row) => endRow(row, "EXPIRED"));
   } catch (error) {
@@ -250,6 +301,7 @@ module.exports = {
   endAllForUser,
   endEverySession,
   events,
+  idleText,
   isLive,
   peek,
   startSession,

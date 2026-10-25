@@ -33,6 +33,17 @@ type Settings = { idleSeconds: number; warningSeconds: number };
 
 const DEFAULT_SETTINGS: Settings = { idleSeconds: 900, warningSeconds: 120 };
 
+// "15 minutes", or "10 seconds" when the server uses a short demo time.
+export function idleLimitText(seconds: number) {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds) : DEFAULT_SETTINGS.idleSeconds;
+
+  if (total < 60) return `${total} seconds`;
+
+  const minutes = Math.round(total / 60);
+
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 // ---------- state shared with the idle hook ----------
 
 type Listener = () => void;
@@ -248,7 +259,10 @@ async function clearDevice(reason: SignedOutReason, tellServer: boolean) {
   await AsyncStorage.multiRemove(SESSION_KEYS).catch(() => undefined);
 
   if (reason !== "logout") {
-    await AsyncStorage.setItem(NOTICE_KEY, reason).catch(() => undefined);
+    // An idle notice carries the limit so the sign-in screen can name it.
+    const notice = reason === "idle" ? `idle:${settings.idleSeconds}` : reason;
+
+    await AsyncStorage.setItem(NOTICE_KEY, notice).catch(() => undefined);
   }
 }
 
