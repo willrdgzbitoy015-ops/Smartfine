@@ -67,7 +67,7 @@ export const styles = StyleSheet.create({
   navText: {
     color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   logoutButton: {

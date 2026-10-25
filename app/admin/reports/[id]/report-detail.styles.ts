@@ -97,7 +97,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 14,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   logoutButton: {
