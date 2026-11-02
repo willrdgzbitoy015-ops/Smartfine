@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     useWindowDimensions,
     View,
+    type ViewInstance,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -71,7 +72,7 @@ export default function StudentQRScreen() {
   const [notice, setNotice] = useState("");
 
   const qrRef = useRef<QRExportRef | null>(null);
-  const qrContainerRef = useRef<View | null>(null);
+  const qrContainerRef = useRef<ViewInstance | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const savingRef = useRef(false);
 

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Platform,
   ScrollView,
+  type ScrollViewInstance,
   Text,
   TouchableOpacity,
   View,
@@ -89,7 +90,7 @@ export function StudentFormModal({
 
   const runLocked = useActionLock();
 
-  const bodyRef = useRef<ScrollView | null>(null);
+  const bodyRef = useRef<ScrollViewInstance | null>(null);
 
   // ----- record -----
   const [studentNumber, setStudentNumber] = useState("");

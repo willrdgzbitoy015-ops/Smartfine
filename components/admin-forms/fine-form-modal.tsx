@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, View, type ScrollViewInstance } from "react-native";
 
 import {
   Banner,
@@ -93,7 +93,7 @@ export function FineFormModal({
 
   const runLocked = useActionLock();
 
-  const bodyRef = useRef<ScrollView | null>(null);
+  const bodyRef = useRef<ScrollViewInstance | null>(null);
 
   // ----- choices -----
   const [students, setStudents] = useState<StudentOption[]>([]);

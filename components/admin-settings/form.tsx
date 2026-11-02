@@ -8,6 +8,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  type ScrollViewInstance,
   StyleProp,
   Text,
   TextInput,
@@ -267,7 +268,7 @@ export function FormPopup({
   // Shown between the header and the scrolling body, so a message stays in
   // view however far the form is scrolled.
   notice?: ReactNode;
-  bodyRef?: RefObject<ScrollView | null>;
+  bodyRef?: RefObject<ScrollViewInstance | null>;
   onClose: () => void;
   footer: ReactNode;
   children: ReactNode;

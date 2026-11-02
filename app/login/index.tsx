@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -50,17 +51,17 @@ export default function LoginScreen() {
   // INPUT REFERENCES
   // ==========================================
 
-  const usernameRef = useRef<TextInput | null>(null);
+  const usernameRef = useRef<TextInputInstance | null>(null);
 
-  const passwordRef = useRef<TextInput | null>(null);
+  const passwordRef = useRef<TextInputInstance | null>(null);
 
-  const resetIdentifierRef = useRef<TextInput | null>(null);
+  const resetIdentifierRef = useRef<TextInputInstance | null>(null);
 
-  const newPasswordRef = useRef<TextInput | null>(null);
+  const newPasswordRef = useRef<TextInputInstance | null>(null);
 
-  const confirmPasswordRef = useRef<TextInput | null>(null);
+  const confirmPasswordRef = useRef<TextInputInstance | null>(null);
 
-  const otpRefs = useRef<Array<TextInput | null>>([]);
+  const otpRefs = useRef<Array<TextInputInstance | null>>([]);
 
   // ==========================================
   // CURRENT SCREEN

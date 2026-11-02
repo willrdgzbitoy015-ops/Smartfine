@@ -52,7 +52,7 @@ export function SummaryCard({
   highlighted?: boolean;
   loading?: boolean;
   onPress?: () => void;
-  animatedStyle?: StyleProp<ViewStyle> | Animated.WithAnimatedObject<ViewStyle>;
+  animatedStyle?: StyleProp<ViewStyle> | Animated.WithAnimatedValue<ViewStyle>;
 }) {
   const cardWidth = useContext(CardWidthContext);
 
