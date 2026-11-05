@@ -54,7 +54,7 @@ export const styles = StyleSheet.create({
     color: COLORS.navy,
 
     fontSize: 27,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -67,6 +67,7 @@ export const styles = StyleSheet.create({
 
     color: COLORS.message,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 14,
     lineHeight: 21,
 
@@ -107,7 +108,7 @@ export const styles = StyleSheet.create({
     color: COLORS.navy,
 
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   deleteButton: {
@@ -127,7 +128,7 @@ export const styles = StyleSheet.create({
     color: COLORS.white,
 
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   disabledButton: {

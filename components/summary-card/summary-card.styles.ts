@@ -49,14 +49,18 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 18,
   },
+  // Pushed to the bottom of the card (value and hint).
+  bottom: {
+    marginTop: "auto",
+  },
   label: {
     color: COLORS.text,
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   value: {
     fontSize: 30,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     marginTop: 12,
   },
   valueNarrow: {
@@ -74,18 +78,20 @@ export const styles = StyleSheet.create({
     gap: 8,
     marginTop: "auto",
     paddingTop: 8,
-    // Same height with or without the ›, so hints line up too.
-    minHeight: 32,
+    // Same height with or without the ›, and for a one- or two-line hint, so
+    // the values line up across a row.
+    minHeight: 44,
   },
   hint: {
     flex: 1,
     color: "#6B7788",
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
   },
   chevron: {
     color: "#A0AAB8",
     fontSize: 18,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   // Top border by tone.

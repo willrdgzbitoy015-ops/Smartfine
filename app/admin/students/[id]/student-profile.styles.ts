@@ -107,7 +107,7 @@ export const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     width: "100%",
-    paddingHorizontal: 38,
+    paddingHorizontal: 28,
     paddingTop: 30,
     paddingBottom: 60,
   },
@@ -528,6 +528,7 @@ export const styles = StyleSheet.create({
 
   compactViolation: {
     flex: 1,
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
   },
 

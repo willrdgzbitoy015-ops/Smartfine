@@ -74,7 +74,7 @@ export const styles = StyleSheet.create({
     color: COLORS.navy,
 
     fontSize: 25,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -90,6 +90,7 @@ export const styles = StyleSheet.create({
 
     color: COLORS.message,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 14,
     lineHeight: 22,
 
@@ -118,6 +119,6 @@ export const styles = StyleSheet.create({
     color: COLORS.white,
 
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 });

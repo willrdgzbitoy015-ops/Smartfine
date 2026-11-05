@@ -915,7 +915,7 @@ export default function FinesDirectory() {
                     style={{
                       color: "#173A73",
                       fontSize: 16,
-                      fontWeight: "700",
+                      fontFamily: "Poppins_700Bold",
                     }}
                   >
                     ↻

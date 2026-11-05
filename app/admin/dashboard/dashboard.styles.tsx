@@ -96,7 +96,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 21,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -150,7 +150,7 @@ export const styles = StyleSheet.create({
   logoutText: {
     color: COLORS.white,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -194,7 +194,7 @@ export const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 27,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     color: COLORS.text,
   },
@@ -204,6 +204,7 @@ export const styles = StyleSheet.create({
 
     color: "#777777",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
   },
 
@@ -213,6 +214,11 @@ export const styles = StyleSheet.create({
     alignItems: "center",
 
     marginLeft: "auto",
+  },
+
+  // The notification bell sits to the left of the name and avatar.
+  bellArea: {
+    marginRight: 16,
   },
 
   profileTextArea: {
@@ -226,7 +232,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 13,
 
-    fontWeight: "500",
+    fontFamily: "Poppins_500Medium",
   },
 
   adminRole: {
@@ -234,7 +240,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 14,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   avatar: {
@@ -264,7 +270,7 @@ export const styles = StyleSheet.create({
   avatarText: {
     color: COLORS.white,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     fontSize: 12,
   },
@@ -301,7 +307,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   mobileNavTextActive: {
@@ -365,7 +371,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 18,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     flexShrink: 1,
   },
@@ -405,6 +411,7 @@ export const styles = StyleSheet.create({
   activityDescription: {
     color: "#4D5B6B",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 14,
 
     lineHeight: 20,
@@ -413,12 +420,13 @@ export const styles = StyleSheet.create({
   activityName: {
     color: COLORS.text,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   activityDetails: {
     color: "#7B8795",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     marginTop: 4,
@@ -427,7 +435,7 @@ export const styles = StyleSheet.create({
   activityAmount: {
     fontSize: 14,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "right",
   },
@@ -459,7 +467,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "500",
+    fontFamily: "Poppins_500Medium",
 
     textAlign: "center",
   },
@@ -475,6 +483,7 @@ export const styles = StyleSheet.create({
   activityEmptyText: {
     color: COLORS.muted,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
 
     textAlign: "center",
@@ -495,7 +504,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -509,7 +518,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 14,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -587,7 +596,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 13,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   quickActionTextPrimary: {
@@ -603,6 +612,7 @@ export const styles = StyleSheet.create({
 
     color: "#7B8795",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
   },
 
@@ -619,7 +629,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     marginBottom: 5,
   },
@@ -687,7 +697,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   filterChipTextActive: {
@@ -727,12 +737,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   listFooterText: {
     color: COLORS.muted,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     textAlign: "center",

@@ -139,7 +139,7 @@ export const styles = StyleSheet.create({
   logoutText: {
     color: COLORS.white,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ========================================
@@ -154,9 +154,10 @@ export const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
 
-    paddingHorizontal: 22,
+    paddingHorizontal: 28,
 
-    paddingVertical: 28,
+    paddingTop: 30,
+    paddingBottom: 40,
   },
 
   header: {
@@ -172,7 +173,7 @@ export const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 27,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     color: COLORS.text,
   },
@@ -218,7 +219,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   mobileNavTextActive: {
@@ -276,6 +277,7 @@ export const styles = StyleSheet.create({
   searchIcon: {
     color: "#222222",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 27,
 
     marginRight: 10,
@@ -300,7 +302,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 14,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     paddingLeft: 8,
   },
@@ -369,6 +371,7 @@ export const styles = StyleSheet.create({
   filterArrow: {
     color: "#111111",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
   },
 
@@ -550,7 +553,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 16,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   tableIntroSubtitle: {
@@ -588,7 +591,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     backgroundColor: "#EDF3FA",
 
@@ -642,7 +645,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   viewChipTextActive: {
@@ -841,7 +844,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 20,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
   },
@@ -1206,7 +1209,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 18,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
   },
@@ -1245,7 +1248,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ========================================
@@ -1339,6 +1342,7 @@ export const styles = StyleSheet.create({
   importCloseText: {
     color: COLORS.navy,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 25,
 
     lineHeight: 28,
@@ -1433,6 +1437,7 @@ export const styles = StyleSheet.create({
   importSelectArrow: {
     color: COLORS.navy,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 9,
   },
 

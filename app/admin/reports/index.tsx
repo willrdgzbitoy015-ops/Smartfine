@@ -936,6 +936,7 @@ export default function PaymentReports() {
                   <Text
                     style={{
                       color: "#8C939F",
+                      fontFamily: "Poppins_400Regular",
                       fontSize: 9,
                       textAlign: "center",
                       paddingTop: 2,

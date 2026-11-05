@@ -82,7 +82,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 25,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -100,7 +100,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 14,
 
-    fontWeight: "400",
+    fontFamily: "Poppins_400Regular",
 
     lineHeight: 21,
 
@@ -132,6 +132,6 @@ export const styles = StyleSheet.create({
 
     fontSize: 15,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 });

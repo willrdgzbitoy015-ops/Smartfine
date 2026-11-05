@@ -30,9 +30,10 @@ export const styles = StyleSheet.create({
     paddingBottom: 6,
     backgroundColor: "#FFFFFF",
   },
-  sectionTitle: { color: TEXT, fontSize: 15, fontWeight: "800", marginBottom: 4 },
+  sectionTitle: { color: TEXT, fontSize: 15, fontFamily: "Poppins_700Bold", marginBottom: 4 },
   sectionDescription: {
     color: MUTED,
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
     lineHeight: 16,
     marginBottom: 12,
@@ -47,9 +48,9 @@ export const styles = StyleSheet.create({
     backgroundColor: "#ECEFF3",
     paddingHorizontal: 13,
   },
-  readOnlyText: { color: TEXT, fontSize: 13, fontWeight: "800" },
-  readOnlyPlaceholder: { color: "#A0A7B2", fontSize: 13 },
-  hint: { color: MUTED, fontSize: 10, lineHeight: 15, marginTop: 5 },
+  readOnlyText: { color: TEXT, fontSize: 13, fontFamily: "Poppins_700Bold" },
+  readOnlyPlaceholder: { color: "#A0A7B2", fontFamily: "Poppins_400Regular", fontSize: 13 },
+  hint: { color: MUTED, fontFamily: "Poppins_400Regular", fontSize: 10, lineHeight: 15, marginTop: 5 },
   disabled: { opacity: 0.55 },
 
   // ==========================================
@@ -68,9 +69,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 13,
   },
   selectOpen: { borderColor: NAVY, backgroundColor: "#FFFFFF" },
-  selectText: { flex: 1, color: "#333840", fontSize: 13, fontWeight: "600" },
-  selectPlaceholder: { flex: 1, color: "#A0A7B2", fontSize: 13 },
-  selectArrow: { color: NAVY, fontSize: 10 },
+  selectText: { flex: 1, color: "#333840", fontSize: 13, fontFamily: "Poppins_600SemiBold" },
+  selectPlaceholder: { flex: 1, color: "#A0A7B2", fontFamily: "Poppins_400Regular", fontSize: 13 },
+  selectArrow: { color: NAVY, fontFamily: "Poppins_400Regular", fontSize: 10 },
   options: {
     marginTop: 6,
     borderWidth: 1,
@@ -87,9 +88,9 @@ export const styles = StyleSheet.create({
     borderBottomColor: "#EEF1F5",
   },
   optionSelected: { backgroundColor: "#EAF1FB" },
-  optionTitle: { color: TEXT, fontSize: 13, fontWeight: "700" },
-  optionSubtitle: { color: MUTED, fontSize: 11, marginTop: 2 },
-  optionEmpty: { color: MUTED, fontSize: 12, padding: 13 },
+  optionTitle: { color: TEXT, fontSize: 13, fontFamily: "Poppins_700Bold" },
+  optionSubtitle: { color: MUTED, fontFamily: "Poppins_400Regular", fontSize: 11, marginTop: 2 },
+  optionEmpty: { color: MUTED, fontFamily: "Poppins_400Regular", fontSize: 12, padding: 13 },
   checkOption: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -113,10 +114,10 @@ export const styles = StyleSheet.create({
     marginTop: 1,
   },
   checkBoxOn: { borderColor: NAVY, backgroundColor: NAVY },
-  checkBoxMark: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
+  checkBoxMark: { color: "#FFFFFF", fontSize: 13, fontFamily: "Poppins_700Bold" },
   checkText: { flex: 1 },
-  checkTitle: { color: TEXT, fontSize: 13, fontWeight: "800" },
-  checkDescription: { color: "#4A5668", fontSize: 12, lineHeight: 18, marginTop: 2 },
+  checkTitle: { color: TEXT, fontSize: 13, fontFamily: "Poppins_700Bold" },
+  checkDescription: { color: "#4A5668", fontFamily: "Poppins_400Regular", fontSize: 12, lineHeight: 18, marginTop: 2 },
 
   // ==========================================
   // STATUS SWITCH
@@ -133,8 +134,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: "#F8FAFC",
   },
-  statusLabel: { color: "#3F434A", fontSize: 12, fontWeight: "700" },
-  statusValue: { fontSize: 13, fontWeight: "800", marginTop: 2 },
+  statusLabel: { color: "#3F434A", fontSize: 12, fontFamily: "Poppins_700Bold" },
+  statusValue: { fontSize: 13, fontFamily: "Poppins_700Bold", marginTop: 2 },
   statusActive: { color: "#2E9D43" },
   statusInactive: { color: RED },
   switchTrack: {
@@ -179,9 +180,9 @@ export const styles = StyleSheet.create({
     overflow: "hidden",
   },
   avatarImage: { width: 84, height: 84 },
-  avatarText: { color: "#FFFFFF", fontSize: 26, fontWeight: "800" },
+  avatarText: { color: "#FFFFFF", fontSize: 26, fontFamily: "Poppins_700Bold" },
   photoText: { flexGrow: 1, flexBasis: 220, minWidth: 0 },
-  photoTitle: { color: TEXT, fontSize: 14, fontWeight: "800" },
+  photoTitle: { color: TEXT, fontSize: 14, fontFamily: "Poppins_700Bold" },
   photoActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   photoConfirm: {
     marginTop: 10,
@@ -191,7 +192,7 @@ export const styles = StyleSheet.create({
     borderColor: "#F3B7B7",
     backgroundColor: "#FFF4F4",
   },
-  photoConfirmText: { color: "#9F1D1D", fontSize: 12, fontWeight: "700" },
+  photoConfirmText: { color: "#9F1D1D", fontSize: 12, fontFamily: "Poppins_700Bold" },
   smallButton: {
     minHeight: 36,
     borderRadius: 8,
@@ -205,7 +206,7 @@ export const styles = StyleSheet.create({
   smallPrimary: { backgroundColor: NAVY, borderColor: NAVY },
   smallDanger: { backgroundColor: RED, borderColor: RED },
   smallDangerOutline: { borderColor: RED },
-  smallText: { color: NAVY, fontSize: 11, fontWeight: "800" },
+  smallText: { color: NAVY, fontSize: 11, fontFamily: "Poppins_700Bold" },
   smallTextLight: { color: "#FFFFFF" },
   smallTextDanger: { color: RED },
 
@@ -222,10 +223,10 @@ export const styles = StyleSheet.create({
   bannerError: { backgroundColor: "#FFF0EE", borderColor: "#F6C9C2" },
   bannerWarning: { backgroundColor: "#FFF7E8", borderColor: "#F0C38E" },
   bannerInfo: { backgroundColor: "#EEF3FA", borderColor: "#C9D7EC" },
-  bannerTitle: { color: TEXT, fontSize: 13, fontWeight: "800", marginBottom: 2 },
+  bannerTitle: { color: TEXT, fontSize: 13, fontFamily: "Poppins_700Bold", marginBottom: 2 },
   bannerTitleError: { color: "#B42318" },
   bannerTitleWarning: { color: "#875000" },
-  bannerText: { color: "#4A5668", fontSize: 12, lineHeight: 18 },
+  bannerText: { color: "#4A5668", fontFamily: "Poppins_400Regular", fontSize: 12, lineHeight: 18 },
 
   // ==========================================
   // SUCCESS
@@ -245,17 +246,18 @@ export const styles = StyleSheet.create({
     marginBottom: 14,
   },
   successIconWarning: { backgroundColor: "#FFF4DE", borderColor: "#E0A23B" },
-  successMark: { color: "#2E9D43", fontSize: 28, fontWeight: "900" },
+  successMark: { color: "#2E9D43", fontSize: 28, fontFamily: "Poppins_700Bold" },
   successMarkWarning: { color: "#A86400" },
   successTitle: {
     color: TEXT,
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     textAlign: "center",
     marginBottom: 8,
   },
   successLine: {
     color: "#4A5668",
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     lineHeight: 20,
     textAlign: "center",

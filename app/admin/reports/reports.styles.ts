@@ -10,7 +10,7 @@ export const styles = StyleSheet.create({
     color: "#1265B0",
     backgroundColor: "#DDEEFF",
     fontSize: 9,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     marginTop: 5,
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -21,7 +21,7 @@ export const styles = StyleSheet.create({
     color: "#697789",
     backgroundColor: "#EEF1F5",
     fontSize: 9,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     marginTop: 5,
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -42,32 +42,32 @@ export const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
-  detailAmount: { color: "#173A73", fontSize: 28, fontWeight: "800" },
+  detailAmount: { color: "#173A73", fontSize: 28, fontFamily: "Poppins_700Bold" },
   detailStatus: {
     overflow: "hidden",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 5,
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   detailPaid: { color: "#16843A", backgroundColor: "#E4F6EA" },
   detailPending: { color: "#A46C00", backgroundColor: "#FFF1CF" },
   detailCancelled: { color: "#606775", backgroundColor: "#ECEFF4" },
-  detailHint: { color: "#728092", fontSize: 11, lineHeight: 17, marginTop: 4 },
+  detailHint: { color: "#728092", fontFamily: "Poppins_400Regular", fontSize: 11, lineHeight: 17, marginTop: 4 },
   detailDivider: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 20 },
   detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 18 },
   detailField: { flexBasis: 245, flexGrow: 1, minWidth: 0 },
   detailLabel: {
     color: "#7B8594",
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     marginBottom: 6,
   },
   detailValue: {
     color: "#253242",
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     lineHeight: 18,
   },
   // Transaction search and status filter.
@@ -89,6 +89,7 @@ export const styles = StyleSheet.create({
     borderRadius: 9,
     paddingHorizontal: 14,
     color: "#253242",
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     backgroundColor: "#FFFFFF",
   },
@@ -102,7 +103,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   filterChipActive: { backgroundColor: "#173A73", borderColor: "#173A73" },
-  filterChipText: { color: "#173A73", fontSize: 11, fontWeight: "700" },
+  filterChipText: { color: "#173A73", fontSize: 11, fontFamily: "Poppins_700Bold" },
   filterChipTextActive: { color: "#FFFFFF" },
   // ========================================
   // SCREEN
@@ -149,7 +150,7 @@ export const styles = StyleSheet.create({
     width: 28,
     color: "#FFFFFF",
     fontSize: 21,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     textAlign: "center",
     marginRight: 10,
   },
@@ -179,7 +180,7 @@ export const styles = StyleSheet.create({
   },
   logoutText: {
     color: "#FFFFFF",
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
   // ========================================
   // MAIN
@@ -190,8 +191,8 @@ export const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 42,
-    paddingTop: 34,
+    paddingHorizontal: 28,
+    paddingTop: 30,
     paddingBottom: 45,
   },
   // Phones: same side spacing as Fines and Students.
@@ -221,7 +222,7 @@ export const styles = StyleSheet.create({
   },
   mobileNavText: {
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     color: "#173A73",
   },
   mobileNavTextActive: {
@@ -241,10 +242,11 @@ export const styles = StyleSheet.create({
   pageTitle: {
     color: "#123266",
     fontSize: 26,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   pageSubtitle: {
     color: "#7E8794",
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     marginTop: 5,
   },
@@ -262,7 +264,7 @@ export const styles = StyleSheet.create({
   refreshButtonText: {
     color: "#173A73",
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   // ========================================
   // LOADING / ERROR
@@ -277,18 +279,20 @@ export const styles = StyleSheet.create({
   },
   stateText: {
     color: "#7E8794",
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     marginTop: 14,
   },
   errorTitle: {
     color: "#D32F2F",
     fontSize: 17,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     marginBottom: 8,
   },
   errorText: {
     maxWidth: 480,
     color: "#69717D",
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     textAlign: "center",
     lineHeight: 18,
@@ -306,7 +310,7 @@ export const styles = StyleSheet.create({
   retryButtonText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   // ========================================
   // PAYMENT TRANSACTIONS CARD
@@ -334,17 +338,18 @@ export const styles = StyleSheet.create({
   transactionsTitle: {
     color: "#123266",
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   transactionsSubtitle: {
     color: "#8C939F",
+    fontFamily: "Poppins_400Regular",
     fontSize: 9,
     marginTop: 3,
   },
   transactionCount: {
     color: "#173A73",
     fontSize: 10,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     backgroundColor: "#EEF3FA",
     paddingHorizontal: 11,
     paddingVertical: 6,
@@ -378,7 +383,7 @@ export const styles = StyleSheet.create({
   headerCell: {
     color: "#FFFFFF",
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     paddingHorizontal: 8,
   },
   // ========================================
@@ -447,40 +452,44 @@ export const styles = StyleSheet.create({
   },
   bodyCell: {
     color: "#30363D",
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
   },
   transactionReference: {
     color: "#123266",
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   gatewayText: {
     color: "#8C939F",
+    fontFamily: "Poppins_400Regular",
     fontSize: 8,
     marginTop: 3,
   },
   studentName: {
     color: "#30363D",
     fontSize: 10,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   studentNumber: {
     color: "#8C939F",
+    fontFamily: "Poppins_400Regular",
     fontSize: 8,
     marginTop: 3,
   },
   amountText: {
     color: "#30363D",
     fontSize: 10,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   fineReference: {
     color: "#123266",
     fontSize: 10,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   dateText: {
     color: "#555D68",
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
   },
   // ========================================
@@ -495,7 +504,7 @@ export const styles = StyleSheet.create({
   },
   paymentStatusText: {
     fontSize: 8,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   // ========================================
   // EMPTY TABLE
@@ -521,17 +530,18 @@ export const styles = StyleSheet.create({
   emptyIconText: {
     color: "#173A73",
     fontSize: 24,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   emptyTitle: {
     color: "#123266",
     fontSize: 13,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     marginBottom: 6,
   },
   emptyText: {
     maxWidth: 370,
     color: "#8C939F",
+    fontFamily: "Poppins_400Regular",
     fontSize: 9,
     lineHeight: 15,
     textAlign: "center",

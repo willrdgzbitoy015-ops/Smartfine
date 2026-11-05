@@ -58,7 +58,7 @@ export const styles = StyleSheet.create({
     width: 28,
     color: COLORS.white,
     fontSize: 21,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     textAlign: "center",
     marginRight: 10,
   },
@@ -88,7 +88,7 @@ export const styles = StyleSheet.create({
   },
   logoutText: {
     color: COLORS.white,
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
   // ==========================================
   // MAIN
@@ -99,8 +99,9 @@ export const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 22,
-    paddingVertical: 28,
+    paddingHorizontal: 28,
+    paddingTop: 30,
+    paddingBottom: 40,
   },
   // ==========================================
   // HEADER
@@ -113,11 +114,12 @@ export const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 27,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     color: COLORS.text,
   },
   pageSubtitle: {
     color: "#66758B",
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     marginTop: 5,
   },
@@ -143,7 +145,7 @@ export const styles = StyleSheet.create({
   mobileNavText: {
     color: COLORS.navy,
     fontSize: 12,
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
   mobileNavTextActive: {
     color: COLORS.white,
@@ -180,12 +182,14 @@ export const styles = StyleSheet.create({
   },
   searchIcon: {
     color: "#222222",
+    fontFamily: "Poppins_400Regular",
     fontSize: 27,
     marginRight: 10,
     marginTop: -4,
   },
   searchInput: {
     flex: 1,
+    fontFamily: "Poppins_400Regular",
     fontSize: 14,
     color: "#333333",
     outlineStyle: "none",
@@ -217,11 +221,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     color: "#333333",
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
     marginRight: 12,
   },
   filterArrow: {
     color: "#111111",
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
   },
   dropdownMenu: {
@@ -255,6 +260,7 @@ export const styles = StyleSheet.create({
   },
   dropdownItemText: {
     color: "#333333",
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
   },
   // ==========================================
@@ -272,7 +278,7 @@ export const styles = StyleSheet.create({
   addButtonText: {
     color: COLORS.white,
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   // ==========================================
   // TABLE CARD
@@ -309,17 +315,18 @@ export const styles = StyleSheet.create({
   tableIntroTitle: {
     color: COLORS.navy,
     fontSize: 16,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   tableIntroSubtitle: {
     color: "#6B7788",
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
     marginTop: 4,
   },
   resultCount: {
     color: COLORS.navy,
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     backgroundColor: "#EDF3FA",
     borderRadius: 20,
     paddingHorizontal: 10,
@@ -340,7 +347,7 @@ export const styles = StyleSheet.create({
   headerCell: {
     color: COLORS.white,
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     paddingHorizontal: 8,
   },
   // ==========================================
@@ -395,6 +402,7 @@ export const styles = StyleSheet.create({
   },
   cell: {
     color: "#444444",
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     paddingHorizontal: 8,
   },
@@ -407,36 +415,37 @@ export const styles = StyleSheet.create({
   // ==========================================
   fineIdText: {
     color: COLORS.navy,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   fineUnreadLabel: {
     color: COLORS.red,
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   cashRequestedLabel: {
     color: "#9B5500",
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   fineReadLabel: {
     color: COLORS.muted,
     fontSize: 10,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
-    studentName: {
+  studentName: {
     color: "#333333",
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
-    fontWeight: "600",
   },
   studentNumber: {
     marginTop: 3,
     color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
   },
   amountText: {
     color: COLORS.navy,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   // ==========================================
   // STATUS BADGES
@@ -461,7 +470,7 @@ export const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   statusTextUnpaid: {
     color: "#D32F2F",
@@ -471,6 +480,7 @@ export const styles = StyleSheet.create({
   },
   pendingFineHint: {
     color: "#7B8493",
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
     marginTop: 4,
     textAlign: "center",
@@ -493,10 +503,12 @@ export const styles = StyleSheet.create({
   loadingText: {
     color: COLORS.muted,
     marginTop: 14,
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
   },
   errorText: {
     color: COLORS.red,
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     textAlign: "center",
     marginBottom: 18,
@@ -509,7 +521,7 @@ export const styles = StyleSheet.create({
   },
   retryButtonText: {
     color: COLORS.white,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
   // ==========================================
   // EMPTY STATE
@@ -522,10 +534,11 @@ export const styles = StyleSheet.create({
   emptyTitle: {
     color: COLORS.navy,
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   emptyText: {
     color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     marginTop: 7,
   },
@@ -542,7 +555,7 @@ export const styles = StyleSheet.create({
   emptyResetText: {
     color: COLORS.white,
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 });
 // ==========================================

@@ -65,7 +65,7 @@ export const styles = StyleSheet.create({
     color: COLORS.navy,
 
     fontSize: 27,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -83,7 +83,7 @@ export const styles = StyleSheet.create({
     color: COLORS.message,
 
     fontSize: 14,
-    fontWeight: "400",
+    fontFamily: "Poppins_400Regular",
 
     lineHeight: 20,
 
@@ -103,7 +103,7 @@ export const styles = StyleSheet.create({
     color: "#D32F2F",
 
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
 
     lineHeight: 19,
 
@@ -153,7 +153,7 @@ export const styles = StyleSheet.create({
     color: COLORS.navy,
 
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -177,7 +177,7 @@ export const styles = StyleSheet.create({
     color: COLORS.white,
 
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================

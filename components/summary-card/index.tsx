@@ -68,6 +68,8 @@ export function SummaryCard({
         {label}
       </Text>
 
+      {/* The value and hint sit at the bottom, so they line up across a row even when one label wraps to two lines. */}
+      <View style={styles.bottom}>
       {/* A pulsing bar while loading; the number fades in when it arrives. */}
       {loading ? (
         <Skeleton
@@ -104,6 +106,7 @@ export function SummaryCard({
           </Text>
         )}
         {onPress && <Text style={styles.chevron}>›</Text>}
+      </View>
       </View>
     </View>
   );

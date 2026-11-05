@@ -59,7 +59,7 @@ export const styles = StyleSheet.create({
   adminText: {
     color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     textAlign: "center",
   },
 

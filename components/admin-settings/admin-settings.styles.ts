@@ -67,8 +67,8 @@ export const styles = StyleSheet.create({
   },
   headerIconImage: { width: 20, height: 20, tintColor: COLORS.navy },
   headerText: { flex: 1 },
-  title: { color: COLORS.text, fontSize: 18, fontWeight: "800" },
-  subtitle: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginTop: 4 },
+  title: { color: COLORS.text, fontSize: 18, fontFamily: "Poppins_700Bold" },
+  subtitle: { color: COLORS.muted, fontFamily: "Poppins_400Regular", fontSize: 11, lineHeight: 16, marginTop: 4 },
   closeButton: {
     width: 32,
     height: 32,
@@ -77,7 +77,7 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F0F3F8",
   },
-  closeText: { color: COLORS.navy, fontSize: 22, lineHeight: 25 },
+  closeText: { color: COLORS.navy, fontFamily: "Poppins_400Regular", fontSize: 22, lineHeight: 25 },
   body: { flexShrink: 1 },
   bodyContent: { paddingHorizontal: 22, paddingTop: 18, paddingBottom: 8 },
   footer: {
@@ -98,7 +98,7 @@ export const styles = StyleSheet.create({
   groupLabel: {
     color: COLORS.muted,
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     letterSpacing: 0.6,
     marginBottom: 10,
   },
@@ -110,7 +110,7 @@ export const styles = StyleSheet.create({
   label: {
     color: COLORS.body,
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
     marginBottom: 7,
   },
   required: { color: COLORS.red },
@@ -122,12 +122,13 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: COLORS.field,
     color: "#333840",
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     paddingHorizontal: 13,
   },
   // Same 1 px border, so focusing never shifts the layout.
   inputFocused: { borderColor: COLORS.navy, backgroundColor: COLORS.white },
-  hint: { color: COLORS.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
+  hint: { color: COLORS.muted, fontFamily: "Poppins_400Regular", fontSize: 10, lineHeight: 15, marginTop: 5 },
   passwordBox: {
     height: 44,
     flexDirection: "row",
@@ -142,6 +143,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#333840",
+    fontFamily: "Poppins_400Regular",
     fontSize: 13,
     paddingHorizontal: 13,
     outlineStyle: "none",
@@ -180,9 +182,9 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkDotMet: { backgroundColor: COLORS.green, borderColor: COLORS.green },
-  checkMark: { color: COLORS.white, fontSize: 9, fontWeight: "900" },
-  checkText: { color: "#6C7889", fontSize: 11 },
-  checkTextMet: { color: COLORS.greenText, fontWeight: "700" },
+  checkMark: { color: COLORS.white, fontSize: 9, fontFamily: "Poppins_700Bold" },
+  checkText: { color: "#6C7889", fontFamily: "Poppins_400Regular", fontSize: 11 },
+  checkTextMet: { color: COLORS.greenText, fontFamily: "Poppins_700Bold" },
 
   error: {
     color: "#B42318",
@@ -192,6 +194,7 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
     lineHeight: 17,
     marginBottom: 14,
@@ -213,11 +216,11 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.navy,
     color: COLORS.white,
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
     textAlign: "center",
     lineHeight: 18,
   },
-  noteText: { flex: 1, color: "#536780", fontSize: 11, lineHeight: 16 },
+  noteText: { flex: 1, color: "#536780", fontFamily: "Poppins_400Regular", fontSize: 11, lineHeight: 16 },
 
   // ==========================================
   // BUTTONS
@@ -241,8 +244,8 @@ export const styles = StyleSheet.create({
     borderColor: "#C8CDD5",
   },
   buttonDisabled: { opacity: 0.55 },
-  buttonText: { color: COLORS.white, fontSize: 12, fontWeight: "800" },
-  buttonOutlineText: { color: "#4D5560", fontSize: 12, fontWeight: "700" },
+  buttonText: { color: COLORS.white, fontSize: 12, fontFamily: "Poppins_700Bold" },
+  buttonOutlineText: { color: "#4D5560", fontSize: 12, fontFamily: "Poppins_700Bold" },
 
   // ==========================================
   // ADMINISTRATORS PANEL
@@ -263,7 +266,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#EEF3FA",
   },
   summaryDot: { width: 7, height: 7, borderRadius: 4 },
-  summaryText: { color: COLORS.text, fontSize: 11, fontWeight: "700" },
+  summaryText: { color: COLORS.text, fontSize: 11, fontFamily: "Poppins_700Bold" },
   adminRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -298,7 +301,7 @@ export const styles = StyleSheet.create({
   },
   avatarInactive: { backgroundColor: "#9AA5B5" },
   avatarImage: { width: 46, height: 46 },
-  avatarText: { color: COLORS.white, fontSize: 15, fontWeight: "800" },
+  avatarText: { color: COLORS.white, fontSize: 15, fontFamily: "Poppins_700Bold" },
   adminText: { flex: 1, minWidth: 0 },
   adminNameRow: {
     flexDirection: "row",
@@ -306,7 +309,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 7,
   },
-  adminName: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
+  adminName: { color: COLORS.text, fontSize: 14, fontFamily: "Poppins_700Bold" },
   adminNameInactive: { color: "#6C7889" },
   youTag: {
     overflow: "hidden",
@@ -316,10 +319,10 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.navy,
     color: COLORS.white,
     fontSize: 9,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
-  adminMeta: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
-  adminMetaSmall: { color: "#9AA1AB", fontSize: 10, marginTop: 3 },
+  adminMeta: { color: COLORS.muted, fontFamily: "Poppins_400Regular", fontSize: 11, marginTop: 3 },
+  adminMetaSmall: { color: "#9AA1AB", fontFamily: "Poppins_400Regular", fontSize: 10, marginTop: 3 },
   adminSide: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -334,7 +337,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
   statusActive: { color: COLORS.greenText, backgroundColor: "#E7F8EA" },
   statusInactive: { color: COLORS.red, backgroundColor: "#FFEAEA" },
@@ -352,12 +355,12 @@ export const styles = StyleSheet.create({
   rowButtonActivate: { borderColor: COLORS.green },
   rowButtonDelete: { borderColor: COLORS.red, minWidth: 70 },
   rowButtonMuted: { borderColor: "#D5DAE1" },
-  rowButtonText: { fontSize: 11, fontWeight: "800" },
+  rowButtonText: { fontSize: 11, fontFamily: "Poppins_700Bold" },
   rowTextDeactivate: { color: "#A86400" },
   rowTextActivate: { color: COLORS.greenText },
   rowTextDelete: { color: COLORS.red },
   rowTextMuted: { color: "#A0A7B2" },
-  selfNote: { color: COLORS.muted, fontSize: 10, fontStyle: "italic" },
+  selfNote: { color: COLORS.muted, fontFamily: "Poppins_400Regular", fontSize: 10, fontStyle: "italic" },
   stateBox: {
     minHeight: 130,
     alignItems: "center",
@@ -366,14 +369,15 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
   },
   stateBoxError: { backgroundColor: "#FFF4F4" },
-  stateTitle: { color: COLORS.text, fontSize: 13, fontWeight: "800" },
+  stateTitle: { color: COLORS.text, fontSize: 13, fontFamily: "Poppins_700Bold" },
   stateText: {
     color: COLORS.muted,
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
     marginTop: 4,
     textAlign: "center",
   },
-  stateErrorText: { color: "#B42318", fontSize: 11, textAlign: "center" },
+  stateErrorText: { color: "#B42318", fontFamily: "Poppins_400Regular", fontSize: 11, textAlign: "center" },
   retryButton: {
     minWidth: 96,
     height: 34,
@@ -384,7 +388,7 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 14,
   },
-  retryText: { color: COLORS.white, fontSize: 11, fontWeight: "800" },
+  retryText: { color: COLORS.white, fontSize: 11, fontFamily: "Poppins_700Bold" },
 });
 
 // Cards that group each Settings section.
@@ -425,8 +429,8 @@ export const sectionStyles = StyleSheet.create({
   },
   iconImage: { width: 19, height: 19, tintColor: COLORS.navy },
   headingText: { flex: 1, minWidth: 0 },
-  title: { color: COLORS.text, fontSize: 15, fontWeight: "800" },
-  description: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  title: { color: COLORS.text, fontSize: 15, fontFamily: "Poppins_700Bold" },
+  description: { color: COLORS.muted, fontFamily: "Poppins_400Regular", fontSize: 11, lineHeight: 16, marginTop: 3 },
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -455,9 +459,9 @@ export const resetStyles = StyleSheet.create({
   gap: { marginTop: 10 },
   section: { marginTop: 14 },
   listRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-  bullet: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
-  listText: { flex: 1, color: COLORS.body, fontSize: 13, lineHeight: 19 },
-  note: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginTop: 4, marginBottom: 10 },
+  bullet: { color: COLORS.text, fontSize: 13, fontFamily: "Poppins_700Bold" },
+  listText: { flex: 1, color: COLORS.body, fontFamily: "Poppins_400Regular", fontSize: 13, lineHeight: 19 },
+  note: { color: COLORS.muted, fontFamily: "Poppins_400Regular", fontSize: 11, lineHeight: 16, marginTop: 4, marginBottom: 10 },
   options: { marginTop: 8 },
-  danger: { color: COLORS.red, fontSize: 13, lineHeight: 20 },
+  danger: { color: COLORS.red, fontFamily: "Poppins_400Regular", fontSize: 13, lineHeight: 20 },
 });

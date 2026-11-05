@@ -159,8 +159,8 @@ export const styles = StyleSheet.create({
   gap: { marginTop: 10 },
   section: { marginTop: 14 },
   listRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-  bullet: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
-  listText: { flex: 1, color: COLORS.body, fontSize: 13, lineHeight: 19 },
+  bullet: { color: COLORS.text, fontSize: 13, fontFamily: "Poppins_700Bold" },
+  listText: { flex: 1, color: COLORS.body, fontFamily: "Poppins_400Regular", fontSize: 13, lineHeight: 19 },
 });
 
 // [text, background] per kind of backup.

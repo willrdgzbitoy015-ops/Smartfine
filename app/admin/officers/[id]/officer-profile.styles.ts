@@ -144,9 +144,9 @@ export const styles = StyleSheet.create({
 
     width: "100%",
 
-    paddingHorizontal: 38,
+    paddingHorizontal: 28,
 
-    paddingTop: 35,
+    paddingTop: 30,
 
     paddingBottom: 60,
   },

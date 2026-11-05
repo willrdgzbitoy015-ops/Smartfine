@@ -92,7 +92,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 21,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -137,7 +137,7 @@ export const styles = StyleSheet.create({
   logoutText: {
     color: COLORS.white,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -151,9 +151,9 @@ export const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
 
-    paddingHorizontal: 38,
+    paddingHorizontal: 28,
 
-    paddingVertical: 35,
+    paddingTop: 30,
 
     paddingBottom: 60,
   },
@@ -189,7 +189,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   mobileNavTextActive: {
@@ -215,12 +215,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 27,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   subtitle: {
     color: "#6F7682",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
 
     marginTop: 5,
@@ -261,6 +262,7 @@ export const styles = StyleSheet.create({
   loadingText: {
     color: COLORS.muted,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
 
     marginTop: 12,
@@ -309,12 +311,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 18,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   scannerSubtitle: {
     color: COLORS.muted,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     marginTop: 4,
@@ -389,7 +392,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -425,7 +428,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     marginTop: 12,
   },
@@ -445,7 +448,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -481,7 +484,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 17,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
   },
@@ -491,6 +494,7 @@ export const styles = StyleSheet.create({
 
     color: COLORS.muted,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     lineHeight: 17,
@@ -521,7 +525,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -567,12 +571,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   errorText: {
     color: "#A42B2B",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     lineHeight: 16,
@@ -595,7 +600,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -625,12 +630,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 16,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   manualSubtitle: {
     color: COLORS.muted,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     marginTop: 4,
@@ -665,6 +671,7 @@ export const styles = StyleSheet.create({
 
     color: "#222222",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
 
     outlineStyle: "none",
@@ -691,7 +698,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   buttonDisabled: {
@@ -739,12 +746,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 19,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   resultSubtitle: {
     color: COLORS.muted,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
 
     marginTop: 3,
@@ -765,7 +773,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -813,7 +821,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 28,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   studentDetails: {
@@ -827,7 +835,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 22,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     marginBottom: 6,
   },
@@ -835,6 +843,7 @@ export const styles = StyleSheet.create({
   studentMeta: {
     color: "#6C737E",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     lineHeight: 18,
@@ -871,7 +880,7 @@ export const styles = StyleSheet.create({
   accountStatusText: {
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   activeText: {
@@ -919,7 +928,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     marginBottom: 6,
   },
@@ -929,7 +938,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 19,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   resultOutstanding: {
@@ -937,7 +946,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 19,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ==========================================
@@ -977,7 +986,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   profileButton: {
@@ -1001,7 +1010,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   recordFineButton: {
@@ -1025,12 +1034,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   inactiveNotice: {
     color: COLORS.red,
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
 
     textAlign: "right",

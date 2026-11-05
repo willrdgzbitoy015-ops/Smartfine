@@ -72,7 +72,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 21,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     textAlign: "center",
 
@@ -117,7 +117,7 @@ export const styles = StyleSheet.create({
   logoutText: {
     color: "#FFFFFF",
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ========================================
@@ -133,7 +133,7 @@ export const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
 
-    paddingHorizontal: 42,
+    paddingHorizontal: 28,
 
     paddingTop: 30,
 
@@ -177,7 +177,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   mobileNavTextActive: {
@@ -222,7 +222,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   pageTitle: {
@@ -230,12 +230,13 @@ export const styles = StyleSheet.create({
 
     fontSize: 25,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   pageSubtitle: {
     color: "#7E8794",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     marginTop: 5,
@@ -278,7 +279,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 18,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   divider: {
@@ -330,7 +331,7 @@ export const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 10,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     color: "#A16A00",
   },
@@ -382,7 +383,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 10,
 
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
 
     letterSpacing: 0.4,
 
@@ -394,7 +395,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 13,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
 
     lineHeight: 19,
   },
@@ -402,6 +403,7 @@ export const styles = StyleSheet.create({
   detailSecondary: {
     color: "#7E8794",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 10,
 
     marginTop: 3,
@@ -410,7 +412,7 @@ export const styles = StyleSheet.create({
   amountValue: {
     fontSize: 21,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   amountPaid: {
@@ -426,7 +428,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 13,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     lineHeight: 19,
   },
@@ -434,6 +436,7 @@ export const styles = StyleSheet.create({
   notesText: {
     color: "#4F5660",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
 
     lineHeight: 18,
@@ -460,7 +463,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   onlineMethodBadge: {
@@ -480,7 +483,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ========================================
@@ -528,7 +531,7 @@ export const styles = StyleSheet.create({
   statusMessageIconText: {
     fontSize: 17,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     color: "#A16A00",
   },
@@ -554,6 +557,7 @@ export const styles = StyleSheet.create({
 
     color: "#6F747C",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     lineHeight: 18,
@@ -590,7 +594,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   // ========================================
@@ -627,6 +631,7 @@ export const styles = StyleSheet.create({
   stateText: {
     color: "#7E8794",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 12,
 
     marginTop: 14,
@@ -653,7 +658,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 25,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
   },
 
   errorTitle: {
@@ -661,7 +666,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 17,
 
-    fontWeight: "800",
+    fontFamily: "Poppins_700Bold",
 
     marginBottom: 7,
   },
@@ -671,6 +676,7 @@ export const styles = StyleSheet.create({
 
     color: "#7E8794",
 
+    fontFamily: "Poppins_400Regular",
     fontSize: 11,
 
     lineHeight: 17,
@@ -711,7 +717,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 
   backReportsOutlineButton: {
@@ -739,7 +745,7 @@ export const styles = StyleSheet.create({
 
     fontSize: 11,
 
-    fontWeight: "700",
+    fontFamily: "Poppins_700Bold",
   },
 });
 

@@ -867,7 +867,7 @@ export default function OfficersDirectory() {
 
                       fontSize: 16,
 
-                      fontWeight: "800",
+                      fontFamily: "Poppins_700Bold",
                     }}
                   >
                     ↻

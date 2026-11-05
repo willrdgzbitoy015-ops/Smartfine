@@ -895,7 +895,7 @@ export function StudentFormModal({
                       style={{
                         color: "#173A73",
                         fontSize: 11,
-                        fontWeight: "700",
+                        fontFamily: "Poppins_700Bold",
                       }}
                     >
                       Use {suggestUsername(firstName, lastName)} instead

@@ -94,7 +94,7 @@ export const styles = StyleSheet.create({
 
   logoutText: {
     color: COLORS.white,
-    fontWeight: "600",
+    fontFamily: "Poppins_600SemiBold",
   },
 
   // ==========================================
@@ -109,8 +109,9 @@ export const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     width: "100%",
-    paddingHorizontal: 24,
-    paddingVertical: 30,
+    paddingHorizontal: 28,
+    paddingTop: 30,
+    paddingBottom: 40,
   },
 
   // ==========================================
