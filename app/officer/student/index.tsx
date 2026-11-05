@@ -26,8 +26,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 
 import { FadeIn, PopIn, useSwitchFade } from "@/components/motion";
+import { Pagination } from "@/components/pagination";
 import { SkeletonList } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
+import { usePagination } from "@/hooks/use-pagination";
 
 import { useResponsiveStyles } from "./student.styles";
 
@@ -111,6 +113,17 @@ function pictureUrl(value: string | null) {
   return `${API_BASE.replace(/\/+$/, "")}/${value.replace(/^\/+/, "")}`;
 }
 
+// "Grade 7" ... "Grade 12" in number order, anything else after them.
+function gradeRank(grade: string) {
+  const number = Number(/\d+/.exec(grade)?.[0]);
+
+  return Number.isFinite(number) ? number : 999;
+}
+
+function byGrade(a: string, b: string) {
+  return gradeRank(a) - gradeRank(b) || a.localeCompare(b);
+}
+
 function nameInitials(name: string) {
   return (
     name
@@ -175,6 +188,8 @@ export default function OfficerStudentsScreen() {
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("");
+  const [sectionFilter, setSectionFilter] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -182,6 +197,7 @@ export default function OfficerStudentsScreen() {
   const [showQr, setShowQr] = useState(false);
 
   const requestRef = useRef<AbortController | null>(null);
+  const listRef = useRef<FlatList<Student> | null>(null);
 
   const selectedStudent =
     students.find((student) => student.id === selectedId) || null;
@@ -329,7 +345,27 @@ export default function OfficerStudentsScreen() {
 
   const query = search.trim().toLowerCase();
 
+  // Grade and section pills come from the students themselves.
+  const grades = Array.from(
+    new Set(students.map((student) => (student.grade_level || "").trim()).filter(Boolean)),
+  ).sort(byGrade);
+
+  const sections = gradeFilter
+    ? Array.from(
+        new Set(
+          students
+            .filter((student) => (student.grade_level || "").trim() === gradeFilter)
+            .map((student) => (student.section || "").trim())
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b))
+    : [];
+
   const filteredStudents = students.filter((student) => {
+    if (gradeFilter && (student.grade_level || "").trim() !== gradeFilter) return false;
+
+    if (sectionFilter && (student.section || "").trim() !== sectionFilter) return false;
+
     return (
       fullName(student).toLowerCase().includes(query) ||
       String(student.student_id || "")
@@ -337,6 +373,27 @@ export default function OfficerStudentsScreen() {
         .includes(query)
     );
   });
+
+  const filtering = Boolean(query || gradeFilter || sectionFilter);
+
+  // Ten students a page, so a list of hundreds stays easy to move through.
+  const pager = usePagination(filteredStudents, `${query}|${gradeFilter}|${sectionFilter}`);
+
+  // A new page starts at the top of the list.
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [pager.page]);
+
+  const chooseGrade = (grade: string) => {
+    setGradeFilter((current) => (current === grade ? "" : grade));
+    setSectionFilter("");
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setGradeFilter("");
+    setSectionFilter("");
+  };
 
   const canAddFine =
     selectedStudent !== null &&
@@ -511,8 +568,96 @@ export default function OfficerStudentsScreen() {
               </View>
             </View>
 
+            {students.length > 0 && (
+              <View style={styles.filterArea}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipRow}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Show all grades"
+                    accessibilityState={{ selected: gradeFilter === "" }}
+                    style={[styles.chip, gradeFilter === "" && styles.chipActive]}
+                    onPress={() => chooseGrade(gradeFilter)}
+                  >
+                    <Text style={[styles.chipText, gradeFilter === "" && styles.chipTextActive]}>
+                      All grades
+                    </Text>
+                  </TouchableOpacity>
+
+                  {grades.map((grade) => (
+                    <TouchableOpacity
+                      key={grade}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Show ${grade}`}
+                      accessibilityState={{ selected: gradeFilter === grade }}
+                      style={[styles.chip, gradeFilter === grade && styles.chipActive]}
+                      onPress={() => chooseGrade(grade)}
+                    >
+                      <Text style={[styles.chipText, gradeFilter === grade && styles.chipTextActive]}>
+                        {grade}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {sections.length > 1 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipRow}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {sections.map((section) => (
+                      <TouchableOpacity
+                        key={section}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Show section ${section}`}
+                        accessibilityState={{ selected: sectionFilter === section }}
+                        style={[
+                          styles.chip,
+                          styles.chipSection,
+                          sectionFilter === section && styles.chipActive,
+                        ]}
+                        onPress={() => setSectionFilter((current) => (current === section ? "" : section))}
+                      >
+                        <Text
+                          style={[styles.chipText, sectionFilter === section && styles.chipTextActive]}
+                        >
+                          {section}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryText}>
+                    {filtering
+                      ? `${filteredStudents.length} of ${students.length} students`
+                      : `${students.length} students`}
+                  </Text>
+
+                  {filtering && (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Clear search and filters"
+                      style={styles.clearFilters}
+                      onPress={clearFilters}
+                    >
+                      <Text style={styles.clearFiltersText}>Clear filters</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
             <FlatList
-              data={filteredStudents}
+              ref={listRef}
+              data={pager.pageItems}
               keyExtractor={(student) => String(student.id)}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
@@ -541,6 +686,10 @@ export default function OfficerStudentsScreen() {
                       <Text style={styles.studentMeta}>
                         Student ID: {item.student_id || "Unavailable"}
                       </Text>
+
+                      {String(item.account_status).toUpperCase() !== "ACTIVE" && (
+                        <Text style={styles.inactiveTag}>Inactive</Text>
+                      )}
                     </View>
 
                     <View style={styles.chevron} />
@@ -560,18 +709,23 @@ export default function OfficerStudentsScreen() {
                     {!error ? (
                       <>
                         <Text style={styles.emptyTitle}>
-                          {query ? "No matching students" : "No students yet"}
+                          {filtering ? "No matching students" : "No students yet"}
                         </Text>
 
                         <Text style={styles.helperText}>
-                          {query
-                            ? "Try a different name or student ID."
+                          {filtering
+                            ? "Try a different name, student ID, grade or section."
                             : "Registered students will appear here."}
                         </Text>
                       </>
                     ) : null}
                   </View>
                 )
+              }
+              ListFooterComponent={
+                <View style={styles.pagerArea}>
+                  <Pagination pager={pager} noun="students" />
+                </View>
               }
             />
           </Animated.View>

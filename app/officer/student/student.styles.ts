@@ -114,10 +114,89 @@ export const styles = StyleSheet.create({
     color: OFFICER.muted,
   },
 
+  // Grade and section pills under the search box, then the result count.
+  filterArea: {
+    paddingBottom: 10,
+  },
+
+  chipRow: {
+    paddingHorizontal: 20,
+    gap: 8,
+    alignItems: "center",
+    paddingBottom: 8,
+  },
+
+  chip: {
+    minHeight: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: OFFICER.lineStrong,
+    backgroundColor: OFFICER.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  chipActive: {
+    backgroundColor: OFFICER.navy,
+    borderColor: OFFICER.navy,
+  },
+
+  chipText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    color: OFFICER.navyDeep,
+  },
+
+  chipTextActive: {
+    color: "#FFFFFF",
+  },
+
+  // A smaller, softer pill for sections (they belong to the chosen grade).
+  chipSection: {
+    minHeight: 30,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    backgroundColor: OFFICER.greySoft,
+    borderColor: OFFICER.greySoft,
+  },
+
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 2,
+  },
+
+  summaryText: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 11,
+    color: OFFICER.muted,
+  },
+
+  clearFilters: {
+    minHeight: 32,
+    justifyContent: "center",
+  },
+
+  clearFiltersText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 11,
+    color: OFFICER.navy,
+  },
+
   listContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 8,
+  },
+
+  // The page buttons under the last card.
+  pagerArea: {
+    marginHorizontal: -20,
+    marginTop: 4,
+    marginBottom: 12,
   },
 
   studentCard: {
@@ -125,10 +204,23 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    minHeight: 78,
+    minHeight: 72,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+
+  inactiveTag: {
+    alignSelf: "flex-start",
+    marginTop: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 10,
+    color: OFFICER.red,
+    backgroundColor: OFFICER.redSoft,
   },
 
   avatar: {
