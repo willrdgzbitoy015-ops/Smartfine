@@ -15,6 +15,16 @@
 //     backups are kept. Backups made by hand, before a restore and before a
 //     System Reset are kept too (a reset's backup is never removed).
 //
+// Download, import and delete
+//   - Download hands out the encrypted <id>.sfbak (routes/backups.js).
+//   - Delete removes a backup from the server for good (a downloaded copy is
+//     not affected and can be imported again).
+//   - Import takes such a file back: it is opened with this server's key,
+//     checked like any backup, and stored as a new "Imported" backup. The app
+//     asks to restore it straight away (same checks, safety backup first); the
+//     route can also just store it. A file made with another key (another
+//     computer) or changed in any way cannot be opened and is refused.
+//
 // Restore
 //   - An administrator picks a backup. It is decrypted and checked first, a
 //     backup of the current data is saved ("before restore", so a restore can
@@ -43,6 +53,7 @@ const TYPES = {
   MANUAL: { slug: "manual", label: "Manual" },
   BEFORE_RESTORE: { slug: "before-restore", label: "Before a restore" },
   BEFORE_RESET: { slug: "before-reset", label: "Before a system reset" },
+  IMPORTED: { slug: "imported", label: "Imported" },
 };
 
 // 22 Oct 2026, 2:00 AM (the school's time zone), for the Log Trail.
@@ -58,7 +69,7 @@ function when(iso) {
   });
 }
 
-const ID_PATTERN = /^\d{8}T\d{9}Z-(scheduled|manual|before-restore|before-reset)$/;
+const ID_PATTERN = /^\d{8}T\d{9}Z-(scheduled|manual|before-restore|before-reset|imported)$/;
 
 // How many of each kind are kept (null = never removed).
 const KEEP = {
@@ -66,7 +77,11 @@ const KEEP = {
   MANUAL: 20,
   BEFORE_RESTORE: 10,
   BEFORE_RESET: null,
+  IMPORTED: 10,
 };
+
+// The largest backup file an import accepts (a real backup is a few MB).
+const MAX_IMPORT_BYTES = 100 * 1024 * 1024;
 
 // Tables a restore leaves alone: the Log Trail, live sessions and pending codes.
 const NOT_RESTORED = new Set(["audit_logs", "user_sessions", "otp_challenges"]);
@@ -212,7 +227,17 @@ function inspectCopy(file) {
       throw new BackupError(422, "BACKUP_INCOMPLETE", `This backup does not look like a SmartFine database (missing ${missing.join(", ")}).`);
     }
 
-    return { tables, contents: contentsOf(source), activeAdministrators: count(source, "SELECT COUNT(*) n FROM users WHERE role = 'ADMIN' AND account_status = 'ACTIVE'") };
+    // How much is in it, for "20 tables and 1,309 rows were saved".
+    const tableNames = [...tables].filter((name) => /^[A-Za-z0-9_]+$/.test(name) && !name.startsWith("sqlite_"));
+    const rowCount = tableNames.reduce((total, name) => total + count(source, `SELECT COUNT(*) n FROM "${name}"`), 0);
+
+    return {
+      tables,
+      tableCount: tableNames.length,
+      rowCount,
+      contents: contentsOf(source),
+      activeAdministrators: count(source, "SELECT COUNT(*) n FROM users WHERE role = 'ADMIN' AND account_status = 'ACTIVE'"),
+    };
   } finally {
     source.close();
   }
@@ -268,6 +293,8 @@ function writeBackup({ type, adminId = null }) {
       databaseBytes: plain.length,
       sha256: sha256(plain),
       contents: inspected.contents,
+      tableCount: inspected.tableCount,
+      rowCount: inspected.rowCount,
       verifiedAt: new Date().toISOString(),
       verified: true,
     };
@@ -382,8 +409,15 @@ function publicMeta(meta) {
     typeLabel: TYPES[meta.type]?.label || meta.type,
     createdAt: meta.createdAt,
     createdBy: meta.createdBy || null,
+    // Imported backups: when and by whom the file was brought in. createdAt is
+    // when the data was backed up.
+    importedAt: meta.importedAt || null,
+    importedBy: meta.importedBy || null,
     sizeBytes: meta.sizeBytes,
     contents: meta.contents,
+    // Older backups were made before these were recorded.
+    tableCount: meta.tableCount ?? null,
+    rowCount: meta.rowCount ?? null,
     verified: Boolean(meta.verified),
     verifiedAt: meta.verifiedAt || null,
   };
@@ -438,6 +472,209 @@ function verifyBackup(id, adminId = null) {
   return outcome;
 }
 
+// ---------------------------------------------------------------- import
+
+// The id a downloaded file was made under, taken from its name
+// (smartfine-backup-<id>.sfbak; a browser may add " (1)"). The id is part of
+// what the encryption checks, so a file renamed to another id cannot be opened.
+const ID_IN_NAME = /(\d{8}T\d{9}Z-(?:scheduled|manual|before-restore|before-reset|imported))/;
+
+// 20261022T020000123Z-manual -> 2026-10-22T02:00:00.123Z
+function stampOf(id) {
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})Z/.exec(id);
+
+  return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}.${m[7]}Z` : null;
+}
+
+// Takes an encrypted backup file that was downloaded earlier, checks it and
+// stores it as a new "Imported" backup. Nothing is restored here. With
+// `reuseExisting`, a backup that is already in the list is not an error: that
+// one is returned (with alreadyListed: true) so it can be restored.
+function importBackup({ buffer, fileName, adminId, reuseExisting = false }) {
+  if (busy) {
+    throw new BackupError(409, "BACKUP_BUSY", "A backup or restore is already running. Please wait a moment.");
+  }
+
+  const name = String(fileName || "");
+  const originalId = ID_IN_NAME.exec(name)?.[1] || null;
+  const temp = path.join(BACKUP_DIR, `.import-${crypto.randomBytes(6).toString("hex")}.db`);
+
+  let id = null;
+
+  busy = true;
+
+  try {
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+      throw new BackupError(400, "FILE_REQUIRED", "Choose the backup file (.sfbak) to import.");
+    }
+
+    if (!/\.sfbak$/i.test(name) || !originalId) {
+      throw new BackupError(
+        400,
+        "INVALID_FILE_NAME",
+        "Choose a backup file you downloaded from SmartFine (smartfine-backup-....sfbak). Do not rename it.",
+      );
+    }
+
+    if (buffer.length < MAGIC.length + IV_BYTES + TAG_BYTES || !buffer.subarray(0, MAGIC.length).equals(MAGIC)) {
+      throw new BackupError(422, "NOT_A_BACKUP", "This is not a SmartFine backup file.");
+    }
+
+    // 1. Open it with this server's key.
+    let plain;
+
+    try {
+      plain = decrypt(buffer, originalId);
+    } catch {
+      throw new BackupError(
+        422,
+        "BACKUP_UNREADABLE",
+        "This backup file cannot be opened. It was changed or damaged, renamed, or made with a different backup key (for example on another computer).",
+      );
+    }
+
+    // 2. Make sure it is worth keeping, exactly as a restore would.
+    ensureDirectory();
+    fs.writeFileSync(temp, plain, { mode: 0o600 });
+
+    const inspected = inspectCopy(temp);
+
+    if (inspected.activeAdministrators < 1) {
+      throw new BackupError(
+        422,
+        "BACKUP_NO_ADMIN",
+        "This backup has no active administrator account, so it could not be restored. It was not imported.",
+      );
+    }
+
+    const checksum = sha256(plain);
+    const same = listBackups().find((meta) => meta.sha256 === checksum);
+
+    if (same && reuseExisting) {
+      return { ...same, alreadyListed: true };
+    }
+
+    if (same) {
+      const exists = new BackupError(
+        409,
+        "BACKUP_EXISTS",
+        `This backup is already in the list (${TYPES[same.type]?.label.toLowerCase() || "backup"} made ${when(same.createdAt)}).`,
+      );
+
+      // The app offers to restore that one instead.
+      exists.extra = { existing: publicMeta(same) };
+
+      throw exists;
+    }
+
+    // 3. Store it under a new id, encrypted again.
+    id = newId("IMPORTED");
+
+    const encrypted = encrypt(plain, id);
+
+    fs.writeFileSync(fileOf(id, "sfbak"), encrypted, { mode: 0o600 });
+
+    if (sha256(decrypt(fs.readFileSync(fileOf(id, "sfbak")), id)) !== checksum) {
+      throw new Error("The stored backup did not match the imported file.");
+    }
+
+    const meta = {
+      id,
+      type: "IMPORTED",
+      // When the data was backed up (the id carries it, and the encryption
+      // proves the id is the real one).
+      createdAt: stampOf(originalId) || new Date().toISOString(),
+      createdBy: null,
+      importedAt: new Date().toISOString(),
+      importedBy: adminId ? { id: Number(adminId), name: personName(adminId) } : null,
+      originalId,
+      sizeBytes: encrypted.length,
+      databaseBytes: plain.length,
+      sha256: checksum,
+      contents: inspected.contents,
+      tableCount: inspected.tableCount,
+      rowCount: inspected.rowCount,
+      verifiedAt: new Date().toISOString(),
+      verified: true,
+    };
+
+    fs.writeFileSync(fileOf(id, "json"), JSON.stringify(meta, null, 2), { mode: 0o600 });
+
+    logActivity({
+      actorId: adminId,
+      action: "BACKUP_IMPORTED",
+      entityType: "BACKUP",
+      description: `Imported a backup file (data from ${when(meta.createdAt)}, ${formatSize(meta.sizeBytes)}, encrypted): ${meta.contents.students} students, ${meta.contents.fines} fines, ${meta.contents.payments} payments. It was checked and added to the list.`,
+      details: { backupId: id, originalId, sizeBytes: meta.sizeBytes },
+    });
+
+    safePrune();
+
+    return meta;
+  } catch (error) {
+    if (id) {
+      fs.rmSync(fileOf(id, "sfbak"), { force: true });
+      fs.rmSync(fileOf(id, "json"), { force: true });
+    }
+
+    const known = error instanceof BackupError;
+
+    if (!known) console.error("Backup import failed:", error);
+
+    logActivity({
+      actorId: adminId,
+      action: "BACKUP_IMPORT_FAILED",
+      result: "FAILED",
+      entityType: "BACKUP",
+      description: known
+        ? `Importing a backup file failed: ${error.message} Nothing was changed.`
+        : "Importing a backup file failed. Nothing was changed.",
+      details: originalId ? { originalId, code: known ? error.code : "ERROR" } : { code: known ? error.code : "ERROR" },
+    });
+
+    if (known) throw error;
+
+    throw new BackupError(500, "IMPORT_FAILED", "The backup file could not be imported. Nothing was changed.");
+  } finally {
+    fs.rmSync(temp, { force: true });
+    busy = false;
+  }
+}
+
+// ---------------------------------------------------------------- delete
+
+// Removes a backup (its encrypted file and its description) from the server.
+// The routes check the administrator's password and the typed phrase first.
+function deleteBackup({ id, adminId }) {
+  if (busy) {
+    throw new BackupError(409, "BACKUP_BUSY", "A backup or restore is already running. Please wait a moment.");
+  }
+
+  const meta = readMeta(id);
+
+  busy = true;
+
+  try {
+    removeFiles(id);
+
+    if (fs.existsSync(fileOf(id, "sfbak")) || fs.existsSync(fileOf(id, "json"))) {
+      throw new BackupError(500, "DELETE_FAILED", "The backup could not be deleted. Please try again.");
+    }
+
+    logActivity({
+      actorId: adminId,
+      action: "BACKUP_DELETED",
+      entityType: "BACKUP",
+      description: `Deleted the backup made ${when(meta.createdAt)} (${TYPES[meta.type]?.label.toLowerCase() || "backup"}, ${formatSize(meta.sizeBytes)}). It was removed from the server.`,
+      details: { backupId: id, type: meta.type, sizeBytes: meta.sizeBytes },
+    });
+
+    return publicMeta(meta);
+  } finally {
+    busy = false;
+  }
+}
+
 // ---------------------------------------------------------------- prune
 
 function removeFiles(id) {
@@ -487,7 +724,7 @@ function safePrune() {
 function removeLeftovers() {
   try {
     for (const name of fs.readdirSync(BACKUP_DIR)) {
-      if (/^\.(tmp|restore|verify)-/.test(name)) {
+      if (/^\.(tmp|restore|verify|import)-/.test(name)) {
         fs.rmSync(path.join(BACKUP_DIR, name), { force: true });
       }
     }
@@ -768,12 +1005,15 @@ function startScheduler() {
 module.exports = {
   BACKUP_DIR,
   BackupError,
+  MAX_IMPORT_BYTES,
   TYPES,
   createBackup,
+  deleteBackup,
   discard,
   downloadInfo,
   due,
   idPattern,
+  importBackup,
   listBackups,
   publicMeta,
   restoreBackup,

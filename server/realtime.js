@@ -68,6 +68,12 @@ function publish(topics) {
 function topicsForPath(url) {
   const path = String(url || "").split("?")[0].toLowerCase();
 
+  // Deleting one backup (DELETE /api/backups/<id>) only changes the backup list
+  // and the Log Trail. A restore (/api/backups/<id>/restore) still reloads all.
+  if (/^\/api\/backups\/(?!import$)[^/]+$/.test(path)) {
+    return ["activity"];
+  }
+
   // Saving a receipt picture only adds a Log Trail entry; payments are untouched.
   if (/^\/api\/payments\/\d+\/receipt(\/|$)/.test(path)) {
     return ["activity"];
