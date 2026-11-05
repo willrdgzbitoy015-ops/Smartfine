@@ -11,6 +11,7 @@ import {
 
 import { FineTrail } from "@/components/fine-trail";
 import { FadeIn } from "@/components/motion";
+import { ReceiptModal, ViewReceiptButton } from "@/components/payment-receipt";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
@@ -42,6 +43,8 @@ type Fine = {
   online_payment_reference?: string | null;
   online_payment_status?: string | null;
   online_payment_notes?: string | null;
+  // The successful payment behind a paid (or refunded) fine, for its receipt.
+  paid_payment_id?: number | null;
   status: string;
 };
 
@@ -196,6 +199,8 @@ export default function AdminFineDetails({
   const [cashReturned, setCashReturned] = useState(false);
   // A refund that was sent but did not go through.
   const [refundProblem, setRefundProblem] = useState("");
+  // The receipt screen of the payment that paid this fine.
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   // Keeps loadFine tied to the fine ID, not to the parent's callback identity.
   const onNoticesReadRef = useRef(onNoticesRead);
@@ -1188,6 +1193,14 @@ export default function AdminFineDetails({
           )}
         </View>
 
+        {/* A paid (or refunded) fine has a digital receipt. */}
+        {!!fine.paid_payment_id && (isPaid || isCancelled) && (
+          <ViewReceiptButton
+            style={{ alignSelf: "flex-start", marginTop: 4, marginBottom: 12 }}
+            onPress={() => setReceiptOpen(true)}
+          />
+        )}
+
         {/* Who recorded, collected or cancelled it, and the evidence. */}
         <FineTrail fineId={fine.id} />
 
@@ -1322,6 +1335,11 @@ export default function AdminFineDetails({
           </>
         )}
       </View>
+
+      <ReceiptModal
+        paymentId={receiptOpen && fine.paid_payment_id ? Number(fine.paid_payment_id) : null}
+        onClose={() => setReceiptOpen(false)}
+      />
     </FadeIn>
   );
 }

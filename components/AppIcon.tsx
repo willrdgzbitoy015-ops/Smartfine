@@ -62,6 +62,7 @@ export const ICONS = {
   search: "search-outline",
   refresh: "refresh-outline",
   download: "download-outline",
+  share: "share-outline",
   import: "cloud-upload-outline",
   check: "checkmark",
 

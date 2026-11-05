@@ -18,6 +18,7 @@ import { API_BASE } from "@/constants/api";
 import { apiFetch } from "@/utils/api-fetch";
 import { AdminNavBadge } from "@/components/notification-badge";
 import { FadeIn } from "@/components/motion";
+import { ReceiptModal, ViewReceiptButton } from "@/components/payment-receipt";
 import { SkeletonProfile } from "@/components/skeleton";
 
 import LogoutModal from "@/components/logout-modal";
@@ -143,6 +144,9 @@ export default function DetailedPaymentReport() {
   // ==========================================
 
   const [payment, setPayment] = useState<PaymentDetail | null>(null);
+
+  // The receipt screen of a paid transaction.
+  const [showReceipt, setShowReceipt] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -629,6 +633,14 @@ export default function DetailedPaymentReport() {
 
             <Text style={styles.statusMessageText}>{statusMessage}</Text>
           </View>
+
+          {/* A successful payment has a digital receipt (PNG). */}
+          {String(payment.payment_status).toUpperCase() === "SUCCESS" && (
+            <ViewReceiptButton
+              style={{ marginTop: 18, alignSelf: "flex-start" }}
+              onPress={() => setShowReceipt(true)}
+            />
+          )}
         </View>
 
         {/* ==================================
@@ -786,6 +798,11 @@ export default function DetailedPaymentReport() {
       {/* ======================================
           LOGOUT MODAL
       ====================================== */}
+
+      <ReceiptModal
+        paymentId={showReceipt && payment ? payment.id : null}
+        onClose={() => setShowReceipt(false)}
+      />
 
       <LogoutModal
         visible={showLogoutModal}

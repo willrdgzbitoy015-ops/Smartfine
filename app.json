@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "com.willbitoy.smartfine",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/smartfine-logo.png",
         "backgroundColor": "#173A73"
@@ -53,6 +53,14 @@
         {
           "cameraPermission": "Allow SmartFine to use the camera to scan student QR codes and take evidence photos.",
           "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow SmartFine to access your photos.",
+          "savePhotosPermission": "Allow SmartFine to save payment receipts to your photos.",
+          "granularPermissions": ["photo"]
         }
       ],
       [

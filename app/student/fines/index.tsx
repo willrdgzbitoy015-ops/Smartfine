@@ -24,12 +24,14 @@ import {
   useRetainedValue,
 } from "@/components/motion";
 import { FineTrail } from "@/components/fine-trail";
+import { ReceiptModal, ViewReceiptButton } from "@/components/payment-receipt";
 import { FailedMark } from "@/components/result-mark";
 import { SuccessCheck } from "@/components/success-check";
 import { Skeleton, SkeletonGroup } from "@/components/skeleton";
 import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
 import { useLiveReload } from "@/hooks/use-live-updates";
+import { usePopupSwap } from "@/hooks/use-popup-swap";
 import {
   RefundedNote,
   RefundRequestModal,
@@ -57,6 +59,8 @@ type CancelledFine = {
   cancelledAt: string | null;
   cancelledCashRequestReference: string | null;
   remarks?: string | null;
+  // The payment that was refunded, for its receipt.
+  paymentId?: number | null;
 };
 
 type Fine = {
@@ -67,6 +71,8 @@ type Fine = {
   recordedAt: string | null;
   paidAt: string | null;
   remarks: string | null;
+  // The successful payment behind a paid fine, for its receipt.
+  paymentId?: number | null;
   status: FineStatus;
   isRead: number | boolean;
   readAt: string | null;
@@ -229,6 +235,9 @@ export default function StudentFinesScreen() {
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
   const [selectedFine, setSelectedFine] = useState<DetailsFine | null>(null);
+  // The receipt screen of a paid fine, opened from its details.
+  const [receiptPaymentId, setReceiptPaymentId] = useState<number | null>(null);
+  const swapPopup = usePopupSwap();
   const [readError, setReadError] = useState<{
     fineId: number;
     message: string;
@@ -1475,6 +1484,21 @@ export default function StudentFinesScreen() {
 
                 {renderReadError(shownSelectedFine.id)}
 
+                {/* A paid (or refunded) fine has a digital receipt. */}
+                {!!shownSelectedFine.paymentId &&
+                  (shownSelectedFine.status === "PAID" ||
+                    shownSelectedFine.status === "CANCELLED") && (
+                    <ViewReceiptButton
+                      style={{ marginTop: 12 }}
+                      onPress={() => {
+                        const paymentId = Number(shownSelectedFine.paymentId);
+
+                        setSelectedFine(null);
+                        swapPopup(() => setReceiptPaymentId(paymentId));
+                      }}
+                    />
+                  )}
+
                 {/* Who recorded, collected or cancelled it, and the evidence. */}
                 <FineTrail fineId={shownSelectedFine.id} />
 
@@ -1503,6 +1527,11 @@ export default function StudentFinesScreen() {
           </PopIn>
         </View>
       </Modal>
+
+      <ReceiptModal
+        paymentId={receiptPaymentId}
+        onClose={() => setReceiptPaymentId(null)}
+      />
 
       <Modal
         visible={cashFine !== null}
