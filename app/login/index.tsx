@@ -102,8 +102,19 @@ export default function LoginScreen() {
 
   const [captchaAnswer, setCaptchaAnswer] = useState("");
 
-  // Why the last session ended ("idle" or "ended"), shown once.
+  // Why the last session ended ("idle" or "ended"), shown once, then it
+  // fades away: a plain sign-out after 1.5 seconds, the longer ones (they
+  // need reading) after 6.
   const [signedOutNotice, setSignedOutNotice] = useState("");
+  const [signedOutNoticeMs, setSignedOutNoticeMs] = useState(1500);
+
+  useEffect(() => {
+    if (!signedOutNotice) return;
+
+    const timer = setTimeout(() => setSignedOutNotice(""), signedOutNoticeMs);
+
+    return () => clearTimeout(timer);
+  }, [signedOutNotice, signedOutNoticeMs]);
 
   const [lockedUsername, setLockedUsername] = useState("");
 
@@ -305,12 +316,15 @@ export default function LoginScreen() {
         if (cancelled) return;
 
         if (notice === "idle" || notice?.startsWith("idle:")) {
+          setSignedOutNoticeMs(6000);
           setSignedOutNotice(
             `You were signed out after ${idleLimitText(Number(notice.split(":")[1]))} of inactivity. Please sign in again.`,
           );
         } else if (notice === "ended") {
+          setSignedOutNoticeMs(1500);
           setSignedOutNotice("You were signed out. Please sign in again.");
         } else if (notice === "restored") {
+          setSignedOutNoticeMs(6000);
           setSignedOutNotice("SmartFine's data was restored from a backup. Please sign in again.");
         }
 
