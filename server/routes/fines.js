@@ -1230,6 +1230,14 @@ router.get("/:id", skipMyFines, requireActive("ADMIN", "FINES_OFFICER"), (req, r
           online_payment.payment_reference AS online_payment_reference,
           online_payment.payment_status AS online_payment_status,
           online_payment.payment_notes AS online_payment_notes,
+          -- The payment behind a paid (or refunded) fine, for its receipt.
+          (
+            SELECT p.id
+            FROM payments p
+            WHERE p.fine_id = f.id AND p.payment_status = 'SUCCESS'
+            ORDER BY p.id DESC
+            LIMIT 1
+          ) AS paid_payment_id,
           CASE
             WHEN f.cancelled_at IS NOT NULL THEN 'CANCELLED'
             WHEN f.paid_at IS NOT NULL THEN 'PAID'
@@ -1854,6 +1862,14 @@ router.get("/my-fines", authenticateToken, (req, res) => {
           f.created_at AS recordedAt,
           f.paid_at AS paidAt,
           f.remarks,
+          -- The payment behind a paid fine, for its receipt.
+          (
+            SELECT p.id
+            FROM payments p
+            WHERE p.fine_id = f.id AND p.payment_status = 'SUCCESS'
+            ORDER BY p.id DESC
+            LIMIT 1
+          ) AS paymentId,
           sfr.read_at AS readAt,
           CASE WHEN sfr.read_at IS NULL THEN 0 ELSE 1 END AS isRead,
           CASE
@@ -1880,6 +1896,7 @@ router.get("/my-fines", authenticateToken, (req, res) => {
       ...fine,
       id: Number(fine.id),
       amountCentavos: Number(fine.amountCentavos),
+      paymentId: fine.paymentId === null ? null : Number(fine.paymentId),
     }));
     const outstandingAmountCentavos = fines.reduce(
       (total, fine) =>
@@ -1904,6 +1921,14 @@ router.get("/my-fines", authenticateToken, (req, res) => {
           f.created_at AS recordedAt,
           f.cancelled_at AS cancelledAt,
           f.remarks,
+          -- A refunded fine keeps its (refunded) receipt.
+          (
+            SELECT p.id
+            FROM payments p
+            WHERE p.fine_id = f.id AND p.payment_status = 'SUCCESS'
+            ORDER BY p.id DESC
+            LIMIT 1
+          ) AS paymentId,
           (
             SELECT p.payment_reference
             FROM payments p
@@ -1929,6 +1954,7 @@ router.get("/my-fines", authenticateToken, (req, res) => {
         ...fine,
         id: Number(fine.id),
         amountCentavos: Number(fine.amountCentavos),
+        paymentId: fine.paymentId === null ? null : Number(fine.paymentId),
         status: "CANCELLED",
       }));
     return res.json({

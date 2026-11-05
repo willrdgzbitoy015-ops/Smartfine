@@ -68,6 +68,11 @@ function publish(topics) {
 function topicsForPath(url) {
   const path = String(url || "").split("?")[0].toLowerCase();
 
+  // Saving a receipt picture only adds a Log Trail entry; payments are untouched.
+  if (/^\/api\/payments\/\d+\/receipt(\/|$)/.test(path)) {
+    return ["activity"];
+  }
+
   for (const [prefix, topics] of TOPICS_BY_PREFIX) {
     if (path === prefix || path.startsWith(`${prefix}/`)) {
       return topics;

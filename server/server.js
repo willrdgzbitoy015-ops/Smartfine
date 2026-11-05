@@ -17,6 +17,7 @@ const fineEvidenceRoutes = require("./routes/fine-evidence");
 const studentFineReadRoutes = require("./routes/student-fine-reads");
 const studentQRRoutes = require("./routes/student-qr");
 const cashPaymentRoutes = require("./routes/cash-payments");
+const paymentReceiptRoutes = require("./routes/payment-receipts");
 const officersRoutes = require("./routes/officers");
 const reportsRoutes = require("./routes/reports");
 const settingsRoutes = require("./routes/settings");
@@ -86,6 +87,7 @@ app.use("/api/student-qr", studentQRRoutes);
 app.use("/api/student-profile", studentProfileRoutes);
 app.use("/api/payments", cashPaymentRoutes);
 app.use("/api/payments", onlinePaymentRoutes);
+app.use("/api/payments", paymentReceiptRoutes);
 
 app.use("/api/officers", officersRoutes);
 app.use("/api/reports", reportsRoutes);

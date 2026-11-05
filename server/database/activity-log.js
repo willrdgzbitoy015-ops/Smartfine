@@ -103,6 +103,7 @@ const RULES = [
   ["EVIDENCE_", "FINES", "Fines"],
   ["CASH_", "PAYMENTS", "Payments"],
   ["REFUND_", "PAYMENTS", "Refunds"],
+  ["RECEIPT_", "PAYMENTS", "Receipts"],
   ["BACKUP_", "SYSTEM", "Backup & Recovery"],
   ["EXPORT_", "SYSTEM", "Reports"],
   ["SETTINGS_", "SYSTEM", "Settings"],
