@@ -17,9 +17,10 @@ import { styles } from "./account-access.styles";
 
 // ==========================================
 // ACCOUNT ACCESS
-// For Administrators: lock or unlock someone's account, and change a staff
-// member between Administrator and Fines Officer. Each action asks first and
-// is written to the Activity Log by the server.
+// For Administrators: lock or unlock someone's account, deactivate or
+// reactivate a student or officer (the same switch as Edit Information, one tap
+// away), and change a staff member between Administrator and Fines Officer.
+// Each action asks first and is written to the Log Trail by the server.
 // ==========================================
 
 type Access = {
@@ -30,11 +31,14 @@ type Access = {
   timedLockSecondsLeft: number;
   isSelf: boolean;
   canChangeRole: boolean;
+  canChangeStatus?: boolean;
 };
 
 type Pending =
   | { type: "lock" }
   | { type: "unlock" }
+  | { type: "deactivate" }
+  | { type: "activate" }
   | { type: "role"; role: "ADMIN" | "FINES_OFFICER" };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -202,7 +206,21 @@ export function AccountAccess({
             action: "Unlock Account",
             danger: false,
           }
-        : {
+        : pending.type === "deactivate"
+          ? {
+              title: "Deactivate this account?",
+              text: `${name} will not be able to sign in until you activate the account again. Their fines and payment records are kept, and anything they have open stops working at once.`,
+              action: "Deactivate Account",
+              danger: true,
+            }
+          : pending.type === "activate"
+            ? {
+                title: "Activate this account?",
+                text: `${name} will be able to sign in again.`,
+                action: "Activate Account",
+                danger: false,
+              }
+            : {
             title: `Make ${name} a ${ROLE_LABELS[pending.role]}?`,
             text:
               pending.role === "ADMIN"
@@ -252,6 +270,30 @@ export function AccountAccess({
               <Text style={[styles.buttonText, styles.buttonDangerText]}>Lock Account</Text>
             </TouchableOpacity>
           ) : null}
+
+          {access.canChangeStatus && access.accountStatus === "ACTIVE" && (
+            <TouchableOpacity
+              style={[styles.button, busy && styles.disabled]}
+              onPress={() => setPending({ type: "deactivate" })}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={`Deactivate ${name}'s account`}
+            >
+              <Text style={styles.buttonText}>Deactivate Account</Text>
+            </TouchableOpacity>
+          )}
+
+          {access.canChangeStatus && inactive && (
+            <TouchableOpacity
+              style={[styles.button, styles.buttonGreen, busy && styles.disabled]}
+              onPress={() => setPending({ type: "activate" })}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={`Activate ${name}'s account`}
+            >
+              <Text style={[styles.buttonText, styles.buttonGreenText]}>Activate Account</Text>
+            </TouchableOpacity>
+          )}
 
           {staff && access.canChangeRole && (
             <TouchableOpacity

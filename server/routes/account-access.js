@@ -2,6 +2,9 @@
 //
 //   POST /:id/lock     lock an account so it cannot sign in
 //   POST /:id/unlock   unlock it (also clears a "too many attempts" lockout)
+//   POST /:id/deactivate  make a student or officer account Inactive (shortcut for
+//                         the Account Status switch in Edit Information)
+//   POST /:id/activate    make an Inactive student or officer account Active again
 //   POST /:id/role     { role: "ADMIN" | "FINES_OFFICER" } for staff accounts
 //
 // Administrators only. Every change is written to the Activity Log.
@@ -84,6 +87,8 @@ router.get("/:id", (req, res) => {
           : 0,
         isSelf: user.id === req.account.id,
         canChangeRole: user.role !== "STUDENT" && user.id !== req.account.id,
+        // Administrators are activated and deactivated in Settings > Administrators.
+        canChangeStatus: user.role !== "ADMIN" && user.id !== req.account.id,
       },
     });
   } catch (error) {
@@ -200,6 +205,106 @@ router.post("/:id/unlock", (req, res) => {
   } catch (error) {
     console.error("Unlock account error:", error);
     return res.status(500).json({ success: false, message: "Could not unlock the account." });
+  }
+});
+
+// Student and officer accounts only; administrators keep their own controls
+// (Settings > Administrators), which also guard the last active administrator.
+function statusTarget(req, res) {
+  const user = target(req, res);
+  if (!user) return null;
+
+  if (user.id === req.account.id) {
+    res.status(403).json({ success: false, code: "SELF_STATUS", message: "You can't change your own account's status." });
+    return null;
+  }
+
+  if (user.role === "ADMIN") {
+    res.status(409).json({
+      success: false,
+      code: "USE_ADMINISTRATORS",
+      message: "Activate or deactivate administrators in Settings > Administrators.",
+    });
+    return null;
+  }
+
+  return user;
+}
+
+router.post("/:id/deactivate", (req, res) => {
+  try {
+    const user = statusTarget(req, res);
+    if (!user) return undefined;
+
+    if (user.account_status === "INACTIVE") {
+      return res.status(409).json({ success: false, code: "ALREADY_INACTIVE", message: "This account is already inactive." });
+    }
+
+    // Same rule as Edit Information: a locked account is unlocked, not deactivated.
+    if (user.account_status !== "ACTIVE") {
+      return res.status(409).json({
+        success: false,
+        code: "NOT_ACTIVE",
+        message: "This account is locked. Unlock it first, then deactivate it.",
+      });
+    }
+
+    db.prepare("UPDATE users SET account_status = 'INACTIVE', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(user.id);
+
+    // They are signed out everywhere, right now.
+    sessions.endAllForUser(user.id, "ACCOUNT_DEACTIVATED");
+
+    logActivity({
+      actorId: req.account.id,
+      action: "ACCOUNT_DEACTIVATED",
+      entityType: "USER",
+      entityId: user.id,
+      description: `Deactivated the ${ROLE_LABELS[user.role] || "user"} account of ${displayName(user)} (${user.username}).`,
+    });
+
+    return res.json({
+      success: true,
+      message: `${displayName(user)}'s account is inactive and cannot sign in. Their records are kept.`,
+      accountStatus: "INACTIVE",
+    });
+  } catch (error) {
+    console.error("Deactivate account error:", error);
+    return res.status(500).json({ success: false, message: "Could not deactivate the account." });
+  }
+});
+
+router.post("/:id/activate", (req, res) => {
+  try {
+    const user = statusTarget(req, res);
+    if (!user) return undefined;
+
+    if (user.account_status !== "INACTIVE") {
+      return res.status(409).json({ success: false, code: "NOT_INACTIVE", message: "This account is not inactive." });
+    }
+
+    db.prepare(
+      `UPDATE users
+       SET account_status = 'ACTIVE', failed_login_attempts = 0, locked_until = NULL,
+           lockout_count = 0, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    ).run(user.id);
+
+    logActivity({
+      actorId: req.account.id,
+      action: "ACCOUNT_ACTIVATED",
+      entityType: "USER",
+      entityId: user.id,
+      description: `Activated the ${ROLE_LABELS[user.role] || "user"} account of ${displayName(user)} (${user.username}).`,
+    });
+
+    return res.json({
+      success: true,
+      message: `${displayName(user)}'s account is active. They can sign in again.`,
+      accountStatus: "ACTIVE",
+    });
+  } catch (error) {
+    console.error("Activate account error:", error);
+    return res.status(500).json({ success: false, message: "Could not activate the account." });
   }
 });
 
