@@ -147,6 +147,8 @@ export function NotificationBadge({
 
 // Each Admin module counts only its own notification types.
 export function adminModuleCount(label: string, counts: NotificationCounts) {
+  // Dashboard shows every unread notice, like Home does for Students and Officers.
+  if (label === "Dashboard") return counts.total;
   if (label === "Fines") return counts.FINE + counts.PAYMENT;
   if (label === "Reports") return counts.reports;
   return 0;
@@ -165,7 +167,8 @@ function LiveAdminBadge({
   );
 }
 
-// Admin sidebar and phone menu: Fines (FINE + PAYMENT) and Reports.
+// Admin sidebar and phone menu: Dashboard (everything unread), Fines
+// (FINE + PAYMENT) and Reports.
 export function AdminNavBadge({
   label,
   variant = "sidebar",
@@ -173,7 +176,7 @@ export function AdminNavBadge({
   label: string;
   variant?: "sidebar" | "menu";
 }) {
-  if (label !== "Fines" && label !== "Reports") return null;
+  if (label !== "Dashboard" && label !== "Fines" && label !== "Reports") return null;
   return <LiveAdminBadge label={label} variant={variant} />;
 }
 

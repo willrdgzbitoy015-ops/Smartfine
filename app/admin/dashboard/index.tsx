@@ -23,6 +23,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE } from "@/constants/api";
 
 import { AdminModal } from "@/components/admin-modal";
+import {
+  AdminNoticesView,
+  AdminNotificationBell,
+  type BellNotice,
+} from "@/components/admin-notifications";
 import AdminFineDetails from "@/components/admin-modal/fine-details";
 import { FineFormModal } from "@/components/admin-forms/fine-form-modal";
 import LogoutModal from "@/components/logout-modal";
@@ -32,6 +37,7 @@ import { FadeIn, useRetainedValue } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
 import {
   formatNotificationTime,
+  markNotificationRead,
   refreshNotificationCounts,
 } from "@/hooks/use-notification-counts";
 
@@ -110,10 +116,12 @@ type AdminProfile = {
   profilePictureUri: string | null;
 };
 
-// One pop-up: every activity, or a fine (optionally opened from that list).
+// One pop-up: every activity, the notifications, or a fine (optionally
+// opened from one of those lists).
 type DashboardModal =
   | { view: "all" }
-  | { view: "fine"; fineId: number; fromAll: boolean }
+  | { view: "notices" }
+  | { view: "fine"; fineId: number; fromAll: boolean; fromNotices?: boolean }
   | null;
 
 type SummaryCard = {
@@ -710,6 +718,29 @@ export default function AdminDashboard() {
     }
   };
 
+  // The bell: the notification list opens in the same pop-up.
+  const handleOpenNotices = () => {
+    setModal({ view: "notices" });
+  };
+
+  // Opening a notice marks that one read, then shows what it is about: the
+  // fine here, or the payment in Reports.
+  const handleOpenNotice = (notice: BellNotice) => {
+    void markNotificationRead(notice.id).catch(() => undefined);
+
+    if (notice.fineId) {
+      setModal({ view: "fine", fineId: notice.fineId, fromAll: false, fromNotices: true });
+
+      return;
+    }
+
+    if (notice.paymentId) {
+      setModal(null);
+
+      router.push(`/admin/reports/${notice.paymentId}` as any);
+    }
+  };
+
   const handleFineChanged = () => {
     allStaleRef.current = true;
 
@@ -1045,6 +1076,10 @@ export default function AdminDashboard() {
             </View>
 
             <View style={styles.profileArea}>
+              <View style={styles.bellArea}>
+                <AdminNotificationBell onPress={handleOpenNotices} />
+              </View>
+
               <View style={styles.profileTextArea}>
                 {!!adminName && (
                   <Text style={styles.adminName}>
@@ -1264,17 +1299,27 @@ export default function AdminDashboard() {
 
       <AdminModal
         visible={modal !== null}
-        title={modal?.view === "all" ? "All activity" : "Fine details"}
+        title={
+          modal?.view === "all"
+            ? "All activity"
+            : modal?.view === "notices"
+              ? "Notifications"
+              : "Fine details"
+        }
         subtitle={
           modal?.view === "all"
             ? `${activityCounts.ALL} activities recorded in SmartFine`
-            : "Fine record and actions"
+            : modal?.view === "notices"
+              ? "New fines, cashier requests, GCash payments, refunds and payments collected"
+              : "Fine record and actions"
         }
         onClose={() => setModal(null)}
         onBack={
           modal?.view === "fine" && modal.fromAll
             ? backToAllActivities
-            : undefined
+            : modal?.view === "fine" && modal.fromNotices
+              ? handleOpenNotices
+              : undefined
         }
       >
         {modal?.view === "all" ? (
@@ -1360,6 +1405,8 @@ export default function AdminDashboard() {
               )}
             </ScrollView>
           </>
+        ) : modal?.view === "notices" ? (
+          <AdminNoticesView onOpen={handleOpenNotice} />
         ) : modal?.view === "fine" ? (
           <AdminFineDetails
             fineId={modal.fineId}
