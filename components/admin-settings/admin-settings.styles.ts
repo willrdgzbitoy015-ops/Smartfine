@@ -235,6 +235,8 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  // Smaller, for the buttons repeated on every row of a list.
+  buttonCompact: { minWidth: 0, height: 36, paddingHorizontal: 14 },
   buttonPrimary: { backgroundColor: COLORS.navy },
   buttonGreen: { backgroundColor: COLORS.green },
   buttonDanger: { backgroundColor: COLORS.red },
@@ -243,6 +245,13 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#C8CDD5",
   },
+  // A red outline: a risky action that is not the main one on the screen.
+  buttonDangerOutline: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.red,
+  },
+  buttonDangerOutlineText: { color: COLORS.red, fontSize: 12, fontFamily: "Poppins_700Bold" },
   buttonDisabled: { opacity: 0.55 },
   buttonText: { color: COLORS.white, fontSize: 12, fontFamily: "Poppins_700Bold" },
   buttonOutlineText: { color: "#4D5560", fontSize: 12, fontFamily: "Poppins_700Bold" },

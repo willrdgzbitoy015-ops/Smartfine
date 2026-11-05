@@ -352,16 +352,19 @@ export function PopupButton({
   busy = false,
   disabled = false,
   variant = "primary",
+  compact = false,
   onPress,
 }: {
   label: string;
   busyLabel?: string;
   busy?: boolean;
   disabled?: boolean;
-  variant?: "primary" | "green" | "outline" | "danger";
+  variant?: "primary" | "green" | "outline" | "danger" | "dangerOutline";
+  compact?: boolean;
   onPress: () => void;
 }) {
   const outline = variant === "outline";
+  const dangerOutline = variant === "dangerOutline";
 
   return (
     <TouchableOpacity
@@ -371,6 +374,8 @@ export function PopupButton({
         variant === "green" && styles.buttonGreen,
         variant === "danger" && styles.buttonDanger,
         outline && styles.buttonOutline,
+        dangerOutline && styles.buttonDangerOutline,
+        compact && styles.buttonCompact,
         (disabled || busy) && styles.buttonDisabled,
       ]}
       onPress={onPress}
@@ -381,11 +386,19 @@ export function PopupButton({
       {busy && (
         <ActivityIndicator
           size="small"
-          color={outline ? COLORS.navy : COLORS.white}
+          color={outline ? COLORS.navy : dangerOutline ? COLORS.red : COLORS.white}
         />
       )}
 
-      <Text style={outline ? styles.buttonOutlineText : styles.buttonText}>
+      <Text
+        style={
+          outline
+            ? styles.buttonOutlineText
+            : dangerOutline
+              ? styles.buttonDangerOutlineText
+              : styles.buttonText
+        }
+      >
         {busy && busyLabel ? busyLabel : label}
       </Text>
     </TouchableOpacity>

@@ -3,34 +3,45 @@ import { StyleSheet } from "react-native";
 import { COLORS } from "./admin-settings.styles";
 
 export const styles = StyleSheet.create({
-  status: {
+  // ---------------------------------------- the schedule: three tiles
+  // (side by side on a wide panel, stacked on a phone)
+  stats: {
+    gap: 10,
+    marginBottom: 18,
+  },
+
+  statsWide: {
+    flexDirection: "row",
+  },
+
+  stat: {
+    flex: 1,
     padding: 14,
-    marginBottom: 14,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.field,
-    gap: 6,
+    gap: 2,
   },
 
-  statusRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-
-  statusLabel: {
+  statLabel: {
     fontFamily: "Poppins_600SemiBold",
-    fontSize: 12,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: COLORS.muted,
+  },
+
+  statValue: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
+    lineHeight: 21,
     color: COLORS.text,
   },
 
-  statusText: {
-    flexShrink: 1,
+  statHint: {
     fontFamily: "Poppins_400Regular",
-    fontSize: 12,
-    lineHeight: 18,
-    color: COLORS.body,
+    fontSize: 11,
+    color: COLORS.muted,
   },
 
   warning: {
@@ -47,18 +58,58 @@ export const styles = StyleSheet.create({
     color: COLORS.red,
   },
 
-  item: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    gap: 6,
+  // ---------------------------------------- the list
+  listHead: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 10,
   },
 
-  itemTop: {
+  listTitle: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 15,
+    color: COLORS.text,
+  },
+
+  listCount: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+
+  // One backup: a card with a coloured edge for its kind. On a wide panel the
+  // details are on the left and the buttons on the right.
+  item: {
+    padding: 14,
+    marginBottom: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    gap: 10,
+  },
+
+  itemWide: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 20,
+  },
+
+  itemMain: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+
+  itemHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
   },
 
   tags: {
@@ -82,9 +133,8 @@ export const styles = StyleSheet.create({
   time: {
     flexShrink: 1,
     fontFamily: "Poppins_600SemiBold",
-    fontSize: 13,
+    fontSize: 14,
     color: COLORS.text,
-    textAlign: "right",
   },
 
   contents: {
@@ -96,7 +146,8 @@ export const styles = StyleSheet.create({
 
   meta: {
     fontFamily: "Poppins_400Regular",
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 18,
     color: COLORS.muted,
   },
 
@@ -110,7 +161,29 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 4,
+  },
+
+  actionsWide: {
+    flexShrink: 0,
+    justifyContent: "flex-end",
+  },
+
+  // "Show all 18" / "Show fewer".
+  more: {
+    alignSelf: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    marginTop: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+
+  moreText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 12,
+    color: COLORS.navy,
   },
 
   message: {
@@ -142,17 +215,57 @@ export const styles = StyleSheet.create({
 
   link: {
     alignSelf: "flex-start",
-    paddingVertical: 4,
+    paddingVertical: 2,
     fontFamily: "Poppins_600SemiBold",
     fontSize: 12,
     color: COLORS.navy,
   },
 
-  note: {
-    marginTop: 12,
+  // "Import Backup File" and "Back Up Now", under the list.
+  bottomActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+
+  // "Good to know": the short rules, as a list instead of one long paragraph.
+  noteBox: {
+    marginTop: 18,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.field,
+    gap: 6,
+  },
+
+  noteTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 12,
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+
+  noteRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  noteBullet: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: "Poppins_700Bold",
+  },
+
+  noteText: {
+    flex: 1,
     fontFamily: "Poppins_400Regular",
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 18,
     color: COLORS.muted,
   },
 
@@ -169,4 +282,5 @@ export const TYPE_COLORS: Record<string, [string, string]> = {
   MANUAL: ["#2E7D32", "#E8F6EA"],
   BEFORE_RESTORE: ["#9A5B00", "#FFF4E0"],
   BEFORE_RESET: ["#B3261E", "#FDECEC"],
+  IMPORTED: ["#6A1B9A", "#F3E5F5"],
 };
