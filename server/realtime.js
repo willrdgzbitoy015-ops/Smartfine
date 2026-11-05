@@ -32,6 +32,7 @@ const TOPICS_BY_PREFIX = [
   ["/api/settings", ["settings"]],
   ["/api/system-reset", ALL_TOPICS],
   // A restore replaces everything.
+  ["/api/backups/download", ["activity"]],
   ["/api/backups", ALL_TOPICS],
 ];
 

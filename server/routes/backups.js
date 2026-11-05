@@ -4,9 +4,12 @@
 //   POST /api/backups                  make a backup now
 //   POST /api/backups/:id/verify       open it and check it is intact
 //   POST /api/backups/:id/restore      replace the data with it (password + phrase)
+//   POST /api/backups/download/:id     the encrypted file itself (password), so
+//                                      it can be saved outside the server
 //
-// Backups are encrypted files in server/backups (see database/backup.js);
-// they are never sent to the app, only described.
+// Backups are encrypted files in server/backups (see database/backup.js).
+// They are only described, except through the password-protected download,
+// which sends the encrypted .sfbak (useless without the server's backup key).
 const express = require("express");
 const bcrypt = require("bcryptjs");
 
@@ -31,6 +34,7 @@ router.use((req, res, next) => {
 
 const manualLimit = rateLimit({ max: 10, windowMs: 10 * 60 * 1000, name: "manual backups" });
 const restoreLimit = rateLimit({ max: 10, windowMs: 10 * 60 * 1000, name: "restoring backups" });
+const downloadLimit = rateLimit({ max: 10, windowMs: 10 * 60 * 1000, name: "backup downloads" });
 
 function sendError(res, error, fallback) {
   if (error instanceof backups.BackupError) {
@@ -80,6 +84,83 @@ router.post("/:id/verify", (req, res) => {
     });
   } catch (error) {
     return sendError(res, error, "Could not check the backup.");
+  }
+});
+
+// The encrypted backup file, for saving a copy on the administrator's own
+// computer or phone. The current password is needed, like a restore.
+router.post("/download/:id", downloadLimit, async (req, res) => {
+  const adminId = req.account.id;
+
+  try {
+    const id = String(req.params.id);
+
+    if (!backups.idPattern(id)) {
+      return res.status(400).json({ success: false, code: "INVALID_BACKUP", message: "That is not a valid backup." });
+    }
+
+    const { currentPassword } = req.body || {};
+
+    if (typeof currentPassword !== "string" || currentPassword === "") {
+      return res.status(400).json({
+        success: false,
+        code: "PASSWORD_REQUIRED",
+        message: "Enter your current password to download the backup.",
+      });
+    }
+
+    if (passwordTries.blocked(adminId)) {
+      logActivity({
+        actorId: adminId,
+        action: "BACKUP_DOWNLOAD_FAILED",
+        result: "DENIED",
+        description: "Backup download refused: too many wrong passwords in a row.",
+        onceEvery: { key: String(adminId), seconds: 60 },
+      });
+
+      return res.status(429).json(passwordTries.TOO_MANY);
+    }
+
+    const user = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(adminId);
+
+    if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+      passwordTries.fail(adminId);
+
+      logActivity({
+        actorId: adminId,
+        action: "BACKUP_DOWNLOAD_FAILED",
+        result: "FAILED",
+        description: "Backup download refused: the current password was wrong.",
+      });
+
+      return res.status(401).json({
+        success: false,
+        code: "CURRENT_PASSWORD_INCORRECT",
+        message: "Current password is incorrect. Nothing was downloaded.",
+      });
+    }
+
+    passwordTries.clear(adminId);
+
+    const info = backups.downloadInfo(id);
+
+    logActivity({
+      actorId: adminId,
+      action: "BACKUP_DOWNLOADED",
+      entityType: "BACKUP",
+      description: `Downloaded the encrypted backup made ${info.meta.createdAt} (${info.meta.type.toLowerCase().replace("_", " ")}, ${Math.max(1, Math.round(info.sizeBytes / 1024))} KB).`,
+      details: { backupId: id, type: info.meta.type, sizeBytes: info.sizeBytes },
+    });
+
+    res.set("Content-Type", "application/octet-stream");
+
+    return res.download(info.file, info.name, (error) => {
+      if (error && !res.headersSent) {
+        res.status(500).json({ success: false, message: "The backup could not be sent." });
+      }
+    });
+  } catch (error) {
+    return sendError(res, error, "The backup could not be downloaded.");
   }
 });
 

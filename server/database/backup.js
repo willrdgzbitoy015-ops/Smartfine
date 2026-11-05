@@ -364,6 +364,17 @@ function listBackups() {
   return found.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
+// The encrypted file of a backup, for the Download button. Only the encrypted
+// .sfbak is ever handed out (never the plain database), and the id is checked
+// against a strict pattern first.
+function downloadInfo(id) {
+  const meta = readMeta(id);
+  const file = fileOf(id, "sfbak");
+  const stat = fs.statSync(file);
+
+  return { meta, file, name: `smartfine-backup-${id}.sfbak`, sizeBytes: stat.size };
+}
+
 function publicMeta(meta) {
   return {
     id: meta.id,
@@ -760,6 +771,7 @@ module.exports = {
   TYPES,
   createBackup,
   discard,
+  downloadInfo,
   due,
   idPattern,
   listBackups,

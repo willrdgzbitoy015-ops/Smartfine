@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Platform, Text, TouchableOpacity, View } from "react-native";
 
 import {
   Banner,
@@ -13,7 +13,10 @@ import {
 } from "@/components/form-popup";
 import { FadeIn } from "@/components/motion";
 import { SkeletonList } from "@/components/skeleton";
+import { API_BASE } from "@/constants/api";
 import { useActionLock } from "@/hooks/use-action-lock";
+import { apiFetch } from "@/utils/api-fetch";
+import { saveResponseAsFile } from "@/utils/download-file";
 import { forceSignOut } from "@/utils/session-guard";
 import { formatFileSize, formatLogTime } from "@/utils/log-time";
 import { haptics } from "@/utils/haptics";
@@ -251,6 +254,142 @@ function RestoreModal({
 }
 
 // ==========================================
+// DOWNLOAD POP-UP
+// ==========================================
+
+// Saves a copy of the encrypted backup file outside the server: on the web it
+// goes to the computer's Downloads folder, on a phone the share sheet opens.
+// The file stays encrypted (it cannot be opened without the server's backup
+// key), and the administrator's password is needed, as for a restore.
+function DownloadModal({ backup, onClose }: { backup: Backup | null; onClose: () => void }) {
+  const runLocked = useActionLock();
+
+  const [password, setPassword] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
+  const [savedAs, setSavedAs] = useState("");
+
+  // Every opening starts with an empty form.
+  useEffect(() => {
+    if (!backup) return;
+
+    setPassword("");
+    setError("");
+    setSavedAs("");
+  }, [backup]);
+
+  const downloadNow = () =>
+    runLocked(async () => {
+      if (!backup) return;
+
+      setError("");
+
+      if (!password) {
+        haptics.warning();
+        setError("Enter your current password to download the backup.");
+        return;
+      }
+
+      setDownloading(true);
+
+      try {
+        const response = await apiFetch(`${API_BASE}/api/backups/download/${backup.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentPassword: password }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+
+          throw new Error(data?.message || "The backup could not be downloaded.");
+        }
+
+        const fileName = `smartfine-backup-${backup.id}.sfbak`;
+
+        await saveResponseAsFile(response, fileName);
+
+        haptics.success();
+        setSavedAs(fileName);
+      } catch (caught) {
+        haptics.error();
+        setError(caught instanceof Error ? caught.message : "The backup could not be downloaded.");
+      } finally {
+        setDownloading(false);
+        setPassword("");
+      }
+    });
+
+  const savedLines =
+    Platform.OS === "web"
+      ? [
+          `Your browser saved ${savedAs}. Look in your Downloads folder, or open the browser's list of downloads.`,
+          "The file is encrypted. It can be opened only with SmartFine's backup key, so keep a copy of the key file (server/.backup-key) somewhere safe too.",
+        ]
+      : [
+          `Choose where to keep ${savedAs} in the share sheet that opened (for example Save to Files).`,
+          "The file is encrypted. It can be opened only with SmartFine's backup key.",
+        ];
+
+  return (
+    <FormPopup
+      visible={backup !== null}
+      busy={downloading}
+      title="Download Backup"
+      subtitle={backup ? `Backup made ${formatLogTime(backup.createdAt)}` : ""}
+      icon={require("../../assets/icons/download.png")}
+      onClose={onClose}
+      notice={!savedAs && error ? <Banner tone="error" title="Not Downloaded" message={error} /> : null}
+      footer={
+        savedAs ? (
+          <PopupButton label="Done" onPress={onClose} />
+        ) : (
+          <>
+            <PopupButton label="Cancel" variant="outline" disabled={downloading} onPress={onClose} />
+            <PopupButton
+              label="Download"
+              busyLabel="Downloading..."
+              busy={downloading}
+              disabled={!password}
+              variant="green"
+              onPress={() => void downloadNow()}
+            />
+          </>
+        )
+      }
+    >
+      {savedAs ? (
+        <SuccessPanel title="Backup Downloaded" lines={savedLines} />
+      ) : backup ? (
+        <>
+          <Banner
+            tone="info"
+            title="You get the encrypted file"
+            message="The backup stays encrypted (AES-256). It holds the accounts, fines and payments of that moment, so keep it somewhere private."
+          />
+
+          <FormSection title="Confirm" style={styles.section}>
+            <FormField label="Your Current Password" required hint="Needed because a backup holds every record.">
+              <PasswordInput
+                label="current password"
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  if (error) setError("");
+                }}
+                placeholder="Enter your password"
+                editable={!downloading}
+                onSubmitEditing={() => void downloadNow()}
+              />
+            </FormField>
+          </FormSection>
+        </>
+      ) : null}
+    </FormPopup>
+  );
+}
+
+// ==========================================
 // BACKUP PANEL
 // ==========================================
 
@@ -270,6 +409,7 @@ export function BackupPanel() {
   const [checking, setChecking] = useState("");
   const [checked, setChecked] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [restoreTarget, setRestoreTarget] = useState<Backup | null>(null);
+  const [downloadTarget, setDownloadTarget] = useState<Backup | null>(null);
 
   const requestId = useRef(0);
 
@@ -482,6 +622,12 @@ export function BackupPanel() {
                       onPress={() => void check(backup)}
                     />
                     <PopupButton
+                      label="Download"
+                      variant="green"
+                      disabled={checking !== ""}
+                      onPress={() => setDownloadTarget(backup)}
+                    />
+                    <PopupButton
                       label="Restore"
                       variant="danger"
                       disabled={checking !== ""}
@@ -496,8 +642,9 @@ export function BackupPanel() {
 
         <Text style={styles.note}>
           Backups hold the database only (accounts, fines, payments and settings). They are encrypted on the
-          server and cannot be opened without its backup key; keep a copy of that key somewhere safe.
-          Profile pictures and evidence photos are stored as files on the server.
+          server and cannot be opened without its backup key; keep a copy of that key somewhere safe. Use
+          Download to save a copy of a backup on your own computer. Profile pictures and evidence photos are
+          stored as files on the server.
         </Text>
       </SectionCard>
 
@@ -506,6 +653,8 @@ export function BackupPanel() {
         confirmPhrase={confirmPhrase}
         onClose={() => setRestoreTarget(null)}
       />
+
+      <DownloadModal backup={downloadTarget} onClose={() => setDownloadTarget(null)} />
     </>
   );
 }
