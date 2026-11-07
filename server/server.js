@@ -45,7 +45,8 @@ const {
 require("./security/security-log");
 
 const app = express();
-const PORT = 3000;
+// PORT in server/.env (default 3000; the web app expects 3000).
+const PORT = Number(process.env.PORT) || 3000;
 
 // ngrok sits in front of the app and connects from this computer; this makes
 // req.ip the real client address for the Log Trail and the request limits.
