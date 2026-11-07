@@ -41,7 +41,9 @@ function studentAccountSnapshot(userId) {
   }
 
   return {
-    name: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(" "),
+    name: [user.first_name, user.middle_name, user.last_name]
+      .filter(Boolean)
+      .join(" "),
     username: user.username || "",
     email: user.email || "",
     contact: user.contact_number || "",
@@ -179,7 +181,9 @@ function parseImportClassInformation(value) {
       .trim();
 
     if (!section) {
-      throw new ImportFileError(`${gradeLevel} must include a Section after the Strand.`);
+      throw new ImportFileError(
+        `${gradeLevel} must include a Section after the Strand.`,
+      );
     }
 
     return {
@@ -498,7 +502,9 @@ function parseCsvStudentImport(buffer) {
   }
 
   if (students.length === 0) {
-    throw new ImportFileError("The CSV does not contain any real student records.");
+    throw new ImportFileError(
+      "The CSV does not contain any real student records.",
+    );
   }
 
   return {
@@ -2318,7 +2324,9 @@ router.get(
 
         const notActivated = Number(student.needs_first_login) === 1;
 
-        const initialPassword = notActivated ? "Not activated yet" : "Activated";
+        const initialPassword = notActivated
+          ? "Not activated yet"
+          : "Activated";
 
         const accountNote = notActivated
           ? ACTIVATION_HELP
@@ -2836,7 +2844,10 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
         )} (${generatedStudentId}), ${normalizedGradeLevel} - ${normalizedSection}${
           normalizedStatus === "ACTIVE" ? "" : ", inactive"
         }.`,
-        details: { studentId: generatedStudentId, username: normalizedUsername },
+        details: {
+          studentId: generatedStudentId,
+          username: normalizedUsername,
+        },
       });
 
       db.exec("COMMIT;");
@@ -2891,7 +2902,9 @@ router.post("/", requireActive("ADMIN"), async (req, res) => {
     });
   } catch (error) {
     // Someone else took the username between the check and the save.
-    if (String(error.message).includes("UNIQUE constraint failed: users.username")) {
+    if (
+      String(error.message).includes("UNIQUE constraint failed: users.username")
+    ) {
       return res.status(409).json({
         success: false,
 
@@ -4024,7 +4037,10 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
 
     let normalizedStatus = String(accountStatus || "ACTIVE").toUpperCase();
 
-    if (existingStudent.account_status === "LOCKED" && normalizedStatus === "INACTIVE") {
+    if (
+      existingStudent.account_status === "LOCKED" &&
+      normalizedStatus === "INACTIVE"
+    ) {
       normalizedStatus = "LOCKED";
     }
 
@@ -4271,7 +4287,11 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
       }
 
       const afterAccount = studentAccountSnapshot(studentId);
-      const changes = describeChanges(beforeAccount, afterAccount, STUDENT_FIELDS);
+      const changes = describeChanges(
+        beforeAccount,
+        afterAccount,
+        STUDENT_FIELDS,
+      );
 
       if (changes.length || newPasswordHash !== null) {
         logActivity({
@@ -4281,7 +4301,10 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
           entityId: studentId,
           description: `Edited student ${afterAccount.name} (${
             existingStudent.student_number || existingStudent.username
-          }): ${[changeText(changes), newPasswordHash !== null ? "password reset" : ""]
+          }): ${[
+            changeText(changes),
+            newPasswordHash !== null ? "password reset" : "",
+          ]
             .filter(Boolean)
             .join("; ")}.`,
           details: { changes, passwordReset: newPasswordHash !== null },
@@ -4312,12 +4335,15 @@ router.put("/:id", requireActive("ADMIN"), async (req, res) => {
     // A deactivated or locked student, or one whose password an administrator
     // just set, is signed out everywhere.
     if (
-      (existingStudent.account_status === "ACTIVE" && normalizedStatus !== "ACTIVE") ||
+      (existingStudent.account_status === "ACTIVE" &&
+        normalizedStatus !== "ACTIVE") ||
       newPasswordHash !== null
     ) {
       require("../security/sessions").endAllForUser(
         studentId,
-        newPasswordHash !== null ? "PASSWORD_RESET_BY_ADMIN" : "ACCOUNT_DEACTIVATED",
+        newPasswordHash !== null
+          ? "PASSWORD_RESET_BY_ADMIN"
+          : "ACCOUNT_DEACTIVATED",
       );
     }
 
@@ -4423,7 +4449,7 @@ router.delete("/:id", requireActive("ADMIN"), (req, res) => {
 
           WHERE
             id = ?
-            AND role = 'STUDENT'
+            AND role = 'STUDENT' 
             AND
             username NOT LIKE
               '__archived_student_%'

@@ -49,3 +49,7 @@ app-example
 /android
 
 .notes
+
+# Documents and diagrams are not part of the app.
+/docs
+/defense-prep
