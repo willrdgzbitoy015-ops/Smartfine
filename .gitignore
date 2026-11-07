@@ -61,3 +61,16 @@ server/.signing-key
 # SmartFine backup encryption key and the encrypted backups themselves
 server/.backup-key
 server/backups/
+*.sfbak
+# SQLite databases hold real student records: never commit them.
+# A new, empty database is made with `node server/init-db.js`.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+# Every uploaded file (the server makes the folders itself)
+server/uploads/**
+!server/uploads/student-profiles/
+!server/uploads/student-profiles/.gitkeep
