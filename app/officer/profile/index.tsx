@@ -1438,14 +1438,6 @@ export default function OfficerProfile() {
 
                       <View style={styles.developerInfo}>
                         <Text style={styles.developerName}>Will R. Bitoy</Text>
-
-                        <Text style={styles.developerContact}>
-                          REMOVED
-                        </Text>
-
-                        <Text style={styles.developerContact}>
-                          Email: REMOVED
-                        </Text>
                       </View>
                     </View>
                   </>
